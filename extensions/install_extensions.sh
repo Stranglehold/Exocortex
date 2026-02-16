@@ -6,7 +6,7 @@
 # Safe to re-run
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/extensions"
+SOURCE_DIR="$SCRIPT_DIR"
 TARGET_ROOT="/a0/python/extensions"
 BACKUP_ROOT="$TARGET_ROOT/.hardening_originals"
 

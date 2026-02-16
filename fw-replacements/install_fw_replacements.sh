@@ -5,7 +5,7 @@
 # Safe to re-run — will not double-backup
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/fw-replacements"
+SOURCE_DIR="$SCRIPT_DIR"
 TARGET_DIR="/a0/prompts"
 BACKUP_DIR="$TARGET_DIR/.fw_originals"
 

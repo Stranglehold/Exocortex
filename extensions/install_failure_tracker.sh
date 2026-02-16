@@ -20,7 +20,7 @@ mkdir -p "$BACKUP_DIR/error_format"
 mkdir -p "$BACKUP_DIR/tool_execute_after"
 
 for ext in "${EXTENSIONS[@]}"; do
-  src="$SCRIPT_DIR/extensions/$ext"
+  src="$SCRIPT_DIR/$ext"
   dst="$EXTENSIONS_DIR/$ext"
   dst_dir="$(dirname "$dst")"
 
