@@ -1,11 +1,25 @@
 """
-Belief State Tracker — Agent-Zero Translation Layer v3
+Belief State Tracker — Agent-Zero Translation Layer
 ====================================================
 Hook: before_main_llm_call
+File: _10_belief_state_tracker.py  (runs before _20_context_watchdog.py)
 
-Works with agent-zero's dict-based message format.
-Intercepts user messages before LLM call, classifies intent,
-resolves slots, and enriches with structured context.
+Role: Intercepts the assembled prompt AFTER prepare_prompt() builds
+      loop_data.history_output but BEFORE the LLM call at line 426.
+      Finds the last HumanMessage in loop_data.history_output and either:
+      - replaces its content with an enriched, slot-resolved version, or
+      - replaces its content with a directive to surface one clarifying question.
+
+Taxonomy: slot_taxonomy.json (same directory as this file)
+No code changes needed to add domains — edit the JSON only.
+
+Fix history (v1 → v2):
+  - Was modifying self.agent.history after prepare_prompt() already snapshotted it
+  - Now modifies loop_data.history_output directly (the live LLM call packet)
+
+Fix log (v1 → v2):
+  - Was calling Log.log() as a module-level function (doesn't exist)
+  - Now calls self.agent.context.log.log() matching the watchdog pattern
 """
 
 import json
@@ -16,138 +30,211 @@ from typing import Any
 from agent import LoopData
 from python.helpers.extension import Extension
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Constants
+# ──────────────────────────────────────────────────────────────────────────────
+
 TAXONOMY_PATH          = Path(__file__).parent / "slot_taxonomy.json"
 BELIEF_KEY             = "__bst_belief_state__"
 MAX_HISTORY_SCAN_TURNS = 8
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Extension entry point
+# ──────────────────────────────────────────────────────────────────────────────
+
 class BeliefStateTracker(Extension):
-    """Agent-Zero extension: before_main_llm_call"""
+    """
+    Agent-Zero extension: before_main_llm_call
+    Reads last HumanMessage from loop_data.history_output, runs BST pipeline,
+    writes enriched or clarification content back into the same message object.
+    """
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
-        print("[BST_EXECUTE] BST execute() called!", flush=True)
-        print(f"[BST_DEBUG] history_output length: {len(loop_data.history_output) if loop_data.history_output else 0}", flush=True)
-
-        if loop_data.history_output:
-            for i, msg in enumerate(loop_data.history_output):
-                msg_type = type(msg).__name__
-                is_dict = isinstance(msg, dict)
-                if is_dict:
-                    ai_flag = msg.get('ai', 'N/A')
-                    content = msg.get('content', '')
-                    content_type = type(content).__name__
-            
-                    # Show full dict content when it's a dict
-                    if isinstance(content, dict):
-                        print(f"[BST_DEBUG] Msg {i}: ai={ai_flag}, content_dict={content}", flush=True)
-                    else:
-                        content_preview = str(content)[:100]
-                        print(f"[BST_DEBUG] Msg {i}: ai={ai_flag}, content_type={content_type}, preview={content_preview}", flush=True)
+        # DEBUG: Log entry to verify hook is being called
         try:
-            # Find the last user message (dict format)
-            user_msg = _get_last_user_message(loop_data.history_output)
+            self.agent.context.log.log(
+                type="info",
+                content="[BST DEBUG] execute() called - extension is loading"
+            )
+        except Exception:
+            pass
+        
+        try:
+            # ── 1. Find the last HumanMessage in the assembled prompt ────────
+            human_msg = _get_last_human_message(loop_data.history_output)
             
-            if not user_msg:
-                print("[BST_DEBUG] No user message found, returning", flush=True)
+            # DEBUG: Log what we found
+            try:
+                msg_count = len(loop_data.history_output) if loop_data.history_output else 0
+                found = "found" if human_msg else "NOT FOUND"
+                self.agent.context.log.log(
+                    type="info",
+                    content=f"[BST DEBUG] history_output has {msg_count} messages, HumanMessage {found}"
+                )
+            except Exception:
+                pass
+            
+            if human_msg is None:
                 return
 
-            message = user_msg.get('content', '')
-            if isinstance(message, dict):
-                # Extract text from dict
-                message = message.get('user_message', '') or message.get('message', '') or str(message)
+            message = human_msg.content
+            if isinstance(message, list):
+                # Multi-part content (e.g. vision) — extract text parts only
+                message = " ".join(
+                    p.get("text", "") if isinstance(p, dict) else str(p)
+                    for p in message
+                )
             message = str(message).strip()
             
-            print(f"[BST_DEBUG] Processing message: '{message[:60]}'", flush=True)
+            # DEBUG: Log the extracted message
+            try:
+                self.agent.context.log.log(
+                    type="info",
+                    content=f"[BST DEBUG] Extracted message: '{message[:100]}...'" if len(message) > 100 else f"[BST DEBUG] Extracted message: '{message}'"
+                )
+            except Exception:
+                pass
             
             if not message:
                 return
 
-            # Run BST pipeline
+            # ── 2. Run the BST pipeline ──────────────────────────────────────
             tracker = _BSTEngine(self.agent)
             result  = tracker.process(message)
             
-            print(f"[BST_DEBUG] Result action: {result.get('action')}", flush=True)
+            # DEBUG: Log the pipeline result
+            try:
+                self.agent.context.log.log(
+                    type="info",
+                    content=f"[BST DEBUG] Pipeline result: action={result.get('action')}, domain={result.get('domain')}, confidence={result.get('confidence', 'N/A')}"
+                )
+            except Exception:
+                pass
 
-            # Apply enrichment
+            # ── 3. Apply result ──────────────────────────────────────────────
             if result["action"] == "enrich":
-                user_msg['content'] = result["enriched_message"]
-                print(f"[BST] Domain: {result['domain']} | Confidence: {result['confidence']:.2f}", flush=True)
+                # DEBUG: Log before modification
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content=f"[BST DEBUG] About to enrich message, original length: {len(human_msg.content)}"
+                    )
+                except Exception:
+                    pass
+                
+                human_msg.content = result["enriched_message"]
+                
+                # DEBUG: Log after modification
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content=f"[BST DEBUG] Message enriched, new length: {len(human_msg.content)}, first 200 chars: {human_msg.content[:200]}"
+                    )
+                except Exception:
+                    pass
+                
                 self.agent.context.log.log(
                     type="info",
-                    content=f"[BST] Enriched - Domain: {result['domain']} | Slots: {result['filled_slots']}"
+                    content=(
+                        f"[BST] Domain: {result['domain']} | "
+                        f"Confidence: {result['confidence']:.2f} | "
+                        f"Slots: {result['filled_slots']}"
+                    ),
                 )
-            
+
             elif result["action"] == "clarify":
-                user_msg['content'] = (
+                # Replace the user message with a directive telling the model
+                # to surface exactly one question before attempting the task.
+                human_msg.content = (
                     f"[CLARIFICATION NEEDED]\n"
-                    f"Original: {message}\n\n"
-                    f"Ask user: \"{result['question']}\"\n"
-                    f"Wait for answer before proceeding."
+                    f"Original request: {message}\n\n"
+                    f"Before attempting this task, ask the user exactly this "
+                    f"question and wait for their answer:\n"
+                    f"\"{result['question']}\"\n\n"
+                    f"Do not attempt the task until they respond."
                 )
                 self.agent.context.log.log(
                     type="info",
-                    content=f"[BST] Clarifying - Domain: {result['domain']} | Missing: {result['missing_slot']}"
+                    content=(
+                        f"[BST] Clarification needed — "
+                        f"domain: {result['domain']} | "
+                        f"missing: {result['missing_slot']}"
+                    ),
                 )
+
+            # action == "passthrough" → conversational, no modification needed
 
         except Exception as e:
-            print(f"[BST_DEBUG] Exception: {e}", flush=True)
+            # Never block the agent on tracker failure — degrade to passthrough
             try:
                 self.agent.context.log.log(
                     type="warning",
-                    content=f"[BST] Error (passthrough): {e}"
+                    content=f"[BST] Non-fatal error, passing through: {e}",
                 )
-            except:
+                # DEBUG: Full traceback
+                import traceback
+                self.agent.context.log.log(
+                    type="warning",
+                    content=f"[BST DEBUG] Full traceback: {traceback.format_exc()}"
+                )
+            except Exception:
                 pass
 
 
-def _get_last_user_message(history_output: list):
-    """Find last user message in agent-zero's dict format"""
+# ──────────────────────────────────────────────────────────────────────────────
+# History helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _get_last_human_message(history_output: list):
+    """
+    Return the last HumanMessage object from loop_data.history_output.
+    Returns None if history is empty or has no human messages.
+    We return the object itself (not a copy) so mutations affect the live packet.
+    """
     if not history_output:
         return None
-    
     for msg in reversed(history_output):
-        if not isinstance(msg, dict):
-            continue
-        
-        # Skip AI messages
-        if msg.get('ai', True):
-            continue
-        
-        content = msg.get('content', '')
-        
-        # Handle dict content with 'user_message' key
-        if isinstance(content, dict):
-            if 'user_message' in content:
-                return msg
-            # Skip tool results
-            if 'tool_name' in content:
-                continue
-        
-        # Handle plain string content
-        if isinstance(content, str) and content.strip():
+        # LangChain message types: HumanMessage, AIMessage, SystemMessage etc.
+        # Check by class name to avoid a hard import dependency.
+        cls_name = type(msg).__name__
+        if cls_name in ("HumanMessage", "HumanMessageChunk"):
             return msg
-    
     return None
 
 
+def _message_text(msg) -> str:
+    """Extract plain text content from a LangChain message."""
+    content = getattr(msg, "content", "")
+    if isinstance(content, list):
+        return " ".join(
+            p.get("text", "") if isinstance(p, dict) else str(p)
+            for p in content
+        )
+    return str(content)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core BST engine (unchanged from v1 — all logic lives here)
+# ──────────────────────────────────────────────────────────────────────────────
+
 class _BSTEngine:
-    """Core belief state tracking logic"""
 
     def __init__(self, agent):
         self.agent    = agent
         self.taxonomy = self._load_taxonomy()
         self.globs    = self.taxonomy.get("global", {})
 
+    # ── Main entry ────────────────────────────────────────────────────────────
+
     def process(self, message: str) -> dict:
-        """Main entry point - classify and resolve slots"""
-        
-        # Check for underspecified follow-up
+        # Underspecified / pronoun-only follow-up: re-attach prior belief state
         if self._is_underspecified(message):
             belief = self._get_persisted_belief()
             if belief:
                 return self._handle_underspecified(message, belief)
 
-        # Classify domain
+        # Classify
         domain_name, confidence = self._classify(message)
 
         if domain_name == "conversational" or not domain_name:
@@ -169,15 +256,15 @@ class _BSTEngine:
         for slot_name in domain.get("required_slots", []):
             slot_def = domain["slot_definitions"].get(slot_name, {})
             value    = self._resolve_slot(slot_name, slot_def, message, history)
-            
-            if value is None and not self._is_conditionally_required(slot_name, slot_def, belief["slots"]):
+            if value is None and not self._is_conditionally_required(
+                slot_name, slot_def, belief["slots"]
+            ):
                 continue
-                
             belief["slots"][slot_name] = value
             if value is None and not slot_def.get("nullable", True):
                 belief["missing_required"].append(slot_name)
 
-        # Resolve optional slots
+        # Resolve optional slots (no questions, opportunistic only)
         for slot_name in domain.get("optional_slots", []):
             slot_def = domain["slot_definitions"].get(slot_name, {})
             value    = self._resolve_slot(slot_name, slot_def, message, history)
@@ -197,15 +284,17 @@ class _BSTEngine:
 
         threshold = domain.get("confidence_threshold", 0.7)
 
-        # Below threshold - ask for missing slot
+        # Below threshold — ask for the most critical missing slot
         if belief["confidence"] < threshold and belief["missing_required"]:
             asked = belief.get("clarifications_asked", 0)
             max_q = self.globs.get("max_clarification_questions", 2)
             if asked < max_q:
                 missing_slot = belief["missing_required"][0]
                 slot_def     = domain["slot_definitions"].get(missing_slot, {})
-                question     = slot_def.get("question", f"What is the {missing_slot.replace('_', ' ')}?")
-                
+                question     = slot_def.get(
+                    "question",
+                    f"Could you clarify: what is the {missing_slot.replace('_', ' ')}?"
+                )
                 if question:
                     belief["clarifications_asked"] = asked + 1
                     self._persist_belief(belief)
@@ -217,7 +306,7 @@ class _BSTEngine:
                         "confidence":   belief["confidence"],
                     }
 
-        # Confidence sufficient - enrich
+        # Confidence sufficient — enrich
         return {
             "action":          "enrich",
             "domain":          domain_name,
@@ -226,8 +315,9 @@ class _BSTEngine:
             "enriched_message": self._enrich_message(message, domain, belief),
         }
 
+    # ── Classification ────────────────────────────────────────────────────────
+
     def _classify(self, message: str) -> tuple:
-        """Classify message into domain"""
         msg_lower = message.lower()
         min_len   = self.globs.get("min_trigger_word_length", 3)
         scores    = {}
@@ -244,13 +334,14 @@ class _BSTEngine:
         if not scores:
             return "conversational", 1.0
 
-        best       = max(scores, key=lambda k: scores[k])
-        raw_max    = max(scores.values())
+        best    = max(scores, key=lambda k: scores[k])
+        raw_max = max(scores.values())
         confidence = min(1.0, raw_max / max(3.0, raw_max + 1))
         return best, confidence
 
+    # ── Slot resolution ───────────────────────────────────────────────────────
+
     def _resolve_slot(self, slot_name: str, slot_def: dict, message: str, history: str) -> Any:
-        """Resolve slot value using resolver chain"""
         resolvers   = slot_def.get("resolvers", [])
         keyword_map = slot_def.get("keyword_map", {})
         msg_lower   = message.lower()
@@ -308,6 +399,8 @@ class _BSTEngine:
                     return True
         return False
 
+    # ── Message enrichment ────────────────────────────────────────────────────
+
     def _enrich_message(self, original: str, domain: dict, belief: dict) -> str:
         lines = []
         filled = {k: v for k, v in belief["slots"].items() if v is not None}
@@ -319,6 +412,8 @@ class _BSTEngine:
             lines.append(f"[INSTRUCTION]\n{preamble}")
         lines.append(f"[USER MESSAGE]\n{original}")
         return "\n\n".join(lines)
+
+    # ── Underspecified handling ───────────────────────────────────────────────
 
     def _is_underspecified(self, message: str) -> bool:
         msg_lower = message.lower().strip()
@@ -353,12 +448,14 @@ class _BSTEngine:
             "enriched_message": "\n\n".join(lines),
         }
 
+    # ── Belief state persistence ──────────────────────────────────────────────
+
     def _persist_belief(self, belief: dict) -> None:
         try:
             if not hasattr(self.agent, "_bst_store"):
                 self.agent._bst_store = {}
             self.agent._bst_store[BELIEF_KEY] = belief
-        except:
+        except Exception:
             pass
 
     def _get_persisted_belief(self) -> dict | None:
@@ -372,17 +469,24 @@ class _BSTEngine:
                 self._clear_belief()
                 return None
             return belief
-        except:
+        except Exception:
             return None
 
     def _clear_belief(self) -> None:
         try:
             store = getattr(self.agent, "_bst_store", {})
             store.pop(BELIEF_KEY, None)
-        except:
+        except Exception:
             pass
 
+    # ── History utilities ─────────────────────────────────────────────────────
+
     def _get_history_text(self) -> str:
+        """
+        Read recent history text from agent.history for resolver context.
+        This is fine to read here — we only need text content for pattern
+        matching, not to modify the live call packet.
+        """
         try:
             msgs = self.agent.history or []
             recent = msgs[-MAX_HISTORY_SCAN_TURNS:]
@@ -396,14 +500,16 @@ class _BSTEngine:
                     )
                 parts.append(str(content))
             return " ".join(parts)
-        except:
+        except Exception:
             return ""
 
     def _current_turn(self) -> int:
         try:
             return len(self.agent.history or [])
-        except:
+        except Exception:
             return 0
+
+    # ── Extraction helpers ────────────────────────────────────────────────────
 
     def _extract_file_ref(self, text: str) -> str | None:
         patterns = [
@@ -461,6 +567,8 @@ class _BSTEngine:
                     return val
 
         return None
+
+    # ── Taxonomy loader ───────────────────────────────────────────────────────
 
     @staticmethod
     def _load_taxonomy() -> dict:
