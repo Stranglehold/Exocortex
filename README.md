@@ -2,7 +2,7 @@
 
 A drop-in companion repo for [agent-zero](https://github.com/frdel/agent-zero) that compensates for the architectural assumptions agent-zero makes about its underlying model. Built specifically for local model deployment (Qwen3-14B, GLM-4.7 Flash, Devstral Small) where the "brilliant generalist" assumption breaks down.
 
-Nothing here forks agent-zero or touches its core Python. All changes deploy through agent-zero's own extension and prompt override systems, so they survive upstream updates with minimal maintenance.
+Nothing here modifies agent-zero's core Python source files. All changes deploy through agent-zero's own extension hook system and prompt override directories. Prompt patches replace specific .md files in /a0/prompts/ (originals are backed up automatically). Extensions add new files to /a0/python/extensions/ subdirectories — no existing extension files are modified or removed.
 
 ---
 
