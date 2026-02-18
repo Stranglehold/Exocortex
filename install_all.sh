@@ -48,6 +48,7 @@ LAYERS=(
   "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
   "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
   "2|Extensions — tool fallback chain   |scripts/install_tool_fallback.sh"
+  "2|Extensions — meta-reasoning gate   |scripts/install_meta_gate.sh"
   "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
   "3|Personality loader                  |scripts/install_personalities.sh"
   "4|Skills                              |install_skills.sh"
