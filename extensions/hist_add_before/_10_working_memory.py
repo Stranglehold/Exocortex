@@ -157,6 +157,11 @@ class WorkingMemoryBuffer(Extension):
             if not new_entities:
                 return
 
+            self.agent.context.log.log(
+                type="info",
+                content=f"[WM] Extracted {len(new_entities)} entities: {new_entities}"
+            )
+
             # Merge into working memory
             for etype, value in new_entities:
                 self._upsert_entity(wm, etype, value, turn)
