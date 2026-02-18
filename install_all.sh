@@ -48,6 +48,7 @@ LAYERS=(
   "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
   "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
   "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
+  "3|Personality loader                  |scripts/install_personalities.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
 )
@@ -142,6 +143,7 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 1  fw-replacements   → /a0/prompts/"
   echo "    Layer 2  extensions        → /a0/python/extensions/"
   echo "    Layer 3  prompt-patches    → /a0/prompts/"
+  echo "    Layer 3  personalities     → /a0/prompts/ + /a0/usr/personalities/"
   echo "    Layer 4  skills            → /a0/skills/"
   echo "    Layer 5  translation-layer → /a0/python/extensions/before_main_llm_call/"
   echo ""
