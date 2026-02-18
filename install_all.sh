@@ -53,6 +53,7 @@ LAYERS=(
   "3|Personality loader                  |scripts/install_personalities.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
+  "5|HTN plan templates                 |scripts/install_htn_plans.sh"
 )
 
 CHECK_SCRIPTS=(
