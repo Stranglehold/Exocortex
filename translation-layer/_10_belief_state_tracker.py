@@ -25,58 +25,33 @@ class BeliefStateTracker(Extension):
     """Agent-Zero extension: before_main_llm_call"""
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
-        print("[BST_EXECUTE] BST execute() called!", flush=True)
-        print(f"[BST_DEBUG] history_output length: {len(loop_data.history_output) if loop_data.history_output else 0}", flush=True)
-
-        if loop_data.history_output:
-            for i, msg in enumerate(loop_data.history_output):
-                msg_type = type(msg).__name__
-                is_dict = isinstance(msg, dict)
-                if is_dict:
-                    ai_flag = msg.get('ai', 'N/A')
-                    content = msg.get('content', '')
-                    content_type = type(content).__name__
-            
-                    # Show full dict content when it's a dict
-                    if isinstance(content, dict):
-                        print(f"[BST_DEBUG] Msg {i}: ai={ai_flag}, content_dict={content}", flush=True)
-                    else:
-                        content_preview = str(content)[:100]
-                        print(f"[BST_DEBUG] Msg {i}: ai={ai_flag}, content_type={content_type}, preview={content_preview}", flush=True)
         try:
             # Find the last user message (dict format)
             user_msg = _get_last_user_message(loop_data.history_output)
-            
+
             if not user_msg:
-                print("[BST_DEBUG] No user message found, returning", flush=True)
                 return
 
             message = user_msg.get('content', '')
             if isinstance(message, dict):
-                # Extract text from dict
                 message = message.get('user_message', '') or message.get('message', '') or str(message)
             message = str(message).strip()
-            
-            print(f"[BST_DEBUG] Processing message: '{message[:60]}'", flush=True)
-            
+
             if not message:
                 return
 
             # Run BST pipeline
             tracker = _BSTEngine(self.agent)
             result  = tracker.process(message)
-            
-            print(f"[BST_DEBUG] Result action: {result.get('action')}", flush=True)
 
             # Apply enrichment
             if result["action"] == "enrich":
                 user_msg['content'] = result["enriched_message"]
-                print(f"[BST] Domain: {result['domain']} | Confidence: {result['confidence']:.2f}", flush=True)
                 self.agent.context.log.log(
                     type="info",
-                    content=f"[BST] Enriched - Domain: {result['domain']} | Slots: {result['filled_slots']}"
+                    content=f"[BST] Domain: {result['domain']} | Confidence: {result['confidence']:.2f} | Slots: {result['filled_slots']}"
                 )
-            
+
             elif result["action"] == "clarify":
                 user_msg['content'] = (
                     f"[CLARIFICATION NEEDED]\n"
@@ -90,31 +65,30 @@ class BeliefStateTracker(Extension):
                 )
 
         except Exception as e:
-            print(f"[BST_DEBUG] Exception: {e}", flush=True)
             try:
                 self.agent.context.log.log(
                     type="warning",
                     content=f"[BST] Error (passthrough): {e}"
                 )
-            except:
+            except Exception:
                 pass
 
 
 def _get_last_user_message(history_output: list):
-    """Find last user message in agent-zero's dict format"""
+    """Find last user message in agent-zero's dict format."""
     if not history_output:
         return None
-    
+
     for msg in reversed(history_output):
         if not isinstance(msg, dict):
             continue
-        
+
         # Skip AI messages
         if msg.get('ai', True):
             continue
-        
+
         content = msg.get('content', '')
-        
+
         # Handle dict content with 'user_message' key
         if isinstance(content, dict):
             if 'user_message' in content:
@@ -122,16 +96,16 @@ def _get_last_user_message(history_output: list):
             # Skip tool results
             if 'tool_name' in content:
                 continue
-        
+
         # Handle plain string content
         if isinstance(content, str) and content.strip():
             return msg
-    
+
     return None
 
 
 class _BSTEngine:
-    """Core belief state tracking logic"""
+    """Core belief state tracking logic."""
 
     def __init__(self, agent):
         self.agent    = agent
@@ -139,8 +113,8 @@ class _BSTEngine:
         self.globs    = self.taxonomy.get("global", {})
 
     def process(self, message: str) -> dict:
-        """Main entry point - classify and resolve slots"""
-        
+        """Main entry point — classify and resolve slots."""
+
         # Check for underspecified follow-up
         if self._is_underspecified(message):
             belief = self._get_persisted_belief()
@@ -169,10 +143,10 @@ class _BSTEngine:
         for slot_name in domain.get("required_slots", []):
             slot_def = domain["slot_definitions"].get(slot_name, {})
             value    = self._resolve_slot(slot_name, slot_def, message, history)
-            
+
             if value is None and not self._is_conditionally_required(slot_name, slot_def, belief["slots"]):
                 continue
-                
+
             belief["slots"][slot_name] = value
             if value is None and not slot_def.get("nullable", True):
                 belief["missing_required"].append(slot_name)
@@ -197,7 +171,7 @@ class _BSTEngine:
 
         threshold = domain.get("confidence_threshold", 0.7)
 
-        # Below threshold - ask for missing slot
+        # Below threshold — ask for missing slot
         if belief["confidence"] < threshold and belief["missing_required"]:
             asked = belief.get("clarifications_asked", 0)
             max_q = self.globs.get("max_clarification_questions", 2)
@@ -205,7 +179,7 @@ class _BSTEngine:
                 missing_slot = belief["missing_required"][0]
                 slot_def     = domain["slot_definitions"].get(missing_slot, {})
                 question     = slot_def.get("question", f"What is the {missing_slot.replace('_', ' ')}?")
-                
+
                 if question:
                     belief["clarifications_asked"] = asked + 1
                     self._persist_belief(belief)
@@ -217,7 +191,7 @@ class _BSTEngine:
                         "confidence":   belief["confidence"],
                     }
 
-        # Confidence sufficient - enrich
+        # Confidence sufficient — enrich
         return {
             "action":          "enrich",
             "domain":          domain_name,
@@ -227,7 +201,7 @@ class _BSTEngine:
         }
 
     def _classify(self, message: str) -> tuple:
-        """Classify message into domain"""
+        """Classify message into domain."""
         msg_lower = message.lower()
         min_len   = self.globs.get("min_trigger_word_length", 3)
         scores    = {}
@@ -250,7 +224,7 @@ class _BSTEngine:
         return best, confidence
 
     def _resolve_slot(self, slot_name: str, slot_def: dict, message: str, history: str) -> Any:
-        """Resolve slot value using resolver chain"""
+        """Resolve slot value using resolver chain."""
         resolvers   = slot_def.get("resolvers", [])
         keyword_map = slot_def.get("keyword_map", {})
         msg_lower   = message.lower()
@@ -292,6 +266,11 @@ class _BSTEngine:
                 value = self._inline_context_resolve(slot_name, slot_def, message)
                 if value:
                     return value
+
+            elif resolver == "working_memory_lookup":
+                hit = self._working_memory_lookup(slot_name, message)
+                if hit:
+                    return hit
 
         return slot_def.get("default")
 
@@ -358,7 +337,7 @@ class _BSTEngine:
             if not hasattr(self.agent, "_bst_store"):
                 self.agent._bst_store = {}
             self.agent._bst_store[BELIEF_KEY] = belief
-        except:
+        except Exception:
             pass
 
     def _get_persisted_belief(self) -> dict | None:
@@ -372,14 +351,14 @@ class _BSTEngine:
                 self._clear_belief()
                 return None
             return belief
-        except:
+        except Exception:
             return None
 
     def _clear_belief(self) -> None:
         try:
             store = getattr(self.agent, "_bst_store", {})
             store.pop(BELIEF_KEY, None)
-        except:
+        except Exception:
             pass
 
     def _get_history_text(self) -> str:
@@ -396,13 +375,13 @@ class _BSTEngine:
                     )
                 parts.append(str(content))
             return " ".join(parts)
-        except:
+        except Exception:
             return ""
 
     def _current_turn(self) -> int:
         try:
             return len(self.agent.history or [])
-        except:
+        except Exception:
             return 0
 
     def _extract_file_ref(self, text: str) -> str | None:
@@ -460,6 +439,66 @@ class _BSTEngine:
                 if val in msg_lower:
                     return val
 
+        return None
+
+    def _working_memory_lookup(self, slot_name: str, message: str) -> Any:
+        """Check working memory buffer for recently mentioned entities.
+
+        Search order:
+        1. Promoted entities (3+ mentions, most valuable) — most recent first
+        2. Active entities — most recent first (sorted by turn descending)
+        """
+        try:
+            wm = getattr(self.agent, "_working_memory", None)
+            if not wm:
+                return None
+
+            # Match slot type to entity type
+            slot_to_entity = {
+                "target_file": ["file"],
+                "source_file": ["file"],
+                "source_path": ["path", "file"],
+                "destination_path": ["path"],
+                "target": ["path", "file", "container", "service", "url"],
+                "container_name": ["container"],
+                "image_name": ["image"],
+                "endpoint": ["url"],
+                "log_source": ["path", "file"],
+                "config_key": ["config_key"],
+                "package_name": ["package"],
+                "branch_name": ["branch"],
+            }
+            entity_types = slot_to_entity.get(slot_name)
+            if not entity_types:
+                return None
+
+            etypes_set = set(entity_types)
+
+            # 1. Search promoted entities first (highest value)
+            promoted = wm.get("promoted", {})
+            if promoted:
+                best_val = None
+                best_turn = -1
+                for value, info in promoted.items():
+                    if info.get("type") in etypes_set and info.get("last_turn", 0) > best_turn:
+                        best_turn = info["last_turn"]
+                        best_val = value
+                if best_val is not None:
+                    return best_val
+
+            # 2. Search active entities, most recent first
+            entities = wm.get("entities", [])
+            if entities:
+                candidates = [
+                    e for e in entities
+                    if e.get("type") in etypes_set
+                ]
+                if candidates:
+                    candidates.sort(key=lambda e: e.get("turn", 0), reverse=True)
+                    return candidates[0].get("value")
+
+        except Exception:
+            pass
         return None
 
     @staticmethod

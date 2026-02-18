@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Agent-Zero intent disambiguation taxonomy. Add domains freely — no code changes required.",
     "resolver_types": [
       "keyword_map",
@@ -9,9 +9,11 @@
       "last_mentioned_path",
       "last_mentioned_entity",
       "context_inference",
-      "history_scan"
+      "history_scan",
+      "working_memory_lookup"
     ],
     "changelog": {
+      "1.2.0": "Added working_memory_lookup resolver type. Wired into file/path/container/branch/package slots across domains.",
       "1.1.0": "Added git_ops, docker_ops, config_edit, prompt_engineering, log_analysis, pdf_ops, data_transform, api_integration, dependency_mgmt"
     }
   },
@@ -30,7 +32,7 @@
       "slot_definitions": {
         "target_file": {
           "question": "Which file should I write to, or should I create a new one?",
-          "resolvers": ["last_mentioned_file", "context_inference"],
+          "resolvers": ["last_mentioned_file", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": true,
           "null_means": "create_new"
@@ -87,7 +89,7 @@
       "slot_definitions": {
         "target_file": {
           "question": "Which file should I refactor?",
-          "resolvers": ["last_mentioned_file", "context_inference"],
+          "resolvers": ["last_mentioned_file", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": false
         },
@@ -131,7 +133,7 @@
       "slot_definitions": {
         "target_file": {
           "question": "Which file contains the bug?",
-          "resolvers": ["last_mentioned_file", "context_inference"],
+          "resolvers": ["last_mentioned_file", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": false
         },
@@ -171,7 +173,7 @@
       "slot_definitions": {
         "target": {
           "question": "What should I operate on — a file, a directory, a service, or something else?",
-          "resolvers": ["last_mentioned_path", "last_mentioned_entity", "context_inference"],
+          "resolvers": ["last_mentioned_path", "last_mentioned_entity", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": false
         },
@@ -216,7 +218,7 @@
       "slot_definitions": {
         "source_path": {
           "question": "What is the source path or file you want me to work with?",
-          "resolvers": ["last_mentioned_path", "last_mentioned_file", "context_inference"],
+          "resolvers": ["last_mentioned_path", "last_mentioned_file", "working_memory_lookup", "context_inference"],
           "type": "path",
           "nullable": false
         },
@@ -234,7 +236,7 @@
         },
         "destination_path": {
           "question": "Where should it go?",
-          "resolvers": ["context_inference"],
+          "resolvers": ["working_memory_lookup", "context_inference"],
           "type": "path",
           "nullable": true,
           "required_when": {"operation": ["move", "copy", "rename"]}
@@ -312,7 +314,7 @@
       "slot_definitions": {
         "target": {
           "question": "What is the URL, domain, or subject to investigate?",
-          "resolvers": ["context_inference", "last_mentioned_entity"],
+          "resolvers": ["working_memory_lookup", "context_inference", "last_mentioned_entity"],
           "type": "string",
           "nullable": false
         },
@@ -418,7 +420,7 @@
         },
         "branch_name": {
           "question": "Which branch?",
-          "resolvers": ["context_inference", "last_mentioned_entity", "history_scan"],
+          "resolvers": ["context_inference", "last_mentioned_entity", "working_memory_lookup", "history_scan"],
           "type": "string",
           "nullable": true,
           "required_when": {"operation": ["branch", "checkout", "merge"]}
@@ -432,7 +434,7 @@
         },
         "file_scope": {
           "question": null,
-          "resolvers": ["last_mentioned_file", "last_mentioned_path", "context_inference"],
+          "resolvers": ["last_mentioned_file", "last_mentioned_path", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": true,
           "note": "Specific file(s) to scope the operation to, if not all"
@@ -483,14 +485,14 @@
         },
         "container_name": {
           "question": "Which container?",
-          "resolvers": ["last_mentioned_entity", "context_inference", "history_scan"],
+          "resolvers": ["last_mentioned_entity", "context_inference", "working_memory_lookup", "history_scan"],
           "type": "string",
           "nullable": true,
           "required_when": {"operation": ["exec", "logs", "stop", "restart", "inspect", "remove"]}
         },
         "image_name": {
           "question": "Which image?",
-          "resolvers": ["last_mentioned_entity", "context_inference"],
+          "resolvers": ["last_mentioned_entity", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": true,
           "required_when": {"operation": ["run", "pull", "build", "remove_image"]}
@@ -534,7 +536,7 @@
       "slot_definitions": {
         "target_file": {
           "question": "Which configuration file should I edit?",
-          "resolvers": ["last_mentioned_file", "last_mentioned_path", "context_inference"],
+          "resolvers": ["last_mentioned_file", "last_mentioned_path", "working_memory_lookup", "context_inference"],
           "type": "path",
           "nullable": false
         },
@@ -655,7 +657,7 @@
       "slot_definitions": {
         "log_source": {
           "question": "Which log file or output stream should I check?",
-          "resolvers": ["keyword_map", "last_mentioned_file", "context_inference"],
+          "resolvers": ["keyword_map", "last_mentioned_file", "working_memory_lookup", "context_inference"],
           "keyword_map": {
             "agent log": "/a0/logs/agent.log",
             "agent.log": "/a0/logs/agent.log",
@@ -735,7 +737,7 @@
         },
         "source_file": {
           "question": "Which PDF file should I work with?",
-          "resolvers": ["last_mentioned_file", "last_mentioned_path", "context_inference"],
+          "resolvers": ["last_mentioned_file", "last_mentioned_path", "working_memory_lookup", "context_inference"],
           "type": "path",
           "nullable": false
         },
@@ -808,7 +810,7 @@
         },
         "source_file": {
           "question": null,
-          "resolvers": ["last_mentioned_file", "last_mentioned_path"],
+          "resolvers": ["last_mentioned_file", "last_mentioned_path", "working_memory_lookup"],
           "type": "path",
           "nullable": true
         },
@@ -850,7 +852,7 @@
       "slot_definitions": {
         "endpoint": {
           "question": "What is the API endpoint or URL?",
-          "resolvers": ["context_inference", "last_mentioned_entity", "history_scan"],
+          "resolvers": ["context_inference", "last_mentioned_entity", "working_memory_lookup", "history_scan"],
           "type": "string",
           "nullable": false
         },
@@ -935,7 +937,7 @@
         },
         "package_name": {
           "question": "Which package?",
-          "resolvers": ["last_mentioned_entity", "context_inference"],
+          "resolvers": ["last_mentioned_entity", "working_memory_lookup", "context_inference"],
           "type": "string",
           "nullable": true,
           "note": "nullable=true allows 'list all' operations with no specific package"
