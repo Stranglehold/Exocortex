@@ -1,0 +1,541 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "HTN Plan Library for Agent-Zero. Static workflow templates matched by BST domain + trigger phrases.",
+    "verification_types": ["output_contains", "output_not_contains", "exit_code_zero", "any_output", "file_exists", "manual"],
+    "on_fail_actions": ["warn", "block", "skip", "abort"]
+  },
+  "plans": {
+    "git_feature_branch": {
+      "name": "Git Feature Branch",
+      "domains": ["git_ops"],
+      "triggers": ["create branch", "feature branch", "new branch", "start feature", "branch off"],
+      "trigger_threshold": 2,
+      "stale_after_turns": 10,
+      "steps": [
+        {
+          "name": "Check current branch status",
+          "action": "Run git status and git branch to confirm clean working state",
+          "tool": "code_execution_tool",
+          "tool_hint": "git status && git branch",
+          "verify": {"type": "output_contains", "value": "On branch"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Create feature branch",
+          "action": "Create and checkout a new branch from main",
+          "tool": "code_execution_tool",
+          "tool_hint": "git checkout -b feature/<name> main",
+          "verify": {"type": "output_contains", "value": "Switched to a new branch"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Make changes",
+          "action": "Implement the requested feature changes",
+          "tool": "code_execution_tool",
+          "tool_hint": "Edit the relevant files",
+          "verify": {"type": "manual"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Commit changes",
+          "action": "Stage and commit all changes with a descriptive message",
+          "tool": "code_execution_tool",
+          "tool_hint": "git add -A && git commit -m '<descriptive message>'",
+          "verify": {"type": "output_contains", "value": "file changed"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Push and create PR",
+          "action": "Push the branch to remote and create a pull request if requested",
+          "tool": "code_execution_tool",
+          "tool_hint": "git push -u origin feature/<name>",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "warn",
+          "required": true
+        }
+      ]
+    },
+    "git_merge_pr": {
+      "name": "Git Merge / Pull Request",
+      "domains": ["git_ops"],
+      "triggers": ["merge", "pull request", "merge branch", "merge into", "rebase", "merge pr"],
+      "trigger_threshold": 2,
+      "stale_after_turns": 10,
+      "steps": [
+        {
+          "name": "Fetch latest changes",
+          "action": "Fetch all remote branches to ensure up-to-date state",
+          "tool": "code_execution_tool",
+          "tool_hint": "git fetch --all",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Checkout target branch",
+          "action": "Switch to the branch that will receive the merge",
+          "tool": "code_execution_tool",
+          "tool_hint": "git checkout main",
+          "verify": {"type": "output_contains", "value": "Switched to"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Merge source branch",
+          "action": "Merge the source branch into the target",
+          "tool": "code_execution_tool",
+          "tool_hint": "git merge <source-branch>",
+          "verify": {"type": "output_not_contains", "value": "CONFLICT"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Resolve conflicts if any",
+          "action": "If conflicts exist, resolve them manually then continue the merge",
+          "tool": "code_execution_tool",
+          "tool_hint": "Check git status for conflicted files, edit them, then git add and git commit",
+          "verify": {"type": "output_not_contains", "value": "conflict"},
+          "on_fail": "block",
+          "required": false
+        },
+        {
+          "name": "Push merged result",
+          "action": "Push the merged branch to remote",
+          "tool": "code_execution_tool",
+          "tool_hint": "git push origin main",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "warn",
+          "required": true
+        }
+      ]
+    },
+    "docker_build_deploy": {
+      "name": "Docker Build and Deploy",
+      "domains": ["docker_ops"],
+      "triggers": ["build image", "docker build", "deploy container", "docker deploy", "create container", "run container"],
+      "trigger_threshold": 2,
+      "stale_after_turns": 12,
+      "steps": [
+        {
+          "name": "Check Dockerfile",
+          "action": "Verify Dockerfile exists and review its contents",
+          "tool": "code_execution_tool",
+          "tool_hint": "cat Dockerfile",
+          "verify": {"type": "output_contains", "value": "FROM"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Build image",
+          "action": "Build the Docker image with a descriptive tag",
+          "tool": "code_execution_tool",
+          "tool_hint": "docker build -t <name>:<tag> .",
+          "verify": {"type": "output_contains", "value": "Successfully built"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Test image",
+          "action": "Run a quick smoke test to verify the image works",
+          "tool": "code_execution_tool",
+          "tool_hint": "docker run --rm <name>:<tag> echo 'smoke test'",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Deploy container",
+          "action": "Run the container with proper port mappings and volume mounts",
+          "tool": "code_execution_tool",
+          "tool_hint": "docker run -d --name <name> -p <host>:<container> <image>",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        }
+      ]
+    },
+    "bugfix_workflow": {
+      "name": "Bug Fix Workflow",
+      "domains": ["bugfix"],
+      "triggers": ["fix bug", "debug", "troubleshoot", "not working", "broken", "error in"],
+      "trigger_threshold": 1,
+      "stale_after_turns": 15,
+      "steps": [
+        {
+          "name": "Reproduce the issue",
+          "action": "Run the failing code/command to confirm the bug exists and capture the error output",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run the command or script that triggers the bug",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Isolate the cause",
+          "action": "Examine error output, check relevant source files, identify the root cause",
+          "tool": "code_execution_tool",
+          "tool_hint": "Read source files, check stack traces, add debug output if needed",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Implement the fix",
+          "action": "Make the minimal code change to fix the identified issue",
+          "tool": "code_execution_tool",
+          "tool_hint": "Edit the file(s) with the fix",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Test the fix",
+          "action": "Re-run the original failing command to confirm the bug is fixed",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run the same command from Step 1",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Verify no regressions",
+          "action": "Run any existing tests or related commands to ensure nothing else broke",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run test suite or related functionality checks",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": false
+        }
+      ]
+    },
+    "file_backup_restore": {
+      "name": "File Backup and Migration",
+      "domains": ["file_ops"],
+      "triggers": ["backup", "migrate", "move files", "copy files", "transfer", "backup files"],
+      "trigger_threshold": 1,
+      "stale_after_turns": 10,
+      "steps": [
+        {
+          "name": "Inventory source files",
+          "action": "List and verify the files/directories to be backed up or migrated",
+          "tool": "code_execution_tool",
+          "tool_hint": "ls -la <source_path>",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Create backup",
+          "action": "Create a backup copy of the source files before any modification",
+          "tool": "code_execution_tool",
+          "tool_hint": "cp -r <source> <backup_location> or tar -czf backup.tar.gz <source>",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Execute operation",
+          "action": "Perform the actual move, copy, or migration operation",
+          "tool": "code_execution_tool",
+          "tool_hint": "mv/cp/rsync as appropriate for the operation",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Verify destination",
+          "action": "Confirm files arrived at destination correctly",
+          "tool": "code_execution_tool",
+          "tool_hint": "ls -la <destination> && diff <source_backup> <destination>",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Cleanup",
+          "action": "Remove temporary files or backup copies if no longer needed",
+          "tool": "code_execution_tool",
+          "tool_hint": "Remove temp files only after verification passes",
+          "verify": {"type": "manual"},
+          "on_fail": "skip",
+          "required": false
+        }
+      ]
+    },
+    "api_integration": {
+      "name": "API Integration",
+      "domains": ["api_integration"],
+      "triggers": ["connect api", "integrate", "endpoint", "api call", "rest api", "webhook"],
+      "trigger_threshold": 2,
+      "stale_after_turns": 12,
+      "steps": [
+        {
+          "name": "Research the API",
+          "action": "Check API documentation, find base URL, auth method, and available endpoints",
+          "tool": "code_execution_tool",
+          "tool_hint": "curl -s <api_docs_url> or check README/docs",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Set up authentication",
+          "action": "Configure API keys, tokens, or credentials as required",
+          "tool": "code_execution_tool",
+          "tool_hint": "Export API key or create auth config",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Implement the integration",
+          "action": "Write the code to call the API endpoint with proper auth and parameters",
+          "tool": "code_execution_tool",
+          "tool_hint": "Write a script using requests/curl to call the endpoint",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Test the call",
+          "action": "Execute the API call and verify the response",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run the integration script and check response status/body",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Add error handling",
+          "action": "Add retry logic, timeout handling, and error response parsing",
+          "tool": "code_execution_tool",
+          "tool_hint": "Add try/except, status code checks, timeout parameters",
+          "verify": {"type": "manual"},
+          "on_fail": "warn",
+          "required": false
+        }
+      ]
+    },
+    "codegen_module": {
+      "name": "Code Generation — New Module",
+      "domains": ["codegen"],
+      "triggers": ["create module", "new component", "build feature", "create class", "new file", "scaffold"],
+      "trigger_threshold": 2,
+      "stale_after_turns": 12,
+      "steps": [
+        {
+          "name": "Define specification",
+          "action": "Clarify the module's purpose, inputs, outputs, and dependencies",
+          "tool": "code_execution_tool",
+          "tool_hint": "Review existing code structure, identify where the new module fits",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Scaffold the file structure",
+          "action": "Create the file(s) with boilerplate code, imports, and class/function stubs",
+          "tool": "code_execution_tool",
+          "tool_hint": "Create the file with the basic structure matching the project's patterns",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Implement core logic",
+          "action": "Fill in the function/method bodies with the actual implementation",
+          "tool": "code_execution_tool",
+          "tool_hint": "Write the implementation following existing code conventions",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Test the module",
+          "action": "Run the module or its tests to verify it works correctly",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run tests or execute the module directly to verify",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Document usage",
+          "action": "Add docstrings, comments, or usage notes as appropriate",
+          "tool": "code_execution_tool",
+          "tool_hint": "Add inline documentation following the project's style",
+          "verify": {"type": "manual"},
+          "on_fail": "skip",
+          "required": false
+        }
+      ]
+    },
+    "refactor_safe": {
+      "name": "Safe Refactor",
+      "domains": ["refactor"],
+      "triggers": ["refactor", "restructure", "clean up", "reorganize", "simplify", "extract function"],
+      "trigger_threshold": 1,
+      "stale_after_turns": 12,
+      "steps": [
+        {
+          "name": "Establish test baseline",
+          "action": "Run existing tests or verify current behavior to establish a baseline",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run test suite or manually verify current behavior",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Extract and reorganize",
+          "action": "Perform the refactoring: extract functions, rename, restructure as planned",
+          "tool": "code_execution_tool",
+          "tool_hint": "Make the structural changes to the code",
+          "verify": {"type": "any_output"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Verify syntax",
+          "action": "Check that the refactored code has no syntax errors",
+          "tool": "code_execution_tool",
+          "tool_hint": "python -c 'import <module>' or run a syntax check",
+          "verify": {"type": "output_not_contains", "value": "SyntaxError"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Re-run tests",
+          "action": "Run the same tests from Step 1 to confirm no regressions",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run the same test command as Step 1",
+          "verify": {"type": "output_not_contains", "value": "FAILED"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Commit the refactor",
+          "action": "Stage and commit the refactored code with a clear message",
+          "tool": "code_execution_tool",
+          "tool_hint": "git add <files> && git commit -m 'refactor: <description>'",
+          "verify": {"type": "output_contains", "value": "file changed"},
+          "on_fail": "warn",
+          "required": false
+        }
+      ]
+    },
+    "dependency_update": {
+      "name": "Dependency Update",
+      "domains": ["dependency_mgmt"],
+      "triggers": ["update deps", "upgrade packages", "update dependencies", "pip upgrade", "npm update", "outdated"],
+      "trigger_threshold": 1,
+      "stale_after_turns": 10,
+      "steps": [
+        {
+          "name": "Audit current state",
+          "action": "List current dependencies and check for outdated packages",
+          "tool": "code_execution_tool",
+          "tool_hint": "pip list --outdated or npm outdated",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Backup lockfile",
+          "action": "Create a backup of the current lockfile before making changes",
+          "tool": "code_execution_tool",
+          "tool_hint": "cp requirements.txt requirements.txt.bak or cp package-lock.json package-lock.json.bak",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Perform update",
+          "action": "Update the target packages to their latest compatible versions",
+          "tool": "code_execution_tool",
+          "tool_hint": "pip install --upgrade <package> or npm update <package>",
+          "verify": {"type": "output_not_contains", "value": "error"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Run tests",
+          "action": "Verify the application still works with updated dependencies",
+          "tool": "code_execution_tool",
+          "tool_hint": "Run the project's test suite",
+          "verify": {"type": "output_not_contains", "value": "FAILED"},
+          "on_fail": "block",
+          "required": true
+        },
+        {
+          "name": "Commit updated lockfile",
+          "action": "Commit the updated dependency files",
+          "tool": "code_execution_tool",
+          "tool_hint": "git add requirements.txt package-lock.json && git commit -m 'deps: update packages'",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": false
+        }
+      ]
+    },
+    "log_investigation": {
+      "name": "Log Investigation",
+      "domains": ["log_analysis"],
+      "triggers": ["check logs", "investigate", "diagnose", "log analysis", "what went wrong", "find error in logs"],
+      "trigger_threshold": 1,
+      "stale_after_turns": 10,
+      "steps": [
+        {
+          "name": "Locate log sources",
+          "action": "Find and identify the relevant log files or output streams",
+          "tool": "code_execution_tool",
+          "tool_hint": "ls -la /var/log/ or find . -name '*.log' -mtime -1",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Filter relevant entries",
+          "action": "Search logs for error patterns, timestamps, or keywords related to the issue",
+          "tool": "code_execution_tool",
+          "tool_hint": "grep -i 'error\\|warn\\|fail' <logfile> | tail -50",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Identify pattern",
+          "action": "Analyze filtered log entries to find the recurring pattern or root event",
+          "tool": "code_execution_tool",
+          "tool_hint": "Sort and count error types, check timestamps for correlation",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Trace root cause",
+          "action": "Follow the error chain back to its origin — first occurrence, triggering event, upstream dependency",
+          "tool": "code_execution_tool",
+          "tool_hint": "Check the earliest error timestamp, trace call stack, check related services",
+          "verify": {"type": "any_output"},
+          "on_fail": "warn",
+          "required": true
+        },
+        {
+          "name": "Report findings",
+          "action": "Summarize the diagnosis: what happened, why, and recommended fix",
+          "tool": "response",
+          "tool_hint": "Present findings clearly: root cause, evidence, recommended action",
+          "verify": {"type": "manual"},
+          "on_fail": "skip",
+          "required": true
+        }
+      ]
+    }
+  }
+}

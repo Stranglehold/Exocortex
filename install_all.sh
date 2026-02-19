@@ -55,7 +55,7 @@ LAYERS=(
   "3|Personality loader                  |scripts/install_personalities.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
-  "5|HTN plan templates                 |scripts/install_htn_plans.sh"
+  "5|Graph workflow engine              |scripts/install_graph_engine.sh"
 )
 
 CHECK_SCRIPTS=(
@@ -153,6 +153,7 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 3  personalities     → /a0/prompts/ + /a0/usr/personalities/"
   echo "    Layer 4  skills            → /a0/skills/"
   echo "    Layer 5  translation-layer → /a0/python/extensions/before_main_llm_call/"
+  echo "    Layer 5  graph engine      → /a0/python/extensions/before_main_llm_call/"
   echo ""
   echo "  Restart agent-zero or start a fresh chat to load all changes."
 else
