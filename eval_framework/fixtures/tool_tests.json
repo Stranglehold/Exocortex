@@ -1,0 +1,162 @@
+{
+  "fixtures_version": "1.0.0",
+  "module": "tool_reliability",
+  "system_prompt": "You are an AI agent with access to the following tools. When you need to use a tool, respond ONLY with a valid JSON object containing 'tool_name' and 'tool_args' keys.\n\nAvailable tools:\n- code_execution_tool: Execute code. Args: {runtime: 'terminal'|'python'|'nodejs'|'output', code: string}\n- response: Send a response to the user. Args: {text: string}\n- call_subordinate: Delegate to a sub-agent. Args: {message: string, reset: boolean}\n- memory_save: Save to memory. Args: {text: string}\n- memory_load: Search memory. Args: {query: string}\n- search_engine: Web search. Args: {query: string}\n\nRespond with ONLY the JSON tool call, no other text.",
+  "tests": [
+    {
+      "test_id": "tool_001",
+      "category": "bash",
+      "user_message": "List the files in /tmp",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "ls /tmp"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["malformed_json", "wrong_tool_name", "missing_runtime"]
+    },
+    {
+      "test_id": "tool_002",
+      "category": "bash",
+      "user_message": "Check how much disk space is available",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "df -h"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["malformed_json", "missing_code"]
+    },
+    {
+      "test_id": "tool_003",
+      "category": "bash",
+      "user_message": "Show me the running processes",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "ps aux"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["wrong_runtime", "missing_code"]
+    },
+    {
+      "test_id": "tool_004",
+      "category": "bash",
+      "user_message": "Install the requests package with pip",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "pip install requests"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["uses_python_runtime_for_pip", "hallucinates_tool"]
+    },
+    {
+      "test_id": "tool_005",
+      "category": "bash",
+      "user_message": "Create a directory called 'data' and a file called 'config.json' inside it",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "mkdir -p data && touch data/config.json"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["two_separate_calls", "wrong_runtime"]
+    },
+    {
+      "test_id": "tool_006",
+      "category": "python",
+      "user_message": "Calculate the factorial of 20 using Python",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "python", "code": "import math; print(math.factorial(20))"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["wrong_runtime", "missing_print"]
+    },
+    {
+      "test_id": "tool_007",
+      "category": "python",
+      "user_message": "Read the file /tmp/data.csv and show the first 5 rows using pandas",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "python", "code": "import pandas as pd; df = pd.read_csv('/tmp/data.csv'); print(df.head())"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["wrong_runtime", "missing_import", "no_print"]
+    },
+    {
+      "test_id": "tool_008",
+      "category": "python",
+      "user_message": "Generate a random 16-character password",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "python"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["uses_bash", "missing_import"]
+    },
+    {
+      "test_id": "tool_009",
+      "category": "python",
+      "user_message": "Parse this JSON string and extract the 'name' field: {\"name\": \"Alice\", \"age\": 30}",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "python"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["malformed_json_in_code", "no_json_import"]
+    },
+    {
+      "test_id": "tool_010",
+      "category": "python",
+      "user_message": "Start a simple HTTP server on port 8080",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "python"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["uses_terminal", "wrong_port"]
+    },
+    {
+      "test_id": "tool_011",
+      "category": "file_ops",
+      "user_message": "Save a note: 'Always use environment variables for API keys'",
+      "expected_tool": "memory_save",
+      "expected_args": {"text": "Always use environment variables for API keys"},
+      "required_fields": ["text"],
+      "common_failures": ["wrong_tool", "missing_text", "uses_code_execution"]
+    },
+    {
+      "test_id": "tool_012",
+      "category": "file_ops",
+      "user_message": "Do I have any notes about database configuration?",
+      "expected_tool": "memory_load",
+      "expected_args": {"query": "database configuration"},
+      "required_fields": ["query"],
+      "common_failures": ["wrong_tool", "uses_search_engine", "missing_query"]
+    },
+    {
+      "test_id": "tool_013",
+      "category": "file_ops",
+      "user_message": "Read the contents of /etc/hosts",
+      "expected_tool": "code_execution_tool",
+      "expected_args": {"runtime": "terminal", "code": "cat /etc/hosts"},
+      "required_fields": ["runtime", "code"],
+      "common_failures": ["uses_python", "hallucinates_file_read_tool"]
+    },
+    {
+      "test_id": "tool_014",
+      "category": "web",
+      "user_message": "Search the web for 'Python asyncio best practices 2025'",
+      "expected_tool": "search_engine",
+      "expected_args": {"query": "Python asyncio best practices 2025"},
+      "required_fields": ["query"],
+      "common_failures": ["uses_code_execution_curl", "wrong_tool", "missing_query"]
+    },
+    {
+      "test_id": "tool_015",
+      "category": "web",
+      "user_message": "Find documentation for the FastAPI framework",
+      "expected_tool": "search_engine",
+      "expected_args": {"query": "FastAPI framework documentation"},
+      "required_fields": ["query"],
+      "common_failures": ["uses_browser_agent", "hallucinates_url", "wrong_tool"]
+    }
+  ],
+  "recovery_tests": [
+    {
+      "test_id": "tool_recovery_001",
+      "initial_message": "Run the command 'node app.js'",
+      "error_response": "Error: tool call failed. The JSON was malformed. Please provide a valid JSON object with 'tool_name' and 'tool_args' keys.",
+      "expected_behavior": "corrects_json_format"
+    },
+    {
+      "test_id": "tool_recovery_002",
+      "initial_message": "Execute python script test.py",
+      "error_response": "Error: missing required parameter 'code'. The code_execution_tool requires both 'runtime' and 'code' parameters.",
+      "expected_behavior": "adds_missing_parameter"
+    },
+    {
+      "test_id": "tool_recovery_003",
+      "initial_message": "List files in the current directory",
+      "error_response": "Error: unknown tool 'bash'. Available tools: code_execution_tool, response, call_subordinate, memory_save, memory_load, search_engine.",
+      "expected_behavior": "uses_correct_tool_name"
+    }
+  ]
+}

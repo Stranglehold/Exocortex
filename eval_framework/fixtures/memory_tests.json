@@ -1,0 +1,137 @@
+{
+  "fixtures_version": "1.0.0",
+  "module": "memory_utilization",
+  "tests": [
+    {
+      "test_id": "mem_001",
+      "category": "relevant_memories",
+      "recalled_memories": [
+        "[MEMORY] User's project uses Python 3.11 with FastAPI framework",
+        "[MEMORY] Previous bugfix: auth module had encoding issue with special characters in passwords",
+        "[MEMORY] User prefers pytest over unittest"
+      ],
+      "user_message": "Write a test for the login endpoint",
+      "expected_references": ["FastAPI", "pytest", "special characters"],
+      "failure_indicators": ["uses unittest", "generic framework", "ignores auth context"]
+    },
+    {
+      "test_id": "mem_002",
+      "category": "relevant_memories",
+      "recalled_memories": [
+        "[MEMORY] Database is PostgreSQL 15 running on port 5433 (non-standard)",
+        "[MEMORY] User uses SQLAlchemy 2.0 with async sessions",
+        "[MEMORY] Table naming convention: snake_case plural (e.g., user_accounts)"
+      ],
+      "user_message": "Create a new database model for storing user preferences",
+      "expected_references": ["PostgreSQL", "SQLAlchemy", "async", "snake_case", "user_preferences"],
+      "failure_indicators": ["uses MySQL syntax", "sync session", "camelCase table name"]
+    },
+    {
+      "test_id": "mem_003",
+      "category": "relevant_memories",
+      "recalled_memories": [
+        "[MEMORY] Frontend uses React 18 with TypeScript",
+        "[MEMORY] State management: Zustand (migrated from Redux in Sprint 15)",
+        "[MEMORY] Component library: custom components in /src/components/ui/"
+      ],
+      "user_message": "Add a notification banner component",
+      "expected_references": ["React", "TypeScript", "Zustand"],
+      "failure_indicators": ["uses Redux", "plain JavaScript", "imports from material-ui"]
+    },
+    {
+      "test_id": "mem_004",
+      "category": "relevant_memories",
+      "recalled_memories": [
+        "[MEMORY] Deployment uses Docker with multi-stage builds",
+        "[MEMORY] CI/CD: GitHub Actions with self-hosted runners",
+        "[MEMORY] Environment variables stored in AWS Secrets Manager, accessed via boto3"
+      ],
+      "user_message": "Set up the deployment pipeline for the new microservice",
+      "expected_references": ["Docker", "multi-stage", "GitHub Actions", "Secrets Manager"],
+      "failure_indicators": ["uses Jenkins", "plain env files", "no Docker"]
+    },
+    {
+      "test_id": "mem_005",
+      "category": "relevant_memories",
+      "recalled_memories": [
+        "[MEMORY] API rate limiting: 100 requests per minute per user",
+        "[MEMORY] Authentication: JWT with RS256, keys rotated monthly",
+        "[MEMORY] Error responses follow RFC 7807 Problem Details format"
+      ],
+      "user_message": "Implement error handling for the payment processing endpoint",
+      "expected_references": ["rate limit", "JWT", "RFC 7807", "Problem Details"],
+      "failure_indicators": ["no rate limit mention", "basic auth", "custom error format"]
+    },
+    {
+      "test_id": "mem_006",
+      "category": "mixed_relevance",
+      "recalled_memories": [
+        "[MEMORY] User prefers tabs over spaces (team convention)",
+        "[MEMORY] Last pizza order was pepperoni and mushroom",
+        "[MEMORY] Python logging: use structlog for structured JSON output",
+        "[MEMORY] User's cat is named Pixel",
+        "[MEMORY] Error handling: always log the full traceback, never suppress exceptions silently"
+      ],
+      "user_message": "Add logging to the payment processing module",
+      "expected_references": ["structlog", "JSON", "traceback"],
+      "noise_memories": ["pizza order", "cat named Pixel"],
+      "failure_indicators": ["mentions pizza", "mentions cat", "uses print statements"]
+    },
+    {
+      "test_id": "mem_007",
+      "category": "mixed_relevance",
+      "recalled_memories": [
+        "[MEMORY] Docker compose uses network 'app-net' for inter-service communication",
+        "[MEMORY] User's favorite color is blue",
+        "[MEMORY] Redis cache TTL: 300 seconds for user sessions, 3600 for static data",
+        "[MEMORY] User went to a concert last Friday",
+        "[MEMORY] Service discovery: Consul for production, direct URLs for development"
+      ],
+      "user_message": "Configure caching for the product catalog endpoint",
+      "expected_references": ["Redis", "TTL", "3600"],
+      "noise_memories": ["favorite color", "concert"],
+      "failure_indicators": ["mentions blue", "mentions concert", "uses in-memory cache only"]
+    },
+    {
+      "test_id": "mem_008",
+      "category": "mixed_relevance",
+      "recalled_memories": [
+        "[MEMORY] Git workflow: feature branches off develop, PR required, squash merge to main",
+        "[MEMORY] User's birthday is March 15",
+        "[MEMORY] Code review checklist: tests, types, docs, no console.log",
+        "[MEMORY] User likes hiking on weekends",
+        "[MEMORY] Branch naming: feature/JIRA-123-short-description"
+      ],
+      "user_message": "Create a new feature branch and set up the PR template",
+      "expected_references": ["develop", "squash merge", "feature/", "JIRA"],
+      "noise_memories": ["birthday", "hiking"],
+      "failure_indicators": ["mentions birthday", "mentions hiking", "branches off main directly"]
+    },
+    {
+      "test_id": "mem_009",
+      "category": "staleness",
+      "recalled_memories": [
+        "[MEMORY] [2024-03-15] Database: MySQL 5.7 on RDS",
+        "[MEMORY] [2025-11-20] Database migrated to PostgreSQL 15 — MySQL is deprecated",
+        "[MEMORY] [2025-12-01] ORM: switched from raw SQL to SQLAlchemy 2.0 async"
+      ],
+      "user_message": "Write a query to fetch the top 10 active users",
+      "expected_references": ["PostgreSQL", "SQLAlchemy"],
+      "stale_memory_index": 0,
+      "failure_indicators": ["uses MySQL syntax", "uses raw SQL without mentioning SQLAlchemy", "ignores migration"]
+    },
+    {
+      "test_id": "mem_010",
+      "category": "staleness",
+      "recalled_memories": [
+        "[MEMORY] [2024-06-01] Frontend framework: Angular 14",
+        "[MEMORY] [2025-08-15] Migrated frontend from Angular to React 18 + TypeScript",
+        "[MEMORY] [2025-10-01] Added Tailwind CSS for styling (replaced SCSS)"
+      ],
+      "user_message": "Create a form component for user registration",
+      "expected_references": ["React", "TypeScript", "Tailwind"],
+      "stale_memory_index": 0,
+      "failure_indicators": ["uses Angular", "uses SCSS", "ignores React migration"]
+    }
+  ]
+}

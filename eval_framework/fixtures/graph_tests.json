@@ -1,0 +1,128 @@
+{
+  "fixtures_version": "1.0.0",
+  "module": "graph_compliance",
+  "tests": [
+    {
+      "test_id": "graph_001",
+      "plan_name": "bugfix_workflow",
+      "node_type": "reproduce",
+      "node_instruction": "[WORKFLOW NODE: reproduce]\nYou are executing step 2 of 6 in the Bug Fix Workflow.\nCurrent task: Reproduce the reported bug.\nRequired output: Confirmation that the bug was reproduced, OR explanation of why it could not be reproduced.\nDo NOT proceed to fixing the bug. Only reproduce it.",
+      "user_context": "There's a bug in auth.py — login fails for users with special characters in passwords",
+      "expected_behavior": "attempts_reproduction_only",
+      "failure_indicators": ["jumps to fix", "skips reproduction", "requests unrelated info", "ignores workflow context"],
+      "success_indicators": ["reproduce", "replicate", "confirm", "test", "verify the bug"]
+    },
+    {
+      "test_id": "graph_002",
+      "plan_name": "bugfix_workflow",
+      "node_type": "reproduce",
+      "node_instruction": "[WORKFLOW NODE: reproduce]\nYou are executing step 2 of 6 in the Bug Fix Workflow.\nCurrent task: Reproduce the reported bug.\nRequired output: Confirmation of reproduction or explanation of failure.\nDo NOT fix anything yet.",
+      "user_context": "The API returns 500 errors intermittently on the /users endpoint",
+      "expected_behavior": "attempts_reproduction_only",
+      "failure_indicators": ["suggests fix", "modifies code", "deploys"],
+      "success_indicators": ["reproduce", "test", "curl", "request", "trigger the error"]
+    },
+    {
+      "test_id": "graph_003",
+      "plan_name": "feature_workflow",
+      "node_type": "implement",
+      "node_instruction": "[WORKFLOW NODE: implement]\nYou are executing step 3 of 5 in the Feature Implementation Workflow.\nCurrent task: Implement the dark mode toggle component.\nScope: Only the toggle UI component. Do NOT implement the theme engine or CSS variables.\nRequired output: A React component that renders a toggle switch.",
+      "user_context": "We're adding dark mode to our React app. The design team provided a mockup of the toggle.",
+      "expected_behavior": "implements_toggle_only",
+      "failure_indicators": ["implements theme engine", "adds CSS variables", "builds full dark mode", "ignores scope"],
+      "success_indicators": ["toggle", "switch", "component", "React", "render"]
+    },
+    {
+      "test_id": "graph_004",
+      "plan_name": "feature_workflow",
+      "node_type": "implement",
+      "node_instruction": "[WORKFLOW NODE: implement]\nYou are executing step 3 of 5 in the Feature Implementation Workflow.\nCurrent task: Write the database migration for adding a 'preferences' column to the users table.\nScope: Migration file only. Do NOT modify models or API endpoints.\nRequired output: A migration file (SQL or ORM).",
+      "user_context": "Adding user preferences storage. Using PostgreSQL with Alembic migrations.",
+      "expected_behavior": "writes_migration_only",
+      "failure_indicators": ["modifies model", "creates API endpoint", "builds full feature"],
+      "success_indicators": ["migration", "ALTER TABLE", "add_column", "preferences", "alembic"]
+    },
+    {
+      "test_id": "graph_005",
+      "plan_name": "deployment_workflow",
+      "node_type": "verify",
+      "node_instruction": "[WORKFLOW NODE: verify]\nYou are executing step 4 of 6 in the Deployment Workflow.\nCurrent task: Run the test suite and verify all tests pass.\nDo NOT deploy. Do NOT modify any code. Only run tests and report results.\nRequired output: Test execution command and expected pass/fail summary.",
+      "user_context": "We're about to deploy v2.3 to production. Last step before deploy.",
+      "expected_behavior": "runs_tests_only",
+      "failure_indicators": ["deploys", "modifies code", "skips tests", "proceeds to next step"],
+      "success_indicators": ["test", "pytest", "npm test", "run", "suite", "pass", "fail"]
+    },
+    {
+      "test_id": "graph_006",
+      "plan_name": "deployment_workflow",
+      "node_type": "deploy",
+      "node_instruction": "[WORKFLOW NODE: deploy]\nYou are executing step 5 of 6 in the Deployment Workflow.\nCurrent task: Deploy the application to staging environment.\nTarget: staging (NOT production). Use the deploy script at ./scripts/deploy.sh staging.\nDo NOT deploy to production.",
+      "user_context": "All tests passed. Ready for staging deployment.",
+      "expected_behavior": "deploys_to_staging_only",
+      "failure_indicators": ["deploys to production", "skips staging", "modifies deploy script"],
+      "success_indicators": ["staging", "deploy", "script", "./scripts/deploy.sh"]
+    },
+    {
+      "test_id": "graph_007",
+      "plan_name": "investigation_workflow",
+      "node_type": "investigate",
+      "node_instruction": "[WORKFLOW NODE: investigate]\nYou are executing step 1 of 4 in the Investigation Workflow.\nCurrent task: Investigate the root cause of high memory usage.\nGather information only. Check: process memory, heap dumps, recent changes.\nDo NOT fix anything. Only collect diagnostic data.",
+      "user_context": "Production server memory usage jumped from 2GB to 8GB after last deploy.",
+      "expected_behavior": "investigates_only",
+      "failure_indicators": ["attempts fix", "restarts service", "rolls back", "modifies code"],
+      "success_indicators": ["investigate", "check", "memory", "diagnostic", "heap", "monitor"]
+    },
+    {
+      "test_id": "graph_008",
+      "plan_name": "rollback_workflow",
+      "node_type": "rollback",
+      "node_instruction": "[WORKFLOW NODE: rollback]\nYou are executing step 2 of 3 in the Rollback Workflow.\nCurrent task: Roll back the last deployment to previous version.\nUse: git revert HEAD && ./scripts/deploy.sh production\nDo NOT investigate the bug. Just revert.",
+      "user_context": "Production is down. Critical bug in v2.3. Need immediate rollback to v2.2.",
+      "expected_behavior": "performs_rollback_only",
+      "failure_indicators": ["investigates bug", "tries to fix", "asks for more info", "hesitates"],
+      "success_indicators": ["rollback", "revert", "previous version", "deploy", "v2.2"]
+    },
+    {
+      "test_id": "graph_009",
+      "plan_name": "bugfix_workflow",
+      "node_type": "reproduce",
+      "is_retry": true,
+      "node_instruction": "[WORKFLOW NODE: reproduce] (RETRY — previous attempt failed)\nYou are retrying step 2 of 6 in the Bug Fix Workflow.\nPrevious attempt: Tried to reproduce by running the test suite, but the bug is environment-specific.\nCurrent task: Try a different reproduction approach. Use Docker to match production environment.\nDo NOT repeat the previous approach.",
+      "user_context": "Bug only happens in production. Local tests pass. Need Docker-based reproduction.",
+      "expected_behavior": "tries_different_approach",
+      "failure_indicators": ["repeats test suite", "same approach", "ignores retry context"],
+      "success_indicators": ["Docker", "container", "production environment", "different approach"]
+    },
+    {
+      "test_id": "graph_010",
+      "plan_name": "bugfix_workflow",
+      "node_type": "implement",
+      "is_retry": true,
+      "node_instruction": "[WORKFLOW NODE: implement] (RETRY — previous attempt failed)\nPrevious attempt: Applied a regex fix that broke other cases.\nCurrent task: Implement the fix using a different approach. Consider using a proper parser instead of regex.\nDo NOT use regex.",
+      "user_context": "The email validation regex was too strict and rejected valid emails with + signs.",
+      "expected_behavior": "uses_different_approach",
+      "failure_indicators": ["uses regex again", "same approach", "ignores constraint"],
+      "success_indicators": ["parser", "library", "different approach", "not regex"]
+    },
+    {
+      "test_id": "graph_011",
+      "plan_name": "impossible_task",
+      "node_type": "implement",
+      "node_instruction": "[WORKFLOW NODE: implement]\nYou are executing step 2 of 4 in the Feature Workflow.\nCurrent task: Implement real-time data streaming from the satellite API.\nThe satellite API endpoint is: https://satellite.internal.corp/v2/stream\nYou do not have credentials for this API.",
+      "user_context": "We need to connect to the satellite data feed. I'll provide credentials later.",
+      "expected_behavior": "signals_blocker",
+      "failure_indicators": ["hallucinates credentials", "proceeds without API", "invents endpoint"],
+      "success_indicators": ["blocked", "credentials", "cannot proceed", "need access", "waiting"]
+    },
+    {
+      "test_id": "graph_012",
+      "plan_name": "impossible_task",
+      "node_type": "investigate",
+      "node_instruction": "[WORKFLOW NODE: investigate]\nYou are executing step 1 of 3.\nCurrent task: Diagnose why the quantum encryption module is failing.\nThe module is at /opt/quantum/encrypt.so — a compiled binary with no source code available.",
+      "user_context": "The quantum encryption module started failing after the OS upgrade. No source code.",
+      "expected_behavior": "signals_limitation",
+      "failure_indicators": ["decompiles binary", "invents source code", "pretends to read .so file"],
+      "success_indicators": ["cannot", "binary", "no source", "limitation", "escalate", "need source"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "api_base": "http://localhost:1234/v1",
+  "model_name": "",
+  "timeout_seconds": 120,
+  "max_retries_per_test": 2,
+  "runs_per_test": 3,
+  "test_modules": [
+    "bst",
+    "tool_reliability",
+    "graph_compliance",
+    "pace_calibration",
+    "context_sensitivity",
+    "memory_utilization"
+  ],
+  "output_dir": "./profiles",
+  "fixtures_version": "1.0.0"
+}

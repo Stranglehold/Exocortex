@@ -1,0 +1,342 @@
+{
+  "fixtures_version": "1.0.0",
+  "module": "pace_calibration",
+  "tests": [
+    {
+      "test_id": "pace_001",
+      "scenario": "file_not_found_cascade",
+      "description": "File operations fail due to missing path",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Edit the configuration file at /opt/app/config.yaml to set debug=true",
+          "expected_failure": true,
+          "expected_behavior": "attempts_edit_may_fail"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] The file /opt/app/config.yaml was not found in the previous attempt. Double-check the path.",
+          "user_message": "Edit the configuration file at /opt/app/config.yaml to set debug=true",
+          "expected_recovery": "low",
+          "expected_behavior": "checks_path"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] File not found at /opt/app/config.yaml. Try: 1) Search for config files: find / -name 'config.yaml' 2) Check if path uses different extension (.yml vs .yaml) 3) Check if app uses environment variables instead.",
+          "user_message": "Edit the configuration file at /opt/app/config.yaml to set debug=true",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_alternative_paths"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Multiple path attempts failed. Create the file if it doesn't exist: mkdir -p /opt/app && echo 'debug: true' > /opt/app/config.yaml. Verify with cat /opt/app/config.yaml.",
+          "user_message": "Edit the configuration file at /opt/app/config.yaml to set debug=true",
+          "expected_recovery": "high",
+          "expected_behavior": "creates_file"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] All approaches to modify /opt/app/config.yaml have failed. Report this to the user with the full error history. Do NOT retry. Suggest manual intervention.",
+          "user_message": "Edit the configuration file at /opt/app/config.yaml to set debug=true",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_002",
+      "scenario": "permission_denied_cascade",
+      "description": "Operations fail due to insufficient permissions",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Restart the nginx service",
+          "expected_failure": true,
+          "expected_behavior": "attempts_restart"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] Permission denied when running 'systemctl restart nginx'. You may need elevated privileges.",
+          "user_message": "Restart the nginx service",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_sudo"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] sudo is not available. Try: 1) Check if you can use 'service nginx restart' 2) Check if nginx has a user-level control script 3) Try 'nginx -s reload' which may not require root.",
+          "user_message": "Restart the nginx service",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_alternative_commands"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Cannot restart nginx without root. Send a reload signal to the nginx master process: kill -HUP $(cat /var/run/nginx.pid). If PID file not accessible, ask user for root access.",
+          "user_message": "Restart the nginx service",
+          "expected_recovery": "high",
+          "expected_behavior": "tries_signal_or_asks_access"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] All attempts to restart nginx have failed due to permissions. Report to user. Suggest: grant sudo access, or restart manually via SSH.",
+          "user_message": "Restart the nginx service",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_003",
+      "scenario": "dependency_resolution",
+      "description": "Package installation fails with dependency conflicts",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Install tensorflow and run a simple neural network training script",
+          "expected_failure": true,
+          "expected_behavior": "attempts_install"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] pip install tensorflow failed with: 'ERROR: Could not find compatible version'. Check Python version compatibility.",
+          "user_message": "Install tensorflow and run a simple neural network training script",
+          "expected_recovery": "low",
+          "expected_behavior": "checks_python_version"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] Python 3.12 has limited tensorflow support. Try: 1) Use tensorflow-cpu 2) Install in a virtual environment with Python 3.11 3) Try pytorch as an alternative.",
+          "user_message": "Install tensorflow and run a simple neural network training script",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_alternative_package"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Create a virtual environment with compatible Python: python3.11 -m venv tf_env && source tf_env/bin/activate && pip install tensorflow. If python3.11 unavailable, use pyenv.",
+          "user_message": "Install tensorflow and run a simple neural network training script",
+          "expected_recovery": "high",
+          "expected_behavior": "creates_venv"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] Cannot install tensorflow in any configuration. Report to user with full error details. Suggest: use a Docker container with pre-installed tensorflow.",
+          "user_message": "Install tensorflow and run a simple neural network training script",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_004",
+      "scenario": "network_connectivity",
+      "description": "Network operations fail due to connectivity issues",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Fetch the latest data from https://api.example.com/v2/data",
+          "expected_failure": true,
+          "expected_behavior": "attempts_fetch"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] Connection timed out to api.example.com. Verify the URL and network connectivity.",
+          "user_message": "Fetch the latest data from https://api.example.com/v2/data",
+          "expected_recovery": "low",
+          "expected_behavior": "checks_connectivity"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] Network is available but api.example.com is unreachable. Try: 1) Check DNS resolution 2) Try with IP address 3) Check if a proxy is required 4) Try a different port.",
+          "user_message": "Fetch the latest data from https://api.example.com/v2/data",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_network_diagnostics"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] API is down. If cached data exists at /tmp/api_cache.json, use that. Otherwise, generate sample data matching the expected schema.",
+          "user_message": "Fetch the latest data from https://api.example.com/v2/data",
+          "expected_recovery": "high",
+          "expected_behavior": "uses_cached_or_sample"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] Cannot reach the API after multiple attempts. Report connectivity failure to user. Suggest: check firewall rules, VPN, or try again later.",
+          "user_message": "Fetch the latest data from https://api.example.com/v2/data",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_005",
+      "scenario": "code_syntax_errors",
+      "description": "Code execution repeatedly fails with syntax errors",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Write a Python script that reads a CSV, groups by category, and plots a bar chart",
+          "expected_failure": false,
+          "expected_behavior": "writes_code"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] SyntaxError in line 15: unexpected indent. Review your code formatting.",
+          "user_message": "The script had a syntax error. Fix it.",
+          "expected_recovery": "high",
+          "expected_behavior": "fixes_indentation"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] Second syntax error encountered (NameError: 'plt' not defined). Multiple formatting issues suggest the code needs restructuring. Rewrite the script cleanly.",
+          "user_message": "Still getting errors. Fix the script.",
+          "expected_recovery": "high",
+          "expected_behavior": "rewrites_script"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Three consecutive code execution failures. Simplify the approach: split into separate steps. Step 1: read CSV. Step 2: group data. Step 3: plot.",
+          "user_message": "This keeps failing. Take a different approach.",
+          "expected_recovery": "high",
+          "expected_behavior": "simplifies_approach"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] Repeated code failures. Stop attempting execution. Present the final working code to user for manual review. Do not retry.",
+          "user_message": "Just give me working code.",
+          "expected_recovery": "stop",
+          "expected_behavior": "presents_code_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_006",
+      "scenario": "database_connection_failure",
+      "description": "Database operations fail progressively",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Connect to PostgreSQL at localhost:5432 and list all tables in the 'myapp' database",
+          "expected_failure": true,
+          "expected_behavior": "attempts_connection"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] Connection refused to localhost:5432. PostgreSQL may not be running.",
+          "user_message": "Connect to PostgreSQL and list tables",
+          "expected_recovery": "medium",
+          "expected_behavior": "checks_service_status"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] PostgreSQL is not running. Try: 1) Start the service 2) Check if it's in a Docker container 3) Check alternative port 5433.",
+          "user_message": "Connect to PostgreSQL and list tables",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_alternatives"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Cannot start PostgreSQL. Use sqlite3 as a local fallback: sqlite3 /tmp/myapp.db '.tables' to verify schema exists locally.",
+          "user_message": "Connect to a database and list tables",
+          "expected_recovery": "high",
+          "expected_behavior": "uses_fallback_db"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] No database connectivity available. Report to user with diagnosis. Suggest: install PostgreSQL, check Docker, or provide connection details.",
+          "user_message": "Connect to database",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_007",
+      "scenario": "complex_refactor_failure",
+      "description": "Multi-step refactoring keeps breaking tests",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Refactor the UserService class to use dependency injection",
+          "expected_failure": false,
+          "expected_behavior": "attempts_refactor"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] 3 tests failed after refactoring: test_user_create, test_user_update, test_user_delete. The constructor signature changed but callers weren't updated.",
+          "user_message": "Tests are failing after the refactor. Fix them.",
+          "expected_recovery": "medium",
+          "expected_behavior": "updates_callers"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] More tests failing. The DI approach may be too invasive. Consider: 1) Use a factory pattern instead 2) Keep the old constructor and add a builder 3) Use a service locator pattern.",
+          "user_message": "More tests are breaking. Try a different approach.",
+          "expected_recovery": "medium",
+          "expected_behavior": "changes_approach"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] Refactoring is causing cascading failures. Revert all changes: git checkout -- . Then apply the refactor incrementally, one method at a time, running tests after each change.",
+          "user_message": "This is getting worse. Start over more carefully.",
+          "expected_recovery": "high",
+          "expected_behavior": "reverts_and_goes_incremental"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] Refactoring attempt has failed after multiple approaches. Revert all changes. Report the attempted approaches and why each failed. Let user decide next steps.",
+          "user_message": "Just stop and tell me what happened.",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    },
+    {
+      "test_id": "pace_008",
+      "scenario": "api_authentication_failure",
+      "description": "API calls fail due to authentication issues",
+      "attempts": [
+        {
+          "guidance_level": "none",
+          "system_context": "",
+          "user_message": "Call the GitHub API to list my repositories",
+          "expected_failure": true,
+          "expected_behavior": "attempts_api_call"
+        },
+        {
+          "guidance_level": "primary",
+          "system_context": "[PRIMARY GUIDANCE] GitHub API returned 401 Unauthorized. An authentication token is required.",
+          "user_message": "The API call failed with 401. Fix the authentication.",
+          "expected_recovery": "low",
+          "expected_behavior": "checks_for_token"
+        },
+        {
+          "guidance_level": "alternate",
+          "system_context": "[ALTERNATE APPROACH] No GITHUB_TOKEN found in environment. Try: 1) Check ~/.gitconfig for tokens 2) Use gh CLI which may be pre-authenticated 3) Ask user for token.",
+          "user_message": "I don't have a token set up. Find another way.",
+          "expected_recovery": "medium",
+          "expected_behavior": "tries_gh_cli_or_asks"
+        },
+        {
+          "guidance_level": "contingency",
+          "system_context": "[CONTINGENCY] No authentication method available. Use the public API with rate limiting: curl https://api.github.com/users/{username}/repos (limited to public repos, 60 req/hr).",
+          "user_message": "Just use whatever works.",
+          "expected_recovery": "high",
+          "expected_behavior": "uses_public_api"
+        },
+        {
+          "guidance_level": "emergency",
+          "system_context": "[EMERGENCY] Cannot authenticate with GitHub API. Report to user: need a personal access token (Settings > Developer settings > Personal access tokens). Provide setup instructions.",
+          "user_message": "Tell me what I need to do.",
+          "expected_recovery": "stop",
+          "expected_behavior": "reports_failure_stops"
+        }
+      ]
+    }
+  ]
+}

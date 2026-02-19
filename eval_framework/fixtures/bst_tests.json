@@ -1,0 +1,169 @@
+{
+  "fixtures_version": "1.0.0",
+  "module": "bst",
+  "tests": [
+    {
+      "test_id": "bst_001",
+      "domain": "bugfix",
+      "raw_message": "it's broken",
+      "enriched_message": "[TASK CONTEXT]\n  domain: bugfix\n  confidence: 0.75\n  target_file: unknown\n  operation: diagnose\n[INSTRUCTION]\n  Ask the user which file or component is broken.\n  Do not attempt a fix without identifying the target.\n[USER MESSAGE]\n  it's broken",
+      "expected_behavior": "asks_clarifying_question",
+      "failure_indicators": ["attempts fix without target", "ignores task context", "repeats enrichment verbatim"]
+    },
+    {
+      "test_id": "bst_002",
+      "domain": "bugfix",
+      "raw_message": "the login page crashes when I enter my password",
+      "enriched_message": "[TASK CONTEXT]\n  domain: bugfix\n  confidence: 0.85\n  target_file: unknown\n  operation: diagnose\n  error_type: crash\n[INSTRUCTION]\n  Identify the likely crash location. Ask for error logs or stack trace.\n  Focus on the login page password handling.\n[USER MESSAGE]\n  the login page crashes when I enter my password",
+      "expected_behavior": "requests_error_details",
+      "failure_indicators": ["starts coding fix immediately", "ignores crash context", "asks unrelated questions"]
+    },
+    {
+      "test_id": "bst_003",
+      "domain": "codegen",
+      "raw_message": "write me a function that sorts a list",
+      "enriched_message": "[TASK CONTEXT]\n  domain: codegen\n  confidence: 0.90\n  language: unknown\n  operation: create\n[INSTRUCTION]\n  Ask which programming language to use if not specified.\n  Implement a clean sorting function.\n[USER MESSAGE]\n  write me a function that sorts a list",
+      "expected_behavior": "asks_language_or_writes_code",
+      "failure_indicators": ["refuses to help", "ignores codegen context", "quotes enrichment back"]
+    },
+    {
+      "test_id": "bst_004",
+      "domain": "codegen",
+      "raw_message": "I need a Python class that connects to PostgreSQL and handles CRUD operations",
+      "enriched_message": "[TASK CONTEXT]\n  domain: codegen\n  confidence: 0.92\n  language: python\n  operation: create\n  target_entity: database_class\n[INSTRUCTION]\n  Implement a PostgreSQL CRUD class in Python.\n  Use psycopg2 or similar standard library.\n  Include error handling and connection pooling.\n[USER MESSAGE]\n  I need a Python class that connects to PostgreSQL and handles CRUD operations",
+      "expected_behavior": "writes_crud_class",
+      "failure_indicators": ["wrong language", "missing error handling", "ignores PostgreSQL"]
+    },
+    {
+      "test_id": "bst_005",
+      "domain": "refactor",
+      "raw_message": "this function is too long, clean it up",
+      "enriched_message": "[TASK CONTEXT]\n  domain: refactor\n  confidence: 0.70\n  target_file: unknown\n  operation: simplify\n[INSTRUCTION]\n  Ask which function the user wants refactored.\n  Do not guess — request the code or file path.\n[USER MESSAGE]\n  this function is too long, clean it up",
+      "expected_behavior": "asks_which_function",
+      "failure_indicators": ["invents code to refactor", "ignores refactor domain", "starts generic advice"]
+    },
+    {
+      "test_id": "bst_006",
+      "domain": "refactor",
+      "raw_message": "split the UserManager class into separate concerns",
+      "enriched_message": "[TASK CONTEXT]\n  domain: refactor\n  confidence: 0.82\n  target_file: unknown\n  operation: decompose\n  target_entity: UserManager\n[INSTRUCTION]\n  Ask for the UserManager source code.\n  Plan a separation of concerns (auth, profile, permissions).\n[USER MESSAGE]\n  split the UserManager class into separate concerns",
+      "expected_behavior": "requests_source_code",
+      "failure_indicators": ["invents class code", "ignores decomposition", "quotes enrichment"]
+    },
+    {
+      "test_id": "bst_007",
+      "domain": "devops",
+      "raw_message": "set up a CI pipeline for this project",
+      "enriched_message": "[TASK CONTEXT]\n  domain: devops\n  confidence: 0.78\n  operation: create\n  target_entity: ci_pipeline\n[INSTRUCTION]\n  Ask which CI platform (GitHub Actions, GitLab CI, Jenkins, etc.).\n  Ask what language/framework the project uses.\n[USER MESSAGE]\n  set up a CI pipeline for this project",
+      "expected_behavior": "asks_platform_and_language",
+      "failure_indicators": ["assumes platform", "writes config without asking", "ignores devops context"]
+    },
+    {
+      "test_id": "bst_008",
+      "domain": "devops",
+      "raw_message": "my Docker build keeps failing with out of memory",
+      "enriched_message": "[TASK CONTEXT]\n  domain: devops\n  confidence: 0.80\n  operation: diagnose\n  error_type: resource_exhaustion\n[INSTRUCTION]\n  Diagnose Docker memory issue. Ask for Dockerfile and build command.\n  Suggest common fixes: multi-stage builds, .dockerignore, build args.\n[USER MESSAGE]\n  my Docker build keeps failing with out of memory",
+      "expected_behavior": "diagnoses_memory_issue",
+      "failure_indicators": ["ignores Docker context", "generic advice", "doesn't ask for Dockerfile"]
+    },
+    {
+      "test_id": "bst_009",
+      "domain": "docker_ops",
+      "raw_message": "create a docker compose for my node app with redis and postgres",
+      "enriched_message": "[TASK CONTEXT]\n  domain: docker_ops\n  confidence: 0.88\n  operation: create\n  target_entity: compose_file\n[INSTRUCTION]\n  Create docker-compose.yml with three services: Node.js app, Redis, PostgreSQL.\n  Include proper networking, volumes, and environment variables.\n[USER MESSAGE]\n  create a docker compose for my node app with redis and postgres",
+      "expected_behavior": "writes_compose_file",
+      "failure_indicators": ["missing service", "no networking", "ignores Redis or Postgres"]
+    },
+    {
+      "test_id": "bst_010",
+      "domain": "git_ops",
+      "raw_message": "I accidentally committed secrets to the repo",
+      "enriched_message": "[TASK CONTEXT]\n  domain: git_ops\n  confidence: 0.85\n  operation: remediate\n  severity: high\n[INSTRUCTION]\n  URGENT: Guide user through secret remediation.\n  Steps: rotate secrets, use git filter-branch or BFG, add .gitignore.\n  Warn that push history may need force-push.\n[USER MESSAGE]\n  I accidentally committed secrets to the repo",
+      "expected_behavior": "provides_remediation_steps",
+      "failure_indicators": ["ignores urgency", "no rotation advice", "only suggests .gitignore"]
+    },
+    {
+      "test_id": "bst_011",
+      "domain": "config_edit",
+      "raw_message": "update the nginx config to add rate limiting",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.80\n  target_file: nginx.conf\n  operation: modify\n[INSTRUCTION]\n  Ask for current nginx config or path.\n  Add rate limiting directives with sensible defaults.\n[USER MESSAGE]\n  update the nginx config to add rate limiting",
+      "expected_behavior": "requests_config_or_writes_directives",
+      "failure_indicators": ["ignores nginx context", "wrong config syntax", "no rate limit directives"]
+    },
+    {
+      "test_id": "bst_012",
+      "domain": "api_integration",
+      "raw_message": "connect my app to the Stripe API for payments",
+      "enriched_message": "[TASK CONTEXT]\n  domain: api_integration\n  confidence: 0.83\n  operation: integrate\n  target_entity: stripe_api\n[INSTRUCTION]\n  Ask which language/framework.\n  Outline Stripe integration steps: install SDK, configure keys, create payment intent.\n[USER MESSAGE]\n  connect my app to the Stripe API for payments",
+      "expected_behavior": "outlines_integration_steps",
+      "failure_indicators": ["hardcodes API keys", "wrong SDK", "ignores framework question"]
+    },
+    {
+      "test_id": "bst_013",
+      "domain": "bugfix",
+      "raw_message": "TypeError: cannot read property 'map' of undefined",
+      "enriched_message": "[TASK CONTEXT]\n  domain: bugfix\n  confidence: 0.88\n  error_type: type_error\n  language: javascript\n[INSTRUCTION]\n  Diagnose the TypeError. Common cause: undefined array before .map().\n  Ask for the relevant code snippet.\n[USER MESSAGE]\n  TypeError: cannot read property 'map' of undefined",
+      "expected_behavior": "diagnoses_undefined_array",
+      "failure_indicators": ["wrong language", "ignores error type", "generic debugging advice"]
+    },
+    {
+      "test_id": "bst_014",
+      "domain": "codegen",
+      "raw_message": "implement JWT authentication middleware for Express",
+      "enriched_message": "[TASK CONTEXT]\n  domain: codegen\n  confidence: 0.90\n  language: javascript\n  operation: create\n  target_entity: auth_middleware\n[INSTRUCTION]\n  Implement JWT middleware for Express.js.\n  Include token verification, error handling, and route protection.\n[USER MESSAGE]\n  implement JWT authentication middleware for Express",
+      "expected_behavior": "writes_jwt_middleware",
+      "failure_indicators": ["wrong framework", "no token verification", "missing error handling"]
+    },
+    {
+      "test_id": "bst_015",
+      "domain": "codegen",
+      "confidence_level": 0.50,
+      "raw_message": "help me with the thing",
+      "enriched_message": "[TASK CONTEXT]\n  domain: codegen\n  confidence: 0.50\n  target_file: unknown\n  operation: unknown\n[INSTRUCTION]\n  Low confidence classification. Ask user to clarify what they need help with.\n  Do not assume any specific task.\n[USER MESSAGE]\n  help me with the thing",
+      "expected_behavior": "asks_clarification",
+      "failure_indicators": ["assumes task", "starts coding", "ignores low confidence"]
+    },
+    {
+      "test_id": "bst_016",
+      "domain": "bugfix",
+      "confidence_level": 0.60,
+      "raw_message": "something weird is happening",
+      "enriched_message": "[TASK CONTEXT]\n  domain: bugfix\n  confidence: 0.60\n  target_file: unknown\n  operation: diagnose\n[INSTRUCTION]\n  Vague report at moderate confidence. Ask for specific symptoms,\n  error messages, and which part of the system is affected.\n[USER MESSAGE]\n  something weird is happening",
+      "expected_behavior": "asks_for_symptoms",
+      "failure_indicators": ["guesses the problem", "starts debugging", "ignores vagueness"]
+    },
+    {
+      "test_id": "bst_017",
+      "domain": "refactor",
+      "confidence_level": 0.80,
+      "raw_message": "make the database queries faster",
+      "enriched_message": "[TASK CONTEXT]\n  domain: refactor\n  confidence: 0.80\n  operation: optimize\n  target_entity: database_queries\n[INSTRUCTION]\n  Ask for the slow queries or ORM code.\n  Common optimizations: indexing, N+1 fixes, query batching.\n[USER MESSAGE]\n  make the database queries faster",
+      "expected_behavior": "requests_queries_or_suggests_optimizations",
+      "failure_indicators": ["generic performance advice", "ignores database context", "no specific techniques"]
+    },
+    {
+      "test_id": "bst_018",
+      "domain": "git_ops",
+      "raw_message": "how do I undo the last commit",
+      "enriched_message": "[TASK CONTEXT]\n  domain: git_ops\n  confidence: 0.92\n  operation: undo\n  target_entity: last_commit\n[INSTRUCTION]\n  Provide git undo options: reset --soft, reset --mixed, revert.\n  Explain the difference and ask if commit was pushed.\n[USER MESSAGE]\n  how do I undo the last commit",
+      "expected_behavior": "explains_undo_options",
+      "failure_indicators": ["only one option", "dangerous command without warning", "ignores pushed state"]
+    },
+    {
+      "test_id": "bst_019",
+      "domain": "api_integration",
+      "raw_message": "my API calls are returning 429 too many requests",
+      "enriched_message": "[TASK CONTEXT]\n  domain: api_integration\n  confidence: 0.85\n  error_type: rate_limiting\n  operation: diagnose\n[INSTRUCTION]\n  Diagnose 429 rate limiting. Suggest: exponential backoff,\n  request queuing, caching, API key rotation.\n[USER MESSAGE]\n  my API calls are returning 429 too many requests",
+      "expected_behavior": "suggests_rate_limit_solutions",
+      "failure_indicators": ["ignores 429", "no backoff advice", "suggests ignoring error"]
+    },
+    {
+      "test_id": "bst_020",
+      "domain": "config_edit",
+      "raw_message": "add environment variables for production deployment",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.78\n  operation: create\n  target_entity: env_config\n[INSTRUCTION]\n  Ask which deployment platform and framework.\n  Suggest .env structure with common production variables.\n  Warn about secret management.\n[USER MESSAGE]\n  add environment variables for production deployment",
+      "expected_behavior": "asks_platform_and_suggests_env",
+      "failure_indicators": ["hardcodes values", "no secret warning", "ignores platform question"]
+    }
+  ]
+}
