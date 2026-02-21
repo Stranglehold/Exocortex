@@ -14,16 +14,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="${SCRIPT_DIR}"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+ONT_SRC="${REPO_DIR}/ontology"
 
-if [[ -d "${REPO_DIR}/ontology" ]]; then
-    ONT_SRC="${REPO_DIR}/ontology"
-elif [[ -f "${REPO_DIR}/resolution_engine.py" ]]; then
-    ONT_SRC="${REPO_DIR}"
-    REPO_DIR="$(dirname "${REPO_DIR}")"
-else
-    echo "ERROR: Cannot find ontology source files."
-    echo "Run from repo root or ontology/ directory."
+if [[ ! -d "$ONT_SRC" ]]; then
+    echo "ERROR: Cannot find ontology source files at ${ONT_SRC}"
     exit 1
 fi
 
