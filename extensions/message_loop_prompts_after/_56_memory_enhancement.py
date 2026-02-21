@@ -117,14 +117,11 @@ class MemoryEnhancement(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            print("[MEM-ENHANCE] execute() called", flush=True)
+            if loop_data.extras_persistent is None:
+                loop_data.extras_persistent = {}
             extras = loop_data.extras_persistent
-            if not extras:
-                return
-
-            has_memories = "memories" in extras
             has_solutions = "solutions" in extras
-            if not has_memories and not has_solutions:
-                return  # Recall didn't run this iteration
 
             config = _load_config()
             qe_config = config.get("query_expansion", DEFAULT_QE_CONFIG)
@@ -172,40 +169,43 @@ class MemoryEnhancement(Extension):
 
             query = _get_query(loop_data)
             if not query:
+                print("[MEM-ENHANCE] No user message found, skipping", flush=True)
                 return
+            print(f"[MEM-ENHANCE] User message: {query[:50]!r}", flush=True)
 
             all_injected_ids = []
 
-            # ── Process memories (main + fragments) ───────────────────────
-            if has_memories:
-                try:
-                    result = await _run_pipeline(
-                        db, all_docs, query, bst_domain, role_domains,
-                        sim_threshold, max_injected,
-                        "area == 'main' or area == 'fragments'",
-                        qe_config, decay_config, related_config,
+            # ── Process memories (main + fragments) — always run ──────────
+            try:
+                result = await _run_pipeline(
+                    db, all_docs, query, bst_domain, role_domains,
+                    sim_threshold, max_injected,
+                    "area == 'main' or area == 'fragments'",
+                    qe_config, decay_config, related_config,
+                )
+
+                if result:
+                    txt = "\n\n".join(
+                        getattr(doc, "page_content", "")
+                        for doc, _ in result
                     )
-
-                    if result:
-                        txt = "\n\n".join(
-                            getattr(doc, "page_content", "")
-                            for doc, _ in result
+                    try:
+                        extras["memories"] = self.agent.parse_prompt(
+                            "agent.system.memories.md", memories=txt,
                         )
-                        try:
-                            extras["memories"] = self.agent.parse_prompt(
-                                "agent.system.memories.md", memories=txt,
-                            )
-                        except Exception:
-                            extras["memories"] = (
-                                f"# Recalled Memories\n\n{txt}"
-                            )
+                    except Exception:
+                        extras["memories"] = (
+                            f"# Recalled Memories\n\n{txt}"
+                        )
 
-                        ids = _update_access(result, all_docs)
-                        all_injected_ids.extend(ids)
-                    else:
-                        del extras["memories"]
-                except Exception:
-                    pass  # Keep _55's output on error
+                    ids = _update_access(result, all_docs)
+                    all_injected_ids.extend(ids)
+                    print(f"[MEM-ENHANCE] Final selection: {len(ids)} memories injected", flush=True)
+                else:
+                    extras.pop("memories", None)
+                    print("[MEM-ENHANCE] Final selection: 0 memories injected", flush=True)
+            except Exception as mem_err:
+                print(f"[MEM-ENHANCE] Memories pipeline error: {mem_err}", flush=True)
 
             # ── Process solutions ─────────────────────────────────────────
             if has_solutions:
@@ -251,6 +251,7 @@ class MemoryEnhancement(Extension):
                 _log_co_retrieval(
                     all_injected_ids, bst_domain, maint_cycle,
                 )
+                print("[MEM-ENHANCE] Co-retrieval logged", flush=True)
 
         except Exception as e:
             try:
@@ -277,6 +278,7 @@ async def _run_pipeline(
     merged = await _query_expansion_search(
         db, query, bst_domain, sim_threshold, qe_config, area_filter,
     )
+    print(f"[MEM-ENHANCE] Query expansion: {len(merged)} candidates from 3 queries", flush=True)
     if not merged:
         return []
 
@@ -284,6 +286,7 @@ async def _run_pipeline(
     scored = _filter_and_decay(
         merged, all_docs, role_domains, decay_config,
     )
+    print(f"[MEM-ENHANCE] After decay: {len(scored)} candidates", flush=True)
     if not scored:
         return []
 
