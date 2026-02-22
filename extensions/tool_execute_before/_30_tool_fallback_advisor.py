@@ -46,6 +46,23 @@ class ToolFallbackAdvisor(Extension):
             consecutive = failures.get("consecutive", {})
             history = failures.get("history", [])
 
+            # Check if error comprehension provided specific guidance
+            diagnosis = self.agent.get_data("_error_diagnosis")
+            if diagnosis and diagnosis.get("confidence", 0) > 0.7 and diagnosis.get("suggested_actions"):
+                # Error comprehension already injected context — don't pile on with generic advice.
+                # Only fire if the fallback threshold is also met (avoiding double-injection on first error).
+                tool_count = failures.get("consecutive", {}).get(tool_name, 0) if failures else 0
+                if tool_count >= TOOL_THRESHOLD:
+                    # Diagnosis already injected rich guidance. Log that we deferred.
+                    try:
+                        self.agent.context.log.log(
+                            type="info",
+                            content=f"[Fallback] Deferring to error comprehension: {diagnosis['error_class']}"
+                        )
+                    except Exception:
+                        pass
+                return  # Error comprehension handled it — exit early
+
             advice_parts = []
 
             tool_count = consecutive.get(tool_name, 0)

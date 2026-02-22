@@ -50,7 +50,12 @@ class ToolFallbackLogger(Extension):
             if not tool_name:
                 return
 
-            error_type = self._classify_response(response.message)
+            # Check if error comprehension already diagnosed this
+            diagnosis = self.agent.get_data("_error_diagnosis")
+            if diagnosis and diagnosis.get("error_class"):
+                error_type = diagnosis["error_class"]
+            else:
+                error_type = self._classify_response(response.message)
 
             failures = self.agent.get_data(FAILURES_KEY) or {}
             if "history" not in failures:

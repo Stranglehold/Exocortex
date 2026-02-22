@@ -47,6 +47,7 @@ LAYERS=(
   "1|Framework message replacements      |fw-replacements/install_fw_replacements.sh"
   "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
   "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
+  "2|Extensions — error comprehension   |scripts/install_error_comprehension.sh"
   "2|Extensions — tool fallback chain   |scripts/install_tool_fallback.sh"
   "2|Extensions — meta-reasoning gate   |scripts/install_meta_gate.sh"
   "2|Extensions — organization kernel   |scripts/install_org_kernel.sh"
