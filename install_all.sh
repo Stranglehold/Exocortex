@@ -54,6 +54,7 @@ LAYERS=(
   "2|Extensions — supervisor loop       |scripts/install_supervisor_loop.sh"
   "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
   "3|Personality loader                  |scripts/install_personalities.sh"
+  "3|Communication protocol              |scripts/install_communication_protocol.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
   "5|Graph workflow engine              |scripts/install_graph_engine.sh"
