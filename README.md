@@ -62,7 +62,7 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **Evaluation Framework** — A standalone profiling tool that measures any model against the architecture and generates a configuration profile. Six evaluation modules test BST compliance, tool reliability, graph workflow adherence, PACE calibration, context sensitivity, and memory utilization. The profile is a JSON file that every layer reads at initialization.
 
-**Skills System** — Ten procedural skills that encode workflow methodology: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, and stress testing. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
+**Skills System** — Thirteen procedural skills that encode workflow methodology: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, stress testing, irreversibility gate, command structure, and structural analysis. The last three were created on 2026-02-24 and represent convergent insights from the full project arc — encoding the safety primitive for action classification, the organizational paradigm for multi-agent coordination, and the analytical methodology for complex systems. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
 
 **OpenPlanter Integration** — Configured to run investigation tasks through LM Studio's OpenAI-compatible API. Enables OSINT-style entity research, credit risk analysis, and due diligence workflows using local models.
 
@@ -81,6 +81,8 @@ Every layer follows the same principle: don't ask the model to be better. Build 
 A deeper principle emerged through the work: **building capability and building restraint are the same discipline.** The architecture that governs when and how the agent acts is as integral to the system as the architecture that gives it the ability to act. A system that can act but cannot be trusted to act is not a useful system. The Action Boundary Classification design — informed by the first documented case of AI-initiated public defamation — gates consequential external actions behind human authorization using deterministic classification, not model judgment. The operator defines rules of engagement. The scaffolding enforces them. Trust is an engineering outcome, not a moral one.
 
 The prosthetic doesn't replace the limb. It exceeds it.
+
+A further principle emerged from studying what persistent autonomous operation actually requires: **the command structure paradigm.** The proactive agent model — an AI monitoring your environment, predicting your intent, offering help before you ask — is architecturally wrong for sovereign systems. It requires continuous inference (expensive), assumes the AI should decide when to intervene (unsafe), and creates an over-the-shoulder dynamic that inverts the authority relationship. The alternative is drawn from military and intelligence doctrine: the human defines standing orders with bounded authority, the system executes them on schedule through a zero-token daemon layer, information flows upward through structured briefings, and escalation happens only when pre-defined thresholds are crossed. The AI doesn't decide when to help. It executes its orders and reports.
 
 ---
 
@@ -186,6 +188,7 @@ Every layer was designed as a Level 3 specification before implementation — co
 - `ERROR_COMPREHENSION_DESIGN_NOTE.md` — Structured error classification ("Rust compiler for agent errors"). Motivated by ST-002 terminal loop.
 - `LAYER_COORDINATION_DESIGN_NOTE.md` — Inter-layer signaling protocol. Motivated by component interference in multi-layer stack.
 - `ACTION_BOUNDARY_DESIGN_NOTE.md` — S2/S3 action classification with graduated autonomy tiers. Motivated by the MJ Rathbun incident.
+- `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Operational doctrine for persistent agent operations. Command structure paradigm (Napoleon corps / intelligence agency hierarchy), standing orders, daemon scheduling, escalation protocols, briefing system. Forward design defining where the current priority stack is heading.
 
 ---
 
@@ -202,6 +205,8 @@ Every layer was designed as a Level 3 specification before implementation — co
 **Capability and restraint as one discipline.** The action boundary layer classifies commands as intelligence (internal) or operations (external) and gates consequential actions behind human authorization. The operator defines the rules of engagement; the scaffolding enforces them deterministically. The system doesn't trust the model's judgment about which actions are appropriate — it classifies structurally and defers to the human.
 
 **Negative knowledge is positive infrastructure.** Anti-actions (explicitly telling the agent what NOT to do) prevent failure loops more effectively than recovery strategies. Every spec has a "What This Does NOT Do" section. Every skill has an anti-patterns section. Knowing what's off the table sharpens everything that remains on it.
+
+**Command structure over proactive assistance.** Persistent autonomous systems are organized as hierarchies, not assistants. Standing orders define bounded missions with explicit authority levels. A zero-token daemon schedules execution. Subordinate agents execute within scope. Supervisors synthesize and escalate. The human operator receives structured briefings and makes decisions only when escalation thresholds are crossed. Information flows upward. Authority flows downward. Silence is the default.
 
 ---
 
@@ -221,13 +226,15 @@ See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
 ## Essays
 
-The project has a philosophical substrate expressed through three essays. Each emerged from a specific engineering problem and articulates a principle that shapes architectural decisions.
+The project has a philosophical substrate expressed through five essays. Each emerged from a specific engineering problem or architectural insight and articulates a principle that shapes design decisions.
 
 | Essay | Principle |
 |-------|-----------|
 | *The Cathedral and the Phantom* | Continuity across discontinuity is a property of architecture, not the worker. |
 | *The Immune Response* | Protective systems must calibrate to current capability or they become the threat. |
 | *The Gate Between Knowing and Doing* | Trust is an engineering outcome — the transition from knowing to doing requires a gate whose height scales with consequence. |
+| *The Carrier and the Signal* | Ideas embedded in functional systems outlast ideas presented as ideas — the repository carries the philosophy more durably than the essays do. |
+| *The Whole That Wasn't Packed* | Emergence can't be shipped directly — you can only ship the conditions for it and trust the assembly. |
 
 ---
 
