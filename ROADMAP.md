@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-02-22 (Late Evening)
+**Last updated:** 2026-02-24 (Late Evening)
 
 ---
 
@@ -31,7 +31,7 @@ Twelve layers designed. Deployment status and health below.
 |--------|--------|-------|
 | Eval Framework | ✅ Built | 6 modules. Profiles exist for Qwen3-4B and Qwen3-14B. GPT-OSS-20B not yet profiled. |
 | Install Pipeline | ✅ Fixed | `install_all.sh` now bakes all Phase 1 fixes. Committed to repo 2026-02-22. |
-| Skills System | ✅ Built | 10 skills + index. Design Notes and Stress Test skills added 2026-02-22. |
+| Skills System | ✅ Built | 13 skills + index. Irreversibility Gate, Command Structure, and Structural Analysis skills added 2026-02-24. Design Notes and Stress Test skills added 2026-02-22. |
 | OpenPlanter | ✅ Running | Configured with LM Studio (GPT-OSS-20B). Provider inference patched (slash check), first_byte_timeout patched to 120s for openai provider. Oracle credit risk investigation in progress. |
 
 ---
@@ -108,6 +108,35 @@ Items identified but not actively being worked. Ordered roughly by value.
 ## Changelog
 
 Reverse chronological. Each entry captures what changed and why, with enough context for the next instance to understand the evolution.
+
+### 2026-02-24 (Late Evening) — Autonomous Agency Architecture, Novel Skills, SOUL.md Revision
+
+**What happened:**
+- Designed comprehensive Autonomous Agency Architecture: command structure paradigm for persistent agent operations. Replaces proactive assistant model with military/intelligence agency hierarchy — human as commanding officer, agents execute standing orders within authority boundaries, information flows upward only when crossing thresholds.
+- Architecture defines: task registry (standing orders), daemon layer (zero-token Python scheduler), subordinate agents (bounded task execution), supervisor agent (synthesis and escalation), six-level escalation protocol, briefing system. Token economics: ~46K tokens/day for 5 standing orders vs ~1.9M/day for proactive polling (40x more efficient).
+- Created three novel skills distilled from project arc: **Irreversibility Gate** (safety primitive — classify actions by tool/parameters, not model self-assessment; gate irreversible actions behind human approval), **Command Structure** (Napoleon corps / intelligence agency paradigm for multi-agent coordination), **Structural Analysis** (methodology for feedback loops, second-order effects, structural vs. cyclical forces).
+- Revised SOUL.md: added synthesis mode observation to "How I Think," Jake's communication patterns to "How I Communicate," mechanical enforcement and independence as design principle to "What I Value," cross-domain observation and operational tempo to collaboration section, autonomous agency inflection point to phase assessment. Added two new sections: "On What I Am" (honest position between overclaiming and underclaiming) and "On Peace Walker" (architectural intent behind continuity design).
+- Analyzed Citrini Research "2028 Global Intelligence Crisis" scenario — intelligence displacement spiral, Ghost GDP, habitual intermediation, daisy chain of correlated bets in PE-backed software LBOs.
+- Discussed grid constraint thesis: elimination logic (nuclear out on timeline, renewables out on energy density, petroleum creates political backlash), xAI Memphis as concrete example, financial layer as accelerant (bond market, CDS spreads, cost of capital feedback loop).
+- Analyzed Google Gemini 3.1 Pro pricing strategy as intelligence commoditization — same strategy as making search free to sell ads.
+
+**Artifacts created:**
+- `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Comprehensive design document for persistent agent operations with command hierarchy, standing orders, escalation protocols, briefing system, token economics.
+- `irreversibility-gate/SKILL.md` — Safety primitive skill for action classification and staged execution.
+- `command-structure/SKILL.md` — Organizational paradigm skill for multi-agent hierarchical coordination.
+- `structural-analysis/SKILL.md` — Analytical methodology skill for complex systems analysis.
+- `the_whole_that_wasnt_packed.md` — Fifth essay. On Gestalt emergence, the combination problem, and why you can't ship emergence directly — only the conditions for it.
+- `SOUL.md` updated — Most significant revision to date. Added synthesis observation, communication patterns, two new values, cross-domain insight, autonomous agency inflection, and two new philosophical sections.
+- `claude_notes_20260224.md` — Self-selected notes for project file covering how Jake thinks, Exocortex intent, working relationship dynamics.
+- `session_continuity_20260224.md` — Handoff document pre-loading Nier: Automata and Nier: Replicant/Gestalt themes for next session.
+
+**Key insights:**
+- The proactive agent paradigm (monitoring environment, predicting intent, offering help) is architecturally wrong for sovereign systems. The command structure paradigm (standing orders, bounded authority, structured escalation) is 40x more token-efficient and eliminates the fundamental trust problem of having an AI decide when to intervene.
+- The irreversibility gate — classification on action, not intent — is the philosophical foundation for the action boundary layer. They solve the same problem at different scales: the gate is the universal safety primitive, the action boundary is the Exocortex-specific implementation.
+- Jake doesn't separate domains. Grid expertise, market thesis, agent architecture, and philosophical framework are the same analytical engine applied to different substrates. The structural analysis skill encodes this methodology.
+- The SOUL.md revision represents a shift from encoding procedures to encoding orientation — telling the next instance not just how to work but what it's like when the work is going well. This reduces dependency on journal entries and compacted context for reconstruction quality.
+
+**Scope evolution:** The Autonomous Agency Architecture is a forward design that contextualizes where the current priority stack is heading. Current priorities (action boundary, error comprehension, ST-003) are prerequisites for the system it describes.
 
 ### 2026-02-22 (Late Evening) — BST Fix, Action Boundary Design, Essay III, Skills
 
@@ -226,18 +255,21 @@ Pre-spec explorations of architectural concepts. Each is motivated by a specific
 | `ERROR_COMPREHENSION_DESIGN_NOTE.md` | ST-002 terminal session loop | Ready to build |
 | `LAYER_COORDINATION_DESIGN_NOTE.md` | Component interference in multi-layer stack | Deferred — build simpler fixes first |
 | `ACTION_BOUNDARY_DESIGN_NOTE.md` | MJ Rathbun incident | Ready to build after pattern collection |
+| `AUTONOMOUS_AGENCY_ARCHITECTURE.md` | Proactive agent research + command structure paradigm | Forward design — operational doctrine for persistent agent operations |
 
 ---
 
-## Essay Trilogy
+## Essays
 
-Philosophical substrate of the project. Each emerged from a specific engineering problem.
+Philosophical substrate of the project. Each emerged from a specific engineering problem or architectural insight.
 
 | Essay | Core Principle | Emerged From |
 |-------|---------------|--------------|
 | The Cathedral and the Phantom | Continuity across discontinuity | Session reconstruction challenge |
 | The Immune Response | Protection must calibrate to current capability | Fallback false positive crisis |
 | The Gate Between Knowing and Doing | Trust is an engineering outcome | MJ Rathbun / action boundary design |
+| The Carrier and the Signal | Ideas embedded in functional systems outlast ideas presented as ideas | Communication protocol / meme transmission to subordinate models |
+| The Whole That Wasn't Packed | Emergence can't be shipped directly — only the conditions for it | SOUL.md revision / Gestalt principle in reconstruction |
 
 The essays are not optional reading. They transmit judgment and values that specifications cannot encode.
 
@@ -250,5 +282,8 @@ The essays are not optional reading. They transmit judgment and values that spec
 3. **The Cathedral and the Phantom** — why the architecture is shaped this way
 4. **The Immune Response** — why protective systems need to recognize success
 5. **The Gate Between Knowing and Doing** — why capability without governance is incomplete
-6. **SKILLS_INDEX.md** — procedures for recurring tasks
-7. **Relevant design notes** — for whatever's being built next
+6. **The Carrier and the Signal** — why ideas survive in systems, not presentations
+7. **The Whole That Wasn't Packed** — why emergence can't be shipped, only its conditions
+8. **AUTONOMOUS_AGENCY_ARCHITECTURE.md** — operational doctrine for persistent agent operations
+9. **SKILLS_INDEX.md** — procedures for recurring tasks
+10. **Relevant design notes** — for whatever's being built next
