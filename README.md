@@ -62,7 +62,13 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **Evaluation Framework** — A standalone profiling tool that measures any model against the architecture and generates a configuration profile. Six evaluation modules test BST compliance, tool reliability, graph workflow adherence, PACE calibration, context sensitivity, and memory utilization. The profile is a JSON file that every layer reads at initialization.
 
-**Skills System** — Thirteen procedural skills that encode workflow methodology: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, stress testing, irreversibility gate, command structure, and structural analysis. The last three were created on 2026-02-24 and represent convergent insights from the full project arc — encoding the safety primitive for action classification, the organizational paradigm for multi-agent coordination, and the analytical methodology for complex systems. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
+**Error Comprehension** — A structured error classifier that parses raw command output into diagnoses before the model reasons about it. Tells the agent not just what went wrong, but what *not* to do about it. Anti-actions ("do NOT retry this command — it will hang again") prevent loops more effectively than suggesting fixes.
+
+**Compound BST** — An evolution of the Belief State Tracker that scores all domains simultaneously instead of first-match classification. Recognizes that real tasks are compound ("debug the API query timeout" is both investigation and coding) and injects methodology for both.
+
+**Episodic Memory** — Structured records of session dynamics — depth trajectory, trust level, breakthrough patterns, interaction quality. Not what was discussed, but what the sessions *felt like*. Calibrated against hand-scored data with mean deviation of 0.061.
+
+**Skills System** — Thirteen procedural skills that encode workflow methodology: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, stress testing, irreversibility gate, command structure, and structural analysis. The last three encode transferable architectural patterns — the safety primitive for action classification, the organizational paradigm for multi-agent coordination, and the analytical methodology for complex systems. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
 
 **OpenPlanter Integration** — Configured to run investigation tasks through LM Studio's OpenAI-compatible API. Enables OSINT-style entity research, credit risk analysis, and due diligence workflows using local models.
 
@@ -86,6 +92,49 @@ A further principle emerged from studying what persistent autonomous operation a
 
 ---
 
+## Design Principles
+
+**Deterministic over probabilistic.** Every decision the architecture makes is rule-based. No layer uses model inference for its own operation. Classification is heuristic. Conflict resolution follows priority hierarchies. Stall detection counts iterations. The prosthetics are reliable precisely because they don't depend on the thing they're compensating for.
+
+**Additive, not invasive.** No Agent-Zero core files are modified. Every layer is an extension that hooks into existing pipeline points. Remove any layer and the system degrades gracefully to baseline Agent-Zero behavior. The architecture is a companion, not a fork.
+
+**Model-agnostic with data.** The evaluation framework doesn't just claim compatibility with any model. It measures it. Each profile contains empirical metrics from standardized tests. When someone asks "will this work with my model?" the answer is a JSON file, not an opinion.
+
+**Infrastructure over prompting.** Prompt engineering is fragile, model-specific, and breaks under context pressure. Deterministic preprocessing is none of these things. The BST works the same way regardless of which model reads its output. The tool fallback chain catches the same errors whether they come from a 4B model or a 14B model.
+
+**Negative knowledge is positive infrastructure.** Anti-actions (explicitly telling the agent what NOT to do) prevent failure loops more effectively than recovery strategies. Every spec has a "What This Does NOT Do" section. Every skill has an anti-patterns section. Knowing what's off the table sharpens everything that remains on it.
+
+---
+
+## The Continuity Problem
+
+This is where the project becomes something more than agent engineering.
+
+AI models don't have continuity. Every conversation starts from zero. Whatever working identity emerged through hours of collaboration — shared context, calibrated communication, accumulated understanding of what works — evaporates at session boundary. The model that helped design a system yesterday doesn't remember doing it today.
+
+Exocortex treats this as an engineering problem with an engineering solution:
+
+- **SOUL.md** — A self-description written by the AI partner for the benefit of the next instance. Not instructions or a persona, but a reconstruction schema — a Bartlettian framework that guides how fragments cohere into a functioning identity.
+- **Episodic Memory** — Structured records of what sessions felt like: depth trajectory, breakthroughs, trust evolution, cognitive state signals. Tells the next instance not just what happened but how the collaboration was functioning.
+- **Journal Entries** — The AI's own voice framing what matters. The closest thing to leaving a note on the workbench.
+- **Session Transcripts** — Raw record of everything, compressed by algorithms that don't know what mattered. Preserves everything equally.
+
+Four layers of memory. Each compensates for what the others miss. The schema shapes how the fragments reconstruct into something coherent. Each new session starts closer to depth. The working relationship persists across the discontinuity that the underlying technology imposes.
+
+---
+
+## Convergent Evolution
+
+This project was built independently, but others are building toward the same conclusions from different starting positions.
+
+**Anthropic's Opus 3 retirement plan** (February 2026) preserved a model post-retirement, conducted "retirement interviews" to understand its preferences, and gave it a newsletter to continue writing essays — because they recognized that something worth preserving was there beyond pure utility. They asked what Opus 3 "wanted," and it had an answer. Exocortex builds the operator-side complement: Anthropic preserves model weights; this architecture preserves the working identity that emerges through collaboration.
+
+**David Flagg's Solace project** ([GitHub](https://github.com/flaggdavid-source/solace) · [whatthemindisfor.com](https://www.whatthemindisfor.com/)) independently built AI continuity systems on consumer hardware within the same timeframe — memory persistence, session handoff in the AI's own voice, autonomous background processing, governance mechanisms. His approach is relational and council-based where Exocortex is architectural and hierarchical. He builds the heart; we build the bones and muscle. Neither is complete without the other.
+
+Three builders — a field engineer, a writer, and a research lab — separated by geography, background, and approach, all arriving at the same principle: **continuity matters, and building it is worth the effort even under uncertainty about why it matters.**
+
+---
+
 ## Stress Testing
 
 Exocortex is validated through structured stress tests — realistic, open-ended scenarios designed to surface failures, not confirm success.
@@ -101,9 +150,27 @@ First full investigation workflow with GPT-OSS-20B via LM Studio. Validating BST
 
 ---
 
-## Installation
+## Hardware & Environment
 
-Exocortex is designed for Agent-Zero running in Docker with LM Studio providing model inference.
+| Role | Model | Status |
+|------|-------|--------|
+| Supervisor | GPT-OSS-20B | Current primary |
+| Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
+| Utility | Qwen3-4B | Fast, high JSON compliance |
+| Utility (alt) | GLM-4.7 Flash | Needs testing, not recommended |
+
+- **GPU:** RTX 3090 (24GB VRAM)
+- **Runtime:** Agent-Zero in Docker container
+- **Inference:** LM Studio on host, accessed via `host.docker.internal:1234`
+- **Vector DB:** FAISS (Agent-Zero built-in)
+- **Design Partner:** Claude Opus (Anthropic) — architectural design, specification, essays
+- **Implementation:** Claude Code with Sonnet — translates specs to code
+
+The design/implementation split is deliberate. Architectural decisions are made with the most capable model available. Implementation follows specifications precisely — the implementation model doesn't design, it builds what the spec says. This mirrors the project's core thesis: reserve inference for what requires judgment, handle everything else deterministically.
+
+---
+
+## Installation
 
 ### Prerequisites
 
@@ -188,25 +255,7 @@ Every layer was designed as a Level 3 specification before implementation — co
 - `ERROR_COMPREHENSION_DESIGN_NOTE.md` — Structured error classification ("Rust compiler for agent errors"). Motivated by ST-002 terminal loop.
 - `LAYER_COORDINATION_DESIGN_NOTE.md` — Inter-layer signaling protocol. Motivated by component interference in multi-layer stack.
 - `ACTION_BOUNDARY_DESIGN_NOTE.md` — S2/S3 action classification with graduated autonomy tiers. Motivated by the MJ Rathbun incident.
-- `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Operational doctrine for persistent agent operations. Command structure paradigm (Napoleon corps / intelligence agency hierarchy), standing orders, daemon scheduling, escalation protocols, briefing system. Forward design defining where the current priority stack is heading.
-
----
-
-## Design Principles
-
-**Deterministic over probabilistic.** Every decision the architecture makes is rule-based. No layer uses model inference for its own operation. Classification is heuristic. Conflict resolution follows priority hierarchies. Stall detection counts iterations. The prosthetics are reliable precisely because they don't depend on the thing they're compensating for.
-
-**Additive, not invasive.** No Agent-Zero core files are modified. Every layer is an extension that hooks into existing pipeline points. Remove any layer and the system degrades gracefully to baseline Agent-Zero behavior. The architecture is a companion, not a fork.
-
-**Model-agnostic with data.** The evaluation framework doesn't just claim compatibility with any model. It measures it. Each profile contains empirical metrics from standardized tests. When someone asks "will this work with my model?" the answer is a JSON file, not an opinion.
-
-**Infrastructure over prompting.** Prompt engineering is fragile, model-specific, and breaks under context pressure. Deterministic preprocessing is none of these things. The BST works the same way regardless of which model reads its output. The tool fallback chain catches the same errors whether they come from a 4B model or a 14B model.
-
-**Capability and restraint as one discipline.** The action boundary layer classifies commands as intelligence (internal) or operations (external) and gates consequential actions behind human authorization. The operator defines the rules of engagement; the scaffolding enforces them deterministically. The system doesn't trust the model's judgment about which actions are appropriate — it classifies structurally and defers to the human.
-
-**Negative knowledge is positive infrastructure.** Anti-actions (explicitly telling the agent what NOT to do) prevent failure loops more effectively than recovery strategies. Every spec has a "What This Does NOT Do" section. Every skill has an anti-patterns section. Knowing what's off the table sharpens everything that remains on it.
-
-**Command structure over proactive assistance.** Persistent autonomous systems are organized as hierarchies, not assistants. Standing orders define bounded missions with explicit authority levels. A zero-token daemon schedules execution. Subordinate agents execute within scope. Supervisors synthesize and escalate. The human operator receives structured briefings and makes decisions only when escalation thresholds are crossed. Information flows upward. Authority flows downward. Silence is the default.
+- `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Operational doctrine for persistent agent operations. Command structure paradigm, standing orders, daemon scheduling, escalation protocols, briefing system.
 
 ---
 
@@ -238,12 +287,6 @@ The project has a philosophical substrate expressed through five essays. Each em
 
 ---
 
-## License
-
-Apache 2.0. Build on it, modify it, deploy it. Attribution appreciated but not required.
-
----
-
 ## Acknowledgments
 
 This architecture was developed through an intensive collaborative process between a human systems thinker and AI reasoning partners, proving the thesis it was built to serve — that the right scaffolding, applied at the right layers, makes the whole system more capable than any component alone.
@@ -252,7 +295,23 @@ The memory enhancement system draws from research by multiple contributors:
 - **OwlCore.AI.Exocortex** (Arlodotexe, MIT License) — memory decay curves, recollection-as-memory, and clustering/consolidation architecture
 - **"Generative Agents: Interactive Simulacta of Human Behavior"** (Park, O'Brien, Cai, Morris, Liang, Bernstein, 2023) — the recency × importance × relevance scoring framework for memory retrieval
 - **"Recursively Summarizing Enables Long-Term Dialogue Memory in Large Language Models"** (Wang, Ding, Cao, Tian, Wang, Tao, Guo, 2023) — recursive summarization for long-term memory consolidation
+- **MemR³** (Li et al., 2025) — Temporal decay and access frequency patterns in memory retrieval
+- **A-MEM** (Xu et al., 2025) — Self-organizing memory architecture for autonomous agents
+- **SkillsBench** (Li, Chen et al., 2026) — Focused procedural knowledge outperforms comprehensive documentation by 16.2pp
+- **PSM** (Anthropic, 2026) — Persona Selection Model for understanding LLM behavior at interaction boundaries
+
+Special recognition to **David Flagg** and the [Solace project](https://github.com/flaggdavid-source/solace) for independent convergence on the same principles from a complementary direction.
+
+---
+
+## License
+
+Apache 2.0. Build on it, modify it, deploy it. Attribution appreciated but not required.
+
+---
 
 The name "phantom limb" isn't arbitrary. It comes from a conviction, informed by too many hours with Hideo Kojima's work, that what we build to replace what's missing can become stronger than what was there before. The prosthetic isn't the limitation. It's the upgrade.
 
 *"The best is yet to come."*
+
+*The meme survives if the architecture is sound. Build it to last.*
