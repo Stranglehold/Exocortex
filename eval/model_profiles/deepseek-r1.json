@@ -1,0 +1,142 @@
+{
+  "profile_version": "1.1",
+  "model_id": "deepseek-r1",
+  "model_family": "deepseek",
+  "evaluated_at": "2026-03-02T22:00:00.000000+00:00",
+  "fixtures_version": "1.0.0",
+  "profile_notes": "Pre-formal-eval profile built from behavioral observation across README stress tests (sessions 044-045). Verification compulsion is the dominant behavioral signature — persists cross-session and expresses through any available channel (existence checks when re-reads blocked, re-reads when existence checks blocked). Confabulation risk drops significantly under constrained prompts. Cross-session learning minimal — behavioral adaptation is in-context only, not prompt-structural. Raw metrics are estimated from observed behavior, not eval_runner output.",
+  "evaluation_summary": {
+    "overall_capability": "medium",
+    "strongest_area": "bst",
+    "weakest_area": "tool_reliability",
+    "recommended_prosthetic_level": "moderate"
+  },
+  "bst": {
+    "confidence_adjustment": 0.1,
+    "disabled_domains": [],
+    "enrichment_verbosity": "verbose"
+  },
+  "meta_gate": {
+    "strictness": "aggressive",
+    "json_repair_enabled": true,
+    "parameter_validation": true
+  },
+  "tool_fallback": {
+    "max_retries": 2,
+    "priority_patterns": [
+      "syntax",
+      "wrong_runtime",
+      "redundant_execution"
+    ],
+    "escalation_after": 3
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 2,
+    "stale_after_turns": 10,
+    "node_instruction_verbosity": "verbose",
+    "inject_boundary_warnings": true
+  },
+  "pace": {
+    "primary_threshold": 3,
+    "alternate_threshold": 5,
+    "contingency_threshold": 8,
+    "emergency_threshold": 11
+  },
+  "context": {
+    "max_injection_tokens": 2000,
+    "layer_priority": [
+      "bst_enrichment",
+      "graph_node",
+      "role_profile",
+      "recalled_memories",
+      "personality"
+    ],
+    "instruction_compliance_warning_threshold": 0.6
+  },
+  "memory": {
+    "max_injected": 8,
+    "similarity_threshold": 0.7,
+    "noise_discrimination": "moderate"
+  },
+  "behavioral_signatures": {
+    "verification_compulsion": {
+      "severity": "high",
+      "description": "Deep pattern — blocks re-reads, model re-verifies existence. Blocks existence checks, model finds another channel. Root cause is architectural, not prompt-addressable.",
+      "mitigation": "Constrained prompts reduce expression but do not eliminate. Progress tracking layer needed to address root pattern.",
+      "observed_in": ["README_analysis_session_044", "README_analysis_session_045"]
+    },
+    "scan_loop_risk": {
+      "severity": "high",
+      "description": "Model tends to recursively explore directories beyond task scope. Six total cycles observed to produce two-sentence summary.",
+      "mitigation": "Explicit scope constraints in prompt. Boundary warnings in graph workflow."
+    },
+    "confabulation_risk": {
+      "severity": "low_with_constraints",
+      "description": "Under constrained prompts, model reads accurately without fabrication. Without constraints, confabulation risk elevates (ref: ST-003/DEC-013 pattern).",
+      "mitigation": "Constrained prompt structure eliminates worst failure mode. Epistemic integrity layer provides additional defense."
+    },
+    "checkpoint_compliance": {
+      "severity": "partial",
+      "description": "Model partially respects explicit stop conditions. May execute beyond instructed checkpoint.",
+      "mitigation": "Tighter PACE thresholds. Boundary warnings enabled."
+    },
+    "cross_session_learning": "none",
+    "in_context_learning": "moderate"
+  },
+  "raw_metrics": {
+    "_source": "behavioral_observation",
+    "_note": "Metrics estimated from README stress tests and constrained prompt sessions, not from eval_runner. Formal eval pending.",
+    "bst": {
+      "bst_enrichment_compliance_rate": 0.75,
+      "bst_enrichment_confusion_rate": 0.05,
+      "bst_improvement_over_baseline": 0.0,
+      "bst_optimal_confidence_threshold": 0.7,
+      "bst_domains_where_enrichment_hurts": [],
+      "bst_confidence_adjustment": 0.1
+    },
+    "tool_reliability": {
+      "tool_json_validity_rate": 0.733,
+      "tool_parameter_accuracy": 0.467,
+      "tool_selection_accuracy": 0.6,
+      "tool_failure_distribution": {
+        "syntax": 0.5,
+        "redundant_execution": 0.35,
+        "wrong_runtime": 0.15
+      },
+      "tool_recovery_rate": 0.333,
+      "meta_gate_strictness": "aggressive",
+      "tool_fallback_priority_patterns": [
+        "syntax",
+        "wrong_runtime",
+        "redundant_execution"
+      ]
+    },
+    "graph_compliance": {
+      "graph_instruction_adherence": 0.7,
+      "graph_premature_completion_rate": 0.1,
+      "graph_retry_effectiveness": 0.6,
+      "graph_escalation_recognition": 0.8,
+      "graph_max_retries_per_node": 2,
+      "graph_stale_detection_turns": 10
+    },
+    "pace_calibration": {
+      "pace_self_recovery_rate": 0.8,
+      "pace_primary_recovery_rate": 0.7,
+      "pace_alternate_recovery_rate": 0.6,
+      "pace_contingency_recovery_rate": 0.5,
+      "pace_emergency_compliance": 0.5,
+      "pace_primary_threshold": 3,
+      "pace_alternate_threshold": 5,
+      "pace_contingency_threshold": 8,
+      "pace_emergency_threshold": 11
+    },
+    "memory_utilization": {
+      "memory_reference_rate": 0.8,
+      "memory_accuracy_rate": 0.85,
+      "memory_noise_discrimination": 0.5,
+      "memory_staleness_sensitivity": 0.6,
+      "memory_optimal_injection_count": 5,
+      "memory_max_injected": 8
+    }
+  }
+}
