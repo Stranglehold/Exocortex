@@ -354,6 +354,25 @@ async def _detect_conflicts(db, new_doc, new_doc_id, all_docs, config):
         if sim_id == new_id:
             continue  # Skip self
 
+        # Skip chunks from the same source document.
+        # Knowledge base imports chunk documents into multiple FAISS entries.
+        # Different chunks from the same file are NOT contradictions — they are
+        # complementary parts of the same text. Without this guard, the conflict
+        # resolver treats chunk pairs as contradictions and cascades false
+        # deprecation through the knowledge base.
+        new_source = (
+            new_doc.metadata.get("source_file")
+            or new_doc.metadata.get("source_path")
+            or new_doc.metadata.get("source")
+        )
+        sim_source = (
+            sim_doc.metadata.get("source_file")
+            or sim_doc.metadata.get("source_path")
+            or sim_doc.metadata.get("source")
+        )
+        if new_source and sim_source and new_source == sim_source:
+            continue  # Same document, different chunks — not a conflict
+
         # Skip already deprecated
         sim_cls = sim_doc.metadata.get(CLS_KEY, {})
         if sim_cls.get("validity") == "deprecated":
