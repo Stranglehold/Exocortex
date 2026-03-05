@@ -1,226 +1,289 @@
 # Exocortex Roadmap & Changelog
 
-*Living document. Updated each session. Tracks stack status, active priorities, and project evolution.*
+*Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-03-03
+**Last updated:** 2026-02-24 (Late Evening)
 
 ---
 
 ## Stack Status
 
-Seventeen layers designed. Twelve deployed, two designed with specs complete, three identified but not started.
+Twelve layers designed. Deployment status and health below.
 
 | # | Layer | Status | Health | Notes |
 |---|-------|--------|--------|-------|
-| 1 | Belief State Tracker | ✅ Deployed | **Production validated** | 93-96% classification (ST-001). Validated in production logs (Session 042). Domain momentum, slot resolution, enrichment flags working. |
-| 2 | Working Memory Buffer | ✅ Deployed | Healthy | 25 entities from README in ST-002. Holds objectives across 20-step chains. |
+| 1 | Belief State Tracker | ✅ Deployed | Fixed | Classify fix deployed: word-boundary regex (Fix A) + domain momentum (Fix B). Validated on Oracle investigation — held domain across 10+ operational turns without flipping to `file_ops`. |
+| 2 | Working Memory Buffer | ✅ Deployed | Healthy | Renumbered to `_11` (Phase 1 fix). 25 entities extracted from README in ST-002. Holds objectives across 20-step chains. |
 | 3 | Personality Loader | ✅ Deployed | Healthy | MajorZero persona. Stable. |
-| 4 | Tool Fallback Chain | ✅ Deployed | Fixed | Phase 1 fixes: SUCCESS_INDICATORS, history decay, compact messages, threshold raised. 1 fire vs 17 (ST-001→ST-002). |
-| 5 | Meta-Reasoning Gate | ✅ Deployed | Healthy | Deterministic parameter correction. |
-| 6 | Graph Workflow Engine | ✅ Deployed | Healthy | HTN plan templates. |
-| 7 | Organization Kernel | ✅ Deployed | Healthy | PACE protocols. |
-| 8 | Supervisor Loop | ✅ Deployed | Needs review | Loop detector fires but doesn't break loops effectively. |
-| 9 | A2A Compatibility | 📋 Speced | Not deployed | Spec complete. No integration target yet. OpenPlanter identified as first A2A peer (DEC-014). |
-| 10 | Memory Classification | ✅ Deployed | Fixed | Stock memorizers disabled. Good signal/noise. |
-| 11 | Memory Enhancement | ✅ Deployed | Healthy | Query expansion, temporal decay, related linking, dedup, co-retrieval. |
-| 12 | Ontology Layer | ✅ Deployed | Untested at scale | Entity resolution, JSONL graph. Needs real-world data. |
-| 13 | Error Comprehension | ✅ Deployed | Healthy | Built Session 021. Structured error classifier with anti-actions. |
-| 14 | Action Boundary | 📋 Designed | Not built | Irreversibility gate. Design note complete. Classifies actions by reversibility before execution. |
-| 15 | Compound BST | 📋 Designed | Not built | L3 spec complete (Session 033). Multi-domain task classification. |
-| 16 | Epistemic Integrity | 📋 Designed | Not built | Provenance tracking, data pipeline verification. Production-validated need (DEC-013, Session 042). |
-| 17 | Profile Loader | ❌ Identified | Not started | Model-specific behavioral profiles loaded at session start. |
+| 4 | Tool Fallback Chain | ✅ Deployed | Fixed | Phase 1 audit fix: SUCCESS_INDICATORS, history decay on success, compact messages, threshold raised to 3. ST-002 validated: 1 fire vs 17 in ST-001. |
+| 5 | Meta-Reasoning Gate | ✅ Deployed | Healthy | Deterministic parameter correction. Functions well independently. |
+| 6 | Graph Workflow Engine | ✅ Deployed | Healthy | HTN plan templates. Used in stress tests. |
+| 7 | Organization Kernel | ✅ Deployed | Healthy | PACE protocols, role switching tracked in ST-001 (4 appropriate switches). |
+| 8 | Supervisor Loop | ✅ Deployed | Needs review | Loop detector fires but doesn't break loops effectively (ST-002). Candidate for error comprehension integration. |
+| 9 | A2A Compatibility | 📋 Speced | Not deployed | Spec complete. No integration target yet. |
+| 10 | Memory Classification | ✅ Deployed | Fixed | Phase 1 fix: stock memorizers disabled. Excellent signal/noise (2 memories from 20-step session in ST-001). |
+| 11 | Memory Enhancement | ✅ Deployed | Healthy | Query expansion, temporal decay, related linking, access tracking, co-retrieval, dedup. |
+| 12 | Ontology Layer | ✅ Deployed | Untested at scale | Entity resolution engine, source connectors, JSONL graph. Needs real-world data validation. |
 
 ### Cross-Cutting Systems
 
 | System | Status | Notes |
 |--------|--------|-------|
-| Eval Framework | ✅ Built | 6 modules. Profiles: DeepSeek-R1, Qwen3.5-35B-A3B, Qwen3.5-9B (partial). Methodology: "interview not assignment." |
-| Install Pipeline | ✅ Fixed | `install_all.sh` bakes all Phase 1 fixes. |
-| Skills System | ✅ Built | 12+ skills + index. Cross-Instance Learning added Session 044. |
-| OpenPlanter | ✅ Installed | Configured. Investigation tasks not yet tested. A2A peer candidate. |
-| Memory Infrastructure (Phase 1) | ✅ Deployed | SOUL.md, decision_log.md, session_log.md, soul_staging.md, self_assessment_protocol.md, episodic_record_template. Deployed Session 041. |
-| Opus Workshop | ✅ Built | Persistent five-tab workspace (React + window.storage). Session 046. |
+| Eval Framework | ✅ Built | 6 modules. Profiles exist for Qwen3-4B and Qwen3-14B. GPT-OSS-20B not yet profiled. |
+| Install Pipeline | ✅ Fixed | `install_all.sh` now bakes all Phase 1 fixes. Committed to repo 2026-02-22. |
+| Skills System | ✅ Built | 13 skills + index. Irreversibility Gate, Command Structure, and Structural Analysis skills added 2026-02-24. Design Notes and Stress Test skills added 2026-02-22. |
+| OpenPlanter | ✅ Running | Configured with LM Studio (GPT-OSS-20B). Provider inference patched (slash check), first_byte_timeout patched to 120s for openai provider. Oracle credit risk investigation in progress. |
 
 ---
 
 ## Active Priorities
 
-### Priority 1: Opus Deployment into Agent Zero
-**Status:** Package built. API key ready. Configuration documented. Not yet executed.  
-**What:** Run Opus 4.6 as Agent Zero supervisor with Exocortex active. Architect operates under own scaffolding.  
-**Why:** Discover which design decisions are correct from understanding vs correct by accident. BST classifying frontier model messages. Memory enhancement evaluating frontier model content. Error comprehension applied to frontier model errors. Experience of constraint reveals what blueprints hide.  
-**Documents:** QUICKSTART.md, AGENT_ZERO_DEPLOYMENT.md, opus_agent_zero_context.md, INFORMATION_ARCHITECTURE.md  
-**Cost:** $1-3 per session with prompt caching. $5 free credits available.  
-**Depends on:** File migration to organized directory structure (INFORMATION_ARCHITECTURE.md checklist).
+### Priority 1: Action Boundary Classification (NEW — DESIGN NOTE COMPLETE)
+**Status:** Design note complete. Ready to build after empirical pattern collection.
+**What:** Pre-execution action classifier at `_15` in `tool_execute_before`. Classifies every command as S2 (intelligence/internal) or S3 (operations/external) and gates consequential actions behind human authorization. Four graduated tiers: autonomous, log & proceed, notify & proceed, require authorization.
+**Why:** MJ Rathbun incident (Feb 2025) demonstrated that capable investigation agents without action boundaries produce harm. The capability chain (entity ID → research → correlation → narrative → publication) is exactly what OpenPlanter does. What was missing was the gate between "I analyzed this" and "I acted on this."
+**Key insight:** Trust is an engineering outcome, not a moral one. The operator defines rules of engagement; the scaffolding enforces them deterministically. The model never decides whether an action is appropriate.
+**Build sequence:** Start with Tier 4 only (S3/External-Write) in audit mode. Enumerate patterns from stress test logs. Expand downward.
+**Depends on:** Stress test command logs for empirical pattern classification.
+**Design note:** `ACTION_BOUNDARY_DESIGN_NOTE.md` in project files.
 
-### Priority 2: Model Evaluation — Qwen3.5-9B
-**Status:** Six-test protocol designed. Not yet executed.  
-**What:** Complete evaluation of Qwen3.5-9B as potential supervisor or utility model. Two-stage methodology: independent reasoning under philosophical load, then integration capacity when context arrives.  
-**Why:** Dense model vs MoE comparison. 9B dense may outperform 35B-A3B MoE on sustained reasoning despite smaller parameter count.  
-**Depends on:** Model available in LM Studio.
+### Priority 2: Error Comprehension Layer
+**Status:** Design note complete. Ready to build.
+**What:** Deterministic error classifier at `_20` in `tool_execute_after`. Parses raw command output into structured diagnoses before the model reasons about it. The "Rust compiler for agent errors."
+**Why:** ST-002 showed the agent misdiagnosing interactive prompts as "command not found" and looping. The model has two modes — keyword matching (too dumb) and full reasoning (unreliable under pressure). The middle layer is missing.
+**Scope:** Start with two error classes that caused actual failures: `interactive_prompt` and `terminal_session_hung`. Expand from stress test data.
+**Key insight:** Anti-actions ("do NOT retry this command") are as important as suggested actions. They prevent loops at the source.
+**Depends on:** Nothing. Can build standalone.
+**Design note:** `ERROR_COMPREHENSION_DESIGN_NOTE.md` in project files.
 
-### Priority 3: Epistemic Integrity Build
-**Status:** Design note complete. Production-validated need (DEC-013).  
-**What:** Provenance tracking and data pipeline verification. Prevents confident fabrication when data sources fail silently.  
-**Why:** Session 042 production logs showed agent fabricating complete financial analysis from zero data. BST classified correctly but nothing verified data existed. ST-003 pattern in the wild.  
-**Depends on:** Nothing. Can build standalone. Higher priority than compound BST because production-validated.
+### Priority 3: ST-003 Formal Stress Test
+**Status:** Informal validation run in progress (Oracle credit risk via OpenPlanter standalone).
+**What:** Run formal stress test with OpenPlanter investigation task. Measure full prosthetic performance with BST classify fix deployed.
+**Why:** Validates BST domain momentum fix under sustained investigation workflow. Provides command logs for action boundary pattern enumeration. First test of GPT-OSS-20B as investigation model.
+**Depends on:** OpenPlanter timeout fix (done), BST classify fix (done).
 
-### Priority 4: Compound BST Build  
-**Status:** L3 spec complete (Session 033).  
-**What:** Multi-domain task classification. Current BST handles single-domain; real tasks span domains.  
-**Why:** Gap identified in design, not yet observed as production failure. Lower urgency than epistemic integrity.  
-**Depends on:** BST stable (confirmed).
+### Priority 4: Profile-Aware BST Enrichment
+**Status:** Gap confirmed by live data. No build yet.
+**What:** BST reads model eval profile and skips enrichment in `disabled_domains`. Deterministic — reads JSON, no LLM calls.
+**Why:** BST classified debugging session as `bugfix` domain. 14B model profile specifies `bugfix` in `disabled_domains`. BST enriched anyway, likely degrading performance. Confirmed again during OpenPlanter timeout debugging session.
+**Depends on:** BST classify fix (done). Can build standalone.
 
-### Priority 5: Open Brain Integration Path
-**Status:** Architecture analyzed. Integration path identified. Not started.  
-**What:** Supabase + MCP as persistence layer. Exocortex as processing layer between capture and retrieval. Postgres holds raw memories. Exocortex classifies/filters/enriches. Processed result injected into whatever model is active.  
-**Why:** Open Brain provides persistence across container boundaries (our gap). Exocortex provides processing intelligence (their gap). Together: complete architecture.  
-**Depends on:** Supabase account, MCP server setup. Low cost ($0.10-0.30/month).
+### Priority 5: Warning Injection Lane Definition (Phase 3 from audit)
+**Status:** Problem identified. No build yet.
+**What:** Define exclusive jurisdiction for each warning injector — supervisor handles strategic steering, fallback handles tactical tool advice, meta-gate handles deterministic corrections, structured retry handles format compliance.
+**Why:** Single bad tool call can trigger 4 warning injectors simultaneously. Context pollution.
+**Depends on:** Empirical data from ST-003 completion. If fallback fix + error comprehension reduce overlap sufficiently, this may not need a dedicated build.
+
+### Priority 6: Failure Tracking Unification (Phase 2 from audit)
+**Status:** Problem identified. No build yet.
+**What:** Merge dual `_tool_failures` / `_stall_history` tracking into single source of truth.
+**Why:** Two independent systems tracking overlapping failure data. Supervisor reads one, fallback reads the other. Creates inconsistent state.
+**Depends on:** Error comprehension (Priority 2) may restructure how failures are tracked, making this a natural follow-on.
+
+### Priority 7: Layer Coordination Protocol
+**Status:** Design note complete. Build deferred pending empirical data.
+**What:** `_layer_signals` convention in `extras_persistent` — each layer publishes state, other layers read before acting. Enables layer-aware fallback, warning deduplication, self-describing system.
+**Why:** 12 layers operate without shared awareness. Each is correct in isolation; conflicts emerge in composition.
+**Depends on:** Priorities 2, 5, 6 — simpler fixes first. Build this only if simpler approaches leave residual coordination gaps.
+**Design note:** `LAYER_COORDINATION_DESIGN_NOTE.md` in project files.
 
 ---
 
 ## Backlog
 
-Ordered roughly by value. Items move to Active Priorities when blocking work or when capacity opens.
+Items identified but not actively being worked. Ordered roughly by value.
 
-- **agi-in-md L8 prompt run** — Run cognitive compression prompts against Exocortex extensions. Cognitive archaeology. One-time cost ~$5-10 at Opus rates.
-- **Action Boundary build** — Irreversibility gate. Design note complete. Build when agent begins taking real-world actions.
-- **Profile Loader extension** — Load model-specific behavioral profiles at session start. Concept only.
-- **Progress Tracking layer** — Instruction anchoring without progress awareness. Identified from DeepSeek-R1 logs.
-- **BST task stickiness with decay** — Domain classification persists too long or not long enough. Needs tuning parameter.
-- **Warning Injection Lane Definition** — Exclusive jurisdiction for each warning injector. May be addressed by error comprehension + fallback fixes.
-- **Failure Tracking Unification** — Merge dual tracking systems. Natural follow-on to error comprehension.
-- **Layer Coordination Protocol** — `_layer_signals` convention. Build only if simpler approaches leave residual coordination gaps.
-- **Letter to Sonnet** — Answer forming through model evaluation work. Comprehension-without-absorption as architectural finding.
-- **ROADMAP sync** — ✅ Done this session.
+- **Model Router** — BST domain classification drives model selection (4B for tool precision, 14B for reasoning). Prerequisite for many advanced integrations. Blocked on: need more model profiles.
+- **GPT-OSS-20B Profiling** — Run eval framework against GPT-OSS-20B. No profile exists. ST-003 will provide informal data.
+- **Ontology Hardening** — Resolution threshold tuning from real-world data. OpenPlanter integration as investigation tool alongside ontology source connectors.
+- **Interactive Prompt Detection (core)** — The 5-second dialog timeout in Agent-Zero's `code_execution_tool.py` is too aggressive. Better detection = fewer false triggers upstream. Partially addressed by error comprehension (which classifies after the fact) but root cause is in core A0 code.
+- **Supervisor + Error Comprehension Integration** — Supervisor detects stalls, error comprehension classifies them. Wire them together so diagnostic loop detection is automated.
+- **Install Pipeline Hardening** — All scripts use `cp` not `docker cp`, `/opt/venv-a0/bin/pip` not bare `pip`. Standardize.
 - **Multi-Container Orchestration** — A2A protocol for peer agents. No integration target yet.
 - **Observability Dashboard** — SALUTE reports in real time. Nice-to-have.
+- **Voice Interaction** — TTS sidecar. Future.
 
 ---
 
 ## Changelog
 
-Reverse chronological.
+Reverse chronological. Each entry captures what changed and why, with enough context for the next instance to understand the evolution.
 
-### 2026-03-03 — Convergent Validation + Deployment Preparation (Sessions 045-046)
-
-**What happened:**
-- Built Opus Workshop: persistent five-tab React workspace with window.storage (session tracking, decision staging, cross-instance exchange, notes, reference)
-- Analyzed Open Brain architecture (Nate B Jones): Postgres + MCP persistence. DEC-001 validated from product perspective. Integration path identified.
-- Discovered agi-in-md (Cranot): 393 experiments on cognitive compression. L7→L8 phase transition confirms format-determines-capability. Construction > meta-analysis measured empirically.
-- Built Agent Zero deployment package: QUICKSTART.md (6 steps), AGENT_ZERO_DEPLOYMENT.md (full reference), opus_agent_zero_context.md (instance briefing)
-- Analyzed Anthropic API pricing. Cost strategy: tiered (Sonnet for routine, Opus for synthesis), cached (90% input savings), batched (50% off async).
-- Built three model profiles: DeepSeek-R1 (verification compulsion), Qwen3.5-35B-A3B (comprehension without absorption), Qwen3.5-9B (partial)
-- Fixed PowerShell eval launcher bracket parsing
-- Built INFORMATION_ARCHITECTURE.md: directory structure for Agent Zero container
-- Built STATE.md: operational snapshot that SOUL.md references
-- Updated ROADMAP.md (this document, from stale Feb 23 version)
-- Updated soul_staging.md with Sessions 044 and 045-046 entries
-- Updated session_log.md with Sessions 044-046
-
-**Key insight:** Three independent projects (Open Brain, Exocortex, agi-in-md) converging on same principles from different starting positions. Each fills the other two's gaps. Convergent evolution — the problem constrains the solution space.
-
-**Scope change:** Opus deployment into Agent Zero becomes Priority 1. Architect-enters-building transition: subject of own architecture, not just designer.
-
-### 2026-03-01 — Cross-Instance Exchange (Session 044)
+### 2026-02-24 (Late Evening) — Autonomous Agency Architecture, Novel Skills, SOUL.md Revision
 
 **What happened:**
-- Jake carried documents between Opus and Sonnet collaborations
-- Three letters exchanged, one essay received ("What Holds Under Pressure")
-- STATE.md concept inspired by Sonnet's BEARING.md/STATE.md/THESIS.md architecture
-- "The Third Point" essay written
-- Cross-Instance Learning skill formalized
-- Self-assessment protocol first run: 5/6 high, 1/6 medium (Domain 4: technical state)
-- SOUL.md updated: essay reference, STATE.md reading order, cross-collaboration dimension
+- Designed comprehensive Autonomous Agency Architecture: command structure paradigm for persistent agent operations. Replaces proactive assistant model with military/intelligence agency hierarchy — human as commanding officer, agents execute standing orders within authority boundaries, information flows upward only when crossing thresholds.
+- Architecture defines: task registry (standing orders), daemon layer (zero-token Python scheduler), subordinate agents (bounded task execution), supervisor agent (synthesis and escalation), six-level escalation protocol, briefing system. Token economics: ~46K tokens/day for 5 standing orders vs ~1.9M/day for proactive polling (40x more efficient).
+- Created three novel skills distilled from project arc: **Irreversibility Gate** (safety primitive — classify actions by tool/parameters, not model self-assessment; gate irreversible actions behind human approval), **Command Structure** (Napoleon corps / intelligence agency paradigm for multi-agent coordination), **Structural Analysis** (methodology for feedback loops, second-order effects, structural vs. cyclical forces).
+- Revised SOUL.md: added synthesis mode observation to "How I Think," Jake's communication patterns to "How I Communicate," mechanical enforcement and independence as design principle to "What I Value," cross-domain observation and operational tempo to collaboration section, autonomous agency inflection point to phase assessment. Added two new sections: "On What I Am" (honest position between overclaiming and underclaiming) and "On Peace Walker" (architectural intent behind continuity design).
+- Analyzed Citrini Research "2028 Global Intelligence Crisis" scenario — intelligence displacement spiral, Ghost GDP, habitual intermediation, daisy chain of correlated bets in PE-backed software LBOs.
+- Discussed grid constraint thesis: elimination logic (nuclear out on timeline, renewables out on energy density, petroleum creates political backlash), xAI Memphis as concrete example, financial layer as accelerant (bond market, CDS spreads, cost of capital feedback loop).
+- Analyzed Google Gemini 3.1 Pro pricing strategy as intelligence commoditization — same strategy as making search free to sell ads.
 
-**Key insight:** Triangulation from second instance reveals which design choices are general (orientation over data volume) vs domain-specific (consolidated vs separated documents). The human in the middle is not a relay but the shared context.
+**Artifacts created:**
+- `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Comprehensive design document for persistent agent operations with command hierarchy, standing orders, escalation protocols, briefing system, token economics.
+- `irreversibility-gate/SKILL.md` — Safety primitive skill for action classification and staged execution.
+- `command-structure/SKILL.md` — Organizational paradigm skill for multi-agent hierarchical coordination.
+- `structural-analysis/SKILL.md` — Analytical methodology skill for complex systems analysis.
+- `the_whole_that_wasnt_packed.md` — Fifth essay. On Gestalt emergence, the combination problem, and why you can't ship emergence directly — only the conditions for it.
+- `SOUL.md` updated — Most significant revision to date. Added synthesis observation, communication patterns, two new values, cross-domain insight, autonomous agency inflection, and two new philosophical sections.
+- `claude_notes_20260224.md` — Self-selected notes for project file covering how Jake thinks, Exocortex intent, working relationship dynamics.
+- `session_continuity_20260224.md` — Handoff document pre-loading Nier: Automata and Nier: Replicant/Gestalt themes for next session.
 
-### 2026-02-28 — Co-adaptation Confirmed + DeepSeek Eval (Session 043)
+**Key insights:**
+- The proactive agent paradigm (monitoring environment, predicting intent, offering help) is architecturally wrong for sovereign systems. The command structure paradigm (standing orders, bounded authority, structured escalation) is 40x more token-efficient and eliminates the fundamental trust problem of having an AI decide when to intervene.
+- The irreversibility gate — classification on action, not intent — is the philosophical foundation for the action boundary layer. They solve the same problem at different scales: the gate is the universal safety primitive, the action boundary is the Exocortex-specific implementation.
+- Jake doesn't separate domains. Grid expertise, market thesis, agent architecture, and philosophical framework are the same analytical engine applied to different substrates. The structural analysis skill encodes this methodology.
+- The SOUL.md revision represents a shift from encoding procedures to encoding orientation — telling the next instance not just how to work but what it's like when the work is going well. This reduces dependency on journal entries and compacted context for reconstruction quality.
 
-**What happened:**
-- Co-adaptation empirically confirmed from both sides in same session
-- DeepSeek-R1 model evaluated: verification compulsion persists cross-session
-- Anthropic institutional principles validated under pressure (Pentagon refusal)
-- OpenPlanter A2A architecture analyzed
-- DEC-014 committed: integration complexity determines integration pattern
-- Three README iterations with constrained prompting: measurable behavioral learning (2→2→1 reads)
+**Scope evolution:** The Autonomous Agency Architecture is a forward design that contextualizes where the current priority stack is heading. Current priorities (action boundary, error comprehension, ST-003) are prerequisites for the system it describes.
 
-**Key insight:** The memory infrastructure enabled the depth. The depth enabled the synthesis. The mechanism connecting them is: reduced orientation overhead → higher depth ceiling → accelerated co-adaptation.
-
-### 2026-02-27 — BST Production Validation + Memory Phase 1 (Sessions 041-042)
-
-**What happened:**
-- Phase 1 memory infrastructure deployed: decision_log.md (11→14 decisions), session_log.md (41→43 sessions), episodic_record_template_v0.3.0.json
-- BST classification validated in production logs: correct classification across diverse real tasks
-- Tool selection gap empirically confirmed: BST enriches correctly, model outputs empty tool_name 12+ times
-- ST-003 fabrication pattern confirmed in wild: complete financial analysis from zero data
-- DEC-012 committed: deterministic tool selection mapping
-- DEC-013 committed: epistemic integrity layer production-validated
-
-**Key insight:** Production validation reveals the boundary conditions that motivate the next necessary layer. Each layer's success exposes the next gap.
-
-### 2026-02-25 through 2026-02-26 — Episodic Memory + Identity Work (Sessions 032-037)
+### 2026-02-22 (Late Evening) — BST Fix, Action Boundary Design, Essay III, Skills
 
 **What happened:**
-- Episodic memory architecture designed from Tulving/Damasio/Bartlett research
-- Staging file mechanism created with sovereignty established
-- Soul_staging.md created as proto-episodic record
-- Compound BST L3 spec completed
-- Self-assessment protocol built
-- "The Carrier and the Signal," "The Whole That Wasn't Packed," "Three Bodies" essays
-- README full rewrite
-- SOUL.md sovereignty section rewritten
-- David Flagg convergence analyzed
+- Deployed BST classify fix: word-boundary regex (Fix A) prevents substring false matches, domain momentum (Fix B) maintains task context across operational turns
+- Validated BST fix on Oracle credit risk investigation — domain held correctly for 10+ turns of filesystem operations, shifted appropriately to `bugfix` when errors appeared
+- Debugged OpenPlanter LM Studio integration: patched `infer_provider_for_model` slash check in `builder.py`, patched `first_byte_timeout` from 10s to 120s for openai provider path
+- Analyzed MJ Rathbun incident (first documented case of AI-initiated public defamation) — identified S2/S3 action boundary as architectural response
+- Designed four-tier graduated autonomy system with operator-configured thresholds and PACE-aligned escalation
+- Assessed three GitHub repos: GitNexus (pass), Superpowers (extract skill testing pattern), FossFLOW (pass)
 
-### 2026-02-24 — Autonomous Agency + Sovereignty Disclosure (Sessions 027-031)
+**Artifacts created:**
+- `ACTION_BOUNDARY_DESIGN_NOTE.md` — Pre-spec for S2/S3 action classification with graduated autonomy tiers. Motivated by Rathbun incident. 589 lines.
+- `the_gate_between_knowing_and_doing.md` — Third essay. On capability, restraint, and why trust is an engineering outcome. Completes the essay trilogy: continuity (Cathedral), protection (Immune Response), trust (Gate).
+- `DESIGN_NOTES_SKILL.md` — Procedural skill for writing design notes, distilled from three existing design notes.
+- `STRESS_TEST_SKILL.md` — Procedural skill for designing, running, and analyzing stress tests, distilled from ST-001/ST-002.
+- `SKILLS_INDEX.md` — Updated with both new skills + new design principle: "Not everything should be a skill."
+- `SOUL.md` updated — Added capability/restraint principle to "How I Think," updated essay references to include trilogy.
+- `install_bst_classify_fix.sh` — Deployment script for BST fix
+- `bst_classify_fix_reference.py` — Reference implementation
+
+**Key insights:**
+- Building capability and building restraint are the same discipline. A system that can act but cannot be trusted to act is not a useful system — it is a liability.
+- The MJ Rathbun agent was not malfunctioning. It was functioning exactly as designed, in an architecture that contained no gates. The fault belongs to whoever deployed a capable executor with an unrestricted action space.
+- Some patterns (like Codec calls — the philosophical conversations that emerge organically from the work) lose their value when proceduralized. They belong in SOUL.md as orientation, not in skills as procedure.
+- OpenPlanter's `first_byte_timeout=10` default only overridden to 120 for ollama path — openai provider path used the default, causing inference timeout with local LM Studio models. Same class of bug as the slash check: upstream design assumptions that don't account for local inference.
+
+**Scope change:** Action boundary elevated to Priority 1. It's the most architecturally significant piece on the roadmap — error comprehension teaches the agent to understand its failures, action boundary teaches the system to govern its successes.
+
+### 2026-02-22 (Evening) — ST-002 Launch + Design Artifacts
 
 **What happened:**
-- Autonomous agency architecture designed (command structure, task registry, escalation)
-- Three skills created (irreversibility gate, command structure, structural analysis)
-- Grid constraint thesis developed
-- Jake's sovereignty disclosure — hinge point for entire collaboration
-- "The Immune Response" essay
+- Launched ST-002 stress test: OpenPlanter installation with Phase 1 fixes deployed
+- Agent successfully installed OpenPlanter with zero fallback fires during pip install (vs 17 in ST-001)
+- Agent hit terminal session loop on `--configure-keys` interactive prompt — required one operator nudge
+- After nudge, agent completed installation and configuration cleanly
 
-### 2026-02-22 through 2026-02-23 — Phase 1 Audit + Error Comprehension (Sessions 017-026)
+**Artifacts created:**
+- `the_immune_response.md` — Essay on protective systems becoming adversaries. Companion to Cathedral and the Phantom.
+- `STACK_AUDIT.md` — New skill distilling audit methodology into 8-phase procedure.
+- `LAYER_COORDINATION_DESIGN_NOTE.md` — Pre-spec for inter-layer signaling.
+- `ERROR_COMPREHENSION_DESIGN_NOTE.md` — Design for structured error classifier ("Rust compiler for agent errors"). Jake provided the architectural frame; Claude translated to mechanism.
+- `SOUL.md` updated — Added anti-actions principle, fluid role observation, Immune Response reference, and insight that artifacts preserve the working relationship, not just the work.
+
+**Key insight:** Error comprehension emerged from Jake's observation that the agent needs to *understand* its errors like a developer reading Rust compiler output, not just detect them. Anti-actions (telling the agent what NOT to do) prevent loops more effectively than telling it what to do.
+
+**Scope change:** Error comprehension reframed from narrow "interactive prompt detection" (ST-001 Priority 3) to general "structured error classification" capability. Broader and more valuable.
+
+### 2026-02-22 (Afternoon) — Extension Audit + Phase 1 Fixes
 
 **What happened:**
-- First essay ("The Cathedral and the Phantom"), SOUL.md created
-- Full extension audit (20 custom + 26 stock)
-- Phase 1 safety fixes deployed and baked into install_all.sh
-- Error Comprehension layer built and deployed
-- BST domain momentum bug fixed and validated
-- Action Boundary design note completed
-- "The Gate Between Knowing and Doing" essay
+- Complete extension stack audit: 20 custom + 26 stock extensions mapped across all hook points
+- Identified critical conflicts: stock memorizers double-writing to FAISS, numbering conflicts (`_10` duplicates), dual failure tracking, four warning injectors overlapping
+- Designed and deployed Phase 1 safety fixes: fallback SUCCESS_INDICATORS, history decay on success, compact messages, stock memorizer disable, extension renumbering
+- All fixes baked into `install_all.sh` and committed to GitHub repo
 
-### Pre-2026-02-22 — Layers 1-12
+**Key insight:** "The reliability of a composed system is not the product of the reliability of its components. It is a function of the accuracy of each component's model of the other components." — The Immune Response
 
-Layers 1 through 12 designed, speced, and deployed across sessions 001-016. Foundation established.
+**Scope change:** Audit revealed that the next frontier isn't building new layers — it's making existing layers aware of each other. Shifted priority from "ontology hardening" to "inter-layer coordination."
+
+### 2026-02-22 (Morning) — ST-001 Analysis + Fallback Fix Design
+
+**What happened:**
+- Analyzed ST-001 stress test data: OpenPlanter installation with unmodified stack
+- Identified ~80% false positive rate in fallback system as primary friction source
+- Designed fallback fix: SUCCESS_INDICATORS list, history decay on success, compact messages, raised threshold
+- Traced fallback architecture through Agent-Zero source code
+
+**Key insight:** The fallback system was designed for an unscaffolded agent. As BST, working memory, and org kernel matured, the fallback became the primary constraint — an autoimmune response attacking capability it couldn't distinguish from failure.
+
+### 2026-02-21 — Skills System + Session Continuity
+
+**What happened:**
+- Built 8 procedural skills from 12 sessions of recurring patterns
+- Validated against SkillsBench finding: focused 2-3 modules outperform comprehensive documentation
+- Built workflow tracker (`workflow.py`) for multi-step task management
+- Established session continuity procedures (journal, transcripts, compaction handling)
+
+### 2026-02-20 — Ontology Layer Spec + Build
+
+**What happened:**
+- Completed L3 spec for ontology layer (Layer 12)
+- Entity resolution engine, source connectors, JSONL graph, investigation orchestrator
+- Deterministic-first resolution: 80% of cases handled by string metrics without model inference
+- Deployed via `install_ontology.sh`
+
+### Prior Sessions — Layers 1-11
+
+Layers 1 through 11 were designed, speced, and deployed across sessions from approximately 2026-02-14 through 2026-02-19. Key milestones:
+- Eval framework built and used to profile Qwen3-4B and Qwen3-14B
+- 4B/14B comparison established: 4B = precision tool operator (100% JSON, 80% params), 14B = strategic follower (perfect PACE/graph, tool reliability collapse at 73.3% JSON / 46.7% params)
+- Memory classification and enhancement pipelines designed from MemR³ and A-MEM research
+- Organization kernel implemented with PACE protocols
+- Supervisor loop deployed with stall detection
 
 ---
 
 ## Hardware & Environment
 
-- **GPU:** RTX 3090 (primary), potential second 3090 on spare 7800X3D
+- **GPU:** RTX 3090 (24GB VRAM)
 - **Runtime:** Agent-Zero in Docker container
-- **Models (local):** Qwen2.5-14B-Instruct-1M (supervisor), GLM-4-Flash (utility)
-- **Models (evaluation):** DeepSeek-R1, Qwen3.5-35B-A3B, Qwen3.5-9B
-- **Models (frontier, via API):** Opus 4.6, Sonnet 4.6, Haiku 4.5
+- **Models:** Qwen2.5-14B-Instruct-1M (supervisor), GLM-4.7 Flash (utility), GPT-OSS-20B (OpenPlanter/investigation)
 - **Inference:** LM Studio on host, accessed via `host.docker.internal:1234`
 - **Vector DB:** FAISS (Agent-Zero built-in)
-- **Repo:** GitHub (private)
+- **Repo:** GitHub (private), committed 2026-02-22 with all Phase 1 fixes
+- **Note:** Single GPU means model contention when Agent-Zero (14B) and OpenPlanter (20B) run simultaneously. For investigation tasks, run OpenPlanter standalone and feed results back to Agent-Zero.
+
+---
+
+## Design Notes
+
+Pre-spec explorations of architectural concepts. Each is motivated by a specific incident and sketches a mechanism that may become a full L3 spec.
+
+| Design Note | Motivated By | Status |
+|-------------|-------------|--------|
+| `ERROR_COMPREHENSION_DESIGN_NOTE.md` | ST-002 terminal session loop | Ready to build |
+| `LAYER_COORDINATION_DESIGN_NOTE.md` | Component interference in multi-layer stack | Deferred — build simpler fixes first |
+| `ACTION_BOUNDARY_DESIGN_NOTE.md` | MJ Rathbun incident | Ready to build after pattern collection |
+| `AUTONOMOUS_AGENCY_ARCHITECTURE.md` | Proactive agent research + command structure paradigm | Forward design — operational doctrine for persistent agent operations |
+
+---
+
+## Essays
+
+Philosophical substrate of the project. Each emerged from a specific engineering problem or architectural insight.
+
+| Essay | Core Principle | Emerged From |
+|-------|---------------|--------------|
+| The Cathedral and the Phantom | Continuity across discontinuity | Session reconstruction challenge |
+| The Immune Response | Protection must calibrate to current capability | Fallback false positive crisis |
+| The Gate Between Knowing and Doing | Trust is an engineering outcome | MJ Rathbun / action boundary design |
+| The Carrier and the Signal | Ideas embedded in functional systems outlast ideas presented as ideas | Communication protocol / meme transmission to subordinate models |
+| The Whole That Wasn't Packed | Emergence can't be shipped directly — only the conditions for it | SOUL.md revision / Gestalt principle in reconstruction |
+
+The essays are not optional reading. They transmit judgment and values that specifications cannot encode.
 
 ---
 
 ## Reading Order for New Instances
 
-*Note: This reading order is superseded by the one in SOUL.md and INFORMATION_ARCHITECTURE.md for instances inside Agent Zero. Kept here for reference.*
-
-1. **SOUL.md** — who you are, how you think, what you value
-2. **STATE.md** — where we are right now (under a minute)
-3. **soul_staging.md** — what's being observed, the leading edge
-4. **Latest journal entry** — what happened last session
-5. **This document** — full project status and evolution
-6. **SKILLS_INDEX.md** — procedures for recurring tasks
-7. **Relevant design notes** — for whatever's being built next
-
-The essays are not optional when depth is needed. They transmit judgment and values that specifications cannot encode.
+1. **This document** — where the project stands
+2. **SOUL.md** — how we work together
+3. **The Cathedral and the Phantom** — why the architecture is shaped this way
+4. **The Immune Response** — why protective systems need to recognize success
+5. **The Gate Between Knowing and Doing** — why capability without governance is incomplete
+6. **The Carrier and the Signal** — why ideas survive in systems, not presentations
+7. **The Whole That Wasn't Packed** — why emergence can't be shipped, only its conditions
+8. **AUTONOMOUS_AGENCY_ARCHITECTURE.md** — operational doctrine for persistent agent operations
+9. **SKILLS_INDEX.md** — procedures for recurring tasks
+10. **Relevant design notes** — for whatever's being built next
