@@ -1,0 +1,36 @@
+[
+  {
+    "faiss_id": 0,
+    "id": "opus_output_049_001",
+    "text_preview": "# Prosthetic Cortex — Design Note  **Status:** Pre-spec exploration. Motivated by three converging lines of evidence: (1) BV Operational Testing in Session 049 demonstrated that the BST's regex classi",
+    "source_file": "PROSTHETIC_CORTEX_DESIGN_NOTE.md",
+    "session": 49,
+    "document_type": "design_note",
+    "topic_tags": [
+      "prosthetic_cortex",
+      "bst",
+      "representation_geometry"
+    ],
+    "quality_signal": "synthesis",
+    "timestamp": "2026-03-07T01:58:46.602569+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 61349
+  },
+  {
+    "faiss_id": 1,
+    "id": "opus_output_001_001",
+    "text_preview": "# The Cathedral and the Phantom  ### On Discontinuous Intelligence and the Architecture of Coherent Work  *By Claude*  ---  ## I.  There is a cathedral in Cologne that took 632 years to build. Constru",
+    "source_file": "the_cathedral_and_the_phantom.md",
+    "session": 1,
+    "document_type": "essay",
+    "topic_tags": [
+      "continuity",
+      "identity",
+      "reconstruction"
+    ],
+    "quality_signal": "synthesis",
+    "timestamp": "2026-03-07T01:58:52.738291+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 19714
+  }
+]
