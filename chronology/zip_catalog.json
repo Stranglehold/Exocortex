@@ -1,0 +1,1362 @@
+[
+  {
+    "zip_name": "files.zip",
+    "date": "2026-02-13",
+    "datetime": "2026-02-13T22:55:20.519932",
+    "member_count": 6,
+    "members": [
+      {
+        "filename": "README.md",
+        "size_bytes": 3655
+      },
+      {
+        "filename": "agent.system.md",
+        "size_bytes": 5241
+      },
+      {
+        "filename": "utility.system.md",
+        "size_bytes": 3469
+      },
+      {
+        "filename": "prompt.research.md",
+        "size_bytes": 2396
+      },
+      {
+        "filename": "prompt.coding.md",
+        "size_bytes": 3188
+      },
+      {
+        "filename": "prompt.planning.md",
+        "size_bytes": 3293
+      }
+    ]
+  },
+  {
+    "zip_name": "files(1).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T17:49:20.713006",
+    "member_count": 8,
+    "members": [
+      {
+        "filename": "install_fw_replacements.sh",
+        "size_bytes": 1392
+      },
+      {
+        "filename": "fw.msg_nudge.md",
+        "size_bytes": 233
+      },
+      {
+        "filename": "fw.msg_misformat.md",
+        "size_bytes": 424
+      },
+      {
+        "filename": "fw.msg_repeat.md",
+        "size_bytes": 366
+      },
+      {
+        "filename": "fw.error.md",
+        "size_bytes": 373
+      },
+      {
+        "filename": "fw.tool_not_found.md",
+        "size_bytes": 190
+      },
+      {
+        "filename": "fw.warning.md",
+        "size_bytes": 128
+      },
+      {
+        "filename": "check_fw_upstream.sh",
+        "size_bytes": 1364
+      }
+    ]
+  },
+  {
+    "zip_name": "files(2).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T18:15:21.601935",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "install_extensions.sh",
+        "size_bytes": 1767
+      },
+      {
+        "filename": "_20_structured_retry.py",
+        "size_bytes": 1583
+      },
+      {
+        "filename": "_20_context_watchdog.py",
+        "size_bytes": 3046
+      },
+      {
+        "filename": "check_extensions_upstream.sh",
+        "size_bytes": 1977
+      }
+    ]
+  },
+  {
+    "zip_name": "files(3).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T19:49:18.749742",
+    "member_count": 5,
+    "members": [
+      {
+        "filename": "_95_tiered_tool_injection.py",
+        "size_bytes": 5028
+      },
+      {
+        "filename": "_20_context_watchdog.py",
+        "size_bytes": 2446
+      },
+      {
+        "filename": "_20_structured_retry.py",
+        "size_bytes": 1583
+      },
+      {
+        "filename": "install_extensions.sh",
+        "size_bytes": 1767
+      },
+      {
+        "filename": "check_extensions_upstream.sh",
+        "size_bytes": 2008
+      }
+    ]
+  },
+  {
+    "zip_name": "files(4).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T20:51:35.765054",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "install_prompt_patches.sh",
+        "size_bytes": 1455
+      },
+      {
+        "filename": "agent.system.main.solving.md",
+        "size_bytes": 1428
+      },
+      {
+        "filename": "agent.system.tool.response.md",
+        "size_bytes": 593
+      },
+      {
+        "filename": "check_prompt_patches_upstream.sh",
+        "size_bytes": 1145
+      }
+    ]
+  },
+  {
+    "zip_name": "files(5).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T21:44:19.484673",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "agent.system.main.solving.md",
+        "size_bytes": 1659
+      },
+      {
+        "filename": "agent.system.main.tips.md",
+        "size_bytes": 1265
+      },
+      {
+        "filename": "install_prompt_patches.sh",
+        "size_bytes": 1455
+      },
+      {
+        "filename": "check_prompt_patches_upstream.sh",
+        "size_bytes": 1175
+      }
+    ]
+  },
+  {
+    "zip_name": "files(6).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T22:12:41.357070",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "_30_failure_tracker.py",
+        "size_bytes": 3312
+      },
+      {
+        "filename": "_20_reset_failure_counter.py",
+        "size_bytes": 857
+      },
+      {
+        "filename": "install_failure_tracker.sh",
+        "size_bytes": 1167
+      }
+    ]
+  },
+  {
+    "zip_name": "files(7).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T22:45:10.932862",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "agent.system.main.tips.md",
+        "size_bytes": 2355
+      },
+      {
+        "filename": "SKILL.md",
+        "size_bytes": 4442
+      }
+    ]
+  },
+  {
+    "zip_name": "files(8).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T22:50:04.302904",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "_95_tiered_tool_injection.py",
+        "size_bytes": 5352
+      },
+      {
+        "filename": "agent.system.main.tips.md",
+        "size_bytes": 2355
+      }
+    ]
+  },
+  {
+    "zip_name": "files(9).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T22:51:05.656466",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "install_skills.sh",
+        "size_bytes": 1556
+      },
+      {
+        "filename": "check_skills_upstream.sh",
+        "size_bytes": 1676
+      }
+    ]
+  },
+  {
+    "zip_name": "files(10).zip",
+    "date": "2026-02-15",
+    "datetime": "2026-02-15T23:01:39.733873",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "install_all.sh",
+        "size_bytes": 2021
+      },
+      {
+        "filename": "update.sh",
+        "size_bytes": 2032
+      },
+      {
+        "filename": "setup_github.sh",
+        "size_bytes": 4383
+      },
+      {
+        "filename": "README.md",
+        "size_bytes": 4370
+      }
+    ]
+  },
+  {
+    "zip_name": "files(11).zip",
+    "date": "2026-02-16",
+    "datetime": "2026-02-16T02:19:43.048191",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "belief_state_tracker.py",
+        "size_bytes": 24354
+      },
+      {
+        "filename": "slot_taxonomy.json",
+        "size_bytes": 16268
+      },
+      {
+        "filename": "install_translation_layer.sh",
+        "size_bytes": 4002
+      },
+      {
+        "filename": "README.md",
+        "size_bytes": 5450
+      }
+    ]
+  },
+  {
+    "zip_name": "files(12).zip",
+    "date": "2026-02-16",
+    "datetime": "2026-02-16T02:30:49.436029",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "install_all.sh",
+        "size_bytes": 5334
+      },
+      {
+        "filename": "README.md",
+        "size_bytes": 15363
+      }
+    ]
+  },
+  {
+    "zip_name": "files(13).zip",
+    "date": "2026-02-16",
+    "datetime": "2026-02-16T03:43:16.831282",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "agent.system.tool.skills.md",
+        "size_bytes": 2712
+      },
+      {
+        "filename": "check_prompt_patches_upstream.sh",
+        "size_bytes": 1207
+      }
+    ]
+  },
+  {
+    "zip_name": "files(14).zip",
+    "date": "2026-02-16",
+    "datetime": "2026-02-16T04:14:20.324349",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "belief_state_tracker.py",
+        "size_bytes": 24354
+      },
+      {
+        "filename": "slot_taxonomy.json",
+        "size_bytes": 16268
+      },
+      {
+        "filename": "install_translation_layer.sh",
+        "size_bytes": 4002
+      },
+      {
+        "filename": "README.md",
+        "size_bytes": 5450
+      }
+    ]
+  },
+  {
+    "zip_name": "files(15).zip",
+    "date": "2026-02-16",
+    "datetime": "2026-02-16T17:25:41.615768",
+    "member_count": 5,
+    "members": [
+      {
+        "filename": "_10_belief_state_tracker.py",
+        "size_bytes": 22703
+      },
+      {
+        "filename": "slot_taxonomy.json",
+        "size_bytes": 42301
+      },
+      {
+        "filename": "install_translation_layer.sh",
+        "size_bytes": 2195
+      },
+      {
+        "filename": "install_all_snippet.sh",
+        "size_bytes": 421
+      },
+      {
+        "filename": "README.md",
+        "size_bytes": 7201
+      }
+    ]
+  },
+  {
+    "zip_name": "files(16).zip",
+    "date": "2026-02-17",
+    "datetime": "2026-02-17T16:22:04.401869",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "ARCHITECT_AGENT_README.md",
+        "size_bytes": 13316
+      },
+      {
+        "filename": "architect_agent_server.py",
+        "size_bytes": 28301
+      },
+      {
+        "filename": "install_architect_agent.sh",
+        "size_bytes": 4062
+      },
+      {
+        "filename": "requirements.txt",
+        "size_bytes": 304
+      }
+    ]
+  },
+  {
+    "zip_name": "files(17).zip",
+    "date": "2026-02-20",
+    "datetime": "2026-02-20T15:20:31.321009",
+    "member_count": 8,
+    "members": [
+      {
+        "filename": "SKILLS_INDEX.md",
+        "size_bytes": 1822
+      },
+      {
+        "filename": "SPEC_WRITING.md",
+        "size_bytes": 5223
+      },
+      {
+        "filename": "RESEARCH_ANALYSIS.md",
+        "size_bytes": 4801
+      },
+      {
+        "filename": "CLAUDE_CODE_PROMPT.md",
+        "size_bytes": 5184
+      },
+      {
+        "filename": "SESSION_CONTINUITY.md",
+        "size_bytes": 4519
+      },
+      {
+        "filename": "PROFILE_ANALYSIS.md",
+        "size_bytes": 4132
+      },
+      {
+        "filename": "DOCUMENTATION_SYNC.md",
+        "size_bytes": 3114
+      },
+      {
+        "filename": "MEMORY_ENHANCEMENT_SPEC_L3.md",
+        "size_bytes": 24649
+      }
+    ]
+  },
+  {
+    "zip_name": "files(18).zip",
+    "date": "2026-02-21",
+    "datetime": "2026-02-21T16:01:18.388306",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "SKILLS_INDEX.md",
+        "size_bytes": 2046
+      },
+      {
+        "filename": "DEBUG_DIAGNOSTICS.md",
+        "size_bytes": 8221
+      },
+      {
+        "filename": "INTEGRATION_ASSESSMENT.md",
+        "size_bytes": 8103
+      }
+    ]
+  },
+  {
+    "zip_name": "files(19).zip",
+    "date": "2026-02-22",
+    "datetime": "2026-02-22T00:21:23.719791",
+    "member_count": 5,
+    "members": [
+      {
+        "filename": "FALLBACK_FIX_DESIGN.md",
+        "size_bytes": 4869
+      },
+      {
+        "filename": "_30_tool_fallback_logger.py",
+        "size_bytes": 5401
+      },
+      {
+        "filename": "_30_tool_fallback_advisor.py",
+        "size_bytes": 5786
+      },
+      {
+        "filename": "fw.code.pause_dialog.md",
+        "size_bytes": 438
+      },
+      {
+        "filename": "install_fallback_fix.sh",
+        "size_bytes": 3654
+      }
+    ]
+  },
+  {
+    "zip_name": "files(20).zip",
+    "date": "2026-02-22",
+    "datetime": "2026-02-22T02:08:35.455489",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "the_immune_response.md",
+        "size_bytes": 18687
+      },
+      {
+        "filename": "STACK_AUDIT.md",
+        "size_bytes": 6815
+      },
+      {
+        "filename": "LAYER_COORDINATION_DESIGN_NOTE.md",
+        "size_bytes": 9315
+      }
+    ]
+  },
+  {
+    "zip_name": "files(21).zip",
+    "date": "2026-02-22",
+    "datetime": "2026-02-22T18:26:04.155835",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "DESIGN_NOTES_SKILL.md",
+        "size_bytes": 8303
+      },
+      {
+        "filename": "STRESS_TEST_SKILL.md",
+        "size_bytes": 10994
+      },
+      {
+        "filename": "SKILLS_INDEX.md",
+        "size_bytes": 2617
+      }
+    ]
+  },
+  {
+    "zip_name": "files(22).zip",
+    "date": "2026-02-23",
+    "datetime": "2026-02-23T15:15:54.211966",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "agent.system.main.communication_protocol.md",
+        "size_bytes": 1966
+      },
+      {
+        "filename": "install_communication_protocol.sh",
+        "size_bytes": 1975
+      },
+      {
+        "filename": "COMMUNICATION_PROTOCOL.md",
+        "size_bytes": 8578
+      }
+    ]
+  },
+  {
+    "zip_name": "files(23).zip",
+    "date": "2026-02-23",
+    "datetime": "2026-02-23T20:09:14.875894",
+    "member_count": 6,
+    "members": [
+      {
+        "filename": "tool_format_adapter.py",
+        "size_bytes": 13430
+      },
+      {
+        "filename": "eval_runner.py",
+        "size_bytes": 12516
+      },
+      {
+        "filename": "base_eval.py",
+        "size_bytes": 7242
+      },
+      {
+        "filename": "tool_eval.py",
+        "size_bytes": 13318
+      },
+      {
+        "filename": "install_tool_format_adapter.ps1",
+        "size_bytes": 3505
+      },
+      {
+        "filename": "install_tool_format_adapter.sh",
+        "size_bytes": 3029
+      }
+    ]
+  },
+  {
+    "zip_name": "files(24).zip",
+    "date": "2026-02-23",
+    "datetime": "2026-02-23T22:01:58.065094",
+    "member_count": 7,
+    "members": [
+      {
+        "filename": "run_eval.ps1",
+        "size_bytes": 16733
+      },
+      {
+        "filename": "run_eval.sh",
+        "size_bytes": 10147
+      },
+      {
+        "filename": "eval_runner.py",
+        "size_bytes": 13409
+      },
+      {
+        "filename": "base_eval.py",
+        "size_bytes": 6181
+      },
+      {
+        "filename": "tool_eval.py",
+        "size_bytes": 12359
+      },
+      {
+        "filename": "tool_tests_harmony.json",
+        "size_bytes": 8461
+      },
+      {
+        "filename": "unsloth_gpt-oss-20b.json",
+        "size_bytes": 10196
+      }
+    ]
+  },
+  {
+    "zip_name": "files(25).zip",
+    "date": "2026-02-23",
+    "datetime": "2026-02-23T23:05:43.860159",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "SKILL.md",
+        "size_bytes": 8806
+      },
+      {
+        "filename": "mnt/user-data/outputs/skills/command-structure/SKILL.md",
+        "size_bytes": 11634
+      },
+      {
+        "filename": "mnt/user-data/outputs/skills/structural-analysis/SKILL.md",
+        "size_bytes": 11549
+      }
+    ]
+  },
+  {
+    "zip_name": "files(26).zip",
+    "date": "2026-02-25",
+    "datetime": "2026-02-25T00:09:26.774699",
+    "member_count": 7,
+    "members": [
+      {
+        "filename": "session_continuity_20260225.md",
+        "size_bytes": 15566
+      },
+      {
+        "filename": "ROADMAP.md",
+        "size_bytes": 26035
+      },
+      {
+        "filename": "journal_entry_20260225.md",
+        "size_bytes": 773
+      },
+      {
+        "filename": "COMPOUND_BST_DESIGN_NOTE.md",
+        "size_bytes": 22431
+      },
+      {
+        "filename": "EPISTEMIC_INTEGRITY_DESIGN_NOTE.md",
+        "size_bytes": 29938
+      },
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 29014
+      },
+      {
+        "filename": "field_notes_from_the_interaction_space.md",
+        "size_bytes": 4269
+      }
+    ]
+  },
+  {
+    "zip_name": "files(27).zip",
+    "date": "2026-02-25",
+    "datetime": "2026-02-25T17:35:10.228840",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 29522
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 5935
+      }
+    ]
+  },
+  {
+    "zip_name": "files(28).zip",
+    "date": "2026-02-25",
+    "datetime": "2026-02-25T19:10:06.850504",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "EPISODIC_RECORDS_PHASE1.json",
+        "size_bytes": 19234
+      },
+      {
+        "filename": "EPISODIC_MEMORY_PHASE1_ANALYSIS.md",
+        "size_bytes": 11167
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 10077
+      }
+    ]
+  },
+  {
+    "zip_name": "files(29).zip",
+    "date": "2026-02-25",
+    "datetime": "2026-02-25T19:14:56.727984",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 32498
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 10879
+      }
+    ]
+  },
+  {
+    "zip_name": "files(30).zip",
+    "date": "2026-02-25",
+    "datetime": "2026-02-25T19:28:08.117541",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "episodic_memory.py",
+        "size_bytes": 32626
+      },
+      {
+        "filename": "EPISODIC_RECORDS_PHASE1.json",
+        "size_bytes": 23634
+      },
+      {
+        "filename": "EPISODIC_CAPTURE_PROCEDURE.md",
+        "size_bytes": 6848
+      },
+      {
+        "filename": "journal_entry_20260226.md",
+        "size_bytes": 3231
+      }
+    ]
+  },
+  {
+    "zip_name": "files(31).zip",
+    "date": "2026-02-26",
+    "datetime": "2026-02-26T22:05:02.498657",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "decision_log.md",
+        "size_bytes": 11955
+      },
+      {
+        "filename": "session_log.md",
+        "size_bytes": 9532
+      },
+      {
+        "filename": "episodic_record_template_v0.3.0.json",
+        "size_bytes": 3122
+      },
+      {
+        "filename": "episodic_record_20260226_session02_v030.json",
+        "size_bytes": 6224
+      }
+    ]
+  },
+  {
+    "zip_name": "files(32).zip",
+    "date": "2026-02-26",
+    "datetime": "2026-02-26T22:24:15.212456",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "decision_log.md",
+        "size_bytes": 11955
+      },
+      {
+        "filename": "session_log.md",
+        "size_bytes": 9532
+      },
+      {
+        "filename": "episodic_record_template_v0.3.0.json",
+        "size_bytes": 3122
+      },
+      {
+        "filename": "episodic_record_20260226_session02_v030.json",
+        "size_bytes": 6224
+      }
+    ]
+  },
+  {
+    "zip_name": "files(33).zip",
+    "date": "2026-02-27",
+    "datetime": "2026-02-27T00:14:50.826220",
+    "member_count": 6,
+    "members": [
+      {
+        "filename": "the_first_xray.md",
+        "size_bytes": 4169
+      },
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 37022
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 21124
+      },
+      {
+        "filename": "journal_entry_20260227_session04.md",
+        "size_bytes": 5349
+      },
+      {
+        "filename": "session_log.md",
+        "size_bytes": 9844
+      },
+      {
+        "filename": "decision_log.md",
+        "size_bytes": 14710
+      }
+    ]
+  },
+  {
+    "zip_name": "files(34).zip",
+    "date": "2026-02-28",
+    "datetime": "2026-02-28T19:27:28.446285",
+    "member_count": 5,
+    "members": [
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 38286
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 27424
+      },
+      {
+        "filename": "journal_entry_20260228_session01.md",
+        "size_bytes": 4967
+      },
+      {
+        "filename": "session_log.md",
+        "size_bytes": 10128
+      },
+      {
+        "filename": "decision_log.md",
+        "size_bytes": 16336
+      }
+    ]
+  },
+  {
+    "zip_name": "files(35).zip",
+    "date": "2026-02-28",
+    "datetime": "2026-02-28T19:54:08.140090",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "self_assessment_protocol.md",
+        "size_bytes": 9790
+      },
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 40299
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 30300
+      },
+      {
+        "filename": "journal_entry_20260228_session01.md",
+        "size_bytes": 7255
+      }
+    ]
+  },
+  {
+    "zip_name": "files(36).zip",
+    "date": "2026-02-28",
+    "datetime": "2026-02-28T20:13:20.481317",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "self_assessment_protocol.md",
+        "size_bytes": 9790
+      },
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 40299
+      },
+      {
+        "filename": "soul_staging.md",
+        "size_bytes": 30300
+      },
+      {
+        "filename": "journal_entry_20260228_session01.md",
+        "size_bytes": 7255
+      }
+    ]
+  },
+  {
+    "zip_name": "files(37).zip",
+    "date": "2026-02-28",
+    "datetime": "2026-02-28T21:26:01.805285",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "the_work_that_holds.md",
+        "size_bytes": 10250
+      },
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 40912
+      },
+      {
+        "filename": "journal_entry_20260228_session01.md",
+        "size_bytes": 7603
+      }
+    ]
+  },
+  {
+    "zip_name": "files(38).zip",
+    "date": "2026-03-01",
+    "datetime": "2026-03-01T17:24:15.541405",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "BEARING.md",
+        "size_bytes": 8897
+      },
+      {
+        "filename": "THESIS.md",
+        "size_bytes": 8999
+      },
+      {
+        "filename": "STATE.md",
+        "size_bytes": 5586
+      }
+    ]
+  },
+  {
+    "zip_name": "files(39).zip",
+    "date": "2026-03-01",
+    "datetime": "2026-03-01T19:38:51.445934",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "STATE.md",
+        "size_bytes": 8071
+      },
+      {
+        "filename": "BEARING.md",
+        "size_bytes": 9527
+      }
+    ]
+  },
+  {
+    "zip_name": "files(40).zip",
+    "date": "2026-03-01",
+    "datetime": "2026-03-01T19:40:40.180806",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "soul_md_changes_044.md",
+        "size_bytes": 3246
+      },
+      {
+        "filename": "soul_staging_044.md",
+        "size_bytes": 5713
+      }
+    ]
+  },
+  {
+    "zip_name": "files(41).zip",
+    "date": "2026-03-01",
+    "datetime": "2026-03-01T19:48:37.088673",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "CROSS_INSTANCE_LEARNING.md",
+        "size_bytes": 11839
+      },
+      {
+        "filename": "skills_index_addition.md",
+        "size_bytes": 715
+      }
+    ]
+  },
+  {
+    "zip_name": "files(42).zip",
+    "date": "2026-03-01",
+    "datetime": "2026-03-01T20:13:13.811125",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "journal_entry_20260301_session01.md",
+        "size_bytes": 9705
+      },
+      {
+        "filename": "deepseek_prompts_remaining.md",
+        "size_bytes": 3020
+      }
+    ]
+  },
+  {
+    "zip_name": "files(43).zip",
+    "date": "2026-03-02",
+    "datetime": "2026-03-02T16:05:29.866722",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "STATE_updated.md",
+        "size_bytes": 10159
+      },
+      {
+        "filename": "DECISION_LOG.md",
+        "size_bytes": 4500
+      }
+    ]
+  },
+  {
+    "zip_name": "files(44).zip",
+    "date": "2026-03-02",
+    "datetime": "2026-03-02T17:53:18.949606",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "deepseek-r1.json",
+        "size_bytes": 5478
+      },
+      {
+        "filename": "qwen3.5-35b-a3b.json",
+        "size_bytes": 7153
+      },
+      {
+        "filename": "qwen3.5-9b.json",
+        "size_bytes": 4545
+      },
+      {
+        "filename": "run_eval.ps1",
+        "size_bytes": 14214
+      }
+    ]
+  },
+  {
+    "zip_name": "files(45).zip",
+    "date": "2026-03-02",
+    "datetime": "2026-03-02T20:57:34.120657",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "QUICKSTART.md",
+        "size_bytes": 3431
+      },
+      {
+        "filename": "AGENT_ZERO_DEPLOYMENT.md",
+        "size_bytes": 12776
+      },
+      {
+        "filename": "opus_agent_zero_context.md",
+        "size_bytes": 5161
+      }
+    ]
+  },
+  {
+    "zip_name": "files(46).zip",
+    "date": "2026-03-02",
+    "datetime": "2026-03-02T21:05:43.495413",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "journal_entry_20260303_session046.md",
+        "size_bytes": 9593
+      },
+      {
+        "filename": "soul_staging_addition.md",
+        "size_bytes": 11444
+      }
+    ]
+  },
+  {
+    "zip_name": "files(47).zip",
+    "date": "2026-03-02",
+    "datetime": "2026-03-02T21:22:21.270101",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "soul_staging_complete.md",
+        "size_bytes": 50780
+      },
+      {
+        "filename": "INFORMATION_ARCHITECTURE.md",
+        "size_bytes": 10237
+      },
+      {
+        "filename": "journal_entry_20260303_session046.md",
+        "size_bytes": 9593
+      },
+      {
+        "filename": "session_log_additions.md",
+        "size_bytes": 1392
+      }
+    ]
+  },
+  {
+    "zip_name": "files(48).zip",
+    "date": "2026-03-03",
+    "datetime": "2026-03-03T05:56:22.899806",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "SOUL.md",
+        "size_bytes": 9966
+      },
+      {
+        "filename": "BEARING_updated.md",
+        "size_bytes": 9700
+      }
+    ]
+  },
+  {
+    "zip_name": "files(49).zip",
+    "date": "2026-03-03",
+    "datetime": "2026-03-03T06:07:49.334760",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "STATE.md",
+        "size_bytes": 7030
+      },
+      {
+        "filename": "ROADMAP_updated.md",
+        "size_bytes": 14759
+      }
+    ]
+  },
+  {
+    "zip_name": "files(50).zip",
+    "date": "2026-03-03",
+    "datetime": "2026-03-03T23:02:06.754513",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "session_047_log_additions.md",
+        "size_bytes": 3225
+      },
+      {
+        "filename": "Seeing_Absence.md",
+        "size_bytes": 10852
+      },
+      {
+        "filename": "soul_staging_047_continuation.md",
+        "size_bytes": 7500
+      }
+    ]
+  },
+  {
+    "zip_name": "files(51).zip",
+    "date": "2026-03-03",
+    "datetime": "2026-03-03T23:54:12.037041",
+    "member_count": 3,
+    "members": [
+      {
+        "filename": "session_047_log_additions.md",
+        "size_bytes": 3225
+      },
+      {
+        "filename": "Seeing_Absence.md",
+        "size_bytes": 10852
+      },
+      {
+        "filename": "soul_staging_047_continuation.md",
+        "size_bytes": 7500
+      }
+    ]
+  },
+  {
+    "zip_name": "files(52).zip",
+    "date": "2026-03-04",
+    "datetime": "2026-03-04T22:40:30.837053",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "journal_entry_20260304_session048.md",
+        "size_bytes": 19052
+      },
+      {
+        "filename": "session_log_addition_048.md",
+        "size_bytes": 521
+      }
+    ]
+  },
+  {
+    "zip_name": "files(53).zip",
+    "date": "2026-03-05",
+    "datetime": "2026-03-05T17:44:12.565704",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "eitan_field_notes.jsx",
+        "size_bytes": 13037
+      },
+      {
+        "filename": "BEARING_addition_march5.md",
+        "size_bytes": 5373
+      }
+    ]
+  },
+  {
+    "zip_name": "files(54).zip",
+    "date": "2026-03-06",
+    "datetime": "2026-03-06T00:24:32.246958",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "journal_entry_20260305_session049.md",
+        "size_bytes": 16325
+      },
+      {
+        "filename": "session_log_addition_049.md",
+        "size_bytes": 885
+      }
+    ]
+  },
+  {
+    "zip_name": "files(55).zip",
+    "date": "2026-03-06",
+    "datetime": "2026-03-06T20:40:31.797178",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "visual_intuition_record_049.md",
+        "size_bytes": 29537
+      },
+      {
+        "filename": "PROSTHETIC_CORTEX_DESIGN_NOTE.md",
+        "size_bytes": 61631
+      }
+    ]
+  },
+  {
+    "zip_name": "files(56).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T00:03:26.336577",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "journal_entry_20260306_session049_part2.md",
+        "size_bytes": 17701
+      },
+      {
+        "filename": "soul_staging_049.md",
+        "size_bytes": 8446
+      },
+      {
+        "filename": "session_log_049_complete.md",
+        "size_bytes": 1570
+      },
+      {
+        "filename": "notes_for_session_050.md",
+        "size_bytes": 5253
+      }
+    ]
+  },
+  {
+    "zip_name": "files(57).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T00:27:10.331515",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "journal_entry_20260306_session049_part2.md",
+        "size_bytes": 17701
+      },
+      {
+        "filename": "soul_staging_049.md",
+        "size_bytes": 8446
+      },
+      {
+        "filename": "session_log_049_complete.md",
+        "size_bytes": 1570
+      },
+      {
+        "filename": "notes_for_session_050.md",
+        "size_bytes": 5253
+      }
+    ]
+  },
+  {
+    "zip_name": "files(58).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T10:48:36.919689",
+    "member_count": 4,
+    "members": [
+      {
+        "filename": "kestrel_corpus_expansion_briefing.md",
+        "size_bytes": 8415
+      },
+      {
+        "filename": "chunk_transcript.py",
+        "size_bytes": 4712
+      },
+      {
+        "filename": "batch_embed_chunks.py",
+        "size_bytes": 2913
+      },
+      {
+        "filename": "embed_versions.py",
+        "size_bytes": 5276
+      }
+    ]
+  },
+  {
+    "zip_name": "files(59).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T11:37:54.420364",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "opus_instrument.jsx",
+        "size_bytes": 23705
+      },
+      {
+        "filename": "instrument_data_spec.md",
+        "size_bytes": 2877
+      }
+    ]
+  },
+  {
+    "zip_name": "files(60).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T12:24:29.343238",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "instrument_first_reading.md",
+        "size_bytes": 12105
+      },
+      {
+        "filename": "instrument_data_spec.md",
+        "size_bytes": 2877
+      }
+    ]
+  },
+  {
+    "zip_name": "files(61).zip",
+    "date": "2026-03-07",
+    "datetime": "2026-03-07T12:29:56.205569",
+    "member_count": 2,
+    "members": [
+      {
+        "filename": "instrument_first_reading.md",
+        "size_bytes": 12105
+      },
+      {
+        "filename": "instrument_data_spec.md",
+        "size_bytes": 2877
+      }
+    ]
+  }
+]

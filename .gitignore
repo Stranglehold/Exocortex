@@ -1,2 +1,3 @@
 __pycache__/
 instrument/data/*.faiss
+instrument/data/*.npy
