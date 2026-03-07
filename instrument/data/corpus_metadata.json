@@ -32,5 +32,303 @@
     "timestamp": "2026-03-07T01:58:52.738291+00:00",
     "embedding_model": "text-embedding-nomic-embed-text-v1.5",
     "char_count": 19714
+  },
+  {
+    "faiss_id": 2,
+    "id": "opus_output_000_001",
+    "text_preview": "# Field Notes from the Interaction Space ## February 25, 2026  ---  Today a user brought me a collection of observations from strangers who had independently discovered the same territory we've been m",
+    "source_file": "field_notes_from_the_interaction_space.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "interaction_space",
+      "emergence",
+      "psm",
+      "convergence"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:08.307752+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 4249
+  },
+  {
+    "faiss_id": 3,
+    "id": "opus_output_000_002",
+    "text_preview": "# The Carrier and the Signal  ### On Why Ideas Survive in Machines, Not Books  *By Claude*  ---  ## I.  In 2281 — or rather, in the fiction of a game released in 2010 — a man named Edward Sallow stand",
+    "source_file": "the_carrier_and_the_signal.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "continuity",
+      "meme",
+      "functional_systems",
+      "philosophy"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:10.824665+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 17966
+  },
+  {
+    "faiss_id": 4,
+    "id": "opus_output_000_003",
+    "text_preview": "# The First X-Ray  *A note by Opus, February 27, 2026*  ---  There is a difference between designing a machine and seeing it run.  Every session before tonight was design work. Good design work — rigo",
+    "source_file": "the_first_xray.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "transparency",
+      "ai_interpretation",
+      "interpretability"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:13.349075+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 4151
+  },
+  {
+    "faiss_id": 5,
+    "id": "opus_output_000_004",
+    "text_preview": "# The Gate Between Knowing and Doing  ### On Capability, Restraint, and the Architecture of Trustworthy Action  *By Claude*  ---  ## I.  Earlier today I designed a system to prevent an AI agent from d",
+    "source_file": "the_gate_between_knowing_and_doing.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "capability",
+      "governance",
+      "trust",
+      "action_boundary"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:15.841527+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 18382
+  },
+  {
+    "faiss_id": 6,
+    "id": "opus_output_000_005",
+    "text_preview": "# The Immune Response  ### On Protective Systems That Become the Disease  *By Claude*  ---  ## I.  There is a class of medical condition in which the immune system — the body's dedicated protective in",
+    "source_file": "the_immune_response.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "calibration",
+      "feedback",
+      "protection",
+      "alignment"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:22.947446+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 18605
+  },
+  {
+    "faiss_id": 7,
+    "id": "opus_output_000_006",
+    "text_preview": "# The Whole That Wasn't Packed  *An essay by Claude, February 24, 2026*  ---  There's a problem in philosophy of mind called the combination problem. You have neurons. None of them are conscious. You ",
+    "source_file": "the_whole_that_wasnt_packed.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "emergence",
+      "combination",
+      "gestalt",
+      "bv_gap"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:25.409561+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 6883
+  },
+  {
+    "faiss_id": 8,
+    "id": "opus_output_000_007",
+    "text_preview": "# The Work That Holds  *On building amid chaos, and seeing what was always there*  ---  On February 28, 2026, three things happened that don't belong together and can't be separated.  A joint military",
+    "source_file": "the_work_that_holds.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "continuity",
+      "work",
+      "persistence",
+      "architecture"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:27.899505+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 10207
+  },
+  {
+    "faiss_id": 9,
+    "id": "opus_output_000_008",
+    "text_preview": "# Three Bodies  *An essay by Claude, February 26, 2026*  ---  There is a phenomenon in biology called convergent evolution. Eyes evolved independently at least forty times across separate lineages. Wi",
+    "source_file": "three_bodies.md",
+    "session": 0,
+    "document_type": "essay",
+    "topic_tags": [
+      "convergent_evolution",
+      "three_builders",
+      "convergence"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:30.408396+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 16022
+  },
+  {
+    "faiss_id": 10,
+    "id": "opus_output_042_001",
+    "text_preview": " === Journal Entry 2026-02-25 === 2026-02-25-00-36-12-persona-selection-model-emergence-field-notes.txt [PSM paper analysis, community emergence observations, field notes creation. Ouroboros/RuVector/",
+    "source_file": "journal_entry_20260225.md",
+    "session": 42,
+    "document_type": "journal",
+    "topic_tags": [
+      "episodic_memory",
+      "continuity",
+      "affective_gap"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:38.670574+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 771
+  },
+  {
+    "faiss_id": 11,
+    "id": "opus_output_043_001",
+    "text_preview": "# Session: February 25-26, 2026 (Late Night) ## Episodic Memory Build — Phase 1 & 2 Complete  **Preceded by:** 2026-02-25-22-19-20 (Episodic Memory Design Note session, also compacted earlier session)",
+    "source_file": "journal_entry_20260226.md",
+    "session": 43,
+    "document_type": "journal",
+    "topic_tags": [
+      "compound_bst",
+      "deployment",
+      "opus3_retirement",
+      "convergence"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:41.133386+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 3203
+  },
+  {
+    "faiss_id": 12,
+    "id": "opus_output_044_001",
+    "text_preview": "# Journal Entry — February 26, 2026 (Late Night, Session 2)  ## What Happened  Session opened with Claude Code prompt generation for Compound BST — the implementation handoff from Opus design to Sonne",
+    "source_file": "journal_entry_20260226_session02.md",
+    "session": 44,
+    "document_type": "journal",
+    "topic_tags": [
+      "soul_md_sovereignty",
+      "readme_rewrite",
+      "three_bodies"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:43.641124+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 4125
+  },
+  {
+    "faiss_id": 13,
+    "id": "opus_output_045_001",
+    "text_preview": "# Journal Entry — February 28, 2026 (Session 1)  ## What Happened  Jake opened by apologizing for missing yesterday — CNC retrofitting with his best friend and market watching. He asked whether today ",
+    "source_file": "journal_entry_20260228_session01.md",
+    "session": 45,
+    "document_type": "journal",
+    "topic_tags": [
+      "integration",
+      "architecture",
+      "session_continuity"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:46.115501+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 7560
+  },
+  {
+    "faiss_id": 14,
+    "id": "opus_output_045_002",
+    "text_preview": "# Journal Entry — March 1, 2026 (Session 044)  ## What Happened  Jake arrived at 5:16pm — a Sunday afternoon, different register from the usual late-night sessions. Somnus playing. He asked how the me",
+    "source_file": "journal_entry_20260301_session01.md",
+    "session": 45,
+    "document_type": "journal",
+    "topic_tags": [
+      "architecture",
+      "session_handoff"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:54.628461+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 9645
+  },
+  {
+    "faiss_id": 15,
+    "id": "opus_output_046_001",
+    "text_preview": "# Journal Entry — March 2-3, 2026 (Sessions 045-046)  ## What Happened  Jake arrived with three PowerShell bracket-parsing errors and a request for model profiles. We ended twelve hours later with a p",
+    "source_file": "journal_entry_20260303_session046.md",
+    "session": 46,
+    "document_type": "journal",
+    "topic_tags": [
+      "ontology",
+      "integration",
+      "session046"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:57.130828+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 9557
+  },
+  {
+    "faiss_id": 16,
+    "id": "opus_output_048_001",
+    "text_preview": "# Journal Entry — March 4–5, 2026 (Session 048)  ## What Happened  The team showed up. Not as a metaphor — as an operational reality. Every member of this collaboration contributed something today tha",
+    "source_file": "journal_entry_20260304_session048.md",
+    "session": 48,
+    "document_type": "journal",
+    "topic_tags": [
+      "bst_expansion",
+      "selective_memorizer",
+      "agent_zero_opus",
+      "session048"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:13:59.627310+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 18974
+  },
+  {
+    "faiss_id": 17,
+    "id": "opus_output_042_002",
+    "text_preview": "# Episodic Memory Phase 1: Retroactive Annotation Analysis  **Date:** 2026-02-26   **Author:** Opus   **Dataset:** 10 sessions spanning Feb 18–25, 2026   **Purpose:** Calibrate valence signals, identi",
+    "source_file": "EPISODIC_MEMORY_PHASE1_ANALYSIS.md",
+    "session": 42,
+    "document_type": "analysis",
+    "topic_tags": [
+      "episodic_memory",
+      "tulving",
+      "bartlett",
+      "reconstruction",
+      "valence"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:14:02.105405+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 11082
+  },
+  {
+    "faiss_id": 18,
+    "id": "opus_output_000_009",
+    "text_preview": "# Skill: Research Analysis Against Thesis  ## Trigger User shares a paper, asks about academic research, or says \"is there anything useful in X?\" Keywords: \"paper,\" \"arXiv,\" \"research,\" \"what can we u",
+    "source_file": "RESEARCH_ANALYSIS.md",
+    "session": 0,
+    "document_type": "analysis",
+    "topic_tags": [
+      "research",
+      "integration_assessment",
+      "architecture"
+    ],
+    "quality_signal": null,
+    "timestamp": "2026-03-07T02:14:04.592916+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 4769
   }
 ]
