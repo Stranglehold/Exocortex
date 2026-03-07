@@ -181,18 +181,71 @@ Build a minimal Python extension (pybind11 or ctypes) that links against `liblla
 
 ---
 
-## Open Questions for Opus Architect
+## Empirical Validation (Steps 10b + 11, 2026-03-06)
 
-1. **Which layers for the domain classifier?** The representation reader (Stage 2) needs to read specific layers. Layers 12-16 are the standard recommendation for 14B models. Does Opus have a view on this from the Karkada/Park research?
+**Status: PATH A CONFIRMED VIABLE.**
 
-2. **llama-cpp-python write access:** Has this been tested? ctypes might be needed to call `ggml_backend_tensor_set` through the Python binding. Worth a 20-minute prototype before committing to a full C extension.
+The following was determined empirically on Qwen3-0.6B-Q8_0 (28 layers, n_embd=1024) using llama-cpp-python 0.3.16:
 
-3. **Model compatibility:** The callback API is part of the GGML graph execution, not specific to any model architecture. But the `l_out-{il}` naming convention should be verified against the Qwen2.5 and GLM model implementations in llama.cpp before assuming it's universal.
+### Step 10b: Write Test
 
-4. **`llama_set_adapter_cvec` for Stage 3 static steering:** This is underdiscussed in the design note. Pre-computing domain steering vectors offline and applying them via this API would add zero inference latency for static cases. The callback is only needed for dynamic (input-dependent) steering.
+- `cb_eval` fires **1098 times** per forward pass (= `graph_nodes = 1098` as logged by llama_context at init)
+- Callback registration: `ctx_params.cb_eval = cb_eval` on low-level `llama_context_params` — works
+- API break: `llama_tokenize` in 0.3.16 requires vocab pointer — `llama_model_get_vocab(model)` → vocab, then `llama_tokenize(vocab, ...)` (not `model`)
+- **Write test result on `l_out-14`:**
+  ```
+  data_ptr: 0x000001d0b010e580
+  original values: [18.6776, 366.6126, -2.9336, 104.5445, -29.2463]
+  wrote 42.0, read back: 42.000000
+  WRITE CONFIRMED — PATH A FULLY VIABLE
+  ```
+- `ggml_backend_tensor_get/set` are NOT exposed in llama-cpp-python Python bindings
+- Direct ctypes pointer access works: `ctypes.c_void_p.from_address(tensor_ptr + 248).value` → data pointer; `(ctypes.c_float * N).from_address(data_ptr)` → float array; direct `float_arr[0] = value` write confirmed
+- On CPU, this is pure memory; write confirmed immediately with zero latency overhead
+
+### Step 11: Tensor Name Dump
+
+Full graph anatomy for Qwen3 (28 layers):
+
+```
+inp_embd → norm-{N} → attn_norm-{N} → Qcur-{N} / Kcur-{N} / Vcur-{N}
+→ Qcur_normed-{N} / Kcur_normed-{N} → kqv_out-{N} → ffn_inp-{N}
+→ ffn_norm-{N} → ffn_gate-{N} / ffn_up-{N} → ffn_swiglu-{N} → ffn_out-{N}
+→ l_out-{N} → result_norm → result_output
+```
+
+- `l_out-{N}` naming confirmed for N = 0..27 (= 28 layers)
+- **The naming convention in the survey was correct.** No surprises.
+- ggml_tensor struct: name field at **offset 256**, data pointer at **offset 248** (64-bit; confirmed empirically via offset vote calibration across 50 callbacks)
+- `ggml_get_name` is NOT exported from the llama-cpp-python CDLL (the internal lib IS a `ctypes.CDLL`, but without ggml function exports); struct offset access is required
+
+### Revised Path Assessment
+
+| Capability | Status |
+|------------|--------|
+| cb_eval registration via llama-cpp-python | **Confirmed working** |
+| cb_eval fires per-node during execution | **Confirmed: 1098/pass** |
+| Tensor name readable from struct (CPU) | **Confirmed: offset 256** |
+| Data pointer readable from struct (CPU) | **Confirmed: offset 248** |
+| Direct ctypes write to CPU tensor | **Confirmed: 42.0 → 42.000000** |
+| l_out-{N} naming convention | **Confirmed on Qwen3** |
+| GPU tensor write (Path B use case) | Not tested; needs cudaMemcpy |
+
+**Path A is sufficient for CPU inference with full read/write access.** Path B (C extension) is still needed for GPU operation at production scale (RTX 3090 runs Qwen2.5-14B on GPU).
 
 ---
 
-*Prepared by Kestrel, 2026-03-06.*
+## Open Questions (Remaining)
+
+1. **Which layers for the domain classifier?** The representation reader (Stage 2) needs to read specific layers. Layers 12-16 are the standard recommendation for 14B models. Does Opus have a view on this from the Karkada/Park research?
+
+2. **Naming convention on Qwen2.5-14B:** `l_out-{N}` confirmed on Qwen3-0.6B. Should be verified on Qwen2.5-14B before building the full classifier. Architecture differences between Qwen3 and Qwen2.5 may affect naming (though unlikely — same llama.cpp build path).
+
+3. **`llama_set_adapter_cvec` for Stage 3 static steering:** Pre-computing domain steering vectors offline and applying them via this API would add zero inference latency for static cases. The callback is only needed for dynamic (input-dependent) steering.
+
+---
+
+*Survey prepared by Kestrel, 2026-03-06.*
+*Empirical validation: Steps 10b + 11 on Qwen3-0.6B-Q8_0, llama-cpp-python 0.3.16, Python 3.14, CPU-only.*
 *Source: llama.cpp codebase analysis via GitHub (ggerganov/llama.cpp, current main branch).*
 *Key files examined: `ggml/include/ggml-backend.h`, `include/llama.h`, `src/llama.cpp` (`llm_build_*` functions), `ggml/src/ggml-backend.c`.*
