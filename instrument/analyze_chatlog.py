@@ -144,7 +144,7 @@ def embed_text(text: str) -> np.ndarray:
 def embed_turns(turns: list[dict], cache_path: Path) -> np.ndarray:
     """
     Embed each turn's action title. Saves a cache .npy file after completion.
-    Resumes from cache if interrupted — re-runs only missing embeddings.
+    Resumes from cache if interrupted — re-runs only missing/zero embeddings.
     """
     n = len(turns)
     dim = 768  # nomic embedding dim
@@ -153,8 +153,30 @@ def embed_turns(turns: list[dict], cache_path: Path) -> np.ndarray:
     if cache_path.exists():
         cached = np.load(str(cache_path))
         if cached.shape == (n, dim):
-            print(f"[embed] Loaded {n} embeddings from cache")
-            return cached
+            zero_mask = (cached == 0).all(axis=1)
+            n_zeros = int(zero_mask.sum())
+            if n_zeros == 0:
+                print(f"[embed] Loaded {n} embeddings from cache (all valid)")
+                return cached
+            print(f"[embed] Cache has {n_zeros}/{n} zero (failed) vectors — re-embedding those")
+            # Re-embed only the zeros
+            vectors = cached.copy()
+            zero_indices = [i for i in range(n) if zero_mask[i]]
+            errors = 0
+            for count, i in enumerate(zero_indices):
+                title = turns[i]["action_title"]
+                try:
+                    vectors[i] = embed_text(title)
+                except Exception as exc:
+                    print(f"  [warn] turn {i} failed again: {exc}")
+                    errors += 1
+                if (count + 1) % 50 == 0:
+                    print(f"  {count + 1}/{len(zero_indices)} zeros re-embedded ({errors} errors)...")
+                    np.save(str(cache_path), vectors)
+            np.save(str(cache_path), vectors)
+            still_zero = int((vectors == 0).all(axis=1).sum())
+            print(f"[embed] Re-embed complete. Still zero: {still_zero}")
+            return vectors
         print(f"[embed] Cache shape mismatch ({cached.shape}), re-embedding")
 
     vectors = np.zeros((n, dim), dtype=np.float32)
@@ -384,8 +406,8 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.65,
-        help="Cosine similarity threshold for transition detection (default 0.65)",
+        default=0.48,
+        help="Cosine similarity threshold for transition detection (default 0.48 = mean-1std)",
     )
     parser.add_argument(
         "--parse-only",
@@ -452,10 +474,7 @@ def main():
         if not EMBED_CACHE.exists():
             print(f"ERROR: --load-embeddings requested but {EMBED_CACHE} not found")
             return 1
-        traj_vectors = np.load(str(EMBED_CACHE))
-        print(f"[embed] Loaded {len(traj_vectors)} embeddings from cache")
-    else:
-        traj_vectors = embed_turns(turns, EMBED_CACHE)
+    traj_vectors = embed_turns(turns, EMBED_CACHE)
 
     # ── Joint UMAP ────────────────────────────────────────────────────────────
 
