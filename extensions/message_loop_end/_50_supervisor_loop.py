@@ -10,7 +10,8 @@ corrective steering via hist_add_warning().
 Runs in the finally block of every message loop iteration, after history
 organization (_10_). Read-only on all state except history injection.
 
-Requires active organization — returns immediately when org kernel is off.
+Loop/cascade/context detection runs always. PACE and stall detection require
+an active organization (they depend on HTN state and PACE level).
 """
 
 from typing import Any
@@ -54,16 +55,56 @@ ANOMALY_CONTEXT = "context"
 ANOMALY_CASCADE = "cascade"
 ANOMALY_PACE = "pace"
 
+# Lenz's law: opposing approaches indexed by tool name.
+# When a loop is detected, the injection names the closed strategy
+# and provides the orthogonal alternative — not generic "try something else"
+# but the specific complement to what failed.
+LOOP_ALTERNATIVES = {
+    "document_query": [
+        "Use code_execution_tool to read the file directly (cat, head, less)",
+        "Use search_engine with different query terms or broader scope",
+        "Ask the user for the correct file path or location",
+    ],
+    "search_engine": [
+        "Use document_query to search specific files by path",
+        "Navigate directly to the file via code_execution_tool",
+        "Reduce query scope or try different terminology",
+    ],
+    "code_execution_tool": [
+        "Verify the path exists before executing",
+        "Break the command into smaller steps and test each",
+        "Check syntax and imports in isolation before running full code",
+        "Test with a minimal example to isolate the failure",
+        "Verify dependencies are installed (pip list, import check)",
+        "Check permissions or environment state first",
+    ],
+    "call_subordinate": [
+        "Handle the subtask directly rather than delegating",
+        "Decompose the task differently before re-delegating",
+        "Report current state to the user and ask for guidance",
+    ],
+    "response": [
+        "Use a different tool to complete the underlying task first",
+        "Report partial progress and ask the user how to proceed",
+    ],
+}
+
+DEFAULT_ALTERNATIVES = [
+    "try a fundamentally different tool for this task",
+    "simplify the task into smaller verifiable steps",
+    "report current progress and ask the user for guidance",
+]
+
 
 class SupervisorLoop(Extension):
     """XO supervisory loop — anomaly detection and steering injection."""
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
-            # Only run when an organization is active
+            # Org state — may be None. Loop/cascade/context run regardless.
+            # PACE and stall require org context.
             role = getattr(self.agent, ACTIVE_ROLE_KEY, None)
-            if not role:
-                return  # No org — zero overhead passthrough
+            org_active = bool(role)
 
             # Get or initialize supervisor state
             state = _get_state(self.agent)
@@ -76,42 +117,43 @@ class SupervisorLoop(Extension):
                 return
 
             # Read operational context
-            ctx = _gather_context(self.agent, role)
+            ctx = _gather_context(self.agent, role or {})
 
             # Run anomaly detectors (order: most severe first)
             injected = False
 
-            # 1. PACE escalation response (emergency exempt from cooldown)
-            if ctx["pace_level"] == "emergency":
-                _inject_pace_emergency(self.agent, role, ctx, state)
-                injected = True
-            elif ctx["pace_level"] == "contingent":
-                if _cooldown_ok(state, ANOMALY_PACE):
-                    _inject_pace_contingent(self.agent, role, ctx, state)
+            # 1. PACE escalation response (org-dependent, emergency exempt from cooldown)
+            if org_active:
+                if ctx["pace_level"] == "emergency":
+                    _inject_pace_emergency(self.agent, role, ctx, state)
                     injected = True
+                elif ctx["pace_level"] == "contingent":
+                    if _cooldown_ok(state, ANOMALY_PACE):
+                        _inject_pace_contingent(self.agent, role, ctx, state)
+                        injected = True
 
-            # 2. Cascade failure detection
+            # 2. Cascade failure detection (always runs)
             if not injected and _cooldown_ok(state, ANOMALY_CASCADE):
                 if _detect_cascade(ctx):
                     _inject_cascade(self.agent, state)
                     injected = True
 
-            # 3. Context exhaustion (only 90%+ — watchdog handles 70%/85%)
+            # 3. Context exhaustion (always runs — watchdog handles 70%/85%)
             if not injected and _cooldown_ok(state, ANOMALY_CONTEXT):
                 if _detect_context_exhaustion(self.agent, ctx):
                     _inject_context_warning(self.agent, ctx, state)
                     injected = True
 
-            # 4. Stall detection
-            if not injected and _cooldown_ok(state, ANOMALY_STALL):
+            # 4. Stall detection (org-dependent — requires HTN state)
+            if not injected and org_active and _cooldown_ok(state, ANOMALY_STALL):
                 if _detect_stall(ctx, role):
                     _inject_stall(self.agent, ctx, role, state)
                     injected = True
 
-            # 5. Loop detection
+            # 5. Loop detection (always runs)
             if not injected and _cooldown_ok(state, ANOMALY_LOOP):
                 if _detect_loop(ctx):
-                    _inject_loop(self.agent, state)
+                    _inject_loop(self.agent, ctx, state)
                     injected = True
 
             _set_state(self.agent, state)
@@ -301,12 +343,28 @@ def _inject_stall(agent, ctx: dict, role: dict, state: dict):
     _emit(agent, msg, ANOMALY_STALL, state)
 
 
-def _inject_loop(agent, state: dict):
-    """Inject loop detection warning."""
-    msg = (
-        "[SUPERVISOR] You are repeating the same failing action. "
-        "Stop and try a fundamentally different approach — different tool, different path, or different strategy."
-    )
+def _inject_loop(agent, ctx: dict, state: dict):
+    """Inject loop detection — names the closed strategy and the opposing approach."""
+    history = ctx.get("failure_history", [])
+    recent = history[-LOOP_DETECTION_THRESHOLD:] if len(history) >= LOOP_DETECTION_THRESHOLD else history
+
+    if recent:
+        tool = recent[-1].get("tool", "unknown")
+        error_type = recent[-1].get("error_type", "unknown")
+        n = len(recent)
+        alternatives = LOOP_ALTERNATIVES.get(tool, DEFAULT_ALTERNATIVES)
+        alt_list = "\n".join(f"  - {a}" for a in alternatives)
+        msg = (
+            f"[SUPERVISOR] LOOP DETECTED — {tool} has failed {n} times ({error_type}).\n"
+            f"This strategy is closed. Do not retry {tool}.\n"
+            f"Opposing approaches:\n{alt_list}"
+        )
+    else:
+        msg = (
+            "[SUPERVISOR] You are repeating the same failing action. "
+            "Stop and try a fundamentally different approach — different tool, different path, or different strategy."
+        )
+
     _emit(agent, msg, ANOMALY_LOOP, state)
 
 

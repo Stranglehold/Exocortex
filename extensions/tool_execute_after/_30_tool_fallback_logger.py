@@ -3,6 +3,7 @@ from python.helpers.extension import Extension
 from python.helpers.tool import Response
 
 FAILURES_KEY = "_tool_failures"
+FORMAT_TRACKER_KEY = "_failure_tracker"  # Owned by error_format/_30_failure_tracker.py
 MAX_HISTORY = 20
 
 SUCCESS_INDICATORS = [
@@ -65,8 +66,16 @@ class ToolFallbackLogger(Extension):
 
             if not error_type:
                 failures["consecutive"][tool_name] = 0
-                failures["history"] = []
+                # Don't clear history on response tool — it's a terminal action,
+                # not a task success. History should only clear when actual work succeeds.
+                if tool_name != "response":
+                    failures["history"] = []
                 self.agent.set_data(FAILURES_KEY, failures)
+                # Reset format failure counter — reflection prompts shouldn't persist after recovery
+                tracker = self.agent.get_data(FORMAT_TRACKER_KEY) or {}
+                if tracker.get(tool_name, 0) > 0:
+                    tracker[tool_name] = 0
+                    self.agent.set_data(FORMAT_TRACKER_KEY, tracker)
                 return
 
             failures["history"].append({
