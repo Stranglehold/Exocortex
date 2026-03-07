@@ -32,8 +32,9 @@ CORPUS_DIR = Path(__file__).parent / "data"
 FAISS_PATH = CORPUS_DIR / "corpus.faiss"
 META_PATH = CORPUS_DIR / "corpus_metadata.json"
 
-VALID_TYPES = {"journal", "design_note", "essay", "letter", "analysis", "conversation"}
+VALID_TYPES = {"journal", "design_note", "essay", "letter", "analysis", "conversation", "design_doc", "field_note", "log", "index"}
 VALID_QUALITY = {"sharp", "flat", "synthesis", "routine"}
+VALID_AUTHORS = {"opus_architect", "opus_agent_zero", "kestrel"}
 
 # ── Embedding ────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,12 @@ def main():
         choices=sorted(VALID_QUALITY),
         help="Quality signal — fill now or update later with --update",
     )
+    parser.add_argument(
+        "--author",
+        default=None,
+        choices=sorted(VALID_AUTHORS),
+        help="Author/instance that produced this output",
+    )
     args = parser.parse_args()
 
     source = Path(args.file)
@@ -131,6 +138,7 @@ def main():
         "document_type": args.doc_type,
         "topic_tags": tags,
         "quality_signal": args.quality,
+        "author": args.author,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "embedding_model": EMBED_MODEL,
         "char_count": len(text),
