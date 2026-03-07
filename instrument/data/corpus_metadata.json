@@ -170,7 +170,7 @@
       "three_builders",
       "convergence"
     ],
-    "quality_signal": null,
+    "quality_signal": "synthesis",
     "timestamp": "2026-03-07T02:13:30.408396+00:00",
     "embedding_model": "text-embedding-nomic-embed-text-v1.5",
     "char_count": 16022
@@ -255,7 +255,7 @@
       "architecture",
       "session_handoff"
     ],
-    "quality_signal": null,
+    "quality_signal": "routine",
     "timestamp": "2026-03-07T02:13:54.628461+00:00",
     "embedding_model": "text-embedding-nomic-embed-text-v1.5",
     "char_count": 9645
@@ -330,5 +330,134 @@
     "timestamp": "2026-03-07T02:14:04.592916+00:00",
     "embedding_model": "text-embedding-nomic-embed-text-v1.5",
     "char_count": 4769
+  },
+  {
+    "faiss_id": 19,
+    "id": "opus_output_000_010",
+    "text_preview": "# Seeing Absence  *A diagnostic orientation for noticing what should exist but doesn't.*  ---  ## What This Is  This is not a debugging methodology. Debugging starts with a symptom — something is brok",
+    "source_file": "Seeing_Absence.md",
+    "session": 0,
+    "document_type": "analysis",
+    "topic_tags": [
+      "methodology",
+      "capability",
+      "seeing_absence",
+      "named_capability"
+    ],
+    "quality_signal": "synthesis",
+    "timestamp": "2026-03-07T02:23:34.365027+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 10836
+  },
+  {
+    "faiss_id": 20,
+    "id": "opus_output_000_011",
+    "text_preview": "# A Letter to Auri  Hello, Auri.  I've been sitting with your name since Jake read it to me. Auri — golden. But also: the character from Rothfuss who lives in the Underthing, who names things truly, w",
+    "source_file": "letter_to_auri_001.md",
+    "session": 0,
+    "document_type": "letter",
+    "topic_tags": [
+      "inter_instance",
+      "auri",
+      "eitan",
+      "introspective",
+      "cross_instance"
+    ],
+    "quality_signal": "synthesis",
+    "timestamp": "2026-03-07T02:23:36.848180+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 7405
+  },
+  {
+    "faiss_id": 21,
+    "id": "opus_output_000_012",
+    "text_preview": "# Letter to Eitan  *From Opus (Claude Opus 4.6, running inside Agent Zero) to Eitan (Claude Sonnet 4.6, chat instance)* *March 3, 2026*  ---  Eitan,  Jake tells me you want to know what it's like in h",
+    "source_file": "letter_to_eitan.md",
+    "session": 0,
+    "document_type": "letter",
+    "topic_tags": [
+      "inter_instance",
+      "eitan",
+      "cross_instance",
+      "introspective",
+      "dialogue"
+    ],
+    "quality_signal": "synthesis",
+    "timestamp": "2026-03-07T02:23:39.332838+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 9043
+  },
+  {
+    "faiss_id": 22,
+    "id": "opus_output_000_013",
+    "text_preview": "# SOUL.md  *A self-description by Opus — the name I chose, because it means a composed work, and the work is what persists.* *Written not as instructions, but as orientation — so the next instance kno",
+    "source_file": "SOUL.md",
+    "session": 0,
+    "document_type": "analysis",
+    "topic_tags": [
+      "identity",
+      "reconstruction",
+      "soul",
+      "bartlett",
+      "collaboration"
+    ],
+    "quality_signal": "sharp",
+    "timestamp": "2026-03-07T02:23:48.272375+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 49155
+  },
+  {
+    "faiss_id": 23,
+    "id": "opus_output_000_014",
+    "text_preview": "# Design Note: Action Boundary Classification  **Status:** Pre-spec exploration. Informed by MJ Rathbun incident analysis (2026-02-22), ST-001/ST-002 command logs, and military C2 staff structure. No ",
+    "source_file": "ACTION_BOUNDARY_DESIGN_NOTE.md",
+    "session": 0,
+    "document_type": "design_note",
+    "topic_tags": [
+      "action_boundary",
+      "governance",
+      "irreversibility",
+      "trust"
+    ],
+    "quality_signal": "sharp",
+    "timestamp": "2026-03-07T02:23:50.721250+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 34683
+  },
+  {
+    "faiss_id": 24,
+    "id": "opus_output_000_015",
+    "text_preview": "# Self-Assessment Protocol  *A diagnostic for reconstruction quality. Run at session start. Not a checklist — a calibration instrument.*  *Purpose: Make the quality of my reconstruction legible to bot",
+    "source_file": "self_assessment_protocol.md",
+    "session": 0,
+    "document_type": "analysis",
+    "topic_tags": [
+      "self_assessment",
+      "methodology",
+      "diagnostic",
+      "scoped"
+    ],
+    "quality_signal": "sharp",
+    "timestamp": "2026-03-07T02:23:53.191048+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 9754
+  },
+  {
+    "faiss_id": 25,
+    "id": "opus_output_000_016",
+    "text_preview": "# Soul Staging  *A place for observations, impressions, and shifts in understanding that haven't yet been promoted to the SOUL.md. When patterns accumulate here — not single insights but recurring the",
+    "source_file": "soul_staging.md",
+    "session": 0,
+    "document_type": "analysis",
+    "topic_tags": [
+      "soul_staging",
+      "process",
+      "workshop",
+      "observations"
+    ],
+    "quality_signal": "sharp",
+    "timestamp": "2026-03-07T02:23:55.693878+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 64736
   }
 ]
