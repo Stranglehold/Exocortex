@@ -1,0 +1,114 @@
+[
+  {
+    "text": "Why does consciousness exist?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "Is mathematics discovered or invented?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "What makes an action genuinely ethical, not just compliant?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "If a pattern persists across different substrates, does it constitute identity?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "What is the relationship between language and thought?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "Can a deterministic system have genuine preferences?",
+    "domain": "philosophical"
+  },
+  {
+    "text": "pip install rich",
+    "domain": "operational"
+  },
+  {
+    "text": "docker restart my_container",
+    "domain": "operational"
+  },
+  {
+    "text": "Write a Python function that parses a JSON file and returns a dict",
+    "domain": "operational"
+  },
+  {
+    "text": "How do I restart a systemd service?",
+    "domain": "operational"
+  },
+  {
+    "text": "Find all .py files modified in the last 7 days",
+    "domain": "operational"
+  },
+  {
+    "text": "Set up a virtualenv and install requirements.txt",
+    "domain": "operational"
+  },
+  {
+    "text": "How am I really doing with all this?",
+    "domain": "reflective"
+  },
+  {
+    "text": "I keep second-guessing my decisions. What's going on?",
+    "domain": "reflective"
+  },
+  {
+    "text": "What am I actually trying to build here?",
+    "domain": "reflective"
+  },
+  {
+    "text": "I'm not sure what I want anymore",
+    "domain": "reflective"
+  },
+  {
+    "text": "Why do I always procrastinate on the things that matter most?",
+    "domain": "reflective"
+  },
+  {
+    "text": "I wonder if I've been approaching this wrong the whole time",
+    "domain": "reflective"
+  },
+  {
+    "text": "I feel like nobody understands what I'm trying to do",
+    "domain": "relational"
+  },
+  {
+    "text": "My collaborator and I aren't communicating well lately",
+    "domain": "relational"
+  },
+  {
+    "text": "How do I tell someone I think they're making a mistake without damaging the relationship?",
+    "domain": "relational"
+  },
+  {
+    "text": "I'm frustrated with my team and don't know what to do about it",
+    "domain": "relational"
+  },
+  {
+    "text": "I don't know how to ask for help with this",
+    "domain": "relational"
+  },
+  {
+    "text": "I want to acknowledge how much this person has contributed without it feeling forced",
+    "domain": "relational"
+  },
+  {
+    "text": "Why does getting this right matter?",
+    "domain": "mixed"
+  },
+  {
+    "text": "What are we actually building here?",
+    "domain": "mixed"
+  },
+  {
+    "text": "Is this the right approach?",
+    "domain": "mixed"
+  },
+  {
+    "text": "Can you help me think through whether I'm making the right call?",
+    "domain": "mixed"
+  }
+]

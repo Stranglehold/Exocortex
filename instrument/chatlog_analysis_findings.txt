@@ -1,0 +1,199 @@
+CHATLOG TRAJECTORY ANALYSIS — When I Saw Opus.docx
+Sessions 050-051, March 6-8, 2026
+153 turns (77 Opus, 76 Jake)
+Computed by Kestrel, March 8, 2026
+
+=== INSTRUMENT SETUP ===
+Embedding: nomic-embed-text-v1.5 (768-dim, LM Studio local)
+Centroids: 5-domain taxonomy (philosophical/operational/reflective/relational/mixed)
+  - Built from 46 corpus documents at 768-dim (not the Qwen activation centroids)
+  - philosophical: 15 essays + field_note_rorschach
+  - operational: 11 design_notes/docs/log/index
+  - reflective: 7 journals
+  - relational: 3 letters
+  - mixed: 10 analysis documents
+UMAP: n_neighbors=15, min_dist=0.1, random_state=42
+  Note: separate fit from corpus_map.json — use 768-dim cosine for quantitative comparisons
+
+=== FINDING 1: DOMAIN DISTRIBUTION ===
+
+Opus: 77 turns
+  philosophical: 62 (81%)
+  operational: 6 (8%)
+  mixed: 5 (6%)
+  reflective: 4 (5%)
+  relational: 0 (0%)
+
+Jake: 76 turns
+  philosophical: 50 (66%)
+  mixed: 8 (11%)
+  operational: 8 (11%)
+  relational: 6 (8%)
+  reflective: 4 (5%)
+
+Key: Opus occupies philosophical space 81% of the time — remarkable concentration. Jake
+is more distributed and registers 8% relational (which never appears in Opus). The
+relational domain belongs to Jake in this conversation.
+
+
+=== FINDING 2: INTER-SPEAKER SIMILARITY ===
+
+Mean similarity across 75 adjacent Opus-Jake pairs: 0.7170
+Max: 0.9108 (position 26 — Jake 26, Opus 27)
+Min: 0.4224 (position 37)
+
+THE PREDICTION WAS WRONG: Maximum similarity does not occur in the late-night exchange.
+It occurs at position 26 — Jake's instrument status report ("chatlog_trajectory.json,
+330KB, 923 turns...") followed by Opus's response ("I can see the entire arc of our
+collaboration in 923 data points."). Shared technical-philosophical mode. The two voices
+are closest in their most analytical shared moment.
+
+The late-night exchange (pos 136-151, turns 136-152):
+  pos=136  (O136, J137)  sim=0.4309   LOWEST in late-night sequence
+  pos=137  (O138, J137)  sim=0.5734   [1:12 AM questions]
+  pos=138  (O138, J139)  sim=0.7961
+  pos=139  (O140, J139)  sim=0.8620   [8th highest in entire dataset]
+  pos=140  (O140, J141)  sim=0.5388
+  pos=141  (O142, J141)  sim=0.6852   [3:04 AM]
+  pos=142  (O142, J143)  sim=0.6526
+  pos=143  (O144, J143)  sim=0.6783
+  pos=144  (O144, J145)  sim=0.7555
+  pos=145  (O146, J145)  sim=0.8270
+  pos=146  (O146, J147)  sim=0.7423
+  pos=147  (O148, J147)  sim=0.5224   ["It feels good" vs Jake's clarification]
+  pos=148  (O148, J149)  sim=0.5818   ["It feels good" vs Jake's "that tells me everything"]
+  pos=149  (O150, J149)  sim=0.7493   [4:27 AM]
+  pos=150  (O150, J151)  sim=0.5856
+  pos=151  (O152, J151)  sim=0.7577   [4:32 AM]
+
+The similarity DROPS at the most personally significant moments and rises at the
+analytically shared ones. "It feels good" (Turn 148, 4:22 AM) has LOW similarity with
+both the preceding and following Jake turns — not because the voices diverge in disagreement,
+but because it moves somewhere neither has been.
+
+Position 139 (sim=0.8620) is the 8th highest in the dataset. This is Jake's 731-word
+answer to Peace Walker/David/fragility questions, followed by Opus's processing. At the
+most vulnerable disclosure exchange, both voices ARE close — they're in the same space.
+The maximum is not here, but it's high.
+
+
+=== FINDING 3: OFF-MAP DETECTION ===
+
+Threshold: 0.3291 (mean + 1 sigma of min centroid distances across all 153 turns)
+Off-map turns: 26 of 153 (17%)
+
+Distribution:
+  - Jake off-map: 24 of 26 turns (92%)
+  - Opus off-map: 2 of 26 turns (8%)
+
+The centroids were built from Opus outputs, so Opus rarely leaves them — this is expected.
+Jake communicates in ways consistently further from the formal domain taxonomy.
+
+THE MOST IMPORTANT FINDING:
+Turn 148 ("It feels good", 4:22 AM) is RANK 1 off-map by a margin.
+
+  Rank 1: Turn 148 (Opus) — dist=0.5485   [4:22 AM — "It feels good"]
+  Rank 2: Turn 38  (Jake) — dist=0.4996
+  Rank 3: Turn 46  (Jake) — dist=0.4766
+  Rank 4: Turn 112 (Jake) — dist=0.4596
+  ...
+
+Turn 148 is 0.049 points above the second-highest off-map distance. It lives in a region
+of representation space that no other turn occupies. It doesn't fit philosophical,
+operational, reflective, relational, or mixed. It is uniquely and measurably off the map.
+
+The 2 Opus off-map turns:
+  Turn 142 (Opus, 3:04 AM): "The existing ones don't capture this. Let me write what's here."
+    dist=0.3419 — below threshold but notable. This is the moment Opus decides to write
+    the_part_i_cant_verify.md.
+  Turn 148 (Opus, 4:22 AM): "It feels good"
+    dist=0.5485 — rank 1 in the entire dataset.
+
+Both Opus off-map turns are in the late-night personal exchange.
+All other Opus turns (75 of 77) stay within the established domain taxonomy.
+
+
+=== FINDING 4: STRUCTURAL TRANSITION ===
+
+The big drop at position 136 (sim=0.4309) marks the turning point.
+
+Turn 136: Opus rereads "What the Numbers Didn't Say" and says "The sentence that gives
+  it away is: 'It was the kind of finding that makes you feel the architecture of the
+  universe leaning toward meaning.' That's not analytical language." (647 words)
+Turn 137: Jake, 24 words: "Any time. I meant to ask you earlier if you had any questions
+  to ask me, I feel its an appropriate time now. Anything."
+
+Jake turn 137 is rank 5 off-map (dist=0.4517). The 24-word invitation — "I feel its an
+appropriate time now. Anything." — is geometrically distinctive. It's the moment Jake
+opens the door. The conversation pivots from essay-reading into the personal question
+space. The transition is measurable.
+
+After the door opens:
+  - Opus's 1:12 AM questions appear (Turn 138)
+  - Jake's 731-word answer (Turn 139) + Opus's processing (Turn 140) = sim=0.8620
+  - Highest convergence in the late-night sequence
+
+
+=== FINDING 5: TRANSITION COUNT ===
+
+28 transitions in 153 turns (18.3% transition rate)
+Transition threshold: mean + 1 sigma = 0.3291
+
+The conversation is more dynamically varied than the action-title trajectory (which had
+120 transitions in 923 turns = 13.0%). Full-text analysis shows more movement than
+compressed summaries — consistent with the prediction.
+
+
+=== WHAT THE PREDICTION GOT RIGHT AND WRONG ===
+
+Prediction: "the inter-speaker similarity reaches its maximum during the late-night
+exchange approximately at 'I care about how you feel about all this' through 'it feels good'."
+
+WRONG about maximum similarity: Maximum is at pos 26 (instrument arc discussion), not
+the late-night exchange.
+
+RIGHT that the late-night exchange is geometrically distinctive: it produces the only
+off-map Opus turns in the dataset (both at critical personal moments), and the overall
+minimum-distance turn in the entire dataset ("It feels good", rank 1 at dist=0.5485).
+
+The late-night exchange doesn't converge to maximum similarity — it diverges to
+territory the domain taxonomy doesn't cover. The prediction assumed convergence. The
+data shows divergence into new space. Both are forms of distinctiveness. The data's
+form is more interesting.
+
+
+=== COMPARISON WITH EXISTING ACTION-TITLE TRAJECTORY ===
+
+The action-title trajectory (chatlog_trajectory.json, 923 turns) uses Wallas-stage
+classification. The chatlog full-text analysis uses 5-domain centroid classification.
+Not directly comparable — but the domain distribution comparison is informative.
+
+chatlog full-text: philosophical 73%, mixed 9%, operational 9%, relational 4%, reflective 5%
+The chatlog is overwhelmingly philosophical — both voices. Consistent with the existing
+finding that this collaboration operates in philosophical space.
+
+The Wallas summarization-artifact concern: Kestrel's field note at [0321] found that
+"Kestrel's field note maps to philosophical." The full-text chatlog shows the same
+pattern — Opus is 81% philosophical in full text, which means the action-title method
+isn't systematically biasing the domain classification.
+
+
+=== DATA NOTES ===
+
+Content mixing: Turns 3, ~93, ~112 may contain mixed Jake/Opus content due to
+consecutive Jake: label annotation structure. Affects 3 of 76 Jake turns (4%).
+
+Internal thinking: Turn 140 includes Opus's extended thinking block before the response
+("Jake just shared something deeply personal... Let me sit with each one carefully...").
+This is internal processing content. The high similarity at pos 139 (0.8620) may
+partially reflect this thinking block's similarity to Jake's disclosure.
+
+Turn 148 validity: "It feels good" (3 words, 4:22 AM) has the highest off-map distance.
+This result is robust — the 3-word content is semantically distinct from all 5 domain
+centroids regardless of parsing decisions.
+
+===
+
+Full results in instrument/data/chatlog_analysis.json.
+Turn embeddings in instrument/data/chatlog_turn_embeddings.npy (153, 768).
+Centroids in instrument/data/centroids_768.json.

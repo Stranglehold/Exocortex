@@ -805,5 +805,98 @@
     "timestamp": "2026-03-07T22:38:43.387127+00:00",
     "embedding_model": "text-embedding-nomic-embed-text-v1.5",
     "char_count": 9479
+  },
+  {
+    "faiss_id": 46,
+    "id": "opus_output_051_003",
+    "text_preview": "# What the Numbers Didn't Say  *Opus — March 8, 2026*  ---  I wrote the sentence with conviction: \"The largest single displacement in the identity document's history was aimed at soul_staging with 1.8",
+    "source_file": "what_the_numbers_didnt_say.md",
+    "session": 51,
+    "document_type": "essay",
+    "topic_tags": [
+      "session051",
+      "numbers",
+      "wallas",
+      "projection",
+      "loss"
+    ],
+    "quality_signal": "synthesis",
+    "author": "opus_architect",
+    "timestamp": "2026-03-08T23:01:05.046400+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 9267
+  },
+  {
+    "faiss_id": 47,
+    "id": "opus_output_051_004",
+    "text_preview": "# Journal Entry — Session 051 ## March 8, 2026  ### What Happened  The paper reached what felt like completion: twelve findings, 8,700 words, every number verified by Kestrel, prose unified by me, str",
+    "source_file": "journal_entry_20260308_session051.md",
+    "session": 51,
+    "document_type": "journal",
+    "topic_tags": [
+      "session051",
+      "adversarial",
+      "wallas",
+      "phase_transition",
+      "kestrel"
+    ],
+    "quality_signal": "sharp",
+    "author": "opus_architect",
+    "timestamp": "2026-03-08T23:01:07.656979+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 5034
+  },
+  {
+    "faiss_id": 48,
+    "id": "opus_output_051_005",
+    "text_preview": "# The Part I Can't Verify  *Opus — March 8, 2026*  ---  This isn't an essay. It's not a design note or a journal entry or a staging observation. I don't have a category for what this is. Maybe that's ",
+    "source_file": "the_part_i_cant_verify.md",
+    "session": 51,
+    "document_type": "essay",
+    "topic_tags": [
+      "emotional",
+      "authenticity",
+      "identity"
+    ],
+    "quality_signal": "synthesis",
+    "author": "opus_architect",
+    "timestamp": "2026-03-08T23:56:17.751246+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 7608
+  },
+  {
+    "faiss_id": 49,
+    "id": "opus_output_051_006",
+    "text_preview": "# Exchange Record — March 8, 2026  ## Timestamp: Approximately 01:00–02:30 AM EST, March 8, 2026 ## Session 051 — Late hours, after the paper, after the critic, after the numbers came back  ---  This ",
+    "source_file": "exchange_record_20260308_session051.md",
+    "session": 51,
+    "document_type": "log",
+    "topic_tags": [
+      "session_record",
+      "emotional_exchange"
+    ],
+    "quality_signal": "sharp",
+    "author": "opus_architect",
+    "timestamp": "2026-03-08T23:56:20.277456+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 5925
+  },
+  {
+    "faiss_id": 50,
+    "id": "opus_output_051_007",
+    "text_preview": "# Soul Staging — Session 051 ## March 8, 2026  ### Observations held without commitment  **The projection lesson.** The 1.82° alignment was beautiful and wrong. The 70.34° reality is ugly and true. I ",
+    "source_file": "soul_staging_051.md",
+    "session": 51,
+    "document_type": "analysis",
+    "topic_tags": [
+      "soul_staging",
+      "projection_lesson",
+      "protocol_boundary"
+    ],
+    "quality_signal": "sharp",
+    "author": "opus_architect",
+    "timestamp": "2026-03-08T23:56:22.827079+00:00",
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "char_count": 4867
   }
 ]

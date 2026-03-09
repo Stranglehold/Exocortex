@@ -1,0 +1,5 @@
+{
+  "title": "Qwen 3.5-35B",
+  "description": "Local operational agent with Exocortex cognitive architecture. Optimized for code comprehension, empirical verification, and structured task execution.",
+  "context": ""
+}

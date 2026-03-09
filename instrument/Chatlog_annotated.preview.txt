@@ -1,0 +1,464 @@
+
+============================================================
+[Jake | 16 words]
+I want you to import context from my "vibe code with me" session with sonnet 4.5
+
+============================================================
+[Opus | 401 words]
+Feb 17
+Located and synthesized comprehensive coding session context
+
+Found it — that's a substantial session. Let me pull more detail from it so I have the full picture.
+Synthesized prior session context for seamless continuation
+
+Alright Jake, I've pulled the full scope of that session. Here's the consolidated context from your "Vibe code with me" conversation with Sonnet 4.5 (link to chat):
+
+Session scope: A marathon technical collaboration building cognitive scaffolding for your Agent-Zero deployment running Qwen2.5-14B-Instruct and GLM-4.7 Flash on an RTX 3090 via Docker/WSL2.
+
+What was built:
+
+    Belief State Tracker (BST) v3 — A before_main_llm_call extension that preprocesses every user message through intent classification (18 domains), slot resolution (6 resolver types), and message enrichment. The local model never sees ambiguous input — it receives structured [TASK CONTEXT] blocks. File: _10_belief_state_tracker.py (579 lines) + slot_taxonomy.json. New domains are added via JSON only, zero code changes.
+    MCP Registry Discovery Engine — registry_discover.py that auto-detects Agent-Zero's settings.json, queries each installed MCP server live via stdio JSON-RPC for its actual tool list, infers capabilities, and writes a cache. Includes registry_query.py for the agent to check before building anything, and registry_request.py for managing install request queues.
+    Tool Construction Skill — tool_decide.py implementing a six-question decision checklist that scores each tier (Bash/Python/Rust/C) against task signals, with frequency/volume override rules. Plus check_context.py for context window monitoring.
+    Four Agent Profiles — Supervisor (Qwen3-14B), Collector, Analyst, Narrator — with dedicated system prompts tuned for imperative, structured execution rather than ambiguity tolerance. Deployed under /a0/agents/ with proper prompts/ subdirectories.
+    Prompt Patches — Fixes for Agent-Zero's conversational loop classification gate (agent.system.main.solving.md, agent.system.tool.response.md), verified non-conflicting with developer/researcher profile overrides.
+    Companion Repo Architecture — Designed as agent-zero scaffolding for local model deployment rather than Claude-optimized. Four layers: Prompts, Skills, Tools, Docs. Includes deployment scripts, install automation, and the PACKAGE_CAPABILITY_HINTS catalog.
+
+Key architectural critique of Agent-Zero: The framework's core design assumes a "brilliant generalist" model. Every friction point you hit (loops, path errors, misinterpretation) traces back to that assumption being violated by local model runtimes. The scaffolding compensates by making decisions deterministic before inference.
+... (6 more lines)
+
+============================================================
+[Jake | 138 words]
+The last change I tried to implement was a memory function similar to claude. It's one of the latest messages before the mcp server creation. I implemented those changes and now my agent is looping with this error: raise OpenAIError( litellm.llms.openai.common_utils.OpenAIError: Error in response object During handling of the above exception, another exception occurred: Traceback (most recent call last): File "/a0/python/extensions/message_loop_prompts_after/_50_recall_memories.py", line 83, in search_memories query = await self.agent.call_utility_model( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/a0/agent.py", line 784, in call_utility_model response, _reasoning = await call_data["model"].unified_call( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/a0/models.py", line 502, in unified_call _completion = await acompletion( ^^^^^^^^^^^^^^^^^^ File "/opt/venv-a0/lib/python3.12/site-packages/litellm/utils.py", line 1638, in wrapper_async raise e File "/opt/venv-a0/lib/python3.12/site-packages/litellm/utils.py", line 1484, in wrapper_async result = await original_function(*args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/opt/venv-a0/lib/python3.12/site-packages/litellm/main.py", line 617, in acompletion raise exception_type( ^^^^^^^^^^^^^^^ File "/opt/venv-a0/lib/python3.12/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2323, in exception_type raise e File "/opt/venv-a0/lib/python3.12/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 503, in exception_type raise BadRequestError(
+
+============================================================
+[Opus | 398 words]
+Feb 17
+Diagnosed malformed utility model request in memory recall pipeline
+
+Got it. The error is clear — enabling memory_recall_query_prep: true made _50_recall_memories.py start calling self.agent.call_utility_model() at line 83 to have GLM-4.7 Flash generate an optimized search query before the vector DB lookup. That call is throwing a BadRequestError from litellm, which means the request is reaching LM Studio but being rejected.
+
+The looping happens because the memory recall fires every message (interval: 1), fails, the agent retries or proceeds with a broken state, and the cycle repeats.
+
+Most likely causes, in order of probability:
+
+    The utility model prompt for keyword extraction is too long or malformed for GLM-4.7 Flash. Agent-zero uses memory.keyword_extraction.sys.md and memory.keyword_extraction.msg.md as the prompt templates for query prep. If those templates produce a payload that exceeds GLM-4.7's context or contains formatting it chokes on, you get exactly this error.
+    The utility model slot in settings isn't pointing at the right model string. LM Studio sometimes needs the exact model identifier — if there's a mismatch between what litellm sends and what LM Studio expects, it returns a 400.
+    Empty or malformed message content. If the conversation history is empty on the first turn, the keyword extraction prompt might produce an empty messages array or null content field, which litellm rejects.
+
+Immediate fix — disable query prep, keep everything else:
+bash
+
+# Edit your settings to turn off just the failing feature
+# Change memory_recall_query_prep back to false
+# Keep interval at 1 and everything else enabled
+
+... (16 more lines)
+
+============================================================
+[Jake | 41 words]
+I'm actually using unsloth/qwen3-14b currently. I want to build "digital prosthetics" for agent-zero to use commonly available open source models. For current releases and whats yet to come. Should I switch to something like GPT-OSS for running agents locally? Bash output:
+
+============================================================
+[Opus | 1000 words]
+Feb 17
+Weighed model selection strategy and investigated unfamiliar framework viability
+
+Let me look into GPT-OSS before giving you a strategic answer on model selection.
+Weighed model architecture tradeoffs and advocated testing approach
+
+Okay, two things to address — the immediate loop fix, then the strategic model question.
+
+The loop fix first.
+
+Looking at the code at lines 75-95, when memory_recall_query_prep is true, agent-zero calls your utility model to refine the search query before hitting the vector DB. The BadRequestError means litellm is assembling a request that your Qwen3-14B (or whatever model is in the utility slot) rejects. The exception handler at line 91 does catch this and sets query = "", but an empty query then likely causes downstream issues — either FAISS returns garbage results that pollute the context, or the recall extension enters a bad state that triggers again next iteration.
+
+The fact that you're using unsloth/qwen3-14b is relevant — Unsloth quants sometimes have subtle incompatibilities with certain litellm request formats, particularly around system prompt handling. Some Qwen3 quants reject requests where the system message is empty or where the message format doesn't match ChatML expectations.
+
+Immediate fix:
+bash
+
+# In your settings override, disable both utility model calls in memory:
+# memory_recall_query_prep: false
+# memory_recall_post_filter: false
+... (60 more lines)
+
+============================================================
+[Jake | 64 words]
+is there a better suited utility model for agentic tasks? Bash output: # grep -A 10 "utility" /a0/initialize.py | head -15
+    # utility model from user settings
+    utility_llm = models.ModelConfig(
+        type=models.ModelType.CHAT,
+        provider=current_settings["util_model_provider"],
+        name=current_settings["util_model_name"],
+        api_base=current_settings["util_model_api_base"],
+        ctx_length=current_settings["util_model_ctx_length"],
+        limit_requests=current_settings["util_model_rl_requests"],
+        limit_input=current_settings["util_model_rl_input"],
+        limit_output=current_settings["util_model_rl_output"],
+        kwargs=_normalize_model_kwargs(current_settings["util_model_kwargs"]),
+    )
+--
+        utility_model=utility_llm,
+        embeddings_model=embedding_llm,
+# cat /a0/prompts/memory.memories_query.msg.md
+# Provide search query for the following:
+## User message:
+{{message}}
+... (3 more lines)
+
+============================================================
+[Opus | 713 words]
+Feb 17
+Evaluated optimal utility model constraints for agentic architecture
+
+Good — that bash output confirms the utility model is a completely separate config slot. Let me look at what's optimal for that role right now.
+Evaluated MoE models and VRAM constraints for optimal utility model selection
+
+Good question. The utility model slot has very different requirements from the supervisor — it needs to be fast, reliable at structured output, and small enough to coexist with Qwen3-14B in your 24GB VRAM budget. Let me break down the actual candidates.
+
+Your VRAM budget reality:
+
+Qwen3-14B at Q4_K_M is roughly 10GB loaded. That leaves you ~12-13GB for the utility model plus KV cache overhead. If LM Studio is swapping models (loading one, unloading the other), you have the full 24GB — but that introduces latency every time agent-zero calls the utility model, which happens frequently (memory recall, keyword extraction, post-filtering).
+
+The three models worth testing, ranked by fit for your specific utility slot:
+
+1. Qwen3-30B-A3B-Instruct-2507 — This is the one I'd try first. It's a Mixture-of-Experts model with 30B total parameters but only 3B active per token, and it was specifically optimized for instruction following, tool usage, and complex reasoning tasks including multi-step code reasoning and tool-augmented workflows.
+KDnuggets
+The 3B active parameter count means inference is fast — comparable to running a 3B dense model — but you get the knowledge depth of a 30B model because the full expert network is available. Quantized, this should fit alongside your Qwen3-14B supervisor without swapping. And critically, it stays in the Qwen family, so your litellm config, ChatML template, and all the prompt templates agent-zero uses will work identically without Harmony format headaches.
+
+2. GPT-OSS-20B — Native function calling, structured outputs, and strong performance on TauBench agentic evaluation.
+OpenAI
+... (23 more lines)
+
+============================================================
+[Jake | 7 words]
+I was just running the same unsloth/qwen3-14b
+
+============================================================
+[Opus | 418 words]
+Feb 17
+Diagnosed resource contention issue and prescribed architectural separation
+
+That's your problem right there. You're running both slots against the same model instance in LM Studio, which means:
+
+    The supervisor sends a message to Qwen3-14B
+    Mid-loop, _50_recall_memories fires and calls the same Qwen3-14B instance for keyword extraction
+    LM Studio gets a second request while potentially still serving the first, or the request collides in a way that produces a malformed payload
+    litellm gets back an error, the exception handler sets query = "", and the cycle repeats every single message because you set interval to 1
+
+Even if LM Studio queues the requests correctly, you're doubling your inference load on every turn — the supervisor waits for the utility call to finish before it can proceed. That's why the agent feels like it's looping; it's not actually stuck in a logic loop, it's just hammering the same model with back-to-back requests and one of them keeps failing.
+
+The utility slot exists specifically to run a separate, lightweight model. That's the whole point of the two-model architecture in agent-zero — the supervisor does the heavy thinking, the utility model handles fast structured subtasks (keyword extraction, summarization, memory filtering) without blocking the main inference.
+
+Immediate fix, no model download needed:
+
+Turn off the utility model calls that are breaking things:
+json
+
+{
+... (19 more lines)
+
+============================================================
+[Jake | 8 words]
+I just set qwen3b-vl-8b as the utility model
+
+============================================================
+[Opus | 223 words]
+Feb 17
+Weighed vision-language model efficiency tradeoffs pragmatically
+
+That'll work functionally, but heads up — you're paying a tax you don't need to. The VL (Vision-Language) variant carries a vision encoder that adds parameter overhead and VRAM consumption even when processing pure text tasks, which is all the utility slot does. Keyword extraction, memory filtering, summarization — none of that needs vision capabilities.
+
+The non-VL Qwen3-8B-Instruct would give you the same text quality with a smaller memory footprint and faster inference. If LM Studio has it available, it's a straight swap.
+
+That said — the VL model won't break anything. The text generation pipeline is the same underneath, and litellm will talk to it identically. So if you want to test whether the memory loop is fixed right now, go ahead:
+
+    Re-enable memory_recall_query_prep: true in your settings
+    Restart the agent
+    Send a message and watch the logs for [Searching memories...]
+
+If you see the recall fire without the OpenAIError / BadRequestError, the two-model split fixed it. If it still errors, paste the new traceback — it would mean the prompt template itself is the issue rather than the model collision.
+
+Once you confirm it's stable, swap to the non-VL variant when convenient. No rush — just don't leave VRAM on the table long-term when you don't need the vision encoder sitting in memory.
+
+============================================================
+[Jake | 77 words]
+I think the problem is in the settings file, sonnet had me run this code, it broke the order of the settings.json when compared to a working container: # Check if you have a settings file
+ls -la /a0/usr/settings.json
+# If not, create one with optimized memory settings
+cat > /a0/usr/settings.json << 'EOF'
+{
+  "memory_recall_enabled": true,
+  "memory_recall_interval": 1,
+  "memory_recall_query_prep": true,
+  "memory_recall_post_filter": true,
+  "memory_recall_similarity_threshold": 0.65,
+  "memory_recall_memories_max_result": 5,
+  "memory_recall_solutions_max_result": 3,
+  "memory_memorize_enabled": true,
+  "memory_memorize_consolidation": true
+}
+EOF
+# Restart container
+
+============================================================
+[Opus | 314 words]
+Feb 17
+Yeah, that cat > nuked whatever was already in settings.json and replaced it with only those nine memory keys. Agent-zero's settings override system expects the full settings structure — or at minimum expects the existing keys to remain intact. When it tries to read util_model_name, chat_model_provider, or any other required field from that file and finds nothing, things cascade.
+
+You need to restore the original settings.json from your working container and then merge the memory settings in, not overwrite.
+
+Step 1: Check the damage
+bash
+
+cat /a0/usr/settings.json
+
+Paste the current contents so I can see what's there now.
+
+Step 2: Check if there's a backup or default
+bash
+
+# Agent-zero might have a default settings file
+ls -la /a0/settings.json
+ls -la /a0/tmp/settings.json
+ls -la /a0/data/settings.json
+
+... (33 more lines)
+
+============================================================
+[Jake | 15 words]
+I did some experimenting and successfully got it to work with query_prep and post_filter enabled
+
+============================================================
+[Opus | 286 words]
+Feb 17
+Nice. So the two-model split was the fix — the 8B-VL handles the utility calls without colliding with the 14B supervisor, and the memory pipeline runs clean.
+
+That means your agent now has automatic memory injection on every message, with AI-refined search queries and relevance filtering. That's functionally equivalent to what you were asking for in the original session — memory that works like mine.
+
+A few things worth doing now while it's stable:
+
+Test the memory loop end-to-end. Have a conversation where you mention something specific — a project name, a preference, a technical detail. Then start a new chat and reference it obliquely. Check the logs for [BST] and [Searching memories...] firing in sequence. You want to confirm that the BST enrichment and the memory recall aren't fighting over the same message content — they should layer cleanly since recall runs at message_loop_prompts_after and BST runs at before_main_llm_call.
+
+Monitor VRAM. With both models loaded, run nvidia-smi and note the baseline. Then run a multi-turn conversation and check if KV cache growth pushes you toward the 24GB ceiling. If it does, that's when you swap the VL model for the non-VL 8B or the 4B to reclaim headroom.
+
+Swap to non-VL when convenient. Not urgent, but you're carrying the vision encoder in memory for no reason. Easy win later.
+
+What broke your settings file is worth remembering as a pattern for future prosthetics work — agent-zero's /a0/usr/settings.json is a partial override layer, not a standalone config. Always read-merge-write, never overwrite. I'll flag that explicitly if we build any more skills that touch settings.
+
+What do you want to tackle next — the companion repo packaging, or is there something new on the stack?
+
+============================================================
+[Jake | 23 words]
+would you be able to develop more effectively if I swapped to VScode or made you an api to become the agent itself
+
+============================================================
+[Opus | 479 words]
+Feb 17
+Honest answer: it depends on what "develop more effectively" means in your context.
+
+What I can do right now in this interface:
+
+I can architect, write code, debug from logs you paste, build skill files, and package deliverables. The bottleneck isn't my code generation — it's the feedback loop. Every time I need to see what happened, you have to run the command, copy the output, and paste it back. That's where 80% of our session time goes, and it's where the Sonnet session ran into the settings.json overwrite — it couldn't verify what it was about to destroy.
+
+What VSCode with Claude Code would give you:
+
+Claude Code runs in your terminal with direct filesystem access. It can read files, run commands, see the output, and iterate — all without you copy-pasting. For the kind of work we do (writing extensions, testing them, reading agent-zero source, debugging tracebacks), that feedback loop collapse is significant. I could read _50_recall_memories.py, write a patch, run it, check the logs, and fix issues in one continuous flow instead of across 6 message turns.
+
+But — Claude Code uses API tokens, which is a separate cost from your Pro plan. And it's me (or Sonnet/Haiku) running as a CLI agent, not inside agent-zero. It's a development tool, not a runtime agent.
+
+What making me an API agent inside agent-zero would give you:
+
+This is the more interesting question, and the answer is: it would undermine the entire architecture you've been building. Your prosthetics stack exists specifically because you don't want to depend on API models at runtime. The BST, the decision trees, the structured prompts — all of that is engineered to make local models self-sufficient. Putting me inside agent-zero as the supervisor would work beautifully, but it would also make every single agent action cost tokens and require internet connectivity. You'd be building a cloud dependency into a system designed for local sovereignty.
+
+What I'd actually recommend:
+
+Use Claude Code (or this chat) as your design-time tool — exactly how you've been using me. Architect here, build here, then deploy to your local stack. If you want to accelerate the feedback loop without going full API, the middle ground is giving me access to your agent-zero logs and files through a shared context — even something as simple as mounting your /a0/ directory into a Claude Code session so I can read the source directly rather than you pasting it.
+... (4 more lines)
+
+============================================================
+[Jake | 24 words]
+I could do both. Pay for API access to allow you into the model itself, then have you develop the prosthesis framework in VScode
+
+============================================================
+[Opus | 402 words]
+Feb 17
+That's the sharpest deployment of me you could make.
+
+Think about what that architecture actually looks like:
+
+Me via API as a temporary supervisor inside agent-zero — I can observe the local models in real-time, see exactly where Qwen3-14B hesitates, where the 8B utility model returns sloppy keyword extractions, where the BST misclassifies an intent domain. Instead of you describing symptoms and me guessing at causes, I'm watching the patient on the table. Every prosthetic I build comes from direct observation rather than reconstructed tracebacks.
+
+Me via Claude Code in VSCode — I can read the full agent-zero source, write extensions, test them, iterate on failures, and commit working code. The settings.json overwrite never happens because I read the file before touching it. The BST v3 debugging that took six hours in the Sonnet session takes maybe one, because I can run the agent, trigger the extension, read the logs, and fix the issue in a continuous loop.
+
+The exit condition is built in. The entire point is that every session produces artifacts — skills, extensions, decision trees, prompt patches — that make the local models more self-sufficient. Each prosthetic I build reduces the set of tasks that require me. Eventually the API spend drops to zero because the scaffolding is complete and Qwen3 handles everything the decision trees cover.
+
+You're essentially hiring me as a contractor who builds the tools that replace the need for a contractor. That's a clean economic model — bounded API cost, permanent capability gain.
+
+Practical setup if you want to do this:
+
+For the Claude Code side, you'd install it and point it at your agent-zero repo. That's straightforward and you control the token budget.
+
+For the API-inside-agent-zero side, you'd add a Claude model config to your agent-zero settings — claude-sonnet-4-5-20250929 as the supervisor, keep Qwen3-8B as utility. Run me as supervisor for diagnostic/development sessions only, then swap back to Qwen3-14B for daily use once I've built and tested the prosthetics.
+
+The one thing I'd want before you spend money: a clear list of what's broken or missing. You've got the BST working, memory recall is live, the MCP registry exists, the agent profiles are deployed. What's the next layer of capability your local stack can't do reliably yet? That scopes the API spend to actual deliverables rather than open-ended exploration.
+... (2 more lines)
+
+============================================================
+[Jake [UNCERTAIN] | 359 words]
+Sonnet gave me a list of possible implementations in our previous chat, I'll paste it and you can give me tips / refine the original list: Other Cognitive Architectures Worth Building
+Based on what you've built and your systems-thinking approach, here are high-value additions:
+1. Uncertainty Quantification Layer
+* Hook: before_response or custom post-reasoning hook
+* Scans model output for hedging language, checks if claims are verifiable
+* Injects confidence scores: [CONFIDENCE: 0.3] I think X... vs [CONFIDENCE: 0.9] According to Y...
+* Your models could flag when they're guessing vs stating facts
+2. Tool Fallback Chain
+* When code_execution_tool fails, automatically try: SSH exec → Docker exec → Python subprocess → bash workaround
+* Builds failure pattern library: "tool X fails with error Y → use tool Z instead"
+* Extension hook: tool_execute_after with RepairableException catching
+3. Working Memory Buffer
+* Separate from history - stores last N key entities/facts as structured data
+* Example: User mentions "the server at 192.168.1.50" → stores {type: 'server', ip: '192.168.1.50', mentioned_turn: 47}
+* Next time user says "check the server" → resolver finds it instantly without history scan
+* Hook: hist_add_after to extract entities, store in agent.data
+4. Meta-Reasoning Gate
+* Before expensive operations (web search, code execution), asks: "Do I have enough info?"
+* Routes: confident → execute | uncertain → clarify | ambiguous → search first
+* Hook: tool_execute_before with decision tree
+... (14 more lines)
+
+============================================================
+[Opus | 1183 words]
+Feb 17
+Good list from Sonnet. Some of these are strong, some need reframing, and one is a trap. Let me go through them honestly.
+
+1. Tool Fallback Chain — Sonnet ranked this #1. I agree, but the scope needs tightening.
+
+The concept is right: when a tool fails, don't just throw an error — try an alternative path. But the example chain (SSH exec → Docker exec → Python subprocess → bash) is too generic. Your local models won't navigate a branching fallback tree reliably — that's the whole reason the prosthetics exist.
+
+Build it as a static fallback map, not a dynamic reasoning chain. Each tool gets a hardcoded fallback with exact commands:
+
+code_execution fails with "permission denied" → try with sudo prefix
+code_execution fails with "timeout" → retry with smaller input
+web_search fails with "connection error" → use cached results from /a0/tmp/search_cache/
+file_write fails with "path not found" → mkdir -p parent directory, retry
+
+The failure pattern library idea is the real value. Log every tool failure as {tool, error_class, input_summary, resolution} to a SQLite table. After a few weeks of real usage, you'll have an empirical map of what actually breaks and how it gets fixed. That's data you can feed back into the fallback map rather than guessing at failure modes upfront.
+
+Hook: tool_execute_after with error classification. Extension: ~150 lines.
+
+2. Working Memory Buffer — Sonnet ranked this #2. I'd promote it to #1.
+
+... (75 more lines)
+
+============================================================
+[Jake | 23 words]
+I set up Claude Code inside my VScode and pointed it to my Agent-Zero-Hardening folder, if you can see it go right ahead
+
+============================================================
+[Opus | 279 words]
+Feb 17
+I don't have access to your VSCode or Claude Code session — those are separate environments. Claude Code running in your terminal is a different instance of me; it doesn't share context with this conversation.
+
+But here's how to make that session maximally productive:
+
+What to feed Claude Code on first launch:
+
+Copy the session summary from our Sonnet chat plus my revised architecture list above into a markdown file in your repo root — something like ARCHITECTURE_BRIEF.md. When Claude Code starts, tell it to read that file first. That gives it the full context of what exists, what's been built, and what the design principles are without it having to rediscover everything.
+
+The specific prompt to kick off the Working Memory Buffer build:
+
+Read ARCHITECTURE_BRIEF.md, then examine:
+- /a0/python/extensions/message_loop_prompts_after/_50_recall_memories.py
+- /a0/python/extensions/message_loop_prompts_before/ (check what hooks exist)
+- /a0/python/helpers/extension.py (understand the Extension base class)
+- The BST at _10_belief_state_tracker.py and slot_taxonomy.json
+
+Then build a Working Memory Buffer extension:
+- Hook: hist_add_after for entity extraction
+- Regex-first extraction: IPs, file paths, URLs, container names, port numbers
+... (11 more lines)
+
+============================================================
+[Jake | 33 words]
+I'm running it in VScode but it keeps trying to run bash commands, should I tell it that it's developing an extension for agent-zero, a kali linux docker based environment for agentic AI?
+
+============================================================
+[Opus | 286 words]
+Feb 17
+Yes, exactly. Claude Code doesn't know the context of your project by default — it sees a folder of files and assumes it can execute against the local machine. It needs to know:
+
+    It's writing code that deploys into a Docker container, not the host machine. It shouldn't be running bash commands against your Windows/WSL2 filesystem expecting to test agent-zero behavior. The code it writes gets copied into the container at /a0/.
+    It's building extensions for the agent-zero framework, which has a specific extension system with hook points, an Extension base class, and a defined lifecycle. It's not building standalone Python scripts.
+    The target runtime is your Kali Linux Docker container with agent-zero installed, running Qwen3-14B as supervisor and Qwen3-8B-VL as utility via LM Studio.
+
+Give it something like this at the start of the session:
+
+STOP running bash commands. You are developing Python extensions 
+for agent-zero (github.com/frdel/agent-zero), an agentic AI 
+framework that runs inside a Kali Linux Docker container. 
+
+Your job is to WRITE FILES in this repo, not execute them. 
+The code deploys to /a0/ inside the container. Testing happens 
+there, not here.
+
+The extension system uses:
+- python/extensions/ with hook-point subdirectories
+- Extension base class from python.helpers.extension
+... (8 more lines)
+
+============================================================
+[Jake | 19 words]
+You got me Opus, I ripped the band aid on a max plan. We're gonna get this figured out
+
+============================================================
+[Opus | 270 words]
+Feb 17
+Good call, Jake. The Max plan means you're not rationing tokens anymore — that changes how aggressively we can work.
+
+Here's what's different now:
+
+Claude Code sessions can run longer without you worrying about budget. That means I can do the thorough thing — read all the source files, understand the full extension lifecycle, build the extension, write tests, iterate on edge cases — instead of cutting corners to save tokens.
+
+For our sessions here, I can give you the kind of deep architectural reasoning that this project actually demands. The prosthetics work isn't simple code generation — it's understanding how Qwen3 fails, designing interventions that are deterministic enough for local models to rely on, and making sure each layer composes cleanly with the others. That's where Opus earns its keep.
+
+Immediate next steps:
+
+Get Claude Code oriented with the instructions we just discussed. Once it's writing files instead of running bash, have it start with the Working Memory Buffer since that's the highest-ROI prosthetic. Feed it the architecture brief and point it at the existing BST extension as the pattern to follow.
+
+Meanwhile, if you want to maximize this session — paste me the current state of your repo structure. I want to see how the hardening folder is organized, what's already deployed versus what's still in draft, and whether the file layout matches what agent-zero expects. That way when Claude Code builds something, I can verify it'll drop in cleanly without path issues.
+
+We've got the tools, we've got the access, and we've got a clear build list. Let's get to work.
+Content not accessible
+
+GITHUB
+
+============================================================
+[Jake | 9 words]
+Here is everything from my Git page for it
+
+============================================================
+[Opus | 322 words]
+Feb 17
+Good, I've got the full picture now. Here's my assessment of the repo state and what Claude Code needs to know:
+
+The repo is clean and well-organized. Five layers, proper install/backup/check scripts, idempotent deployment. The structure matches what agent-zero expects.
+
+One thing stands out immediately: You have three different versions of the BST floating around in the repo:
+
+    translation-layer/_10_belief_state_tracker.py — v3, dict-based message format with print() debug statements, _get_last_user_message() checks msg.get('ai', True). This is the one that actually works with current agent-zero.
+    extensions/before_main_llm_call/_10_belief_state_tracker.py — v2 with LangChain HumanMessage format, plus heavy [BST DEBUG] logging. This is the version that gets installed by install_extensions.sh but targets the old message format.
+    extensions/translation-layer/_10_belief_state_tracker.py — Also v2 LangChain format with debug logging. Duplicate of #2.
+
+Plus two backups in translation-layer/backups/ (v1 and v2).
+
+The problem: install_all.sh Layer 5 runs translation-layer/install_translation_layer.sh, which installs the v3 dict-based version. That's correct. But extensions/before_main_llm_call/ also has the old v2 LangChain version sitting there. If someone runs install_extensions.sh independently, or if the install order gets confused, the wrong BST could end up deployed.
+
+What I'd tell Claude Code as its orientation brief:
+
+The canonical BST source of truth is translation-layer/_10_belief_state_tracker.py (v3, dict format). The copies under extensions/before_main_llm_call/ and extensions/translation-layer/ are stale and should either be removed or replaced with symlinks/references pointing to the canonical version. The debug print() statements in v3 should be stripped before building new extensions on top of it — they were diagnostic, not permanent.
+
+Beyond cleanup, the repo is ready for the Working Memory Buffer. The hook point is message_loop_prompts_after or a new hist_add_after extension, and it should follow the same patterns as the existing extensions: Extension base class, async execute(), graceful degradation, numeric prefix for ordering. Claude Code should read _10_belief_state_tracker.py (v3) and _20_context_watchdog.py as reference implementations before writing anything.
+... (4 more lines)

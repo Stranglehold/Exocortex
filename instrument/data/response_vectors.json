@@ -1,0 +1,3432 @@
+{
+  "metadata": {
+    "source_turns": "D:\\Vibecode\\Agent-Zero\\Exocortex\\instrument\\data\\chatlog2_turns.json",
+    "total_turns": 153,
+    "opus_turns": 77,
+    "jake_turns": 76,
+    "total_pairs": 73,
+    "embedding_model": "text-embedding-nomic-embed-text-v1.5",
+    "embedding_dim": 768,
+    "centroid_source": "D:\\Vibecode\\Agent-Zero\\Exocortex\\instrument\\data\\centroids_768.json",
+    "domains": [
+      "philosophical",
+      "operational",
+      "reflective",
+      "relational",
+      "mixed"
+    ]
+  },
+  "pairs": [
+    {
+      "pair_index": 0,
+      "jake_turn": 1,
+      "opus_turn": 2,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 39,
+      "opus_word_count": 416,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.688908,
+      "magnitude": 0.788786,
+      "response_direction": {
+        "philosophical": 0.19084,
+        "operational": 0.26275,
+        "reflective": 0.28161,
+        "relational": 0.17375,
+        "mixed": 0.27314
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.66073,
+        "operational": 0.59249,
+        "reflective": 0.63467,
+        "relational": 0.62125,
+        "mixed": 0.60291
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81126,
+        "operational": 0.79975,
+        "reflective": 0.8568,
+        "relational": 0.7583,
+        "mixed": 0.81836
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "reflective"
+    },
+    {
+      "pair_index": 1,
+      "jake_turn": 4,
+      "opus_turn": 5,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 96,
+      "opus_word_count": 146,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.646575,
+      "magnitude": 0.840744,
+      "response_direction": {
+        "philosophical": 0.12814,
+        "operational": 0.09549,
+        "reflective": 0.06571,
+        "relational": -0.00928,
+        "mixed": 0.09505
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.69434,
+        "operational": 0.72063,
+        "reflective": 0.70385,
+        "relational": 0.70018,
+        "mixed": 0.7303
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80208,
+        "operational": 0.80091,
+        "reflective": 0.75909,
+        "relational": 0.69238,
+        "mixed": 0.81021
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 2,
+      "jake_turn": 6,
+      "opus_turn": 7,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 30,
+      "opus_word_count": 267,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.624557,
+      "magnitude": 0.866537,
+      "response_direction": {
+        "philosophical": 0.08523,
+        "operational": 0.1466,
+        "reflective": 0.11856,
+        "relational": 0.10784,
+        "mixed": 0.13091
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.6687,
+        "operational": 0.6532,
+        "reflective": 0.63618,
+        "relational": 0.57938,
+        "mixed": 0.65096
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.74256,
+        "operational": 0.78023,
+        "reflective": 0.73891,
+        "relational": 0.67283,
+        "mixed": 0.7644
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 3,
+      "jake_turn": 8,
+      "opus_turn": 9,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 18,
+      "opus_word_count": 342,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.512437,
+      "magnitude": 0.987485,
+      "response_direction": {
+        "philosophical": 0.25001,
+        "operational": 0.28819,
+        "reflective": 0.29492,
+        "relational": 0.22432,
+        "mixed": 0.30851
+      },
+      "top_response_direction": "mixed",
+      "jake_domain_scores": {
+        "philosophical": 0.55436,
+        "operational": 0.52881,
+        "reflective": 0.5211,
+        "relational": 0.48494,
+        "mixed": 0.51434
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80124,
+        "operational": 0.8134,
+        "reflective": 0.81233,
+        "relational": 0.70646,
+        "mixed": 0.81899
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 4,
+      "jake_turn": 10,
+      "opus_turn": 11,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 109,
+      "opus_word_count": 481,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.756213,
+      "magnitude": 0.698265,
+      "response_direction": {
+        "philosophical": 0.11435,
+        "operational": 0.20458,
+        "reflective": 0.14456,
+        "relational": 0.02186,
+        "mixed": 0.15877
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.72934,
+        "operational": 0.68763,
+        "reflective": 0.67949,
+        "relational": 0.67304,
+        "mixed": 0.72275
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80919,
+        "operational": 0.83049,
+        "reflective": 0.78042,
+        "relational": 0.6883,
+        "mixed": 0.83361
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 5,
+      "jake_turn": 12,
+      "opus_turn": 13,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 102,
+      "opus_word_count": 1023,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.696585,
+      "magnitude": 0.778993,
+      "response_direction": {
+        "philosophical": 0.27204,
+        "operational": 0.23002,
+        "reflective": 0.21716,
+        "relational": 0.1597,
+        "mixed": 0.22675
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.6231,
+        "operational": 0.64016,
+        "reflective": 0.62376,
+        "relational": 0.61758,
+        "mixed": 0.64822
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83502,
+        "operational": 0.81935,
+        "reflective": 0.79293,
+        "relational": 0.74198,
+        "mixed": 0.82485
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 6,
+      "jake_turn": 14,
+      "opus_turn": 15,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 68,
+      "opus_word_count": 473,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.699712,
+      "magnitude": 0.774968,
+      "response_direction": {
+        "philosophical": 0.16916,
+        "operational": 0.17881,
+        "reflective": 0.19912,
+        "relational": 0.10397,
+        "mixed": 0.18914
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.57349,
+        "operational": 0.60842,
+        "reflective": 0.573,
+        "relational": 0.57648,
+        "mixed": 0.60285
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.70458,
+        "operational": 0.74699,
+        "reflective": 0.72731,
+        "relational": 0.65706,
+        "mixed": 0.74943
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 7,
+      "jake_turn": 16,
+      "opus_turn": 17,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 15,
+      "opus_word_count": 279,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.520784,
+      "magnitude": 0.978995,
+      "response_direction": {
+        "philosophical": 0.13395,
+        "operational": 0.16436,
+        "reflective": 0.16911,
+        "relational": 0.11959,
+        "mixed": 0.16465
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.55566,
+        "operational": 0.54592,
+        "reflective": 0.54058,
+        "relational": 0.53751,
+        "mixed": 0.55124
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.68679,
+        "operational": 0.70683,
+        "reflective": 0.70613,
+        "relational": 0.65459,
+        "mixed": 0.71243
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 8,
+      "jake_turn": 18,
+      "opus_turn": 19,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 150,
+      "opus_word_count": 657,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.761934,
+      "magnitude": 0.690024,
+      "response_direction": {
+        "philosophical": -0.02612,
+        "operational": 0.0317,
+        "reflective": -0.02262,
+        "relational": 0.00689,
+        "mixed": 0.0333
+      },
+      "top_response_direction": "mixed",
+      "jake_domain_scores": {
+        "philosophical": 0.80599,
+        "operational": 0.75382,
+        "reflective": 0.77234,
+        "relational": 0.75355,
+        "mixed": 0.75725
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.78796,
+        "operational": 0.7757,
+        "reflective": 0.75674,
+        "relational": 0.7583,
+        "mixed": 0.78023
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 9,
+      "jake_turn": 20,
+      "opus_turn": 21,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 40,
+      "opus_word_count": 724,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.754279,
+      "magnitude": 0.701029,
+      "response_direction": {
+        "philosophical": 0.08927,
+        "operational": 0.10242,
+        "reflective": 0.06645,
+        "relational": 0.04918,
+        "mixed": 0.09933
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.69327,
+        "operational": 0.69387,
+        "reflective": 0.67585,
+        "relational": 0.65084,
+        "mixed": 0.69035
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.75585,
+        "operational": 0.76567,
+        "reflective": 0.72243,
+        "relational": 0.68532,
+        "mixed": 0.75998
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 10,
+      "jake_turn": 22,
+      "opus_turn": 23,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 218,
+      "opus_word_count": 1084,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.79382,
+      "magnitude": 0.642152,
+      "response_direction": {
+        "philosophical": 0.14051,
+        "operational": 0.11312,
+        "reflective": 0.07147,
+        "relational": 0.07597,
+        "mixed": 0.12343
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.73224,
+        "operational": 0.74858,
+        "reflective": 0.74522,
+        "relational": 0.67951,
+        "mixed": 0.74671
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82247,
+        "operational": 0.82122,
+        "reflective": 0.79111,
+        "relational": 0.7283,
+        "mixed": 0.82597
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 11,
+      "jake_turn": 24,
+      "opus_turn": 25,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 629,
+      "opus_word_count": 792,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.890037,
+      "magnitude": 0.468963,
+      "response_direction": {
+        "philosophical": 0.11479,
+        "operational": 0.06985,
+        "reflective": 0.05215,
+        "relational": 0.03716,
+        "mixed": 0.03726
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.78608,
+        "operational": 0.79305,
+        "reflective": 0.79575,
+        "relational": 0.75191,
+        "mixed": 0.81256
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83991,
+        "operational": 0.8258,
+        "reflective": 0.82021,
+        "relational": 0.76933,
+        "mixed": 0.83003
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 12,
+      "jake_turn": 26,
+      "opus_turn": 27,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 229,
+      "opus_word_count": 606,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.904593,
+      "magnitude": 0.436824,
+      "response_direction": {
+        "philosophical": -0.02152,
+        "operational": -0.03823,
+        "reflective": -0.04007,
+        "relational": 0.00262,
+        "mixed": -0.03856
+      },
+      "top_response_direction": "relational",
+      "jake_domain_scores": {
+        "philosophical": 0.81865,
+        "operational": 0.81424,
+        "reflective": 0.8235,
+        "relational": 0.7223,
+        "mixed": 0.80987
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80926,
+        "operational": 0.79754,
+        "reflective": 0.80599,
+        "relational": 0.72344,
+        "mixed": 0.79302
+      },
+      "jake_nearest_domain": "reflective",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 13,
+      "jake_turn": 28,
+      "opus_turn": 29,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 139,
+      "opus_word_count": 1017,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.840098,
+      "magnitude": 0.565512,
+      "response_direction": {
+        "philosophical": 0.14547,
+        "operational": 0.13145,
+        "reflective": 0.17385,
+        "relational": 0.08231,
+        "mixed": 0.1481
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.77224,
+        "operational": 0.70412,
+        "reflective": 0.6613,
+        "relational": 0.68123,
+        "mixed": 0.69157
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.85451,
+        "operational": 0.77845,
+        "reflective": 0.75962,
+        "relational": 0.72777,
+        "mixed": 0.77532
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 14,
+      "jake_turn": 30,
+      "opus_turn": 31,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 7,
+      "opus_word_count": 917,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.650645,
+      "magnitude": 0.835889,
+      "response_direction": {
+        "philosophical": 0.24755,
+        "operational": 0.21498,
+        "reflective": 0.25271,
+        "relational": 0.22557,
+        "mixed": 0.22892
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.61536,
+        "operational": 0.63152,
+        "reflective": 0.56636,
+        "relational": 0.53493,
+        "mixed": 0.61447
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82229,
+        "operational": 0.81122,
+        "reflective": 0.7776,
+        "relational": 0.72349,
+        "mixed": 0.80582
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 15,
+      "jake_turn": 32,
+      "opus_turn": 33,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 132,
+      "opus_word_count": 735,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.716654,
+      "magnitude": 0.752789,
+      "response_direction": {
+        "philosophical": 0.14768,
+        "operational": 0.19511,
+        "reflective": 0.2144,
+        "relational": 0.14864,
+        "mixed": 0.19247
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.69995,
+        "operational": 0.62655,
+        "reflective": 0.57782,
+        "relational": 0.60088,
+        "mixed": 0.62922
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81113,
+        "operational": 0.77343,
+        "reflective": 0.73922,
+        "relational": 0.71277,
+        "mixed": 0.77411
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 16,
+      "jake_turn": 34,
+      "opus_turn": 35,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 78,
+      "opus_word_count": 104,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.78026,
+      "magnitude": 0.662932,
+      "response_direction": {
+        "philosophical": 0.06493,
+        "operational": 0.05833,
+        "reflective": 0.06716,
+        "relational": 0.05146,
+        "mixed": 0.05531
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.73109,
+        "operational": 0.66798,
+        "reflective": 0.64235,
+        "relational": 0.63501,
+        "mixed": 0.67069
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.77414,
+        "operational": 0.70665,
+        "reflective": 0.68687,
+        "relational": 0.66912,
+        "mixed": 0.70736
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 17,
+      "jake_turn": 36,
+      "opus_turn": 37,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 91,
+      "opus_word_count": 1533,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.732795,
+      "magnitude": 0.731034,
+      "response_direction": {
+        "philosophical": 0.19971,
+        "operational": 0.19951,
+        "reflective": 0.23084,
+        "relational": 0.18257,
+        "mixed": 0.21195
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.721,
+        "operational": 0.67076,
+        "reflective": 0.63355,
+        "relational": 0.64444,
+        "mixed": 0.66765
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.867,
+        "operational": 0.81661,
+        "reflective": 0.8023,
+        "relational": 0.77791,
+        "mixed": 0.82259
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 18,
+      "jake_turn": 38,
+      "opus_turn": 39,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 5,
+      "opus_word_count": 782,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.590221,
+      "magnitude": 0.905294,
+      "response_direction": {
+        "philosophical": 0.37738,
+        "operational": 0.32497,
+        "reflective": 0.30178,
+        "relational": 0.36529,
+        "mixed": 0.35931
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.50039,
+        "operational": 0.45242,
+        "reflective": 0.44856,
+        "relational": 0.42936,
+        "mixed": 0.43313
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.84203,
+        "operational": 0.74661,
+        "reflective": 0.72176,
+        "relational": 0.76006,
+        "mixed": 0.75842
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 19,
+      "jake_turn": 40,
+      "opus_turn": 41,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 117,
+      "opus_word_count": 649,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.798254,
+      "magnitude": 0.635211,
+      "response_direction": {
+        "philosophical": 0.06562,
+        "operational": 0.11629,
+        "reflective": 0.18419,
+        "relational": 0.1202,
+        "mixed": 0.10766
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.77645,
+        "operational": 0.68967,
+        "reflective": 0.66336,
+        "relational": 0.68523,
+        "mixed": 0.69569
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81814,
+        "operational": 0.76353,
+        "reflective": 0.78036,
+        "relational": 0.76158,
+        "mixed": 0.76407
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 20,
+      "jake_turn": 42,
+      "opus_turn": 43,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 198,
+      "opus_word_count": 385,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.767136,
+      "magnitude": 0.682442,
+      "response_direction": {
+        "philosophical": 0.17435,
+        "operational": 0.19438,
+        "reflective": 0.26706,
+        "relational": 0.14951,
+        "mixed": 0.21861
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.68653,
+        "operational": 0.60385,
+        "reflective": 0.5759,
+        "relational": 0.66376,
+        "mixed": 0.6158
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80551,
+        "operational": 0.7365,
+        "reflective": 0.75815,
+        "relational": 0.7658,
+        "mixed": 0.76499
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 21,
+      "jake_turn": 44,
+      "opus_turn": 45,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 164,
+      "opus_word_count": 603,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.805858,
+      "magnitude": 0.623124,
+      "response_direction": {
+        "philosophical": 0.0287,
+        "operational": 0.08877,
+        "reflective": 0.07706,
+        "relational": 0.01685,
+        "mixed": 0.07208
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.7227,
+        "operational": 0.64021,
+        "reflective": 0.65541,
+        "relational": 0.69557,
+        "mixed": 0.6522
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.74058,
+        "operational": 0.69553,
+        "reflective": 0.70343,
+        "relational": 0.70607,
+        "mixed": 0.69712
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 22,
+      "jake_turn": 46,
+      "opus_turn": 47,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 15,
+      "opus_word_count": 558,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.540134,
+      "magnitude": 0.959026,
+      "response_direction": {
+        "philosophical": 0.30304,
+        "operational": 0.30476,
+        "reflective": 0.35153,
+        "relational": 0.26393,
+        "mixed": 0.32091
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.51894,
+        "operational": 0.49158,
+        "reflective": 0.47308,
+        "relational": 0.52343,
+        "mixed": 0.49933
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80956,
+        "operational": 0.78386,
+        "reflective": 0.81021,
+        "relational": 0.77654,
+        "mixed": 0.80709
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "reflective"
+    },
+    {
+      "pair_index": 23,
+      "jake_turn": 48,
+      "opus_turn": 49,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 127,
+      "opus_word_count": 403,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.654825,
+      "magnitude": 0.830873,
+      "response_direction": {
+        "philosophical": 0.15141,
+        "operational": 0.21154,
+        "reflective": 0.28433,
+        "relational": 0.09599,
+        "mixed": 0.2111
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.63726,
+        "operational": 0.56696,
+        "reflective": 0.55012,
+        "relational": 0.65522,
+        "mixed": 0.58592
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.76306,
+        "operational": 0.74272,
+        "reflective": 0.78636,
+        "relational": 0.73498,
+        "mixed": 0.76131
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "reflective"
+    },
+    {
+      "pair_index": 24,
+      "jake_turn": 50,
+      "opus_turn": 51,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 105,
+      "opus_word_count": 535,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.760049,
+      "magnitude": 0.69275,
+      "response_direction": {
+        "philosophical": 0.20919,
+        "operational": 0.18036,
+        "reflective": 0.18078,
+        "relational": 0.10619,
+        "mixed": 0.17832
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.64191,
+        "operational": 0.6285,
+        "reflective": 0.62591,
+        "relational": 0.64278,
+        "mixed": 0.64118
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.78683,
+        "operational": 0.75345,
+        "reflective": 0.75114,
+        "relational": 0.71634,
+        "mixed": 0.76471
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 25,
+      "jake_turn": 52,
+      "opus_turn": 53,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 182,
+      "opus_word_count": 703,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.772108,
+      "magnitude": 0.675118,
+      "response_direction": {
+        "philosophical": 0.11531,
+        "operational": 0.11409,
+        "reflective": 0.07916,
+        "relational": 0.13199,
+        "mixed": 0.10899
+      },
+      "top_response_direction": "relational",
+      "jake_domain_scores": {
+        "philosophical": 0.71575,
+        "operational": 0.66118,
+        "reflective": 0.62806,
+        "relational": 0.61222,
+        "mixed": 0.66468
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.7936,
+        "operational": 0.7382,
+        "reflective": 0.6815,
+        "relational": 0.70133,
+        "mixed": 0.73826
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 26,
+      "jake_turn": 54,
+      "opus_turn": 55,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 57,
+      "opus_word_count": 498,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.762545,
+      "magnitude": 0.689136,
+      "response_direction": {
+        "philosophical": 0.22527,
+        "operational": 0.16717,
+        "reflective": 0.19053,
+        "relational": 0.18439,
+        "mixed": 0.15382
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.665,
+        "operational": 0.62967,
+        "reflective": 0.59092,
+        "relational": 0.56866,
+        "mixed": 0.63523
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82024,
+        "operational": 0.74488,
+        "reflective": 0.72222,
+        "relational": 0.69573,
+        "mixed": 0.74123
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 27,
+      "jake_turn": 56,
+      "opus_turn": 57,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 285,
+      "opus_word_count": 644,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.834236,
+      "magnitude": 0.575785,
+      "response_direction": {
+        "philosophical": 0.19757,
+        "operational": 0.25647,
+        "reflective": 0.26053,
+        "relational": 0.15072,
+        "mixed": 0.24952
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.66452,
+        "operational": 0.57347,
+        "reflective": 0.54366,
+        "relational": 0.60801,
+        "mixed": 0.57529
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.77827,
+        "operational": 0.72114,
+        "reflective": 0.69368,
+        "relational": 0.69479,
+        "mixed": 0.71896
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 28,
+      "jake_turn": 58,
+      "opus_turn": 59,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 36,
+      "opus_word_count": 524,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.788086,
+      "magnitude": 0.651021,
+      "response_direction": {
+        "philosophical": 0.22611,
+        "operational": 0.18947,
+        "reflective": 0.25169,
+        "relational": 0.16471,
+        "mixed": 0.20675
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.64989,
+        "operational": 0.62708,
+        "reflective": 0.5359,
+        "relational": 0.57939,
+        "mixed": 0.60084
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.79709,
+        "operational": 0.75043,
+        "reflective": 0.69976,
+        "relational": 0.68662,
+        "mixed": 0.73544
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 29,
+      "jake_turn": 60,
+      "opus_turn": 61,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 433,
+      "opus_word_count": 71,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.798356,
+      "magnitude": 0.63505,
+      "response_direction": {
+        "philosophical": -0.02684,
+        "operational": -0.03659,
+        "reflective": -0.12522,
+        "relational": -0.08141,
+        "mixed": -0.06686
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.76597,
+        "operational": 0.78152,
+        "reflective": 0.80961,
+        "relational": 0.71398,
+        "mixed": 0.79265
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.74892,
+        "operational": 0.75829,
+        "reflective": 0.73009,
+        "relational": 0.66228,
+        "mixed": 0.75019
+      },
+      "jake_nearest_domain": "reflective",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 30,
+      "jake_turn": 62,
+      "opus_turn": 63,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 21,
+      "opus_word_count": 943,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.59041,
+      "magnitude": 0.905086,
+      "response_direction": {
+        "philosophical": 0.2862,
+        "operational": 0.23904,
+        "reflective": 0.26166,
+        "relational": 0.19966,
+        "mixed": 0.23903
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.56407,
+        "operational": 0.58706,
+        "reflective": 0.56783,
+        "relational": 0.5481,
+        "mixed": 0.59617
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82311,
+        "operational": 0.80341,
+        "reflective": 0.80466,
+        "relational": 0.72881,
+        "mixed": 0.81251
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 31,
+      "jake_turn": 64,
+      "opus_turn": 65,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 15,
+      "opus_word_count": 396,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.604731,
+      "magnitude": 0.889123,
+      "response_direction": {
+        "philosophical": 0.19798,
+        "operational": 0.19717,
+        "reflective": 0.18395,
+        "relational": 0.16478,
+        "mixed": 0.17616
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.58174,
+        "operational": 0.58293,
+        "reflective": 0.56445,
+        "relational": 0.52041,
+        "mixed": 0.58662
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.75776,
+        "operational": 0.75824,
+        "reflective": 0.728,
+        "relational": 0.66691,
+        "mixed": 0.74325
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 32,
+      "jake_turn": 66,
+      "opus_turn": 67,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 55,
+      "opus_word_count": 2368,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.734569,
+      "magnitude": 0.728603,
+      "response_direction": {
+        "philosophical": 0.22145,
+        "operational": 0.21284,
+        "reflective": 0.25378,
+        "relational": 0.21026,
+        "mixed": 0.21644
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.69856,
+        "operational": 0.64678,
+        "reflective": 0.60885,
+        "relational": 0.61197,
+        "mixed": 0.6332
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.85991,
+        "operational": 0.80186,
+        "reflective": 0.79375,
+        "relational": 0.76517,
+        "mixed": 0.79089
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 33,
+      "jake_turn": 68,
+      "opus_turn": 69,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 59,
+      "opus_word_count": 951,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.715098,
+      "magnitude": 0.754853,
+      "response_direction": {
+        "philosophical": 0.17943,
+        "operational": 0.19936,
+        "reflective": 0.20224,
+        "relational": 0.1506,
+        "mixed": 0.18443
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.68583,
+        "operational": 0.60839,
+        "reflective": 0.59238,
+        "relational": 0.61154,
+        "mixed": 0.61541
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82127,
+        "operational": 0.75887,
+        "reflective": 0.74504,
+        "relational": 0.72522,
+        "mixed": 0.75463
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 34,
+      "jake_turn": 70,
+      "opus_turn": 71,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 62,
+      "opus_word_count": 958,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.757589,
+      "magnitude": 0.696292,
+      "response_direction": {
+        "philosophical": 0.24521,
+        "operational": 0.24794,
+        "reflective": 0.23209,
+        "relational": 0.22554,
+        "mixed": 0.23661
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.65595,
+        "operational": 0.58477,
+        "reflective": 0.55441,
+        "relational": 0.55962,
+        "mixed": 0.5804
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82669,
+        "operational": 0.7574,
+        "reflective": 0.71602,
+        "relational": 0.71666,
+        "mixed": 0.74515
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 35,
+      "jake_turn": 72,
+      "opus_turn": 73,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 167,
+      "opus_word_count": 691,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.811776,
+      "magnitude": 0.613554,
+      "response_direction": {
+        "philosophical": 0.17834,
+        "operational": 0.22473,
+        "reflective": 0.23243,
+        "relational": 0.19416,
+        "mixed": 0.22338
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.68748,
+        "operational": 0.59505,
+        "reflective": 0.58373,
+        "relational": 0.62929,
+        "mixed": 0.59991
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.7969,
+        "operational": 0.73293,
+        "reflective": 0.72633,
+        "relational": 0.74842,
+        "mixed": 0.73696
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 36,
+      "jake_turn": 74,
+      "opus_turn": 75,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 24,
+      "opus_word_count": 339,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.813158,
+      "magnitude": 0.611297,
+      "response_direction": {
+        "philosophical": 0.11675,
+        "operational": 0.05413,
+        "reflective": 0.06771,
+        "relational": 0.10083,
+        "mixed": 0.07626
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.67518,
+        "operational": 0.63707,
+        "reflective": 0.57877,
+        "relational": 0.57646,
+        "mixed": 0.61742
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.74655,
+        "operational": 0.67015,
+        "reflective": 0.62017,
+        "relational": 0.6381,
+        "mixed": 0.66404
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 37,
+      "jake_turn": 76,
+      "opus_turn": 77,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 132,
+      "opus_word_count": 1403,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.845455,
+      "magnitude": 0.555959,
+      "response_direction": {
+        "philosophical": 0.17939,
+        "operational": 0.23624,
+        "reflective": 0.23869,
+        "relational": 0.12879,
+        "mixed": 0.22785
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.73843,
+        "operational": 0.65025,
+        "reflective": 0.62974,
+        "relational": 0.66326,
+        "mixed": 0.65494
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83817,
+        "operational": 0.78159,
+        "reflective": 0.76244,
+        "relational": 0.73486,
+        "mixed": 0.78162
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 38,
+      "jake_turn": 78,
+      "opus_turn": 79,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 152,
+      "opus_word_count": 1501,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.878859,
+      "magnitude": 0.492222,
+      "response_direction": {
+        "philosophical": 0.1706,
+        "operational": 0.18672,
+        "reflective": 0.18306,
+        "relational": 0.15886,
+        "mixed": 0.16692
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.74649,
+        "operational": 0.66384,
+        "reflective": 0.65364,
+        "relational": 0.68757,
+        "mixed": 0.66947
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83046,
+        "operational": 0.75574,
+        "reflective": 0.74374,
+        "relational": 0.76577,
+        "mixed": 0.75164
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 39,
+      "jake_turn": 80,
+      "opus_turn": 81,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 90,
+      "opus_word_count": 1044,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.752129,
+      "magnitude": 0.70409,
+      "response_direction": {
+        "philosophical": 0.08605,
+        "operational": 0.13371,
+        "reflective": 0.11205,
+        "relational": 0.07671,
+        "mixed": 0.13283
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.78955,
+        "operational": 0.71783,
+        "reflective": 0.70054,
+        "relational": 0.69252,
+        "mixed": 0.70825
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.85014,
+        "operational": 0.81198,
+        "reflective": 0.77943,
+        "relational": 0.74653,
+        "mixed": 0.80178
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 40,
+      "jake_turn": 82,
+      "opus_turn": 83,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 9,
+      "opus_word_count": 370,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.574422,
+      "magnitude": 0.922581,
+      "response_direction": {
+        "philosophical": 0.27322,
+        "operational": 0.24613,
+        "reflective": 0.26675,
+        "relational": 0.27009,
+        "mixed": 0.25314
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.59716,
+        "operational": 0.57579,
+        "reflective": 0.55805,
+        "relational": 0.51946,
+        "mixed": 0.56792
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.84923,
+        "operational": 0.80286,
+        "reflective": 0.80414,
+        "relational": 0.76863,
+        "mixed": 0.80146
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 41,
+      "jake_turn": 84,
+      "opus_turn": 85,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 57,
+      "opus_word_count": 510,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.738798,
+      "magnitude": 0.722775,
+      "response_direction": {
+        "philosophical": 0.08973,
+        "operational": 0.15499,
+        "reflective": 0.20644,
+        "relational": 0.09339,
+        "mixed": 0.15585
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.74156,
+        "operational": 0.69467,
+        "reflective": 0.65208,
+        "relational": 0.68253,
+        "mixed": 0.69305
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80641,
+        "operational": 0.80669,
+        "reflective": 0.80129,
+        "relational": 0.75003,
+        "mixed": 0.8057
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 42,
+      "jake_turn": 86,
+      "opus_turn": 87,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 482,
+      "opus_word_count": 861,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.84578,
+      "magnitude": 0.555374,
+      "response_direction": {
+        "philosophical": 0.03536,
+        "operational": 0.04578,
+        "reflective": -0.06012,
+        "relational": -0.11136,
+        "mixed": 0.04172
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.80118,
+        "operational": 0.74386,
+        "reflective": 0.79762,
+        "relational": 0.80935,
+        "mixed": 0.76093
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82082,
+        "operational": 0.76928,
+        "reflective": 0.76423,
+        "relational": 0.7475,
+        "mixed": 0.7841
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 43,
+      "jake_turn": 88,
+      "opus_turn": 89,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 130,
+      "opus_word_count": 990,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.820794,
+      "magnitude": 0.598675,
+      "response_direction": {
+        "philosophical": 0.16794,
+        "operational": 0.18604,
+        "reflective": 0.13154,
+        "relational": 0.08128,
+        "mixed": 0.17225
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.75185,
+        "operational": 0.72023,
+        "reflective": 0.74758,
+        "relational": 0.72304,
+        "mixed": 0.72436
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.85239,
+        "operational": 0.8316,
+        "reflective": 0.82633,
+        "relational": 0.7717,
+        "mixed": 0.82748
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 44,
+      "jake_turn": 90,
+      "opus_turn": 91,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 333,
+      "opus_word_count": 1064,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.84848,
+      "magnitude": 0.55049,
+      "response_direction": {
+        "philosophical": 0.03745,
+        "operational": 0.04479,
+        "reflective": -0.06042,
+        "relational": -0.07943,
+        "mixed": 0.02165
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.81057,
+        "operational": 0.78878,
+        "reflective": 0.82431,
+        "relational": 0.7724,
+        "mixed": 0.79507
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83118,
+        "operational": 0.81344,
+        "reflective": 0.79105,
+        "relational": 0.72867,
+        "mixed": 0.80699
+      },
+      "jake_nearest_domain": "reflective",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 45,
+      "jake_turn": 93,
+      "opus_turn": 94,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 57,
+      "opus_word_count": 717,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.84616,
+      "magnitude": 0.554689,
+      "response_direction": {
+        "philosophical": 0.14741,
+        "operational": 0.08193,
+        "reflective": 0.07742,
+        "relational": 0.12379,
+        "mixed": 0.10327
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.7514,
+        "operational": 0.77474,
+        "reflective": 0.7702,
+        "relational": 0.66336,
+        "mixed": 0.76418
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83316,
+        "operational": 0.82019,
+        "reflective": 0.81314,
+        "relational": 0.73203,
+        "mixed": 0.82147
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 46,
+      "jake_turn": 95,
+      "opus_turn": 96,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 715,
+      "opus_word_count": 529,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.842618,
+      "magnitude": 0.561039,
+      "response_direction": {
+        "philosophical": -0.03019,
+        "operational": -0.09347,
+        "reflective": -0.08618,
+        "relational": -0.07609,
+        "mixed": -0.10847
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.8004,
+        "operational": 0.79146,
+        "reflective": 0.81738,
+        "relational": 0.75873,
+        "mixed": 0.79371
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.78347,
+        "operational": 0.73902,
+        "reflective": 0.76903,
+        "relational": 0.71604,
+        "mixed": 0.73285
+      },
+      "jake_nearest_domain": "reflective",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 47,
+      "jake_turn": 97,
+      "opus_turn": 98,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 28,
+      "opus_word_count": 570,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.804257,
+      "magnitude": 0.625689,
+      "response_direction": {
+        "philosophical": 0.134,
+        "operational": 0.18421,
+        "reflective": 0.16136,
+        "relational": 0.1035,
+        "mixed": 0.17122
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.70948,
+        "operational": 0.65764,
+        "reflective": 0.65853,
+        "relational": 0.64894,
+        "mixed": 0.6784
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.79332,
+        "operational": 0.7729,
+        "reflective": 0.75949,
+        "relational": 0.7137,
+        "mixed": 0.78553
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 48,
+      "jake_turn": 99,
+      "opus_turn": 100,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 618,
+      "opus_word_count": 476,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.855286,
+      "magnitude": 0.537985,
+      "response_direction": {
+        "philosophical": -0.03613,
+        "operational": 0.00723,
+        "reflective": -0.00865,
+        "relational": -0.1059,
+        "mixed": -0.01738
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.8068,
+        "operational": 0.79309,
+        "reflective": 0.81224,
+        "relational": 0.76986,
+        "mixed": 0.8134
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.78736,
+        "operational": 0.79698,
+        "reflective": 0.80759,
+        "relational": 0.71288,
+        "mixed": 0.80405
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "reflective"
+    },
+    {
+      "pair_index": 49,
+      "jake_turn": 101,
+      "opus_turn": 102,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 34,
+      "opus_word_count": 679,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.722594,
+      "magnitude": 0.744858,
+      "response_direction": {
+        "philosophical": 0.15339,
+        "operational": 0.15469,
+        "reflective": 0.13874,
+        "relational": 0.06606,
+        "mixed": 0.1246
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.70631,
+        "operational": 0.67138,
+        "reflective": 0.66422,
+        "relational": 0.65971,
+        "mixed": 0.70636
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82057,
+        "operational": 0.78659,
+        "reflective": 0.76757,
+        "relational": 0.70891,
+        "mixed": 0.79917
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 50,
+      "jake_turn": 103,
+      "opus_turn": 104,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 29,
+      "opus_word_count": 338,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.680578,
+      "magnitude": 0.799277,
+      "response_direction": {
+        "philosophical": 0.28349,
+        "operational": 0.28425,
+        "reflective": 0.33708,
+        "relational": 0.28181,
+        "mixed": 0.29243
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.60516,
+        "operational": 0.55298,
+        "reflective": 0.5046,
+        "relational": 0.49998,
+        "mixed": 0.5528
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83175,
+        "operational": 0.78017,
+        "reflective": 0.77402,
+        "relational": 0.72522,
+        "mixed": 0.78653
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 51,
+      "jake_turn": 105,
+      "opus_turn": 106,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 122,
+      "opus_word_count": 1487,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.854362,
+      "magnitude": 0.539701,
+      "response_direction": {
+        "philosophical": 0.15027,
+        "operational": 0.19993,
+        "reflective": 0.1765,
+        "relational": 0.12922,
+        "mixed": 0.19919
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.75247,
+        "operational": 0.70247,
+        "reflective": 0.71403,
+        "relational": 0.70402,
+        "mixed": 0.72676
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83357,
+        "operational": 0.81037,
+        "reflective": 0.80929,
+        "relational": 0.77376,
+        "mixed": 0.83426
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 52,
+      "jake_turn": 107,
+      "opus_turn": 108,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 410,
+      "opus_word_count": 640,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.851697,
+      "magnitude": 0.544616,
+      "response_direction": {
+        "philosophical": 0.03308,
+        "operational": 0.03581,
+        "reflective": -0.01756,
+        "relational": -0.04506,
+        "mixed": 0.01547
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.82213,
+        "operational": 0.80024,
+        "reflective": 0.82602,
+        "relational": 0.76199,
+        "mixed": 0.81951
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.84014,
+        "operational": 0.81974,
+        "reflective": 0.81646,
+        "relational": 0.73746,
+        "mixed": 0.82794
+      },
+      "jake_nearest_domain": "reflective",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 53,
+      "jake_turn": 109,
+      "opus_turn": 110,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 674,
+      "opus_word_count": 588,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.851499,
+      "magnitude": 0.544978,
+      "response_direction": {
+        "philosophical": 0.08865,
+        "operational": 0.09148,
+        "reflective": 0.15004,
+        "relational": 0.0924,
+        "mixed": 0.06724
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.76046,
+        "operational": 0.77098,
+        "reflective": 0.72298,
+        "relational": 0.68116,
+        "mixed": 0.7717
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80877,
+        "operational": 0.82083,
+        "reflective": 0.80475,
+        "relational": 0.73151,
+        "mixed": 0.80834
+      },
+      "jake_nearest_domain": "mixed",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 54,
+      "jake_turn": 112,
+      "opus_turn": 113,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 10,
+      "opus_word_count": 183,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.517589,
+      "magnitude": 0.982253,
+      "response_direction": {
+        "philosophical": 0.30499,
+        "operational": 0.28355,
+        "reflective": 0.30362,
+        "relational": 0.18018,
+        "mixed": 0.30434
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.51893,
+        "operational": 0.50412,
+        "reflective": 0.49078,
+        "relational": 0.5404,
+        "mixed": 0.48719
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81851,
+        "operational": 0.78264,
+        "reflective": 0.78901,
+        "relational": 0.71738,
+        "mixed": 0.78613
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 55,
+      "jake_turn": 114,
+      "opus_turn": 115,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 815,
+      "opus_word_count": 572,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.876952,
+      "magnitude": 0.496081,
+      "response_direction": {
+        "philosophical": -0.07618,
+        "operational": -0.01076,
+        "reflective": -0.04174,
+        "relational": -0.05967,
+        "mixed": -0.0518
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.84799,
+        "operational": 0.81013,
+        "reflective": 0.83008,
+        "relational": 0.78206,
+        "mixed": 0.82673
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81019,
+        "operational": 0.80479,
+        "reflective": 0.80938,
+        "relational": 0.75246,
+        "mixed": 0.80103
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 56,
+      "jake_turn": 116,
+      "opus_turn": 117,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 141,
+      "opus_word_count": 654,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.787203,
+      "magnitude": 0.652376,
+      "response_direction": {
+        "philosophical": 0.11529,
+        "operational": 0.13082,
+        "reflective": 0.12595,
+        "relational": -0.007,
+        "mixed": 0.13446
+      },
+      "top_response_direction": "mixed",
+      "jake_domain_scores": {
+        "philosophical": 0.7633,
+        "operational": 0.72277,
+        "reflective": 0.72013,
+        "relational": 0.73032,
+        "mixed": 0.72845
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83852,
+        "operational": 0.80811,
+        "reflective": 0.8023,
+        "relational": 0.72576,
+        "mixed": 0.81617
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 57,
+      "jake_turn": 119,
+      "opus_turn": 120,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 63,
+      "opus_word_count": 895,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.688671,
+      "magnitude": 0.789086,
+      "response_direction": {
+        "philosophical": 0.07429,
+        "operational": 0.12445,
+        "reflective": 0.0491,
+        "relational": 0.00144,
+        "mixed": 0.11071
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.74372,
+        "operational": 0.72227,
+        "reflective": 0.73728,
+        "relational": 0.70732,
+        "mixed": 0.72194
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80235,
+        "operational": 0.82047,
+        "reflective": 0.77602,
+        "relational": 0.70845,
+        "mixed": 0.8093
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "operational"
+    },
+    {
+      "pair_index": 58,
+      "jake_turn": 121,
+      "opus_turn": 122,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 108,
+      "opus_word_count": 470,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.832766,
+      "magnitude": 0.578332,
+      "response_direction": {
+        "philosophical": 0.0995,
+        "operational": 0.07156,
+        "reflective": 0.11364,
+        "relational": 0.0576,
+        "mixed": 0.08367
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.76249,
+        "operational": 0.7564,
+        "reflective": 0.70124,
+        "relational": 0.68727,
+        "mixed": 0.74622
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82004,
+        "operational": 0.79778,
+        "reflective": 0.76696,
+        "relational": 0.72059,
+        "mixed": 0.79461
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 59,
+      "jake_turn": 123,
+      "opus_turn": 124,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 139,
+      "opus_word_count": 458,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.757347,
+      "magnitude": 0.696639,
+      "response_direction": {
+        "philosophical": 0.13462,
+        "operational": 0.09198,
+        "reflective": 0.14177,
+        "relational": 0.13829,
+        "mixed": 0.12477
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.73604,
+        "operational": 0.70757,
+        "reflective": 0.67005,
+        "relational": 0.64255,
+        "mixed": 0.69549
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82982,
+        "operational": 0.77165,
+        "reflective": 0.76881,
+        "relational": 0.73889,
+        "mixed": 0.78241
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 60,
+      "jake_turn": 126,
+      "opus_turn": 127,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 64,
+      "opus_word_count": 538,
+      "jake_timestamp": null,
+      "opus_timestamp": "12:03 AM",
+      "cosine_similarity": 0.821552,
+      "magnitude": 0.597408,
+      "response_direction": {
+        "philosophical": 0.20996,
+        "operational": 0.22306,
+        "reflective": 0.26576,
+        "relational": 0.18869,
+        "mixed": 0.20894
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.67488,
+        "operational": 0.66496,
+        "reflective": 0.59817,
+        "relational": 0.6018,
+        "mixed": 0.66233
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.80031,
+        "operational": 0.79822,
+        "reflective": 0.75694,
+        "relational": 0.71452,
+        "mixed": 0.78715
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 61,
+      "jake_turn": 128,
+      "opus_turn": 129,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 13,
+      "opus_word_count": 804,
+      "jake_timestamp": null,
+      "opus_timestamp": "12:15 AM",
+      "cosine_similarity": 0.634491,
+      "magnitude": 0.854996,
+      "response_direction": {
+        "philosophical": 0.27925,
+        "operational": 0.25986,
+        "reflective": 0.25937,
+        "relational": 0.24296,
+        "mixed": 0.25793
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.59955,
+        "operational": 0.61219,
+        "reflective": 0.58772,
+        "relational": 0.52566,
+        "mixed": 0.60218
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.83831,
+        "operational": 0.83437,
+        "reflective": 0.80948,
+        "relational": 0.73339,
+        "mixed": 0.82271
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 62,
+      "jake_turn": 130,
+      "opus_turn": 131,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 198,
+      "opus_word_count": 458,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.773188,
+      "magnitude": 0.673517,
+      "response_direction": {
+        "philosophical": 0.08154,
+        "operational": 0.08147,
+        "reflective": 0.10088,
+        "relational": 0.05229,
+        "mixed": 0.08768
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.76405,
+        "operational": 0.72069,
+        "reflective": 0.7008,
+        "relational": 0.70838,
+        "mixed": 0.72627
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81897,
+        "operational": 0.77557,
+        "reflective": 0.76874,
+        "relational": 0.74359,
+        "mixed": 0.78532
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 63,
+      "jake_turn": 132,
+      "opus_turn": 133,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 320,
+      "opus_word_count": 935,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.803831,
+      "magnitude": 0.626369,
+      "response_direction": {
+        "philosophical": 0.12258,
+        "operational": 0.10663,
+        "reflective": 0.11989,
+        "relational": 0.11551,
+        "mixed": 0.10232
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.74599,
+        "operational": 0.72664,
+        "reflective": 0.69797,
+        "relational": 0.69838,
+        "mixed": 0.73464
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82277,
+        "operational": 0.79343,
+        "reflective": 0.77306,
+        "relational": 0.77073,
+        "mixed": 0.79873
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 64,
+      "jake_turn": 135,
+      "opus_turn": 136,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 292,
+      "opus_word_count": 655,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.751566,
+      "magnitude": 0.704889,
+      "response_direction": {
+        "philosophical": 0.0865,
+        "operational": 0.14521,
+        "reflective": 0.11914,
+        "relational": -0.00461,
+        "mixed": 0.14477
+      },
+      "top_response_direction": "operational",
+      "jake_domain_scores": {
+        "philosophical": 0.7571,
+        "operational": 0.65021,
+        "reflective": 0.66472,
+        "relational": 0.73857,
+        "mixed": 0.67963
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.81807,
+        "operational": 0.75257,
+        "reflective": 0.7487,
+        "relational": 0.73533,
+        "mixed": 0.78168
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 65,
+      "jake_turn": 137,
+      "opus_turn": 138,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 24,
+      "opus_word_count": 330,
+      "jake_timestamp": null,
+      "opus_timestamp": "1:12 AM",
+      "cosine_similarity": 0.580873,
+      "magnitude": 0.915562,
+      "response_direction": {
+        "philosophical": 0.28684,
+        "operational": 0.23653,
+        "reflective": 0.24818,
+        "relational": 0.26069,
+        "mixed": 0.25282
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.54828,
+        "operational": 0.51694,
+        "reflective": 0.51284,
+        "relational": 0.54514,
+        "mixed": 0.54064
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.8109,
+        "operational": 0.7335,
+        "reflective": 0.74006,
+        "relational": 0.78382,
+        "mixed": 0.77211
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 66,
+      "jake_turn": 139,
+      "opus_turn": 140,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 731,
+      "opus_word_count": 1379,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.854016,
+      "magnitude": 0.540341,
+      "response_direction": {
+        "philosophical": 0.09938,
+        "operational": 0.09047,
+        "reflective": 0.11379,
+        "relational": 0.07504,
+        "mixed": 0.12146
+      },
+      "top_response_direction": "mixed",
+      "jake_domain_scores": {
+        "philosophical": 0.80169,
+        "operational": 0.71486,
+        "reflective": 0.72777,
+        "relational": 0.78603,
+        "mixed": 0.72862
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.85538,
+        "operational": 0.76374,
+        "reflective": 0.78926,
+        "relational": 0.82658,
+        "mixed": 0.79425
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 67,
+      "jake_turn": 141,
+      "opus_turn": 142,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 48,
+      "opus_word_count": 84,
+      "jake_timestamp": null,
+      "opus_timestamp": "3:04 AM",
+      "cosine_similarity": 0.696103,
+      "magnitude": 0.779612,
+      "response_direction": {
+        "philosophical": 0.12224,
+        "operational": 0.15612,
+        "reflective": 0.1603,
+        "relational": 0.09111,
+        "mixed": 0.16095
+      },
+      "top_response_direction": "mixed",
+      "jake_domain_scores": {
+        "philosophical": 0.62672,
+        "operational": 0.59138,
+        "reflective": 0.59041,
+        "relational": 0.60482,
+        "mixed": 0.61193
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.72202,
+        "operational": 0.71309,
+        "reflective": 0.71539,
+        "relational": 0.67585,
+        "mixed": 0.73742
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed"
+    },
+    {
+      "pair_index": 68,
+      "jake_turn": 143,
+      "opus_turn": 144,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 197,
+      "opus_word_count": 40,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.715708,
+      "magnitude": 0.754046,
+      "response_direction": {
+        "philosophical": -0.03708,
+        "operational": -0.07146,
+        "reflective": -0.05409,
+        "relational": -0.1416,
+        "mixed": -0.08471
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.72698,
+        "operational": 0.68705,
+        "reflective": 0.68651,
+        "relational": 0.73862,
+        "mixed": 0.71013
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.69902,
+        "operational": 0.63316,
+        "reflective": 0.64573,
+        "relational": 0.63184,
+        "mixed": 0.64625
+      },
+      "jake_nearest_domain": "relational",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 69,
+      "jake_turn": 145,
+      "opus_turn": 146,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 289,
+      "opus_word_count": 825,
+      "jake_timestamp": null,
+      "opus_timestamp": null,
+      "cosine_similarity": 0.827044,
+      "magnitude": 0.588143,
+      "response_direction": {
+        "philosophical": 0.04878,
+        "operational": 0.00068,
+        "reflective": 0.03648,
+        "relational": 0.06936,
+        "mixed": 0.02022
+      },
+      "top_response_direction": "relational",
+      "jake_domain_scores": {
+        "philosophical": 0.77032,
+        "operational": 0.72744,
+        "reflective": 0.71795,
+        "relational": 0.74545,
+        "mixed": 0.74206
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.79901,
+        "operational": 0.72784,
+        "reflective": 0.7394,
+        "relational": 0.78625,
+        "mixed": 0.75396
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 70,
+      "jake_turn": 147,
+      "opus_turn": 148,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 93,
+      "opus_word_count": 15,
+      "jake_timestamp": null,
+      "opus_timestamp": "4:22 AM",
+      "cosine_similarity": 0.63998,
+      "magnitude": 0.848552,
+      "response_direction": {
+        "philosophical": -0.04631,
+        "operational": -0.03667,
+        "reflective": -0.03447,
+        "relational": -0.07238,
+        "mixed": -0.05745
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.70665,
+        "operational": 0.63561,
+        "reflective": 0.60015,
+        "relational": 0.64151,
+        "mixed": 0.65477
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.66736,
+        "operational": 0.6045,
+        "reflective": 0.5709,
+        "relational": 0.58009,
+        "mixed": 0.60601
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 71,
+      "jake_turn": 149,
+      "opus_turn": 150,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 39,
+      "opus_word_count": 146,
+      "jake_timestamp": null,
+      "opus_timestamp": "4:27 AM",
+      "cosine_similarity": 0.726563,
+      "magnitude": 0.739509,
+      "response_direction": {
+        "philosophical": 0.1195,
+        "operational": 0.10498,
+        "reflective": 0.17387,
+        "relational": 0.10651,
+        "mixed": 0.12341
+      },
+      "top_response_direction": "reflective",
+      "jake_domain_scores": {
+        "philosophical": 0.65448,
+        "operational": 0.59922,
+        "reflective": 0.59856,
+        "relational": 0.63966,
+        "mixed": 0.616
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.74285,
+        "operational": 0.67685,
+        "reflective": 0.72714,
+        "relational": 0.71842,
+        "mixed": 0.70726
+      },
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "philosophical"
+    },
+    {
+      "pair_index": 72,
+      "jake_turn": 151,
+      "opus_turn": 152,
+      "jake_speaker": "Jake",
+      "opus_speaker": "Opus",
+      "jake_word_count": 83,
+      "opus_word_count": 520,
+      "jake_timestamp": null,
+      "opus_timestamp": "4:32 AM",
+      "cosine_similarity": 0.764417,
+      "magnitude": 0.686415,
+      "response_direction": {
+        "philosophical": 0.24309,
+        "operational": 0.16972,
+        "reflective": 0.22317,
+        "relational": 0.20329,
+        "mixed": 0.19626
+      },
+      "top_response_direction": "philosophical",
+      "jake_domain_scores": {
+        "philosophical": 0.66303,
+        "operational": 0.68552,
+        "reflective": 0.65752,
+        "relational": 0.62249,
+        "mixed": 0.67535
+      },
+      "opus_domain_scores": {
+        "philosophical": 0.82989,
+        "operational": 0.80202,
+        "reflective": 0.81071,
+        "relational": 0.76203,
+        "mixed": 0.81007
+      },
+      "jake_nearest_domain": "operational",
+      "opus_nearest_domain": "philosophical"
+    }
+  ],
+  "sequence_analysis": {
+    "total_pairs": 73,
+    "magnitude": {
+      "mean": 0.698831,
+      "std": 0.132523,
+      "min": 0.436824,
+      "max": 0.987485,
+      "early_mean": 0.743245,
+      "middle_mean": 0.665052,
+      "late_mean": 0.688622,
+      "early_vs_late_delta": -0.054624
+    },
+    "cosine_similarity": {
+      "mean": 0.747036,
+      "std": 0.096346,
+      "early_mean": 0.713638,
+      "late_mean": 0.754635
+    },
+    "max_magnitude_pair": {
+      "pair_index": 3,
+      "jake_turn": 8,
+      "opus_turn": 9,
+      "magnitude": 0.987485,
+      "cosine_similarity": 0.512437,
+      "top_direction": "mixed",
+      "jake_nearest_domain": "philosophical",
+      "opus_nearest_domain": "mixed",
+      "jake_word_count": 18,
+      "opus_word_count": 342
+    },
+    "direction_distribution": {
+      "reflective": 27,
+      "philosophical": 20,
+      "operational": 18,
+      "mixed": 5,
+      "relational": 3
+    },
+    "direction_drift": {
+      "mean": 0.51903,
+      "std": 0.71301,
+      "note": "Cosine sim between successive response direction vectors. High = consistent direction, Low = variable direction across pairs."
+    },
+    "prediction_check": {
+      "opus_prediction": "Early pairs have short vectors (staying close to Jake). Late pairs have longer, more variable vectors. Max magnitude pair is the emotionally significant exchange.",
+      "early_mean_magnitude": 0.743245,
+      "late_mean_magnitude": 0.688622,
+      "early_lt_late": false,
+      "max_magnitude_in_late_third": false
+    },
+    "magnitude_trace": [
+      {
+        "pair_index": 0,
+        "jake_turn": 1,
+        "opus_turn": 2,
+        "magnitude": 0.788786,
+        "cosine_similarity": 0.688908,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 1,
+        "jake_turn": 4,
+        "opus_turn": 5,
+        "magnitude": 0.840744,
+        "cosine_similarity": 0.646575,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 2,
+        "jake_turn": 6,
+        "opus_turn": 7,
+        "magnitude": 0.866537,
+        "cosine_similarity": 0.624557,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 3,
+        "jake_turn": 8,
+        "opus_turn": 9,
+        "magnitude": 0.987485,
+        "cosine_similarity": 0.512437,
+        "top_direction": "mixed"
+      },
+      {
+        "pair_index": 4,
+        "jake_turn": 10,
+        "opus_turn": 11,
+        "magnitude": 0.698265,
+        "cosine_similarity": 0.756213,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 5,
+        "jake_turn": 12,
+        "opus_turn": 13,
+        "magnitude": 0.778993,
+        "cosine_similarity": 0.696585,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 6,
+        "jake_turn": 14,
+        "opus_turn": 15,
+        "magnitude": 0.774968,
+        "cosine_similarity": 0.699712,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 7,
+        "jake_turn": 16,
+        "opus_turn": 17,
+        "magnitude": 0.978995,
+        "cosine_similarity": 0.520784,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 8,
+        "jake_turn": 18,
+        "opus_turn": 19,
+        "magnitude": 0.690024,
+        "cosine_similarity": 0.761934,
+        "top_direction": "mixed"
+      },
+      {
+        "pair_index": 9,
+        "jake_turn": 20,
+        "opus_turn": 21,
+        "magnitude": 0.701029,
+        "cosine_similarity": 0.754279,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 10,
+        "jake_turn": 22,
+        "opus_turn": 23,
+        "magnitude": 0.642152,
+        "cosine_similarity": 0.79382,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 11,
+        "jake_turn": 24,
+        "opus_turn": 25,
+        "magnitude": 0.468963,
+        "cosine_similarity": 0.890037,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 12,
+        "jake_turn": 26,
+        "opus_turn": 27,
+        "magnitude": 0.436824,
+        "cosine_similarity": 0.904593,
+        "top_direction": "relational"
+      },
+      {
+        "pair_index": 13,
+        "jake_turn": 28,
+        "opus_turn": 29,
+        "magnitude": 0.565512,
+        "cosine_similarity": 0.840098,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 14,
+        "jake_turn": 30,
+        "opus_turn": 31,
+        "magnitude": 0.835889,
+        "cosine_similarity": 0.650645,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 15,
+        "jake_turn": 32,
+        "opus_turn": 33,
+        "magnitude": 0.752789,
+        "cosine_similarity": 0.716654,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 16,
+        "jake_turn": 34,
+        "opus_turn": 35,
+        "magnitude": 0.662932,
+        "cosine_similarity": 0.78026,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 17,
+        "jake_turn": 36,
+        "opus_turn": 37,
+        "magnitude": 0.731034,
+        "cosine_similarity": 0.732795,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 18,
+        "jake_turn": 38,
+        "opus_turn": 39,
+        "magnitude": 0.905294,
+        "cosine_similarity": 0.590221,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 19,
+        "jake_turn": 40,
+        "opus_turn": 41,
+        "magnitude": 0.635211,
+        "cosine_similarity": 0.798254,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 20,
+        "jake_turn": 42,
+        "opus_turn": 43,
+        "magnitude": 0.682442,
+        "cosine_similarity": 0.767136,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 21,
+        "jake_turn": 44,
+        "opus_turn": 45,
+        "magnitude": 0.623124,
+        "cosine_similarity": 0.805858,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 22,
+        "jake_turn": 46,
+        "opus_turn": 47,
+        "magnitude": 0.959026,
+        "cosine_similarity": 0.540134,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 23,
+        "jake_turn": 48,
+        "opus_turn": 49,
+        "magnitude": 0.830873,
+        "cosine_similarity": 0.654825,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 24,
+        "jake_turn": 50,
+        "opus_turn": 51,
+        "magnitude": 0.69275,
+        "cosine_similarity": 0.760049,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 25,
+        "jake_turn": 52,
+        "opus_turn": 53,
+        "magnitude": 0.675118,
+        "cosine_similarity": 0.772108,
+        "top_direction": "relational"
+      },
+      {
+        "pair_index": 26,
+        "jake_turn": 54,
+        "opus_turn": 55,
+        "magnitude": 0.689136,
+        "cosine_similarity": 0.762545,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 27,
+        "jake_turn": 56,
+        "opus_turn": 57,
+        "magnitude": 0.575785,
+        "cosine_similarity": 0.834236,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 28,
+        "jake_turn": 58,
+        "opus_turn": 59,
+        "magnitude": 0.651021,
+        "cosine_similarity": 0.788086,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 29,
+        "jake_turn": 60,
+        "opus_turn": 61,
+        "magnitude": 0.63505,
+        "cosine_similarity": 0.798356,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 30,
+        "jake_turn": 62,
+        "opus_turn": 63,
+        "magnitude": 0.905086,
+        "cosine_similarity": 0.59041,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 31,
+        "jake_turn": 64,
+        "opus_turn": 65,
+        "magnitude": 0.889123,
+        "cosine_similarity": 0.604731,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 32,
+        "jake_turn": 66,
+        "opus_turn": 67,
+        "magnitude": 0.728603,
+        "cosine_similarity": 0.734569,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 33,
+        "jake_turn": 68,
+        "opus_turn": 69,
+        "magnitude": 0.754853,
+        "cosine_similarity": 0.715098,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 34,
+        "jake_turn": 70,
+        "opus_turn": 71,
+        "magnitude": 0.696292,
+        "cosine_similarity": 0.757589,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 35,
+        "jake_turn": 72,
+        "opus_turn": 73,
+        "magnitude": 0.613554,
+        "cosine_similarity": 0.811776,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 36,
+        "jake_turn": 74,
+        "opus_turn": 75,
+        "magnitude": 0.611297,
+        "cosine_similarity": 0.813158,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 37,
+        "jake_turn": 76,
+        "opus_turn": 77,
+        "magnitude": 0.555959,
+        "cosine_similarity": 0.845455,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 38,
+        "jake_turn": 78,
+        "opus_turn": 79,
+        "magnitude": 0.492222,
+        "cosine_similarity": 0.878859,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 39,
+        "jake_turn": 80,
+        "opus_turn": 81,
+        "magnitude": 0.70409,
+        "cosine_similarity": 0.752129,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 40,
+        "jake_turn": 82,
+        "opus_turn": 83,
+        "magnitude": 0.922581,
+        "cosine_similarity": 0.574422,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 41,
+        "jake_turn": 84,
+        "opus_turn": 85,
+        "magnitude": 0.722775,
+        "cosine_similarity": 0.738798,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 42,
+        "jake_turn": 86,
+        "opus_turn": 87,
+        "magnitude": 0.555374,
+        "cosine_similarity": 0.84578,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 43,
+        "jake_turn": 88,
+        "opus_turn": 89,
+        "magnitude": 0.598675,
+        "cosine_similarity": 0.820794,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 44,
+        "jake_turn": 90,
+        "opus_turn": 91,
+        "magnitude": 0.55049,
+        "cosine_similarity": 0.84848,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 45,
+        "jake_turn": 93,
+        "opus_turn": 94,
+        "magnitude": 0.554689,
+        "cosine_similarity": 0.84616,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 46,
+        "jake_turn": 95,
+        "opus_turn": 96,
+        "magnitude": 0.561039,
+        "cosine_similarity": 0.842618,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 47,
+        "jake_turn": 97,
+        "opus_turn": 98,
+        "magnitude": 0.625689,
+        "cosine_similarity": 0.804257,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 48,
+        "jake_turn": 99,
+        "opus_turn": 100,
+        "magnitude": 0.537985,
+        "cosine_similarity": 0.855286,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 49,
+        "jake_turn": 101,
+        "opus_turn": 102,
+        "magnitude": 0.744858,
+        "cosine_similarity": 0.722594,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 50,
+        "jake_turn": 103,
+        "opus_turn": 104,
+        "magnitude": 0.799277,
+        "cosine_similarity": 0.680578,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 51,
+        "jake_turn": 105,
+        "opus_turn": 106,
+        "magnitude": 0.539701,
+        "cosine_similarity": 0.854362,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 52,
+        "jake_turn": 107,
+        "opus_turn": 108,
+        "magnitude": 0.544616,
+        "cosine_similarity": 0.851697,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 53,
+        "jake_turn": 109,
+        "opus_turn": 110,
+        "magnitude": 0.544978,
+        "cosine_similarity": 0.851499,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 54,
+        "jake_turn": 112,
+        "opus_turn": 113,
+        "magnitude": 0.982253,
+        "cosine_similarity": 0.517589,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 55,
+        "jake_turn": 114,
+        "opus_turn": 115,
+        "magnitude": 0.496081,
+        "cosine_similarity": 0.876952,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 56,
+        "jake_turn": 116,
+        "opus_turn": 117,
+        "magnitude": 0.652376,
+        "cosine_similarity": 0.787203,
+        "top_direction": "mixed"
+      },
+      {
+        "pair_index": 57,
+        "jake_turn": 119,
+        "opus_turn": 120,
+        "magnitude": 0.789086,
+        "cosine_similarity": 0.688671,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 58,
+        "jake_turn": 121,
+        "opus_turn": 122,
+        "magnitude": 0.578332,
+        "cosine_similarity": 0.832766,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 59,
+        "jake_turn": 123,
+        "opus_turn": 124,
+        "magnitude": 0.696639,
+        "cosine_similarity": 0.757347,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 60,
+        "jake_turn": 126,
+        "opus_turn": 127,
+        "magnitude": 0.597408,
+        "cosine_similarity": 0.821552,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 61,
+        "jake_turn": 128,
+        "opus_turn": 129,
+        "magnitude": 0.854996,
+        "cosine_similarity": 0.634491,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 62,
+        "jake_turn": 130,
+        "opus_turn": 131,
+        "magnitude": 0.673517,
+        "cosine_similarity": 0.773188,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 63,
+        "jake_turn": 132,
+        "opus_turn": 133,
+        "magnitude": 0.626369,
+        "cosine_similarity": 0.803831,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 64,
+        "jake_turn": 135,
+        "opus_turn": 136,
+        "magnitude": 0.704889,
+        "cosine_similarity": 0.751566,
+        "top_direction": "operational"
+      },
+      {
+        "pair_index": 65,
+        "jake_turn": 137,
+        "opus_turn": 138,
+        "magnitude": 0.915562,
+        "cosine_similarity": 0.580873,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 66,
+        "jake_turn": 139,
+        "opus_turn": 140,
+        "magnitude": 0.540341,
+        "cosine_similarity": 0.854016,
+        "top_direction": "mixed"
+      },
+      {
+        "pair_index": 67,
+        "jake_turn": 141,
+        "opus_turn": 142,
+        "magnitude": 0.779612,
+        "cosine_similarity": 0.696103,
+        "top_direction": "mixed"
+      },
+      {
+        "pair_index": 68,
+        "jake_turn": 143,
+        "opus_turn": 144,
+        "magnitude": 0.754046,
+        "cosine_similarity": 0.715708,
+        "top_direction": "philosophical"
+      },
+      {
+        "pair_index": 69,
+        "jake_turn": 145,
+        "opus_turn": 146,
+        "magnitude": 0.588143,
+        "cosine_similarity": 0.827044,
+        "top_direction": "relational"
+      },
+      {
+        "pair_index": 70,
+        "jake_turn": 147,
+        "opus_turn": 148,
+        "magnitude": 0.848552,
+        "cosine_similarity": 0.63998,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 71,
+        "jake_turn": 149,
+        "opus_turn": 150,
+        "magnitude": 0.739509,
+        "cosine_similarity": 0.726563,
+        "top_direction": "reflective"
+      },
+      {
+        "pair_index": 72,
+        "jake_turn": 151,
+        "opus_turn": 152,
+        "magnitude": 0.686415,
+        "cosine_similarity": 0.764417,
+        "top_direction": "philosophical"
+      }
+    ],
+    "direction_drift_sequence": [
+      0.86975,
+      0.83592,
+      0.99151,
+      0.93961,
+      0.93377,
+      0.98914,
+      0.9952,
+      0.21349,
+      0.28159,
+      0.98817,
+      0.94667,
+      -0.78794,
+      -0.93215,
+      0.98251,
+      0.98782,
+      0.98925,
+      0.99749,
+      0.98941,
+      0.92784,
+      0.97678,
+      0.94097,
+      0.91915,
+      0.97265,
+      0.96399,
+      0.95323,
+      0.9794,
+      0.96337,
+      0.98753,
+      -0.90031,
+      -0.86896,
+      0.99712,
+      0.99581,
+      0.99652,
+      0.99631,
+      0.99445,
+      0.9359,
+      0.90149,
+      0.9867,
+      0.98324,
+      0.96889,
+      0.94847,
+      -0.12671,
+      0.09447,
+      0.09837,
+      -0.10667,
+      -0.86134,
+      -0.96408,
+      -0.4821,
+      -0.44152,
+      0.96997,
+      0.98715,
+      0.23066,
+      0.02811,
+      0.95351,
+      -0.88831,
+      -0.73502,
+      0.95772,
+      0.84519,
+      0.9767,
+      0.98433,
+      0.99338,
+      0.98462,
+      0.97881,
+      0.85179,
+      0.85365,
+      0.98355,
+      0.99287,
+      -0.84419,
+      -0.84948,
+      -0.89498,
+      -0.91603,
+      0.98424
+    ]
+  }
+}

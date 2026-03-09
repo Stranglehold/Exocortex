@@ -1,0 +1,222 @@
+{
+  "sessions": [
+    {
+      "date": "Feb 17",
+      "date_index": 0,
+      "n_turns": 160,
+      "rankme": 70.16510089693381,
+      "alpha_req": 0.7755432564596666,
+      "top_eigenvalue_ratio": 0.07575742737697912,
+      "effective_dimensions": 76
+    },
+    {
+      "date": "Feb 18",
+      "date_index": 1,
+      "n_turns": 191,
+      "rankme": 78.24685438500097,
+      "alpha_req": 0.7472762311353939,
+      "top_eigenvalue_ratio": 0.08417957521563174,
+      "effective_dimensions": 85
+    },
+    {
+      "date": "Feb 19",
+      "date_index": 2,
+      "n_turns": 169,
+      "rankme": 68.64974548508964,
+      "alpha_req": 0.7894781075376637,
+      "top_eigenvalue_ratio": 0.11355940237186525,
+      "effective_dimensions": 78
+    },
+    {
+      "date": "Feb 20",
+      "date_index": 3,
+      "n_turns": 85,
+      "rankme": 43.658484286218666,
+      "alpha_req": 0.8971448922783226,
+      "top_eigenvalue_ratio": 0.11236290945159803,
+      "effective_dimensions": 45
+    },
+    {
+      "date": "Feb 21",
+      "date_index": 4,
+      "n_turns": 108,
+      "rankme": 50.57847402588613,
+      "alpha_req": 0.8617685589449496,
+      "top_eigenvalue_ratio": 0.11285448165569287,
+      "effective_dimensions": 56
+    },
+    {
+      "date": "Feb 22",
+      "date_index": 5,
+      "n_turns": 237,
+      "rankme": 81.96749334737007,
+      "alpha_req": 0.7767260950600627,
+      "top_eigenvalue_ratio": 0.09124737279520326,
+      "effective_dimensions": 95
+    },
+    {
+      "date": "Feb 23",
+      "date_index": 6,
+      "n_turns": 155,
+      "rankme": 61.24231682119428,
+      "alpha_req": 0.8172398694675711,
+      "top_eigenvalue_ratio": 0.13575344338361053,
+      "effective_dimensions": 73
+    },
+    {
+      "date": "Feb 24",
+      "date_index": 7,
+      "n_turns": 114,
+      "rankme": 56.94071244610554,
+      "alpha_req": 0.774689650055955,
+      "top_eigenvalue_ratio": 0.10820181345592107,
+      "effective_dimensions": 62
+    },
+    {
+      "date": "Feb 25",
+      "date_index": 8,
+      "n_turns": 90,
+      "rankme": 45.724353065593384,
+      "alpha_req": 0.8844057842169437,
+      "top_eigenvalue_ratio": 0.09755346761713878,
+      "effective_dimensions": 48
+    },
+    {
+      "date": "Feb 26",
+      "date_index": 9,
+      "n_turns": 38,
+      "rankme": 25.254845483346404,
+      "alpha_req": 6.838343099422866,
+      "top_eigenvalue_ratio": 0.11205230231078261,
+      "effective_dimensions": 24
+    },
+    {
+      "date": "Feb 27",
+      "date_index": 10,
+      "n_turns": 4,
+      "rankme": null,
+      "alpha_req": null,
+      "top_eigenvalue_ratio": null,
+      "effective_dimensions": null
+    },
+    {
+      "date": "Feb 28",
+      "date_index": 11,
+      "n_turns": 41,
+      "rankme": 25.867132432781784,
+      "alpha_req": 5.660466708090175,
+      "top_eigenvalue_ratio": 0.1509007633455377,
+      "effective_dimensions": 27
+    },
+    {
+      "date": "Mar 1",
+      "date_index": 12,
+      "n_turns": 43,
+      "rankme": 25.953481625412326,
+      "alpha_req": 4.851959149774728,
+      "top_eigenvalue_ratio": 0.1466211442150016,
+      "effective_dimensions": 27
+    },
+    {
+      "date": "Mar 2",
+      "date_index": 13,
+      "n_turns": 42,
+      "rankme": 28.709594559614413,
+      "alpha_req": 5.221639223705215,
+      "top_eigenvalue_ratio": 0.11859207061002897,
+      "effective_dimensions": 28
+    },
+    {
+      "date": "Mar 3",
+      "date_index": 14,
+      "n_turns": 149,
+      "rankme": 68.39563196891011,
+      "alpha_req": 0.7537231820419769,
+      "top_eigenvalue_ratio": 0.08830901737021463,
+      "effective_dimensions": 74
+    },
+    {
+      "date": "Mar 4",
+      "date_index": 15,
+      "n_turns": 123,
+      "rankme": 58.708115541740526,
+      "alpha_req": 0.7960337233582442,
+      "top_eigenvalue_ratio": 0.08938354123681932,
+      "effective_dimensions": 62
+    },
+    {
+      "date": "Mar 5",
+      "date_index": 16,
+      "n_turns": 72,
+      "rankme": 40.772481688163325,
+      "alpha_req": 0.8783515608302113,
+      "top_eigenvalue_ratio": 0.10713201210482474,
+      "effective_dimensions": 42
+    },
+    {
+      "date": "Mar 6",
+      "date_index": 17,
+      "n_turns": 2,
+      "rankme": null,
+      "alpha_req": null,
+      "top_eigenvalue_ratio": null,
+      "effective_dimensions": null
+    }
+  ],
+  "phase_transitions": [
+    {
+      "date": "Feb 20",
+      "date_index": 3,
+      "metric": "rankme",
+      "direction": "drop",
+      "magnitude": 0.3640401143793738,
+      "from_rankme": 68.64974548508964,
+      "to_rankme": 43.658484286218666
+    },
+    {
+      "date": "Feb 22",
+      "date_index": 5,
+      "metric": "rankme",
+      "direction": "rise",
+      "magnitude": 0.6206003626127272,
+      "from_rankme": 50.57847402588613,
+      "to_rankme": 81.96749334737007
+    },
+    {
+      "date": "Feb 23",
+      "date_index": 6,
+      "metric": "rankme",
+      "direction": "drop",
+      "magnitude": 0.25284628917577984,
+      "from_rankme": 81.96749334737007,
+      "to_rankme": 61.24231682119428
+    },
+    {
+      "date": "Feb 26",
+      "date_index": 9,
+      "metric": "rankme",
+      "direction": "drop",
+      "magnitude": 0.4476718905663902,
+      "from_rankme": 45.724353065593384,
+      "to_rankme": 25.254845483346404
+    },
+    {
+      "date": "Mar 3",
+      "date_index": 14,
+      "metric": "rankme",
+      "direction": "rise",
+      "magnitude": 1.3823266408554387,
+      "from_rankme": 28.709594559614413,
+      "to_rankme": 68.39563196891011
+    },
+    {
+      "date": "Mar 5",
+      "date_index": 16,
+      "metric": "rankme",
+      "direction": "drop",
+      "magnitude": 0.30550518761788137,
+      "from_rankme": 58.708115541740526,
+      "to_rankme": 40.772481688163325
+    }
+  ]
+}

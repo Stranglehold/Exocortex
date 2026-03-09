@@ -1,0 +1,59 @@
+=== V2 CHUNK EXTRACTION REPORT ===
+
+Source turns:         1934
+Total chunks:         3604
+Expansion ratio:    1.86x
+
+── Chunk word count distribution ──
+  Mean:   126 words
+  Median: 146 words
+  Min:    6
+  Max:    982
+  < 50 words:      551
+  50-100 words:    578
+  100-150 words:   764
+  150-200 words:  1591
+  > 200 words:     120
+
+── By speaker ──
+  Jake chunks:  1033  (mean 79 words)
+  Opus chunks:  2571  (mean 144 words)
+  Jake:Opus ratio: 1:2.5
+
+── Turns by chunk count ──
+  1 chunk      1207 turns
+  2 chunks      344 turns
+  3 chunks      169 turns
+  4 chunks       78 turns
+  5 chunks       58 turns
+  6 chunks       28 turns
+  7 chunks       21 turns
+  8 chunks        7 turns
+  9 chunks        7 turns
+  10 chunks       9 turns
+  12 chunks       4 turns
+  13 chunks       1 turns
+  15 chunks       1 turns
+  Single-chunk turns: 1207 (62%)
+  Multi-chunk turns:  727 (37%)
+
+── Per session ──
+  Feb 17        234 chunks  (Jake: 90, Opus: 144)
+  Feb 18        292 chunks  (Jake: 102, Opus: 190)
+  Feb 19        260 chunks  (Jake: 90, Opus: 170)
+  Feb 20        139 chunks  (Jake: 47, Opus: 92)
+  Feb 21        201 chunks  (Jake: 62, Opus: 139)
+  Feb 22        350 chunks  (Jake: 125, Opus: 225)
+  Feb 23        267 chunks  (Jake: 81, Opus: 186)
+  Feb 24        233 chunks  (Jake: 58, Opus: 175)
+  Feb 25        168 chunks  (Jake: 45, Opus: 123)
+  Feb 26         96 chunks  (Jake: 19, Opus: 77)
+  Feb 27          6 chunks  (Jake: 2, Opus: 4)
+  Feb 28        107 chunks  (Jake: 20, Opus: 87)
+  Mar 1          85 chunks  (Jake: 21, Opus: 64)
+  Mar 2         110 chunks  (Jake: 21, Opus: 89)
+  Mar 3         256 chunks  (Jake: 75, Opus: 181)
+  Mar 4         227 chunks  (Jake: 78, Opus: 149)
+  Mar 5         167 chunks  (Jake: 36, Opus: 131)
+  Mar 6           2 chunks  (Jake: 1, Opus: 1)
+  unknown       404 chunks  (Jake: 60, Opus: 344)

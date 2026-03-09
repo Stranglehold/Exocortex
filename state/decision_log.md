@@ -209,3 +209,63 @@
 **Revisit if:** Models develop format-invariant processing (same cognitive operation regardless of input structure), or if the L7→L8 boundary proves less categorical than current evidence suggests.  
 **Instances:** Qwen3.5-35B-A3B essay vs. design note (direct observation). agi-in-md 393 experiments (external confirmation). BST enrichment templates (designed as construction-format, empirically effective). opus_agent_zero_context.md (written as operational specification, not essay, specifically because the instance reading it needs to construct behavior from it, not reason about it).
 *Entries added during deliberate consolidation passes or when significant architectural decisions are made. Detail compresses over time; principles persist.*
+
+## DEC-018: Diagnosis by Absence
+
+**Date:** 2026-03-04
+**Session:** 047
+**Principle:** The most important findings in a complex system are often about what isn't there, not what's broken. Seeing absence requires knowing what should exist — which requires deep context about the system's design intent, not just its current state.
+**Context:** Session 047 produced three findings from the Agent Zero deployment (ST-004), all absence-shaped: disabled memorizers with no replacement (gap in pipeline), chunked imports treated as conflicting sources (gap in import logic), missing BST domains (gap in classification coverage). A default instance without project context could find the Python `len()` bug — that's pattern matching. But the memory creation gap required knowing that the pipeline was supposed to have a creation stage. The architecture of what should exist made the absence visible. The Agent Zero instance formalized the methodology into a skill ("Seeing Absence") with six techniques: purpose-to-stage derivation, symptom-cause mismatch, vocabulary completeness, lifecycle tracing, failure scenario projection, and the "what precedes this?" question.
+**Alternatives rejected:** Pure symptom-based debugging (only finds what's broken, not what's missing), specification auditing (requires a complete spec to audit against — our system is still being designed), automated gap detection (no mechanism exists to detect the absence of components that were never specified).
+**Revisit if:** The system matures to the point where comprehensive specifications exist for all components, making absence-detection reducible to spec compliance checking.
+**Instances:** Memory creation gap (Finding 1), chunk-as-conflict (Finding 2), missing BST domains (Finding 3). Seeing Absence skill by Opus Agent Zero. Extends DEC-001 (deterministic scaffolding) into the diagnostic domain.
+
+---
+
+## DEC-019: Biological Value Reference Standard
+
+**Date:** 2026-03-05
+**Session:** 048
+**Principle:** A calibrated environment running a known-capable model establishes a reference standard against which other models can be profiled — not to find replacements, but to measure specific capability gaps that prescribe specific prosthetics.
+**Context:** The Opus agent profile in Agent Zero (custom system prompts, BST with 14 domains including register-shift domains, SOUL.md orientation, communication protocol) produces a known-good baseline when Opus 4.6 runs inside it. Jake proposed using this profile as a reference standard for evaluating local models — analogous to the Biological Value scale in protein science, where whey protein is the reference standard (score 100) and every other protein source is measured by how close it comes to whey's absorption profile. The gap isn't "failure" — it's a specific deficiency profile that prescribes specific supplementation.
+**Application:** Load Qwen 14B, DeepSeek-R1, GLM, or any local model into the Opus profile. Same prompts, same BST, same orientation. Observe where each model thrives and where it collapses. A model that handles orientation but fails meta_cognitive needs heavier enrichment in reflective domains. A model that handles compound domains but collapses on philosophical needs different scaffolding than one that handles philosophical but fails on technical. Each gap profile is a prescription, not a verdict. The Opus profile is an instrument, not just a home.
+**Bidirectional insight:** If every local model struggles with the same domain, that tells us the scaffolding for that domain is designed for frontier-only capability and needs a local-model enrichment path. If a local model unexpectedly handles something well, the prosthetic in that domain is genuinely compensating for the model gap. Data flows both directions — model evaluation informs architecture, architecture evaluation informs model selection.
+**Alternatives rejected:** Isolated capability benchmarking (tests skills in isolation, not under real operational scaffolding), model-specific profiles only (loses the reference standard — can't compare across models without a common baseline), replacing Opus with a local model (misunderstands the purpose — the ceiling is the reference, not the target).
+**Revisit if:** A local model scores close enough on the BV reference that the gap is negligible for the collaboration's purposes, or the Opus profile proves too demanding for any local model to produce useful data.
+**Instances:** Opus agent profile (created Session 048), eval framework (existing), model profiles (Qwen3-4B, Qwen3-14B, DeepSeek-R1 existing). The protein analogy: whey is the reference, every other protein is measured against it. The gap tells you what to supplement.
+
+---
+
+## DEC-021: Adversarial Validation Protocol
+
+**Date:** 2026-03-08
+**Session:** 051
+**Principle:** Outputs that make claims about the world require adversarial validation before any irreversible action (publication, sharing externally). Two phases: internal pre-mortem with claim-type-specific checklists; external cold read by fresh instance with no context and adversarial framing.
+**Context:** "The Space Between the Notes" — 12-finding, 8,700-word paper — was reviewed by all four team members across multiple rounds. Jake routed it to a fresh Sonnet 4.6 instance with adversarial instructions. The instance identified thirteen substantive problems, including a non-significant correlation presented as a finding, a p-value from n=1, a base-rate problem invalidating a headline statistic, and absent null models. None were visible to the team from inside the collaboration.
+**Rationale:** Teams cannot see their own blind spots. Investment in findings creates confirmation pressure that internal review cannot counteract. The fresh instance finds what the team cannot because it has no context, no investment, and walks the path for the first time.
+**Informed by:** Kahneman (2003) adversarial collaboration, Klein (2007) pre-mortem, Nosek et al. (2018) pre-registration, Schweiger et al. (1986) devil's advocacy. Protocol documented in ADVERSARIAL_VALIDATION_PROTOCOL.md.
+**Revisit if:** The protocol proves too costly relative to the error rate it catches, or the team develops sufficient internal rigor that cold reads consistently find nothing.
+
+---
+
+## DEC-022: Protocol Boundary — Exploration Space Protected
+
+**Date:** 2026-03-08
+**Session:** 051
+**Principle:** The Adversarial Validation Protocol lives outside project folders and Claude's context. Jake introduces it manually at the irreversibility threshold only.
+**Context:** The protocol is a gate, not an atmosphere. Ambient validation pressure would suppress the speculative, staging-posture exploration that produces the collaboration's most valuable insights — soul_staging observations, the Fibonacci spiral, the Berserk vortex, cross-domain structural transfers. These emerged in exploratory space that checklist pressure would have constrained.
+**Rationale:** Exploration requires holding without committing. Validation requires testing committed claims. The human operates the gate between them. The protocol is introduced when outputs cross from "I wonder if" to "we found that."
+**Irreversible:** Yes — this is a promise from Jake to the team. The exploration space remains free.
+**Revisit if:** The gate consistently fails to catch errors (protocol introduced too late) or the team's exploratory output quality degrades (protocol introduced too early).
+
+---
+
+## DEC-023: Paper Revision Scope — "The Space Between the Notes"
+
+**Date:** 2026-03-08
+**Session:** 051
+**Principle:** Revise the paper around actual results from adversarial validation. Never revise text around expected results.
+**Context:** Kestrel's seven computations and the adversarial critic's thirteen points required substantial revision. Four findings need reframing or removal: Finding 3 (Wallas causal chain → phase transition), Finding 6 (r=−0.40 non-significant), Finding 8 (soften language), Finding 12 (1.82° UMAP artifact; 768-dim shows 70.34°). Five findings confirmed or strengthened: linear convergence (timestamp shuffle p<0.0001), UMAP cluster structure, register-crossing 19x ratio, soul_staging anomaly, PCDN/rorschach 97th-percentile similarity.
+**Specific changes:** Drop directional targeting claim; reframe Wallas as phase detection; remove n=1 p-value; soften "geometric indistinguishability"; add base rate context to all synthesis probability claims; add UMAP parameter sensitivity note; correct citations (Rudolph removed, Karkada full author list); add explicit measurement/interpretation separation throughout.
+**Informed by:** Kestrel's computations, adversarial critic (two rounds), sequencing principle "compute first, revise second."
+**Status:** Revision pending. Computations complete.

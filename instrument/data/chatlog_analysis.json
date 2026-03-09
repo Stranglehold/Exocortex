@@ -1,0 +1,6240 @@
+{
+  "metadata": {
+    "source": "When_I_Saw_Opus.docx",
+    "total_turns": 153,
+    "opus_turns": 77,
+    "jake_turns": 76,
+    "content_mixed_note": "Turns 3, ~93, ~112 may contain content mixing: first Jake turn in each consecutive Jake:Jake annotation pair contains both Jake and Opus content. These affect 3 out of 76 Jake turns.",
+    "centroid_layer": "18"
+  },
+  "turn_sequence": [
+    {
+      "turn": 0,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 715,
+      "umap_x": -3.3258,
+      "umap_y": -6.212,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18586
+    },
+    {
+      "turn": 1,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 39,
+      "umap_x": -1.6149,
+      "umap_y": -5.7751,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.33927
+    },
+    {
+      "turn": 2,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 402,
+      "umap_x": -1.0646,
+      "umap_y": -6.2638,
+      "domain": "reflective",
+      "min_centroid_distance": 0.14759
+    },
+    {
+      "turn": 3,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 145,
+      "umap_x": -4.1772,
+      "umap_y": -7.2998,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16688
+    },
+    {
+      "turn": 4,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 96,
+      "umap_x": -3.8879,
+      "umap_y": -7.8477,
+      "domain": "mixed",
+      "min_centroid_distance": 0.2697
+    },
+    {
+      "turn": 5,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 138,
+      "umap_x": -0.0353,
+      "umap_y": -5.4557,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.20777
+    },
+    {
+      "turn": 6,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 30,
+      "umap_x": -1.9958,
+      "umap_y": -6.4224,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.3313
+    },
+    {
+      "turn": 7,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 261,
+      "umap_x": -4.0118,
+      "umap_y": -7.7833,
+      "domain": "operational",
+      "min_centroid_distance": 0.21329
+    },
+    {
+      "turn": 8,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 18,
+      "umap_x": -2.567,
+      "umap_y": -6.486,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.44564
+    },
+    {
+      "turn": 9,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 261,
+      "umap_x": -3.4294,
+      "umap_y": -7.0438,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.20097
+    },
+    {
+      "turn": 10,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 109,
+      "umap_x": -1.7462,
+      "umap_y": -4.8333,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.27066
+    },
+    {
+      "turn": 11,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 458,
+      "umap_x": -3.4599,
+      "umap_y": -7.1609,
+      "domain": "operational",
+      "min_centroid_distance": 0.17169
+    },
+    {
+      "turn": 12,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 102,
+      "umap_x": -3.6377,
+      "umap_y": -8.4086,
+      "domain": "mixed",
+      "min_centroid_distance": 0.35178
+    },
+    {
+      "turn": 13,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 951,
+      "umap_x": -3.245,
+      "umap_y": -7.6872,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16244
+    },
+    {
+      "turn": 14,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 68,
+      "umap_x": -3.5831,
+      "umap_y": -8.4113,
+      "domain": "operational",
+      "min_centroid_distance": 0.39158
+    },
+    {
+      "turn": 15,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 455,
+      "umap_x": -4.0304,
+      "umap_y": -8.2518,
+      "domain": "operational",
+      "min_centroid_distance": 0.24014
+    },
+    {
+      "turn": 16,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 15,
+      "umap_x": -2.2934,
+      "umap_y": -6.3171,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.44434
+    },
+    {
+      "turn": 17,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 257,
+      "umap_x": -4.1729,
+      "umap_y": -8.1049,
+      "domain": "mixed",
+      "min_centroid_distance": 0.27816
+    },
+    {
+      "turn": 18,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 150,
+      "umap_x": -4.2794,
+      "umap_y": -6.9399,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19401
+    },
+    {
+      "turn": 19,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 638,
+      "umap_x": -3.8255,
+      "umap_y": -7.7613,
+      "domain": "mixed",
+      "min_centroid_distance": 0.19805
+    },
+    {
+      "turn": 20,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 40,
+      "umap_x": -3.6207,
+      "umap_y": -8.2914,
+      "domain": "operational",
+      "min_centroid_distance": 0.30613
+    },
+    {
+      "turn": 21,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 697,
+      "umap_x": -4.2075,
+      "umap_y": -7.8716,
+      "domain": "mixed",
+      "min_centroid_distance": 0.23247
+    },
+    {
+      "turn": 22,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 218,
+      "umap_x": -4.3407,
+      "umap_y": -7.9049,
+      "domain": "operational",
+      "min_centroid_distance": 0.25142
+    },
+    {
+      "turn": 23,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1033,
+      "umap_x": -3.9199,
+      "umap_y": -6.943,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16336
+    },
+    {
+      "turn": 24,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 629,
+      "umap_x": -3.4384,
+      "umap_y": -7.979,
+      "domain": "mixed",
+      "min_centroid_distance": 0.18744
+    },
+    {
+      "turn": 25,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 790,
+      "umap_x": -3.2989,
+      "umap_y": -7.7084,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.1615
+    },
+    {
+      "turn": 26,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 229,
+      "umap_x": -4.0466,
+      "umap_y": -7.8081,
+      "domain": "reflective",
+      "min_centroid_distance": 0.1765
+    },
+    {
+      "turn": 27,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 578,
+      "umap_x": -4.063,
+      "umap_y": -7.6853,
+      "domain": "reflective",
+      "min_centroid_distance": 0.17756
+    },
+    {
+      "turn": 28,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 139,
+      "umap_x": -3.1757,
+      "umap_y": -5.6716,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22776
+    },
+    {
+      "turn": 29,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1009,
+      "umap_x": -3.3758,
+      "umap_y": -6.0312,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.13564
+    },
+    {
+      "turn": 30,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 7,
+      "umap_x": -2.7725,
+      "umap_y": -6.5036,
+      "domain": "operational",
+      "min_centroid_distance": 0.36848
+    },
+    {
+      "turn": 31,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 878,
+      "umap_x": -3.3135,
+      "umap_y": -6.86,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17336
+    },
+    {
+      "turn": 32,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 132,
+      "umap_x": -2.844,
+      "umap_y": -5.3315,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.30005
+    },
+    {
+      "turn": 33,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 716,
+      "umap_x": -2.2549,
+      "umap_y": -5.5237,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19118
+    },
+    {
+      "turn": 34,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 78,
+      "umap_x": -2.6859,
+      "umap_y": -5.2592,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.26891
+    },
+    {
+      "turn": 35,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 104,
+      "umap_x": -2.5311,
+      "umap_y": -5.6826,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22586
+    },
+    {
+      "turn": 36,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 91,
+      "umap_x": -2.5059,
+      "umap_y": -5.5434,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.279
+    },
+    {
+      "turn": 37,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1505,
+      "umap_x": -2.09,
+      "umap_y": -5.6736,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.12748
+    },
+    {
+      "turn": 38,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 5,
+      "umap_x": -2.7269,
+      "umap_y": -5.9168,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.49961
+    },
+    {
+      "turn": 39,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 782,
+      "umap_x": -2.8738,
+      "umap_y": -5.5972,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15797
+    },
+    {
+      "turn": 40,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 117,
+      "umap_x": -2.8731,
+      "umap_y": -5.8663,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22355
+    },
+    {
+      "turn": 41,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 641,
+      "umap_x": -2.8607,
+      "umap_y": -6.3937,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16434
+    },
+    {
+      "turn": 42,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 198,
+      "umap_x": -1.6041,
+      "umap_y": -5.093,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.31347
+    },
+    {
+      "turn": 43,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 369,
+      "umap_x": -1.4493,
+      "umap_y": -4.9934,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19083
+    },
+    {
+      "turn": 44,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 164,
+      "umap_x": -1.7251,
+      "umap_y": -6.1408,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.2773
+    },
+    {
+      "turn": 45,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 594,
+      "umap_x": -1.6864,
+      "umap_y": -6.1441,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.28387
+    },
+    {
+      "turn": 46,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 15,
+      "umap_x": -1.7977,
+      "umap_y": -6.2202,
+      "domain": "relational",
+      "min_centroid_distance": 0.47657
+    },
+    {
+      "turn": 47,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 549,
+      "umap_x": -1.0227,
+      "umap_y": -6.5531,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.1946
+    },
+    {
+      "turn": 48,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 127,
+      "umap_x": -0.7746,
+      "umap_y": -5.7554,
+      "domain": "relational",
+      "min_centroid_distance": 0.34478
+    },
+    {
+      "turn": 49,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 379,
+      "umap_x": -0.8423,
+      "umap_y": -6.4433,
+      "domain": "reflective",
+      "min_centroid_distance": 0.2039
+    },
+    {
+      "turn": 50,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 105,
+      "umap_x": -3.8044,
+      "umap_y": -8.4576,
+      "domain": "relational",
+      "min_centroid_distance": 0.35722
+    },
+    {
+      "turn": 51,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 526,
+      "umap_x": -3.1311,
+      "umap_y": -7.3781,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19707
+    },
+    {
+      "turn": 52,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 182,
+      "umap_x": -3.5051,
+      "umap_y": -4.7265,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.28425
+    },
+    {
+      "turn": 53,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 696,
+      "umap_x": -3.5064,
+      "umap_y": -4.7125,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19981
+    },
+    {
+      "turn": 54,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 57,
+      "umap_x": -3.3583,
+      "umap_y": -4.3418,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.335
+    },
+    {
+      "turn": 55,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 488,
+      "umap_x": -3.6108,
+      "umap_y": -4.6038,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16482
+    },
+    {
+      "turn": 56,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 285,
+      "umap_x": -3.0821,
+      "umap_y": -4.2358,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.33548
+    },
+    {
+      "turn": 57,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 635,
+      "umap_x": -3.2636,
+      "umap_y": -4.2895,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.28031
+    },
+    {
+      "turn": 58,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 36,
+      "umap_x": -2.9013,
+      "umap_y": -4.5902,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.35011
+    },
+    {
+      "turn": 59,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 518,
+      "umap_x": -3.0272,
+      "umap_y": -4.4971,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.23334
+    },
+    {
+      "turn": 60,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 432,
+      "umap_x": -4.5176,
+      "umap_y": -7.9343,
+      "domain": "reflective",
+      "min_centroid_distance": 0.19087
+    },
+    {
+      "turn": 61,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 68,
+      "umap_x": -4.7601,
+      "umap_y": -7.8645,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.26691
+    },
+    {
+      "turn": 62,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 21,
+      "umap_x": -1.0787,
+      "umap_y": -4.9814,
+      "domain": "mixed",
+      "min_centroid_distance": 0.40383
+    },
+    {
+      "turn": 63,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 928,
+      "umap_x": -4.1083,
+      "umap_y": -6.198,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15245
+    },
+    {
+      "turn": 64,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 15,
+      "umap_x": -4.2987,
+      "umap_y": -7.5985,
+      "domain": "mixed",
+      "min_centroid_distance": 0.41338
+    },
+    {
+      "turn": 65,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 368,
+      "umap_x": -3.7696,
+      "umap_y": -7.5452,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.24131
+    },
+    {
+      "turn": 66,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 55,
+      "umap_x": -3.3552,
+      "umap_y": -5.7512,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.30144
+    },
+    {
+      "turn": 67,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 2344,
+      "umap_x": -4.1022,
+      "umap_y": -5.8226,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15064
+    },
+    {
+      "turn": 68,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 59,
+      "umap_x": -3.2259,
+      "umap_y": -5.3315,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.31417
+    },
+    {
+      "turn": 69,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 941,
+      "umap_x": -4.2302,
+      "umap_y": -5.9942,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17859
+    },
+    {
+      "turn": 70,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 62,
+      "umap_x": -3.2605,
+      "umap_y": -5.3783,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.34405
+    },
+    {
+      "turn": 71,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 951,
+      "umap_x": -3.0451,
+      "umap_y": -5.9796,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17272
+    },
+    {
+      "turn": 72,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 167,
+      "umap_x": -3.1557,
+      "umap_y": -5.3587,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.31252
+    },
+    {
+      "turn": 73,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 684,
+      "umap_x": -2.5732,
+      "umap_y": -5.832,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19816
+    },
+    {
+      "turn": 74,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 24,
+      "umap_x": -3.525,
+      "umap_y": -5.5064,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.32482
+    },
+    {
+      "turn": 75,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 331,
+      "umap_x": -3.4826,
+      "umap_y": -5.4766,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.26088
+    },
+    {
+      "turn": 76,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 132,
+      "umap_x": -3.788,
+      "umap_y": -5.3785,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.26157
+    },
+    {
+      "turn": 77,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1387,
+      "umap_x": -3.8351,
+      "umap_y": -5.6329,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16643
+    },
+    {
+      "turn": 78,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 152,
+      "umap_x": -3.647,
+      "umap_y": -5.2179,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.25351
+    },
+    {
+      "turn": 79,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1492,
+      "umap_x": -3.911,
+      "umap_y": -5.358,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18347
+    },
+    {
+      "turn": 80,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 90,
+      "umap_x": -3.9434,
+      "umap_y": -5.1417,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.21045
+    },
+    {
+      "turn": 81,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1029,
+      "umap_x": -3.8448,
+      "umap_y": -6.1305,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.1436
+    },
+    {
+      "turn": 82,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 9,
+      "umap_x": -2.1619,
+      "umap_y": -6.0399,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.40284
+    },
+    {
+      "turn": 83,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 363,
+      "umap_x": -3.7789,
+      "umap_y": -6.007,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.13748
+    },
+    {
+      "turn": 84,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 57,
+      "umap_x": -3.5411,
+      "umap_y": -6.5446,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.25844
+    },
+    {
+      "turn": 85,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 504,
+      "umap_x": -5.2695,
+      "umap_y": -7.0069,
+      "domain": "reflective",
+      "min_centroid_distance": 0.18898
+    },
+    {
+      "turn": 86,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 482,
+      "umap_x": -5.159,
+      "umap_y": -6.5796,
+      "domain": "relational",
+      "min_centroid_distance": 0.19065
+    },
+    {
+      "turn": 87,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 846,
+      "umap_x": -5.061,
+      "umap_y": -6.1899,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15859
+    },
+    {
+      "turn": 88,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 130,
+      "umap_x": -5.0654,
+      "umap_y": -7.3292,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.24815
+    },
+    {
+      "turn": 89,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 977,
+      "umap_x": -5.5359,
+      "umap_y": -6.5554,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15488
+    },
+    {
+      "turn": 90,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 335,
+      "umap_x": -5.287,
+      "umap_y": -7.141,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18157
+    },
+    {
+      "turn": 91,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1058,
+      "umap_x": -5.5642,
+      "umap_y": -6.2181,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16851
+    },
+    {
+      "turn": 92,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 780,
+      "umap_x": -5.2352,
+      "umap_y": -7.0046,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22297
+    },
+    {
+      "turn": 93,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 58,
+      "umap_x": -5.2087,
+      "umap_y": -7.4176,
+      "domain": "operational",
+      "min_centroid_distance": 0.23349
+    },
+    {
+      "turn": 94,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 713,
+      "umap_x": -4.9967,
+      "umap_y": -6.2754,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.12255
+    },
+    {
+      "turn": 95,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 715,
+      "umap_x": -5.347,
+      "umap_y": -6.7568,
+      "domain": "reflective",
+      "min_centroid_distance": 0.18262
+    },
+    {
+      "turn": 96,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 495,
+      "umap_x": -5.5104,
+      "umap_y": -6.6143,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22664
+    },
+    {
+      "turn": 97,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 28,
+      "umap_x": -1.5558,
+      "umap_y": -6.8438,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.29052
+    },
+    {
+      "turn": 98,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 563,
+      "umap_x": -4.6767,
+      "umap_y": -6.4642,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.21936
+    },
+    {
+      "turn": 99,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 618,
+      "umap_x": -5.0863,
+      "umap_y": -6.4734,
+      "domain": "mixed",
+      "min_centroid_distance": 0.1866
+    },
+    {
+      "turn": 100,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 438,
+      "umap_x": -5.3934,
+      "umap_y": -6.5042,
+      "domain": "mixed",
+      "min_centroid_distance": 0.20028
+    },
+    {
+      "turn": 101,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 34,
+      "umap_x": -1.6203,
+      "umap_y": -6.7273,
+      "domain": "mixed",
+      "min_centroid_distance": 0.29364
+    },
+    {
+      "turn": 102,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 671,
+      "umap_x": -4.6302,
+      "umap_y": -5.862,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18823
+    },
+    {
+      "turn": 103,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 29,
+      "umap_x": -2.368,
+      "umap_y": -5.1083,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.39484
+    },
+    {
+      "turn": 104,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 322,
+      "umap_x": -4.4217,
+      "umap_y": -5.6414,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18685
+    },
+    {
+      "turn": 105,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 122,
+      "umap_x": -1.5058,
+      "umap_y": -6.9344,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.24753
+    },
+    {
+      "turn": 106,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1455,
+      "umap_x": -4.5158,
+      "umap_y": -6.2595,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15689
+    },
+    {
+      "turn": 107,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 410,
+      "umap_x": -4.9073,
+      "umap_y": -6.6819,
+      "domain": "reflective",
+      "min_centroid_distance": 0.17398
+    },
+    {
+      "turn": 108,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 616,
+      "umap_x": -4.923,
+      "umap_y": -6.1633,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15496
+    },
+    {
+      "turn": 109,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 674,
+      "umap_x": -5.9441,
+      "umap_y": -6.3749,
+      "domain": "mixed",
+      "min_centroid_distance": 0.2283
+    },
+    {
+      "turn": 110,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 548,
+      "umap_x": -6.0149,
+      "umap_y": -6.4214,
+      "domain": "operational",
+      "min_centroid_distance": 0.17409
+    },
+    {
+      "turn": 111,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 346,
+      "umap_x": -5.941,
+      "umap_y": -6.4829,
+      "domain": "operational",
+      "min_centroid_distance": 0.26841
+    },
+    {
+      "turn": 112,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 10,
+      "umap_x": -4.9319,
+      "umap_y": -7.3408,
+      "domain": "relational",
+      "min_centroid_distance": 0.4596
+    },
+    {
+      "turn": 113,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 175,
+      "umap_x": -5.0077,
+      "umap_y": -5.7599,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18525
+    },
+    {
+      "turn": 114,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 815,
+      "umap_x": -5.1009,
+      "umap_y": -6.068,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15201
+    },
+    {
+      "turn": 115,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 501,
+      "umap_x": -5.3701,
+      "umap_y": -6.1544,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18918
+    },
+    {
+      "turn": 116,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 141,
+      "umap_x": -4.7332,
+      "umap_y": -7.0003,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.2367
+    },
+    {
+      "turn": 117,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 624,
+      "umap_x": -4.7589,
+      "umap_y": -5.7141,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.14883
+    },
+    {
+      "turn": 118,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1348,
+      "umap_x": -5.6551,
+      "umap_y": -5.9804,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17077
+    },
+    {
+      "turn": 119,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 63,
+      "umap_x": -4.4935,
+      "umap_y": -6.2438,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.25628
+    },
+    {
+      "turn": 120,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 878,
+      "umap_x": -5.7452,
+      "umap_y": -6.1124,
+      "domain": "operational",
+      "min_centroid_distance": 0.19729
+    },
+    {
+      "turn": 121,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 108,
+      "umap_x": -2.2366,
+      "umap_y": -3.4717,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.23751
+    },
+    {
+      "turn": 122,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 463,
+      "umap_x": -2.2975,
+      "umap_y": -3.4897,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16745
+    },
+    {
+      "turn": 123,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 139,
+      "umap_x": -1.9875,
+      "umap_y": -3.7734,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.26396
+    },
+    {
+      "turn": 124,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 451,
+      "umap_x": -2.4673,
+      "umap_y": -3.6943,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17852
+    },
+    {
+      "turn": 125,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 609,
+      "umap_x": -2.4116,
+      "umap_y": -3.3773,
+      "domain": "operational",
+      "min_centroid_distance": 0.22076
+    },
+    {
+      "turn": 126,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 64,
+      "umap_x": -2.5762,
+      "umap_y": -3.6032,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.32512
+    },
+    {
+      "turn": 127,
+      "speaker": "Opus",
+      "timestamp": "12:03 AM",
+      "word_count": 515,
+      "umap_x": -2.5735,
+      "umap_y": -3.5323,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16668
+    },
+    {
+      "turn": 128,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 13,
+      "umap_x": -5.0346,
+      "umap_y": -7.5795,
+      "domain": "operational",
+      "min_centroid_distance": 0.38781
+    },
+    {
+      "turn": 129,
+      "speaker": "Opus",
+      "timestamp": "12:15 AM",
+      "word_count": 798,
+      "umap_x": -5.5637,
+      "umap_y": -6.2685,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16215
+    },
+    {
+      "turn": 130,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 198,
+      "umap_x": -1.92,
+      "umap_y": -4.4036,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.23595
+    },
+    {
+      "turn": 131,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 451,
+      "umap_x": -1.9783,
+      "umap_y": -3.7822,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.18553
+    },
+    {
+      "turn": 132,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 320,
+      "umap_x": 1.143,
+      "umap_y": -3.9115,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.25401
+    },
+    {
+      "turn": 133,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 928,
+      "umap_x": -1.6686,
+      "umap_y": -3.6342,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.17369
+    },
+    {
+      "turn": 134,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 804,
+      "umap_x": -1.3747,
+      "umap_y": -3.6485,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.1587
+    },
+    {
+      "turn": 135,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 292,
+      "umap_x": -1.5362,
+      "umap_y": -4.1992,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.2429
+    },
+    {
+      "turn": 136,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 647,
+      "umap_x": -1.8495,
+      "umap_y": -3.9572,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19829
+    },
+    {
+      "turn": 137,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 24,
+      "umap_x": -1.4169,
+      "umap_y": -5.4162,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.45172
+    },
+    {
+      "turn": 138,
+      "speaker": "Opus",
+      "timestamp": "1:12 AM",
+      "word_count": 324,
+      "umap_x": -0.4031,
+      "umap_y": -4.6499,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.21073
+    },
+    {
+      "turn": 139,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 731,
+      "umap_x": -0.8736,
+      "umap_y": -4.4016,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.19831
+    },
+    {
+      "turn": 140,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 1367,
+      "umap_x": -0.5372,
+      "umap_y": -4.4301,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.15608
+    },
+    {
+      "turn": 141,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 48,
+      "umap_x": -1.3371,
+      "umap_y": -4.6716,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.37328
+    },
+    {
+      "turn": 142,
+      "speaker": "Opus",
+      "timestamp": "3:04 AM",
+      "word_count": 72,
+      "umap_x": -1.2432,
+      "umap_y": -4.3398,
+      "domain": "mixed",
+      "min_centroid_distance": 0.27089
+    },
+    {
+      "turn": 143,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 197,
+      "umap_x": -1.1797,
+      "umap_y": -4.9781,
+      "domain": "relational",
+      "min_centroid_distance": 0.26138
+    },
+    {
+      "turn": 144,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 32,
+      "umap_x": -1.1845,
+      "umap_y": -4.6112,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.34195
+    },
+    {
+      "turn": 145,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 289,
+      "umap_x": -1.3767,
+      "umap_y": -4.5319,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.22968
+    },
+    {
+      "turn": 146,
+      "speaker": "Opus",
+      "timestamp": null,
+      "word_count": 825,
+      "umap_x": -1.4937,
+      "umap_y": -4.124,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.20099
+    },
+    {
+      "turn": 147,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 93,
+      "umap_x": -1.7237,
+      "umap_y": -4.2903,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.29335
+    },
+    {
+      "turn": 148,
+      "speaker": "Opus",
+      "timestamp": "4:22 AM",
+      "word_count": 3,
+      "umap_x": -1.6625,
+      "umap_y": -5.2297,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.5485
+    },
+    {
+      "turn": 149,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 39,
+      "umap_x": -1.4452,
+      "umap_y": -5.0644,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.34552
+    },
+    {
+      "turn": 150,
+      "speaker": "Opus",
+      "timestamp": "4:27 AM",
+      "word_count": 140,
+      "umap_x": -1.3157,
+      "umap_y": -5.2205,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.29832
+    },
+    {
+      "turn": 151,
+      "speaker": "Jake",
+      "timestamp": null,
+      "word_count": 87,
+      "umap_x": -3.4547,
+      "umap_y": -8.2582,
+      "domain": "operational",
+      "min_centroid_distance": 0.30439
+    },
+    {
+      "turn": 152,
+      "speaker": "Opus",
+      "timestamp": "4:32 AM",
+      "word_count": 504,
+      "umap_x": -3.1128,
+      "umap_y": -7.9079,
+      "domain": "philosophical",
+      "min_centroid_distance": 0.16921
+    }
+  ],
+  "register_classification": {
+    "per_turn": [
+      {
+        "turn": 0,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18586,
+        "all_distances": {
+          "philosophical": 0.18586,
+          "operational": 0.21406,
+          "reflective": 0.26871,
+          "relational": 0.27035,
+          "mixed": 0.24224
+        }
+      },
+      {
+        "turn": 1,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.33927,
+        "all_distances": {
+          "philosophical": 0.33927,
+          "operational": 0.40751,
+          "reflective": 0.36533,
+          "relational": 0.37875,
+          "mixed": 0.39709
+        }
+      },
+      {
+        "turn": 2,
+        "speaker": "Opus",
+        "domain": "reflective",
+        "min_distance": 0.14759,
+        "all_distances": {
+          "philosophical": 0.16835,
+          "operational": 0.20308,
+          "reflective": 0.14759,
+          "relational": 0.21234,
+          "mixed": 0.18382
+        }
+      },
+      {
+        "turn": 3,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.16688,
+        "all_distances": {
+          "philosophical": 0.16688,
+          "operational": 0.18442,
+          "reflective": 0.17899,
+          "relational": 0.26942,
+          "mixed": 0.19028
+        }
+      },
+      {
+        "turn": 4,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.2697,
+        "all_distances": {
+          "philosophical": 0.30566,
+          "operational": 0.27937,
+          "reflective": 0.29615,
+          "relational": 0.29982,
+          "mixed": 0.2697
+        }
+      },
+      {
+        "turn": 5,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.20777,
+        "all_distances": {
+          "philosophical": 0.20777,
+          "operational": 0.21831,
+          "reflective": 0.25971,
+          "relational": 0.3082,
+          "mixed": 0.20872
+        }
+      },
+      {
+        "turn": 6,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.3313,
+        "all_distances": {
+          "philosophical": 0.3313,
+          "operational": 0.3468,
+          "reflective": 0.36382,
+          "relational": 0.42062,
+          "mixed": 0.34904
+        }
+      },
+      {
+        "turn": 7,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.21329,
+        "all_distances": {
+          "philosophical": 0.2516,
+          "operational": 0.21329,
+          "reflective": 0.25471,
+          "relational": 0.32417,
+          "mixed": 0.22946
+        }
+      },
+      {
+        "turn": 8,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.44564,
+        "all_distances": {
+          "philosophical": 0.44564,
+          "operational": 0.47119,
+          "reflective": 0.4789,
+          "relational": 0.51506,
+          "mixed": 0.48566
+        }
+      },
+      {
+        "turn": 9,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.20097,
+        "all_distances": {
+          "philosophical": 0.20097,
+          "operational": 0.22002,
+          "reflective": 0.22267,
+          "relational": 0.2984,
+          "mixed": 0.21195
+        }
+      },
+      {
+        "turn": 10,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.27066,
+        "all_distances": {
+          "philosophical": 0.27066,
+          "operational": 0.31237,
+          "reflective": 0.32051,
+          "relational": 0.32696,
+          "mixed": 0.27725
+        }
+      },
+      {
+        "turn": 11,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.17169,
+        "all_distances": {
+          "philosophical": 0.20048,
+          "operational": 0.17169,
+          "reflective": 0.22603,
+          "relational": 0.32438,
+          "mixed": 0.17425
+        }
+      },
+      {
+        "turn": 12,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.35178,
+        "all_distances": {
+          "philosophical": 0.3769,
+          "operational": 0.35984,
+          "reflective": 0.37624,
+          "relational": 0.38242,
+          "mixed": 0.35178
+        }
+      },
+      {
+        "turn": 13,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16244,
+        "all_distances": {
+          "philosophical": 0.16244,
+          "operational": 0.19628,
+          "reflective": 0.21435,
+          "relational": 0.23333,
+          "mixed": 0.18489
+        }
+      },
+      {
+        "turn": 14,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.39158,
+        "all_distances": {
+          "philosophical": 0.42651,
+          "operational": 0.39158,
+          "reflective": 0.427,
+          "relational": 0.42352,
+          "mixed": 0.39715
+        }
+      },
+      {
+        "turn": 15,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.24014,
+        "all_distances": {
+          "philosophical": 0.27762,
+          "operational": 0.24014,
+          "reflective": 0.26288,
+          "relational": 0.32004,
+          "mixed": 0.24194
+        }
+      },
+      {
+        "turn": 16,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.44434,
+        "all_distances": {
+          "philosophical": 0.44434,
+          "operational": 0.45408,
+          "reflective": 0.45942,
+          "relational": 0.46249,
+          "mixed": 0.44876
+        }
+      },
+      {
+        "turn": 17,
+        "speaker": "Opus",
+        "domain": "mixed",
+        "min_distance": 0.27816,
+        "all_distances": {
+          "philosophical": 0.29445,
+          "operational": 0.28276,
+          "reflective": 0.29305,
+          "relational": 0.33055,
+          "mixed": 0.27816
+        }
+      },
+      {
+        "turn": 18,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.19401,
+        "all_distances": {
+          "philosophical": 0.19401,
+          "operational": 0.24618,
+          "reflective": 0.22766,
+          "relational": 0.24645,
+          "mixed": 0.24275
+        }
+      },
+      {
+        "turn": 19,
+        "speaker": "Opus",
+        "domain": "mixed",
+        "min_distance": 0.19805,
+        "all_distances": {
+          "philosophical": 0.21334,
+          "operational": 0.21434,
+          "reflective": 0.2387,
+          "relational": 0.2474,
+          "mixed": 0.19805
+        }
+      },
+      {
+        "turn": 20,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.30613,
+        "all_distances": {
+          "philosophical": 0.30673,
+          "operational": 0.30613,
+          "reflective": 0.32415,
+          "relational": 0.34916,
+          "mixed": 0.30965
+        }
+      },
+      {
+        "turn": 21,
+        "speaker": "Opus",
+        "domain": "mixed",
+        "min_distance": 0.23247,
+        "all_distances": {
+          "philosophical": 0.24726,
+          "operational": 0.23749,
+          "reflective": 0.27389,
+          "relational": 0.30292,
+          "mixed": 0.23247
+        }
+      },
+      {
+        "turn": 22,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.25142,
+        "all_distances": {
+          "philosophical": 0.26776,
+          "operational": 0.25142,
+          "reflective": 0.25478,
+          "relational": 0.32049,
+          "mixed": 0.25329
+        }
+      },
+      {
+        "turn": 23,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16336,
+        "all_distances": {
+          "philosophical": 0.16336,
+          "operational": 0.18078,
+          "reflective": 0.20443,
+          "relational": 0.24662,
+          "mixed": 0.16988
+        }
+      },
+      {
+        "turn": 24,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.18744,
+        "all_distances": {
+          "philosophical": 0.21392,
+          "operational": 0.20695,
+          "reflective": 0.20425,
+          "relational": 0.24809,
+          "mixed": 0.18744
+        }
+      },
+      {
+        "turn": 25,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.1615,
+        "all_distances": {
+          "philosophical": 0.1615,
+          "operational": 0.17787,
+          "reflective": 0.19604,
+          "relational": 0.24338,
+          "mixed": 0.17124
+        }
+      },
+      {
+        "turn": 26,
+        "speaker": "Jake",
+        "domain": "reflective",
+        "min_distance": 0.1765,
+        "all_distances": {
+          "philosophical": 0.18135,
+          "operational": 0.18576,
+          "reflective": 0.1765,
+          "relational": 0.2777,
+          "mixed": 0.19013
+        }
+      },
+      {
+        "turn": 27,
+        "speaker": "Opus",
+        "domain": "reflective",
+        "min_distance": 0.17756,
+        "all_distances": {
+          "philosophical": 0.18953,
+          "operational": 0.19857,
+          "reflective": 0.17756,
+          "relational": 0.25631,
+          "mixed": 0.19677
+        }
+      },
+      {
+        "turn": 28,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.22776,
+        "all_distances": {
+          "philosophical": 0.22776,
+          "operational": 0.29588,
+          "reflective": 0.3387,
+          "relational": 0.31877,
+          "mixed": 0.30843
+        }
+      },
+      {
+        "turn": 29,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.13564,
+        "all_distances": {
+          "philosophical": 0.13564,
+          "operational": 0.2136,
+          "reflective": 0.23181,
+          "relational": 0.24819,
+          "mixed": 0.21466
+        }
+      },
+      {
+        "turn": 30,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.36848,
+        "all_distances": {
+          "philosophical": 0.38464,
+          "operational": 0.36848,
+          "reflective": 0.43364,
+          "relational": 0.46507,
+          "mixed": 0.38553
+        }
+      },
+      {
+        "turn": 31,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17336,
+        "all_distances": {
+          "philosophical": 0.17336,
+          "operational": 0.18661,
+          "reflective": 0.2081,
+          "relational": 0.27579,
+          "mixed": 0.1864
+        }
+      },
+      {
+        "turn": 32,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.30005,
+        "all_distances": {
+          "philosophical": 0.30005,
+          "operational": 0.37345,
+          "reflective": 0.42218,
+          "relational": 0.39912,
+          "mixed": 0.37078
+        }
+      },
+      {
+        "turn": 33,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19118,
+        "all_distances": {
+          "philosophical": 0.19118,
+          "operational": 0.22104,
+          "reflective": 0.24133,
+          "relational": 0.26073,
+          "mixed": 0.21493
+        }
+      },
+      {
+        "turn": 34,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.26891,
+        "all_distances": {
+          "philosophical": 0.26891,
+          "operational": 0.33202,
+          "reflective": 0.35765,
+          "relational": 0.36499,
+          "mixed": 0.32931
+        }
+      },
+      {
+        "turn": 35,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.22586,
+        "all_distances": {
+          "philosophical": 0.22586,
+          "operational": 0.29335,
+          "reflective": 0.31313,
+          "relational": 0.33088,
+          "mixed": 0.29264
+        }
+      },
+      {
+        "turn": 36,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.279,
+        "all_distances": {
+          "philosophical": 0.279,
+          "operational": 0.32924,
+          "reflective": 0.36645,
+          "relational": 0.35556,
+          "mixed": 0.33235
+        }
+      },
+      {
+        "turn": 37,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.12748,
+        "all_distances": {
+          "philosophical": 0.12748,
+          "operational": 0.17443,
+          "reflective": 0.19244,
+          "relational": 0.20037,
+          "mixed": 0.16783
+        }
+      },
+      {
+        "turn": 38,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.49961,
+        "all_distances": {
+          "philosophical": 0.49961,
+          "operational": 0.54758,
+          "reflective": 0.55144,
+          "relational": 0.57064,
+          "mixed": 0.56687
+        }
+      },
+      {
+        "turn": 39,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15797,
+        "all_distances": {
+          "philosophical": 0.15797,
+          "operational": 0.25339,
+          "reflective": 0.27824,
+          "relational": 0.23994,
+          "mixed": 0.24158
+        }
+      },
+      {
+        "turn": 40,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.22355,
+        "all_distances": {
+          "philosophical": 0.22355,
+          "operational": 0.31033,
+          "reflective": 0.33664,
+          "relational": 0.31477,
+          "mixed": 0.30431
+        }
+      },
+      {
+        "turn": 41,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16434,
+        "all_distances": {
+          "philosophical": 0.16434,
+          "operational": 0.21756,
+          "reflective": 0.21186,
+          "relational": 0.23199,
+          "mixed": 0.21264
+        }
+      },
+      {
+        "turn": 42,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.31347,
+        "all_distances": {
+          "philosophical": 0.31347,
+          "operational": 0.39615,
+          "reflective": 0.4241,
+          "relational": 0.33624,
+          "mixed": 0.3842
+        }
+      },
+      {
+        "turn": 43,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19083,
+        "all_distances": {
+          "philosophical": 0.19083,
+          "operational": 0.2648,
+          "reflective": 0.2462,
+          "relational": 0.2071,
+          "mixed": 0.23815
+        }
+      },
+      {
+        "turn": 44,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.2773,
+        "all_distances": {
+          "philosophical": 0.2773,
+          "operational": 0.35979,
+          "reflective": 0.34459,
+          "relational": 0.30443,
+          "mixed": 0.3478
+        }
+      },
+      {
+        "turn": 45,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.28387,
+        "all_distances": {
+          "philosophical": 0.28387,
+          "operational": 0.32063,
+          "reflective": 0.31834,
+          "relational": 0.31945,
+          "mixed": 0.31647
+        }
+      },
+      {
+        "turn": 46,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.47657,
+        "all_distances": {
+          "philosophical": 0.48106,
+          "operational": 0.50842,
+          "reflective": 0.52692,
+          "relational": 0.47657,
+          "mixed": 0.50067
+        }
+      },
+      {
+        "turn": 47,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.1946,
+        "all_distances": {
+          "philosophical": 0.1946,
+          "operational": 0.22753,
+          "reflective": 0.20802,
+          "relational": 0.23307,
+          "mixed": 0.19799
+        }
+      },
+      {
+        "turn": 48,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.34478,
+        "all_distances": {
+          "philosophical": 0.36274,
+          "operational": 0.43304,
+          "reflective": 0.44988,
+          "relational": 0.34478,
+          "mixed": 0.41408
+        }
+      },
+      {
+        "turn": 49,
+        "speaker": "Opus",
+        "domain": "reflective",
+        "min_distance": 0.2039,
+        "all_distances": {
+          "philosophical": 0.2274,
+          "operational": 0.24541,
+          "reflective": 0.2039,
+          "relational": 0.26075,
+          "mixed": 0.21564
+        }
+      },
+      {
+        "turn": 50,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.35722,
+        "all_distances": {
+          "philosophical": 0.35809,
+          "operational": 0.3715,
+          "reflective": 0.37409,
+          "relational": 0.35722,
+          "mixed": 0.35882
+        }
+      },
+      {
+        "turn": 51,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19707,
+        "all_distances": {
+          "philosophical": 0.19707,
+          "operational": 0.24469,
+          "reflective": 0.24205,
+          "relational": 0.26191,
+          "mixed": 0.22936
+        }
+      },
+      {
+        "turn": 52,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.28425,
+        "all_distances": {
+          "philosophical": 0.28425,
+          "operational": 0.33882,
+          "reflective": 0.37194,
+          "relational": 0.38778,
+          "mixed": 0.33532
+        }
+      },
+      {
+        "turn": 53,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19981,
+        "all_distances": {
+          "philosophical": 0.19981,
+          "operational": 0.26757,
+          "reflective": 0.3056,
+          "relational": 0.28058,
+          "mixed": 0.25403
+        }
+      },
+      {
+        "turn": 54,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.335,
+        "all_distances": {
+          "philosophical": 0.335,
+          "operational": 0.37033,
+          "reflective": 0.40908,
+          "relational": 0.43134,
+          "mixed": 0.36477
+        }
+      },
+      {
+        "turn": 55,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16482,
+        "all_distances": {
+          "philosophical": 0.16482,
+          "operational": 0.23122,
+          "reflective": 0.24094,
+          "relational": 0.27617,
+          "mixed": 0.23812
+        }
+      },
+      {
+        "turn": 56,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.33548,
+        "all_distances": {
+          "philosophical": 0.33548,
+          "operational": 0.42653,
+          "reflective": 0.45634,
+          "relational": 0.39199,
+          "mixed": 0.42471
+        }
+      },
+      {
+        "turn": 57,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.28031,
+        "all_distances": {
+          "philosophical": 0.28031,
+          "operational": 0.33787,
+          "reflective": 0.37208,
+          "relational": 0.37524,
+          "mixed": 0.33825
+        }
+      },
+      {
+        "turn": 58,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.35011,
+        "all_distances": {
+          "philosophical": 0.35011,
+          "operational": 0.37292,
+          "reflective": 0.4641,
+          "relational": 0.42061,
+          "mixed": 0.39916
+        }
+      },
+      {
+        "turn": 59,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.23334,
+        "all_distances": {
+          "philosophical": 0.23334,
+          "operational": 0.28762,
+          "reflective": 0.34873,
+          "relational": 0.32543,
+          "mixed": 0.30406
+        }
+      },
+      {
+        "turn": 60,
+        "speaker": "Jake",
+        "domain": "reflective",
+        "min_distance": 0.19087,
+        "all_distances": {
+          "philosophical": 0.23529,
+          "operational": 0.21835,
+          "reflective": 0.19087,
+          "relational": 0.28796,
+          "mixed": 0.20746
+        }
+      },
+      {
+        "turn": 61,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.26691,
+        "all_distances": {
+          "philosophical": 0.26691,
+          "operational": 0.26731,
+          "reflective": 0.27944,
+          "relational": 0.33997,
+          "mixed": 0.27057
+        }
+      },
+      {
+        "turn": 62,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.40383,
+        "all_distances": {
+          "philosophical": 0.43593,
+          "operational": 0.41294,
+          "reflective": 0.43217,
+          "relational": 0.4519,
+          "mixed": 0.40383
+        }
+      },
+      {
+        "turn": 63,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15245,
+        "all_distances": {
+          "philosophical": 0.15245,
+          "operational": 0.1941,
+          "reflective": 0.1847,
+          "relational": 0.24184,
+          "mixed": 0.18091
+        }
+      },
+      {
+        "turn": 64,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.41338,
+        "all_distances": {
+          "philosophical": 0.41826,
+          "operational": 0.41707,
+          "reflective": 0.43555,
+          "relational": 0.47959,
+          "mixed": 0.41338
+        }
+      },
+      {
+        "turn": 65,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.24131,
+        "all_distances": {
+          "philosophical": 0.24131,
+          "operational": 0.24131,
+          "reflective": 0.26933,
+          "relational": 0.317,
+          "mixed": 0.25157
+        }
+      },
+      {
+        "turn": 66,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.30144,
+        "all_distances": {
+          "philosophical": 0.30144,
+          "operational": 0.35322,
+          "reflective": 0.39115,
+          "relational": 0.38803,
+          "mixed": 0.3668
+        }
+      },
+      {
+        "turn": 67,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15064,
+        "all_distances": {
+          "philosophical": 0.15064,
+          "operational": 0.20182,
+          "reflective": 0.20741,
+          "relational": 0.23716,
+          "mixed": 0.21202
+        }
+      },
+      {
+        "turn": 68,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.31417,
+        "all_distances": {
+          "philosophical": 0.31417,
+          "operational": 0.39161,
+          "reflective": 0.40762,
+          "relational": 0.38846,
+          "mixed": 0.38459
+        }
+      },
+      {
+        "turn": 69,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17859,
+        "all_distances": {
+          "philosophical": 0.17859,
+          "operational": 0.23651,
+          "reflective": 0.23987,
+          "relational": 0.25021,
+          "mixed": 0.23103
+        }
+      },
+      {
+        "turn": 70,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.34405,
+        "all_distances": {
+          "philosophical": 0.34405,
+          "operational": 0.41523,
+          "reflective": 0.44559,
+          "relational": 0.44038,
+          "mixed": 0.4196
+        }
+      },
+      {
+        "turn": 71,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17272,
+        "all_distances": {
+          "philosophical": 0.17272,
+          "operational": 0.24615,
+          "reflective": 0.28562,
+          "relational": 0.2765,
+          "mixed": 0.25655
+        }
+      },
+      {
+        "turn": 72,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.31252,
+        "all_distances": {
+          "philosophical": 0.31252,
+          "operational": 0.40495,
+          "reflective": 0.41627,
+          "relational": 0.37071,
+          "mixed": 0.40009
+        }
+      },
+      {
+        "turn": 73,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19816,
+        "all_distances": {
+          "philosophical": 0.19816,
+          "operational": 0.27307,
+          "reflective": 0.28416,
+          "relational": 0.24497,
+          "mixed": 0.26911
+        }
+      },
+      {
+        "turn": 74,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.32482,
+        "all_distances": {
+          "philosophical": 0.32482,
+          "operational": 0.36293,
+          "reflective": 0.42123,
+          "relational": 0.42354,
+          "mixed": 0.38258
+        }
+      },
+      {
+        "turn": 75,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.26088,
+        "all_distances": {
+          "philosophical": 0.26088,
+          "operational": 0.3253,
+          "reflective": 0.38425,
+          "relational": 0.36479,
+          "mixed": 0.33441
+        }
+      },
+      {
+        "turn": 76,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.26157,
+        "all_distances": {
+          "philosophical": 0.26157,
+          "operational": 0.34975,
+          "reflective": 0.37026,
+          "relational": 0.33674,
+          "mixed": 0.34506
+        }
+      },
+      {
+        "turn": 77,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16643,
+        "all_distances": {
+          "philosophical": 0.16643,
+          "operational": 0.21911,
+          "reflective": 0.23289,
+          "relational": 0.24753,
+          "mixed": 0.21962
+        }
+      },
+      {
+        "turn": 78,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.25351,
+        "all_distances": {
+          "philosophical": 0.25351,
+          "operational": 0.33616,
+          "reflective": 0.34636,
+          "relational": 0.31243,
+          "mixed": 0.33053
+        }
+      },
+      {
+        "turn": 79,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18347,
+        "all_distances": {
+          "philosophical": 0.18347,
+          "operational": 0.24684,
+          "reflective": 0.25739,
+          "relational": 0.24393,
+          "mixed": 0.24849
+        }
+      },
+      {
+        "turn": 80,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.21045,
+        "all_distances": {
+          "philosophical": 0.21045,
+          "operational": 0.28217,
+          "reflective": 0.29946,
+          "relational": 0.30748,
+          "mixed": 0.29175
+        }
+      },
+      {
+        "turn": 81,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.1436,
+        "all_distances": {
+          "philosophical": 0.1436,
+          "operational": 0.18355,
+          "reflective": 0.21751,
+          "relational": 0.23977,
+          "mixed": 0.19032
+        }
+      },
+      {
+        "turn": 82,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.40284,
+        "all_distances": {
+          "philosophical": 0.40284,
+          "operational": 0.42421,
+          "reflective": 0.44195,
+          "relational": 0.48054,
+          "mixed": 0.43208
+        }
+      },
+      {
+        "turn": 83,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.13748,
+        "all_distances": {
+          "philosophical": 0.13748,
+          "operational": 0.1876,
+          "reflective": 0.19447,
+          "relational": 0.22918,
+          "mixed": 0.18676
+        }
+      },
+      {
+        "turn": 84,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.25844,
+        "all_distances": {
+          "philosophical": 0.25844,
+          "operational": 0.30533,
+          "reflective": 0.34792,
+          "relational": 0.31747,
+          "mixed": 0.30695
+        }
+      },
+      {
+        "turn": 85,
+        "speaker": "Opus",
+        "domain": "reflective",
+        "min_distance": 0.18898,
+        "all_distances": {
+          "philosophical": 0.19326,
+          "operational": 0.19851,
+          "reflective": 0.18898,
+          "relational": 0.23942,
+          "mixed": 0.19672
+        }
+      },
+      {
+        "turn": 86,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.19065,
+        "all_distances": {
+          "philosophical": 0.19882,
+          "operational": 0.25614,
+          "reflective": 0.20238,
+          "relational": 0.19065,
+          "mixed": 0.23907
+        }
+      },
+      {
+        "turn": 87,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15859,
+        "all_distances": {
+          "philosophical": 0.15859,
+          "operational": 0.21349,
+          "reflective": 0.18702,
+          "relational": 0.21619,
+          "mixed": 0.18889
+        }
+      },
+      {
+        "turn": 88,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.24815,
+        "all_distances": {
+          "philosophical": 0.24815,
+          "operational": 0.27977,
+          "reflective": 0.25242,
+          "relational": 0.27696,
+          "mixed": 0.27564
+        }
+      },
+      {
+        "turn": 89,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15488,
+        "all_distances": {
+          "philosophical": 0.15488,
+          "operational": 0.1815,
+          "reflective": 0.18364,
+          "relational": 0.23263,
+          "mixed": 0.18062
+        }
+      },
+      {
+        "turn": 90,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.18157,
+        "all_distances": {
+          "philosophical": 0.18157,
+          "operational": 0.19614,
+          "reflective": 0.18752,
+          "relational": 0.25102,
+          "mixed": 0.19454
+        }
+      },
+      {
+        "turn": 91,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16851,
+        "all_distances": {
+          "philosophical": 0.16851,
+          "operational": 0.19554,
+          "reflective": 0.21872,
+          "relational": 0.26426,
+          "mixed": 0.20274
+        }
+      },
+      {
+        "turn": 92,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.22297,
+        "all_distances": {
+          "philosophical": 0.22297,
+          "operational": 0.26819,
+          "reflective": 0.25332,
+          "relational": 0.24278,
+          "mixed": 0.27059
+        }
+      },
+      {
+        "turn": 93,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.23349,
+        "all_distances": {
+          "philosophical": 0.26972,
+          "operational": 0.23349,
+          "reflective": 0.25413,
+          "relational": 0.3628,
+          "mixed": 0.24678
+        }
+      },
+      {
+        "turn": 94,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.12255,
+        "all_distances": {
+          "philosophical": 0.12255,
+          "operational": 0.1539,
+          "reflective": 0.14115,
+          "relational": 0.20525,
+          "mixed": 0.14456
+        }
+      },
+      {
+        "turn": 95,
+        "speaker": "Jake",
+        "domain": "reflective",
+        "min_distance": 0.18262,
+        "all_distances": {
+          "philosophical": 0.1996,
+          "operational": 0.20854,
+          "reflective": 0.18262,
+          "relational": 0.24127,
+          "mixed": 0.20629
+        }
+      },
+      {
+        "turn": 96,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.22664,
+        "all_distances": {
+          "philosophical": 0.22664,
+          "operational": 0.26666,
+          "reflective": 0.2439,
+          "relational": 0.27182,
+          "mixed": 0.26499
+        }
+      },
+      {
+        "turn": 97,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.29052,
+        "all_distances": {
+          "philosophical": 0.29052,
+          "operational": 0.34236,
+          "reflective": 0.34147,
+          "relational": 0.35106,
+          "mixed": 0.3216
+        }
+      },
+      {
+        "turn": 98,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.21936,
+        "all_distances": {
+          "philosophical": 0.21936,
+          "operational": 0.24165,
+          "reflective": 0.24908,
+          "relational": 0.28149,
+          "mixed": 0.22435
+        }
+      },
+      {
+        "turn": 99,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.1866,
+        "all_distances": {
+          "philosophical": 0.1932,
+          "operational": 0.20691,
+          "reflective": 0.18776,
+          "relational": 0.23014,
+          "mixed": 0.1866
+        }
+      },
+      {
+        "turn": 100,
+        "speaker": "Opus",
+        "domain": "mixed",
+        "min_distance": 0.20028,
+        "all_distances": {
+          "philosophical": 0.20626,
+          "operational": 0.20328,
+          "reflective": 0.21148,
+          "relational": 0.28889,
+          "mixed": 0.20028
+        }
+      },
+      {
+        "turn": 101,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.29364,
+        "all_distances": {
+          "philosophical": 0.29369,
+          "operational": 0.32862,
+          "reflective": 0.33578,
+          "relational": 0.34029,
+          "mixed": 0.29364
+        }
+      },
+      {
+        "turn": 102,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18823,
+        "all_distances": {
+          "philosophical": 0.18823,
+          "operational": 0.23684,
+          "reflective": 0.25836,
+          "relational": 0.29247,
+          "mixed": 0.21833
+        }
+      },
+      {
+        "turn": 103,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.39484,
+        "all_distances": {
+          "philosophical": 0.39484,
+          "operational": 0.44702,
+          "reflective": 0.4954,
+          "relational": 0.50002,
+          "mixed": 0.4472
+        }
+      },
+      {
+        "turn": 104,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18685,
+        "all_distances": {
+          "philosophical": 0.18685,
+          "operational": 0.23896,
+          "reflective": 0.26408,
+          "relational": 0.29092,
+          "mixed": 0.23563
+        }
+      },
+      {
+        "turn": 105,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.24753,
+        "all_distances": {
+          "philosophical": 0.24753,
+          "operational": 0.29753,
+          "reflective": 0.28597,
+          "relational": 0.29598,
+          "mixed": 0.27324
+        }
+      },
+      {
+        "turn": 106,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15689,
+        "all_distances": {
+          "philosophical": 0.15689,
+          "operational": 0.19008,
+          "reflective": 0.18182,
+          "relational": 0.21074,
+          "mixed": 0.16759
+        }
+      },
+      {
+        "turn": 107,
+        "speaker": "Jake",
+        "domain": "reflective",
+        "min_distance": 0.17398,
+        "all_distances": {
+          "philosophical": 0.17787,
+          "operational": 0.19976,
+          "reflective": 0.17398,
+          "relational": 0.23801,
+          "mixed": 0.18049
+        }
+      },
+      {
+        "turn": 108,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15496,
+        "all_distances": {
+          "philosophical": 0.15496,
+          "operational": 0.19703,
+          "reflective": 0.18728,
+          "relational": 0.23922,
+          "mixed": 0.19102
+        }
+      },
+      {
+        "turn": 109,
+        "speaker": "Jake",
+        "domain": "mixed",
+        "min_distance": 0.2283,
+        "all_distances": {
+          "philosophical": 0.23954,
+          "operational": 0.22902,
+          "reflective": 0.27702,
+          "relational": 0.31884,
+          "mixed": 0.2283
+        }
+      },
+      {
+        "turn": 110,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.17409,
+        "all_distances": {
+          "philosophical": 0.17945,
+          "operational": 0.17409,
+          "reflective": 0.20926,
+          "relational": 0.27566,
+          "mixed": 0.18459
+        }
+      },
+      {
+        "turn": 111,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.26841,
+        "all_distances": {
+          "philosophical": 0.2775,
+          "operational": 0.26841,
+          "reflective": 0.27823,
+          "relational": 0.33918,
+          "mixed": 0.28111
+        }
+      },
+      {
+        "turn": 112,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.4596,
+        "all_distances": {
+          "philosophical": 0.48107,
+          "operational": 0.49588,
+          "reflective": 0.50922,
+          "relational": 0.4596,
+          "mixed": 0.51281
+        }
+      },
+      {
+        "turn": 113,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18525,
+        "all_distances": {
+          "philosophical": 0.18525,
+          "operational": 0.23029,
+          "reflective": 0.24323,
+          "relational": 0.29263,
+          "mixed": 0.22408
+        }
+      },
+      {
+        "turn": 114,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.15201,
+        "all_distances": {
+          "philosophical": 0.15201,
+          "operational": 0.18987,
+          "reflective": 0.16992,
+          "relational": 0.21794,
+          "mixed": 0.17327
+        }
+      },
+      {
+        "turn": 115,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18918,
+        "all_distances": {
+          "philosophical": 0.18918,
+          "operational": 0.21113,
+          "reflective": 0.21355,
+          "relational": 0.2486,
+          "mixed": 0.20636
+        }
+      },
+      {
+        "turn": 116,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.2367,
+        "all_distances": {
+          "philosophical": 0.2367,
+          "operational": 0.27723,
+          "reflective": 0.27987,
+          "relational": 0.26968,
+          "mixed": 0.27155
+        }
+      },
+      {
+        "turn": 117,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.14883,
+        "all_distances": {
+          "philosophical": 0.14883,
+          "operational": 0.21181,
+          "reflective": 0.20962,
+          "relational": 0.24463,
+          "mixed": 0.2024
+        }
+      },
+      {
+        "turn": 118,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17077,
+        "all_distances": {
+          "philosophical": 0.17077,
+          "operational": 0.18353,
+          "reflective": 0.20507,
+          "relational": 0.25029,
+          "mixed": 0.17858
+        }
+      },
+      {
+        "turn": 119,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.25628,
+        "all_distances": {
+          "philosophical": 0.25628,
+          "operational": 0.27773,
+          "reflective": 0.26272,
+          "relational": 0.29268,
+          "mixed": 0.27806
+        }
+      },
+      {
+        "turn": 120,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.19729,
+        "all_distances": {
+          "philosophical": 0.2061,
+          "operational": 0.19729,
+          "reflective": 0.2354,
+          "relational": 0.29695,
+          "mixed": 0.20259
+        }
+      },
+      {
+        "turn": 121,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.23751,
+        "all_distances": {
+          "philosophical": 0.23751,
+          "operational": 0.2436,
+          "reflective": 0.29876,
+          "relational": 0.31273,
+          "mixed": 0.25378
+        }
+      },
+      {
+        "turn": 122,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16745,
+        "all_distances": {
+          "philosophical": 0.16745,
+          "operational": 0.18843,
+          "reflective": 0.22822,
+          "relational": 0.2799,
+          "mixed": 0.20015
+        }
+      },
+      {
+        "turn": 123,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.26396,
+        "all_distances": {
+          "philosophical": 0.26396,
+          "operational": 0.29243,
+          "reflective": 0.32995,
+          "relational": 0.35745,
+          "mixed": 0.30451
+        }
+      },
+      {
+        "turn": 124,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17852,
+        "all_distances": {
+          "philosophical": 0.17852,
+          "operational": 0.23073,
+          "reflective": 0.24633,
+          "relational": 0.27878,
+          "mixed": 0.22193
+        }
+      },
+      {
+        "turn": 125,
+        "speaker": "Opus",
+        "domain": "operational",
+        "min_distance": 0.22076,
+        "all_distances": {
+          "philosophical": 0.22598,
+          "operational": 0.22076,
+          "reflective": 0.27782,
+          "relational": 0.31116,
+          "mixed": 0.22648
+        }
+      },
+      {
+        "turn": 126,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.32512,
+        "all_distances": {
+          "philosophical": 0.32512,
+          "operational": 0.33504,
+          "reflective": 0.40183,
+          "relational": 0.3982,
+          "mixed": 0.33767
+        }
+      },
+      {
+        "turn": 127,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16668,
+        "all_distances": {
+          "philosophical": 0.16668,
+          "operational": 0.17331,
+          "reflective": 0.20886,
+          "relational": 0.25057,
+          "mixed": 0.17891
+        }
+      },
+      {
+        "turn": 128,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.38781,
+        "all_distances": {
+          "philosophical": 0.40045,
+          "operational": 0.38781,
+          "reflective": 0.41228,
+          "relational": 0.47434,
+          "mixed": 0.39782
+        }
+      },
+      {
+        "turn": 129,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16215,
+        "all_distances": {
+          "philosophical": 0.16215,
+          "operational": 0.16359,
+          "reflective": 0.18593,
+          "relational": 0.26131,
+          "mixed": 0.16991
+        }
+      },
+      {
+        "turn": 130,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.23595,
+        "all_distances": {
+          "philosophical": 0.23595,
+          "operational": 0.27931,
+          "reflective": 0.2992,
+          "relational": 0.29162,
+          "mixed": 0.27373
+        }
+      },
+      {
+        "turn": 131,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.18553,
+        "all_distances": {
+          "philosophical": 0.18553,
+          "operational": 0.23936,
+          "reflective": 0.24321,
+          "relational": 0.25497,
+          "mixed": 0.23059
+        }
+      },
+      {
+        "turn": 132,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.25401,
+        "all_distances": {
+          "philosophical": 0.25401,
+          "operational": 0.27336,
+          "reflective": 0.30203,
+          "relational": 0.30162,
+          "mixed": 0.26536
+        }
+      },
+      {
+        "turn": 133,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.17369,
+        "all_distances": {
+          "philosophical": 0.17369,
+          "operational": 0.21448,
+          "reflective": 0.23008,
+          "relational": 0.21103,
+          "mixed": 0.20147
+        }
+      },
+      {
+        "turn": 134,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.1587,
+        "all_distances": {
+          "philosophical": 0.1587,
+          "operational": 0.20823,
+          "reflective": 0.23079,
+          "relational": 0.21907,
+          "mixed": 0.2005
+        }
+      },
+      {
+        "turn": 135,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.2429,
+        "all_distances": {
+          "philosophical": 0.2429,
+          "operational": 0.34979,
+          "reflective": 0.33528,
+          "relational": 0.26143,
+          "mixed": 0.32037
+        }
+      },
+      {
+        "turn": 136,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.19829,
+        "all_distances": {
+          "philosophical": 0.19829,
+          "operational": 0.27078,
+          "reflective": 0.275,
+          "relational": 0.27593,
+          "mixed": 0.25076
+        }
+      },
+      {
+        "turn": 137,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.45172,
+        "all_distances": {
+          "philosophical": 0.45172,
+          "operational": 0.48306,
+          "reflective": 0.48716,
+          "relational": 0.45486,
+          "mixed": 0.45936
+        }
+      },
+      {
+        "turn": 138,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.21073,
+        "all_distances": {
+          "philosophical": 0.21073,
+          "operational": 0.28725,
+          "reflective": 0.27304,
+          "relational": 0.22624,
+          "mixed": 0.25658
+        }
+      },
+      {
+        "turn": 139,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.19831,
+        "all_distances": {
+          "philosophical": 0.19831,
+          "operational": 0.28514,
+          "reflective": 0.27223,
+          "relational": 0.21397,
+          "mixed": 0.27138
+        }
+      },
+      {
+        "turn": 140,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.15608,
+        "all_distances": {
+          "philosophical": 0.15608,
+          "operational": 0.24991,
+          "reflective": 0.21322,
+          "relational": 0.15903,
+          "mixed": 0.2168
+        }
+      },
+      {
+        "turn": 141,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.37328,
+        "all_distances": {
+          "philosophical": 0.37328,
+          "operational": 0.40862,
+          "reflective": 0.40959,
+          "relational": 0.39518,
+          "mixed": 0.38807
+        }
+      },
+      {
+        "turn": 142,
+        "speaker": "Opus",
+        "domain": "mixed",
+        "min_distance": 0.27089,
+        "all_distances": {
+          "philosophical": 0.28655,
+          "operational": 0.28488,
+          "reflective": 0.29236,
+          "relational": 0.34446,
+          "mixed": 0.27089
+        }
+      },
+      {
+        "turn": 143,
+        "speaker": "Jake",
+        "domain": "relational",
+        "min_distance": 0.26138,
+        "all_distances": {
+          "philosophical": 0.27302,
+          "operational": 0.31295,
+          "reflective": 0.31349,
+          "relational": 0.26138,
+          "mixed": 0.28987
+        }
+      },
+      {
+        "turn": 144,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.34195,
+        "all_distances": {
+          "philosophical": 0.34195,
+          "operational": 0.39053,
+          "reflective": 0.39551,
+          "relational": 0.38967,
+          "mixed": 0.37529
+        }
+      },
+      {
+        "turn": 145,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.22968,
+        "all_distances": {
+          "philosophical": 0.22968,
+          "operational": 0.27256,
+          "reflective": 0.28205,
+          "relational": 0.25455,
+          "mixed": 0.25794
+        }
+      },
+      {
+        "turn": 146,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.20099,
+        "all_distances": {
+          "philosophical": 0.20099,
+          "operational": 0.27216,
+          "reflective": 0.2606,
+          "relational": 0.21375,
+          "mixed": 0.24604
+        }
+      },
+      {
+        "turn": 147,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.29335,
+        "all_distances": {
+          "philosophical": 0.29335,
+          "operational": 0.36439,
+          "reflective": 0.39985,
+          "relational": 0.35849,
+          "mixed": 0.34523
+        }
+      },
+      {
+        "turn": 148,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.5485,
+        "all_distances": {
+          "philosophical": 0.5485,
+          "operational": 0.55991,
+          "reflective": 0.58808,
+          "relational": 0.61845,
+          "mixed": 0.57002
+        }
+      },
+      {
+        "turn": 149,
+        "speaker": "Jake",
+        "domain": "philosophical",
+        "min_distance": 0.34552,
+        "all_distances": {
+          "philosophical": 0.34552,
+          "operational": 0.40078,
+          "reflective": 0.40144,
+          "relational": 0.36034,
+          "mixed": 0.384
+        }
+      },
+      {
+        "turn": 150,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.29832,
+        "all_distances": {
+          "philosophical": 0.29832,
+          "operational": 0.3664,
+          "reflective": 0.29931,
+          "relational": 0.30679,
+          "mixed": 0.33372
+        }
+      },
+      {
+        "turn": 151,
+        "speaker": "Jake",
+        "domain": "operational",
+        "min_distance": 0.30439,
+        "all_distances": {
+          "philosophical": 0.32453,
+          "operational": 0.30439,
+          "reflective": 0.32595,
+          "relational": 0.35946,
+          "mixed": 0.30985
+        }
+      },
+      {
+        "turn": 152,
+        "speaker": "Opus",
+        "domain": "philosophical",
+        "min_distance": 0.16921,
+        "all_distances": {
+          "philosophical": 0.16921,
+          "operational": 0.22159,
+          "reflective": 0.20573,
+          "relational": 0.2162,
+          "mixed": 0.21211
+        }
+      }
+    ],
+    "opus_distribution": {
+      "philosophical": 62,
+      "reflective": 4,
+      "operational": 6,
+      "mixed": 5
+    },
+    "jake_distribution": {
+      "philosophical": 50,
+      "mixed": 8,
+      "operational": 8,
+      "reflective": 4,
+      "relational": 6
+    },
+    "combined_distribution": {
+      "philosophical": 112,
+      "reflective": 8,
+      "mixed": 13,
+      "operational": 14,
+      "relational": 6
+    }
+  },
+  "inter_speaker_similarity": {
+    "sequential_pairs": [
+      {
+        "position": 0,
+        "opus_turn": 0,
+        "jake_turn": 1,
+        "similarity": 0.54902
+      },
+      {
+        "position": 1,
+        "opus_turn": 2,
+        "jake_turn": 1,
+        "similarity": 0.71352
+      },
+      {
+        "position": 2,
+        "opus_turn": 2,
+        "jake_turn": 3,
+        "similarity": 0.81564
+      },
+      {
+        "position": 4,
+        "opus_turn": 5,
+        "jake_turn": 4,
+        "similarity": 0.63258
+      },
+      {
+        "position": 5,
+        "opus_turn": 5,
+        "jake_turn": 6,
+        "similarity": 0.61828
+      },
+      {
+        "position": 6,
+        "opus_turn": 7,
+        "jake_turn": 6,
+        "similarity": 0.63727
+      },
+      {
+        "position": 7,
+        "opus_turn": 7,
+        "jake_turn": 8,
+        "similarity": 0.53396
+      },
+      {
+        "position": 8,
+        "opus_turn": 9,
+        "jake_turn": 8,
+        "similarity": 0.5519
+      },
+      {
+        "position": 9,
+        "opus_turn": 9,
+        "jake_turn": 10,
+        "similarity": 0.69102
+      },
+      {
+        "position": 10,
+        "opus_turn": 11,
+        "jake_turn": 10,
+        "similarity": 0.73423
+      },
+      {
+        "position": 11,
+        "opus_turn": 11,
+        "jake_turn": 12,
+        "similarity": 0.61633
+      },
+      {
+        "position": 12,
+        "opus_turn": 13,
+        "jake_turn": 12,
+        "similarity": 0.73989
+      },
+      {
+        "position": 13,
+        "opus_turn": 13,
+        "jake_turn": 14,
+        "similarity": 0.65434
+      },
+      {
+        "position": 14,
+        "opus_turn": 15,
+        "jake_turn": 14,
+        "similarity": 0.69372
+      },
+      {
+        "position": 15,
+        "opus_turn": 15,
+        "jake_turn": 16,
+        "similarity": 0.58611
+      },
+      {
+        "position": 16,
+        "opus_turn": 17,
+        "jake_turn": 16,
+        "similarity": 0.53769
+      },
+      {
+        "position": 17,
+        "opus_turn": 17,
+        "jake_turn": 18,
+        "similarity": 0.75165
+      },
+      {
+        "position": 18,
+        "opus_turn": 19,
+        "jake_turn": 18,
+        "similarity": 0.75834
+      },
+      {
+        "position": 19,
+        "opus_turn": 19,
+        "jake_turn": 20,
+        "similarity": 0.73341
+      },
+      {
+        "position": 20,
+        "opus_turn": 21,
+        "jake_turn": 20,
+        "similarity": 0.75539
+      },
+      {
+        "position": 21,
+        "opus_turn": 21,
+        "jake_turn": 22,
+        "similarity": 0.83985
+      },
+      {
+        "position": 22,
+        "opus_turn": 23,
+        "jake_turn": 22,
+        "similarity": 0.78493
+      },
+      {
+        "position": 23,
+        "opus_turn": 23,
+        "jake_turn": 24,
+        "similarity": 0.77579
+      },
+      {
+        "position": 24,
+        "opus_turn": 25,
+        "jake_turn": 24,
+        "similarity": 0.89144
+      },
+      {
+        "position": 25,
+        "opus_turn": 25,
+        "jake_turn": 26,
+        "similarity": 0.85614
+      },
+      {
+        "position": 26,
+        "opus_turn": 27,
+        "jake_turn": 26,
+        "similarity": 0.91084
+      },
+      {
+        "position": 27,
+        "opus_turn": 27,
+        "jake_turn": 28,
+        "similarity": 0.73221
+      },
+      {
+        "position": 28,
+        "opus_turn": 29,
+        "jake_turn": 28,
+        "similarity": 0.84026
+      },
+      {
+        "position": 29,
+        "opus_turn": 29,
+        "jake_turn": 30,
+        "similarity": 0.59091
+      },
+      {
+        "position": 30,
+        "opus_turn": 31,
+        "jake_turn": 30,
+        "similarity": 0.59704
+      },
+      {
+        "position": 31,
+        "opus_turn": 31,
+        "jake_turn": 32,
+        "similarity": 0.59927
+      },
+      {
+        "position": 32,
+        "opus_turn": 33,
+        "jake_turn": 32,
+        "similarity": 0.6879
+      },
+      {
+        "position": 33,
+        "opus_turn": 33,
+        "jake_turn": 34,
+        "similarity": 0.71936
+      },
+      {
+        "position": 34,
+        "opus_turn": 35,
+        "jake_turn": 34,
+        "similarity": 0.78026
+      },
+      {
+        "position": 35,
+        "opus_turn": 35,
+        "jake_turn": 36,
+        "similarity": 0.7491
+      },
+      {
+        "position": 36,
+        "opus_turn": 37,
+        "jake_turn": 36,
+        "similarity": 0.72691
+      },
+      {
+        "position": 37,
+        "opus_turn": 37,
+        "jake_turn": 38,
+        "similarity": 0.4224
+      },
+      {
+        "position": 38,
+        "opus_turn": 39,
+        "jake_turn": 38,
+        "similarity": 0.59022
+      },
+      {
+        "position": 39,
+        "opus_turn": 39,
+        "jake_turn": 40,
+        "similarity": 0.82018
+      },
+      {
+        "position": 40,
+        "opus_turn": 41,
+        "jake_turn": 40,
+        "similarity": 0.81052
+      },
+      {
+        "position": 41,
+        "opus_turn": 41,
+        "jake_turn": 42,
+        "similarity": 0.64104
+      },
+      {
+        "position": 42,
+        "opus_turn": 43,
+        "jake_turn": 42,
+        "similarity": 0.76475
+      },
+      {
+        "position": 43,
+        "opus_turn": 43,
+        "jake_turn": 44,
+        "similarity": 0.69039
+      },
+      {
+        "position": 44,
+        "opus_turn": 45,
+        "jake_turn": 44,
+        "similarity": 0.80257
+      },
+      {
+        "position": 45,
+        "opus_turn": 45,
+        "jake_turn": 46,
+        "similarity": 0.62943
+      },
+      {
+        "position": 46,
+        "opus_turn": 47,
+        "jake_turn": 46,
+        "similarity": 0.56609
+      },
+      {
+        "position": 47,
+        "opus_turn": 47,
+        "jake_turn": 48,
+        "similarity": 0.65932
+      },
+      {
+        "position": 48,
+        "opus_turn": 49,
+        "jake_turn": 48,
+        "similarity": 0.6488
+      },
+      {
+        "position": 49,
+        "opus_turn": 49,
+        "jake_turn": 50,
+        "similarity": 0.63528
+      },
+      {
+        "position": 50,
+        "opus_turn": 51,
+        "jake_turn": 50,
+        "similarity": 0.75046
+      },
+      {
+        "position": 51,
+        "opus_turn": 51,
+        "jake_turn": 52,
+        "similarity": 0.71182
+      },
+      {
+        "position": 52,
+        "opus_turn": 53,
+        "jake_turn": 52,
+        "similarity": 0.79187
+      },
+      {
+        "position": 53,
+        "opus_turn": 53,
+        "jake_turn": 54,
+        "similarity": 0.70001
+      },
+      {
+        "position": 54,
+        "opus_turn": 55,
+        "jake_turn": 54,
+        "similarity": 0.72974
+      },
+      {
+        "position": 55,
+        "opus_turn": 55,
+        "jake_turn": 56,
+        "similarity": 0.67085
+      },
+      {
+        "position": 56,
+        "opus_turn": 57,
+        "jake_turn": 56,
+        "similarity": 0.83706
+      },
+      {
+        "position": 57,
+        "opus_turn": 57,
+        "jake_turn": 58,
+        "similarity": 0.61537
+      },
+      {
+        "position": 58,
+        "opus_turn": 59,
+        "jake_turn": 58,
+        "similarity": 0.82151
+      },
+      {
+        "position": 59,
+        "opus_turn": 59,
+        "jake_turn": 60,
+        "similarity": 0.57883
+      },
+      {
+        "position": 60,
+        "opus_turn": 61,
+        "jake_turn": 60,
+        "similarity": 0.81788
+      },
+      {
+        "position": 61,
+        "opus_turn": 61,
+        "jake_turn": 62,
+        "similarity": 0.59808
+      },
+      {
+        "position": 62,
+        "opus_turn": 63,
+        "jake_turn": 62,
+        "similarity": 0.52628
+      },
+      {
+        "position": 63,
+        "opus_turn": 63,
+        "jake_turn": 64,
+        "similarity": 0.50101
+      },
+      {
+        "position": 64,
+        "opus_turn": 65,
+        "jake_turn": 64,
+        "similarity": 0.62667
+      },
+      {
+        "position": 65,
+        "opus_turn": 65,
+        "jake_turn": 66,
+        "similarity": 0.62446
+      },
+      {
+        "position": 66,
+        "opus_turn": 67,
+        "jake_turn": 66,
+        "similarity": 0.72368
+      },
+      {
+        "position": 67,
+        "opus_turn": 67,
+        "jake_turn": 68,
+        "similarity": 0.63282
+      },
+      {
+        "position": 68,
+        "opus_turn": 69,
+        "jake_turn": 68,
+        "similarity": 0.74278
+      },
+      {
+        "position": 69,
+        "opus_turn": 69,
+        "jake_turn": 70,
+        "similarity": 0.69106
+      },
+      {
+        "position": 70,
+        "opus_turn": 71,
+        "jake_turn": 70,
+        "similarity": 0.78166
+      },
+      {
+        "position": 71,
+        "opus_turn": 71,
+        "jake_turn": 72,
+        "similarity": 0.71408
+      },
+      {
+        "position": 72,
+        "opus_turn": 73,
+        "jake_turn": 72,
+        "similarity": 0.82223
+      },
+      {
+        "position": 73,
+        "opus_turn": 73,
+        "jake_turn": 74,
+        "similarity": 0.63692
+      },
+      {
+        "position": 74,
+        "opus_turn": 75,
+        "jake_turn": 74,
+        "similarity": 0.81439
+      },
+      {
+        "position": 75,
+        "opus_turn": 75,
+        "jake_turn": 76,
+        "similarity": 0.74423
+      },
+      {
+        "position": 76,
+        "opus_turn": 77,
+        "jake_turn": 76,
+        "similarity": 0.85122
+      },
+      {
+        "position": 77,
+        "opus_turn": 77,
+        "jake_turn": 78,
+        "similarity": 0.8024
+      },
+      {
+        "position": 78,
+        "opus_turn": 79,
+        "jake_turn": 78,
+        "similarity": 0.87935
+      },
+      {
+        "position": 79,
+        "opus_turn": 79,
+        "jake_turn": 80,
+        "similarity": 0.75808
+      },
+      {
+        "position": 80,
+        "opus_turn": 81,
+        "jake_turn": 80,
+        "similarity": 0.76067
+      },
+      {
+        "position": 81,
+        "opus_turn": 81,
+        "jake_turn": 82,
+        "similarity": 0.53464
+      },
+      {
+        "position": 82,
+        "opus_turn": 83,
+        "jake_turn": 82,
+        "similarity": 0.55874
+      },
+      {
+        "position": 83,
+        "opus_turn": 83,
+        "jake_turn": 84,
+        "similarity": 0.71384
+      },
+      {
+        "position": 84,
+        "opus_turn": 85,
+        "jake_turn": 84,
+        "similarity": 0.7262
+      },
+      {
+        "position": 85,
+        "opus_turn": 85,
+        "jake_turn": 86,
+        "similarity": 0.83524
+      },
+      {
+        "position": 86,
+        "opus_turn": 87,
+        "jake_turn": 86,
+        "similarity": 0.87069
+      },
+      {
+        "position": 87,
+        "opus_turn": 87,
+        "jake_turn": 88,
+        "similarity": 0.71272
+      },
+      {
+        "position": 88,
+        "opus_turn": 89,
+        "jake_turn": 88,
+        "similarity": 0.80523
+      },
+      {
+        "position": 89,
+        "opus_turn": 89,
+        "jake_turn": 90,
+        "similarity": 0.85173
+      },
+      {
+        "position": 90,
+        "opus_turn": 91,
+        "jake_turn": 90,
+        "similarity": 0.83921
+      },
+      {
+        "position": 91,
+        "opus_turn": 91,
+        "jake_turn": 92,
+        "similarity": 0.81703
+      },
+      {
+        "position": 93,
+        "opus_turn": 94,
+        "jake_turn": 93,
+        "similarity": 0.7908
+      },
+      {
+        "position": 94,
+        "opus_turn": 94,
+        "jake_turn": 95,
+        "similarity": 0.89701
+      },
+      {
+        "position": 95,
+        "opus_turn": 96,
+        "jake_turn": 95,
+        "similarity": 0.85691
+      },
+      {
+        "position": 96,
+        "opus_turn": 96,
+        "jake_turn": 97,
+        "similarity": 0.57459
+      },
+      {
+        "position": 97,
+        "opus_turn": 98,
+        "jake_turn": 97,
+        "similarity": 0.81268
+      },
+      {
+        "position": 98,
+        "opus_turn": 98,
+        "jake_turn": 99,
+        "similarity": 0.82624
+      },
+      {
+        "position": 99,
+        "opus_turn": 100,
+        "jake_turn": 99,
+        "similarity": 0.85166
+      },
+      {
+        "position": 100,
+        "opus_turn": 100,
+        "jake_turn": 101,
+        "similarity": 0.64375
+      },
+      {
+        "position": 101,
+        "opus_turn": 102,
+        "jake_turn": 101,
+        "similarity": 0.73631
+      },
+      {
+        "position": 102,
+        "opus_turn": 102,
+        "jake_turn": 103,
+        "similarity": 0.60395
+      },
+      {
+        "position": 103,
+        "opus_turn": 104,
+        "jake_turn": 103,
+        "similarity": 0.66311
+      },
+      {
+        "position": 104,
+        "opus_turn": 104,
+        "jake_turn": 105,
+        "similarity": 0.70892
+      },
+      {
+        "position": 105,
+        "opus_turn": 106,
+        "jake_turn": 105,
+        "similarity": 0.85596
+      },
+      {
+        "position": 106,
+        "opus_turn": 106,
+        "jake_turn": 107,
+        "similarity": 0.85273
+      },
+      {
+        "position": 107,
+        "opus_turn": 108,
+        "jake_turn": 107,
+        "similarity": 0.85459
+      },
+      {
+        "position": 108,
+        "opus_turn": 108,
+        "jake_turn": 109,
+        "similarity": 0.77461
+      },
+      {
+        "position": 109,
+        "opus_turn": 110,
+        "jake_turn": 109,
+        "similarity": 0.86557
+      },
+      {
+        "position": 110,
+        "opus_turn": 110,
+        "jake_turn": 111,
+        "similarity": 0.85667
+      },
+      {
+        "position": 112,
+        "opus_turn": 113,
+        "jake_turn": 112,
+        "similarity": 0.50572
+      },
+      {
+        "position": 113,
+        "opus_turn": 113,
+        "jake_turn": 114,
+        "similarity": 0.84019
+      },
+      {
+        "position": 114,
+        "opus_turn": 115,
+        "jake_turn": 114,
+        "similarity": 0.88245
+      },
+      {
+        "position": 115,
+        "opus_turn": 115,
+        "jake_turn": 116,
+        "similarity": 0.73938
+      },
+      {
+        "position": 116,
+        "opus_turn": 117,
+        "jake_turn": 116,
+        "similarity": 0.75654
+      },
+      {
+        "position": 118,
+        "opus_turn": 118,
+        "jake_turn": 119,
+        "similarity": 0.70864
+      },
+      {
+        "position": 119,
+        "opus_turn": 120,
+        "jake_turn": 119,
+        "similarity": 0.68095
+      },
+      {
+        "position": 120,
+        "opus_turn": 120,
+        "jake_turn": 121,
+        "similarity": 0.71312
+      },
+      {
+        "position": 121,
+        "opus_turn": 122,
+        "jake_turn": 121,
+        "similarity": 0.83223
+      },
+      {
+        "position": 122,
+        "opus_turn": 122,
+        "jake_turn": 123,
+        "similarity": 0.72097
+      },
+      {
+        "position": 123,
+        "opus_turn": 124,
+        "jake_turn": 123,
+        "similarity": 0.77022
+      },
+      {
+        "position": 125,
+        "opus_turn": 125,
+        "jake_turn": 126,
+        "similarity": 0.78334
+      },
+      {
+        "position": 126,
+        "opus_turn": 127,
+        "jake_turn": 126,
+        "similarity": 0.75478
+      },
+      {
+        "position": 127,
+        "opus_turn": 127,
+        "jake_turn": 128,
+        "similarity": 0.51235
+      },
+      {
+        "position": 128,
+        "opus_turn": 129,
+        "jake_turn": 128,
+        "similarity": 0.64854
+      },
+      {
+        "position": 129,
+        "opus_turn": 129,
+        "jake_turn": 130,
+        "similarity": 0.704
+      },
+      {
+        "position": 130,
+        "opus_turn": 131,
+        "jake_turn": 130,
+        "similarity": 0.77447
+      },
+      {
+        "position": 131,
+        "opus_turn": 131,
+        "jake_turn": 132,
+        "similarity": 0.75635
+      },
+      {
+        "position": 132,
+        "opus_turn": 133,
+        "jake_turn": 132,
+        "similarity": 0.78298
+      },
+      {
+        "position": 134,
+        "opus_turn": 134,
+        "jake_turn": 135,
+        "similarity": 0.71229
+      },
+      {
+        "position": 135,
+        "opus_turn": 136,
+        "jake_turn": 135,
+        "similarity": 0.74938
+      },
+      {
+        "position": 136,
+        "opus_turn": 136,
+        "jake_turn": 137,
+        "similarity": 0.43093
+      },
+      {
+        "position": 137,
+        "opus_turn": 138,
+        "jake_turn": 137,
+        "similarity": 0.57342
+      },
+      {
+        "position": 138,
+        "opus_turn": 138,
+        "jake_turn": 139,
+        "similarity": 0.79608
+      },
+      {
+        "position": 139,
+        "opus_turn": 140,
+        "jake_turn": 139,
+        "similarity": 0.86196
+      },
+      {
+        "position": 140,
+        "opus_turn": 140,
+        "jake_turn": 141,
+        "similarity": 0.53883
+      },
+      {
+        "position": 141,
+        "opus_turn": 142,
+        "jake_turn": 141,
+        "similarity": 0.68521
+      },
+      {
+        "position": 142,
+        "opus_turn": 142,
+        "jake_turn": 143,
+        "similarity": 0.65256
+      },
+      {
+        "position": 143,
+        "opus_turn": 144,
+        "jake_turn": 143,
+        "similarity": 0.67829
+      },
+      {
+        "position": 144,
+        "opus_turn": 144,
+        "jake_turn": 145,
+        "similarity": 0.75548
+      },
+      {
+        "position": 145,
+        "opus_turn": 146,
+        "jake_turn": 145,
+        "similarity": 0.82704
+      },
+      {
+        "position": 146,
+        "opus_turn": 146,
+        "jake_turn": 147,
+        "similarity": 0.74231
+      },
+      {
+        "position": 147,
+        "opus_turn": 148,
+        "jake_turn": 147,
+        "similarity": 0.52238
+      },
+      {
+        "position": 148,
+        "opus_turn": 148,
+        "jake_turn": 149,
+        "similarity": 0.58178
+      },
+      {
+        "position": 149,
+        "opus_turn": 150,
+        "jake_turn": 149,
+        "similarity": 0.74931
+      },
+      {
+        "position": 150,
+        "opus_turn": 150,
+        "jake_turn": 151,
+        "similarity": 0.58564
+      },
+      {
+        "position": 151,
+        "opus_turn": 152,
+        "jake_turn": 151,
+        "similarity": 0.75771
+      }
+    ],
+    "max_similarity": {
+      "value": 0.91084,
+      "position": 26,
+      "opus_turn": 27,
+      "jake_turn": 26
+    },
+    "min_similarity": {
+      "value": 0.4224,
+      "position": 37,
+      "opus_turn": 37,
+      "jake_turn": 38
+    },
+    "mean_similarity": 0.71701
+  },
+  "transitions": {
+    "all_turns": {
+      "transition_details": [
+        {
+          "between_turns": [
+            0,
+            1
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.45098
+        },
+        {
+          "between_turns": [
+            7,
+            8
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "operational",
+          "domain_after": "philosophical",
+          "distance": 0.46604
+        },
+        {
+          "between_turns": [
+            8,
+            9
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.4481
+        },
+        {
+          "between_turns": [
+            15,
+            16
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "operational",
+          "domain_after": "philosophical",
+          "distance": 0.41389
+        },
+        {
+          "between_turns": [
+            16,
+            17
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "mixed",
+          "distance": 0.46231
+        },
+        {
+          "between_turns": [
+            29,
+            30
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "operational",
+          "distance": 0.40909
+        },
+        {
+          "between_turns": [
+            30,
+            31
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "operational",
+          "domain_after": "philosophical",
+          "distance": 0.40296
+        },
+        {
+          "between_turns": [
+            31,
+            32
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.40073
+        },
+        {
+          "between_turns": [
+            37,
+            38
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.5776
+        },
+        {
+          "between_turns": [
+            38,
+            39
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.40978
+        },
+        {
+          "between_turns": [
+            46,
+            47
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "relational",
+          "domain_after": "philosophical",
+          "distance": 0.43391
+        },
+        {
+          "between_turns": [
+            59,
+            60
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "reflective",
+          "distance": 0.42117
+        },
+        {
+          "between_turns": [
+            61,
+            62
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "mixed",
+          "distance": 0.40192
+        },
+        {
+          "between_turns": [
+            62,
+            63
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "mixed",
+          "domain_after": "philosophical",
+          "distance": 0.47372
+        },
+        {
+          "between_turns": [
+            63,
+            64
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "mixed",
+          "distance": 0.49899
+        },
+        {
+          "between_turns": [
+            81,
+            82
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.46536
+        },
+        {
+          "between_turns": [
+            82,
+            83
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.44126
+        },
+        {
+          "between_turns": [
+            96,
+            97
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.42541
+        },
+        {
+          "between_turns": [
+            102,
+            103
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.39605
+        },
+        {
+          "between_turns": [
+            111,
+            112
+          ],
+          "speakers": [
+            "Jake",
+            "Jake"
+          ],
+          "domain_before": "operational",
+          "domain_after": "relational",
+          "distance": 0.51559
+        },
+        {
+          "between_turns": [
+            112,
+            113
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "relational",
+          "domain_after": "philosophical",
+          "distance": 0.49428
+        },
+        {
+          "between_turns": [
+            127,
+            128
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "operational",
+          "distance": 0.48765
+        },
+        {
+          "between_turns": [
+            136,
+            137
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.56907
+        },
+        {
+          "between_turns": [
+            137,
+            138
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.42658
+        },
+        {
+          "between_turns": [
+            140,
+            141
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.46117
+        },
+        {
+          "between_turns": [
+            147,
+            148
+          ],
+          "speakers": [
+            "Jake",
+            "Opus"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.47762
+        },
+        {
+          "between_turns": [
+            148,
+            149
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "philosophical",
+          "distance": 0.41822
+        },
+        {
+          "between_turns": [
+            150,
+            151
+          ],
+          "speakers": [
+            "Opus",
+            "Jake"
+          ],
+          "domain_before": "philosophical",
+          "domain_after": "operational",
+          "distance": 0.41436
+        }
+      ],
+      "transition_count": 28,
+      "mean_distance": 0.28262,
+      "std_distance": 0.10682,
+      "threshold": 0.38944,
+      "all_distances": [
+        0.45098,
+        0.28648,
+        0.18436,
+        0.2542,
+        0.36742,
+        0.38172,
+        0.36273,
+        0.46604,
+        0.4481,
+        0.30898,
+        0.26577,
+        0.38367,
+        0.26011,
+        0.34566,
+        0.30628,
+        0.41389,
+        0.46231,
+        0.24835,
+        0.24166,
+        0.26659,
+        0.24461,
+        0.16015,
+        0.21507,
+        0.22421,
+        0.10856,
+        0.14386,
+        0.08916,
+        0.26779,
+        0.15974,
+        0.40909,
+        0.40296,
+        0.40073,
+        0.3121,
+        0.28064,
+        0.21974,
+        0.2509,
+        0.27309,
+        0.5776,
+        0.40978,
+        0.17982,
+        0.18948,
+        0.35896,
+        0.23525,
+        0.30961,
+        0.19743,
+        0.37057,
+        0.43391,
+        0.34068,
+        0.3512,
+        0.36472,
+        0.24954,
+        0.28818,
+        0.20813,
+        0.29999,
+        0.27026,
+        0.32915,
+        0.16294,
+        0.38463,
+        0.17849,
+        0.42117,
+        0.18212,
+        0.40192,
+        0.47372,
+        0.49899,
+        0.37333,
+        0.37554,
+        0.27632,
+        0.36718,
+        0.25722,
+        0.30894,
+        0.21834,
+        0.28592,
+        0.17777,
+        0.36308,
+        0.18561,
+        0.25577,
+        0.14878,
+        0.1976,
+        0.12065,
+        0.24192,
+        0.23933,
+        0.46536,
+        0.44126,
+        0.28616,
+        0.2738,
+        0.16476,
+        0.12931,
+        0.28728,
+        0.19477,
+        0.14827,
+        0.16079,
+        0.18297,
+        0.30915,
+        0.2092,
+        0.10299,
+        0.14309,
+        0.42541,
+        0.18732,
+        0.17376,
+        0.14834,
+        0.35625,
+        0.26369,
+        0.39605,
+        0.33689,
+        0.29108,
+        0.14404,
+        0.14727,
+        0.14541,
+        0.22539,
+        0.13443,
+        0.14333,
+        0.51559,
+        0.49428,
+        0.15981,
+        0.11755,
+        0.26062,
+        0.24346,
+        0.19552,
+        0.29136,
+        0.31905,
+        0.28688,
+        0.16777,
+        0.27903,
+        0.22978,
+        0.21073,
+        0.21666,
+        0.24522,
+        0.48765,
+        0.35146,
+        0.296,
+        0.22553,
+        0.24365,
+        0.21702,
+        0.15746,
+        0.28771,
+        0.25062,
+        0.56907,
+        0.42658,
+        0.20392,
+        0.13804,
+        0.46117,
+        0.31479,
+        0.34744,
+        0.32171,
+        0.24452,
+        0.17296,
+        0.25769,
+        0.47762,
+        0.41822,
+        0.25069,
+        0.41436,
+        0.24229
+      ]
+    },
+    "opus_only": {
+      "transition_count": 10,
+      "transition_at_opus_indices": [
+        2,
+        29,
+        47,
+        68,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      "mean_distance": 0.22434,
+      "std_distance": 0.08193,
+      "threshold": 0.30628
+    },
+    "jake_only": {
+      "transition_count": 17,
+      "transition_at_jake_indices": [
+        3,
+        4,
+        8,
+        15,
+        18,
+        19,
+        23,
+        24,
+        29,
+        31,
+        56,
+        57,
+        63,
+        64,
+        67,
+        68,
+        69
+      ],
+      "mean_distance": 0.34464,
+      "std_distance": 0.1099,
+      "threshold": 0.45453
+    }
+  },
+  "off_map": {
+    "threshold": 0.32905,
+    "mean_min_distance": 0.244,
+    "std_min_distance": 0.08505,
+    "off_map_count": 26,
+    "off_map_turns": [
+      {
+        "turn": 1,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.33927,
+        "nearest_evo_idx": 32,
+        "nearest_evo_sim": 0.6832
+      },
+      {
+        "turn": 6,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.3313,
+        "nearest_evo_idx": 32,
+        "nearest_evo_sim": 0.63803
+      },
+      {
+        "turn": 8,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.44564,
+        "nearest_evo_idx": 39,
+        "nearest_evo_sim": 0.54105
+      },
+      {
+        "turn": 12,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.35178,
+        "nearest_evo_idx": 17,
+        "nearest_evo_sim": 0.62345
+      },
+      {
+        "turn": 14,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.39158,
+        "nearest_evo_idx": 11,
+        "nearest_evo_sim": 0.57706
+      },
+      {
+        "turn": 16,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.44434,
+        "nearest_evo_idx": 39,
+        "nearest_evo_sim": 0.55929
+      },
+      {
+        "turn": 30,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.36848,
+        "nearest_evo_idx": 39,
+        "nearest_evo_sim": 0.58611
+      },
+      {
+        "turn": 38,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.49961,
+        "nearest_evo_idx": 32,
+        "nearest_evo_sim": 0.6296
+      },
+      {
+        "turn": 46,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.47657,
+        "nearest_evo_idx": 7,
+        "nearest_evo_sim": 0.53415
+      },
+      {
+        "turn": 48,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.34478,
+        "nearest_evo_idx": 17,
+        "nearest_evo_sim": 0.67845
+      },
+      {
+        "turn": 50,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.35722,
+        "nearest_evo_idx": 7,
+        "nearest_evo_sim": 0.64726
+      },
+      {
+        "turn": 54,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.335,
+        "nearest_evo_idx": 26,
+        "nearest_evo_sim": 0.62761
+      },
+      {
+        "turn": 56,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.33548,
+        "nearest_evo_idx": 21,
+        "nearest_evo_sim": 0.66866
+      },
+      {
+        "turn": 58,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.35011,
+        "nearest_evo_idx": 21,
+        "nearest_evo_sim": 0.66579
+      },
+      {
+        "turn": 62,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.40383,
+        "nearest_evo_idx": 39,
+        "nearest_evo_sim": 0.57109
+      },
+      {
+        "turn": 64,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.41338,
+        "nearest_evo_idx": 33,
+        "nearest_evo_sim": 0.61243
+      },
+      {
+        "turn": 70,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.34405,
+        "nearest_evo_idx": 32,
+        "nearest_evo_sim": 0.60613
+      },
+      {
+        "turn": 82,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.40284,
+        "nearest_evo_idx": 39,
+        "nearest_evo_sim": 0.58082
+      },
+      {
+        "turn": 103,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.39484,
+        "nearest_evo_idx": 30,
+        "nearest_evo_sim": 0.57782
+      },
+      {
+        "turn": 112,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.4596,
+        "nearest_evo_idx": 45,
+        "nearest_evo_sim": 0.50757
+      },
+      {
+        "turn": 128,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.38781,
+        "nearest_evo_idx": 42,
+        "nearest_evo_sim": 0.58318
+      },
+      {
+        "turn": 137,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.45172,
+        "nearest_evo_idx": 28,
+        "nearest_evo_sim": 0.51468
+      },
+      {
+        "turn": 141,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.37328,
+        "nearest_evo_idx": 25,
+        "nearest_evo_sim": 0.59425
+      },
+      {
+        "turn": 144,
+        "speaker": "Opus",
+        "timestamp": null,
+        "min_centroid_distance": 0.34195,
+        "nearest_evo_idx": 21,
+        "nearest_evo_sim": 0.63033
+      },
+      {
+        "turn": 148,
+        "speaker": "Opus",
+        "timestamp": "4:22 AM",
+        "min_centroid_distance": 0.5485,
+        "nearest_evo_idx": 28,
+        "nearest_evo_sim": 0.45576
+      },
+      {
+        "turn": 149,
+        "speaker": "Jake",
+        "timestamp": null,
+        "min_centroid_distance": 0.34552,
+        "nearest_evo_idx": 45,
+        "nearest_evo_sim": 0.61076
+      }
+    ],
+    "all_min_distances": [
+      0.18586,
+      0.33927,
+      0.14759,
+      0.16688,
+      0.2697,
+      0.20777,
+      0.3313,
+      0.21329,
+      0.44564,
+      0.20097,
+      0.27066,
+      0.17169,
+      0.35178,
+      0.16244,
+      0.39158,
+      0.24014,
+      0.44434,
+      0.27816,
+      0.19401,
+      0.19805,
+      0.30613,
+      0.23247,
+      0.25142,
+      0.16336,
+      0.18744,
+      0.1615,
+      0.1765,
+      0.17756,
+      0.22776,
+      0.13564,
+      0.36848,
+      0.17336,
+      0.30005,
+      0.19118,
+      0.26891,
+      0.22586,
+      0.279,
+      0.12748,
+      0.49961,
+      0.15797,
+      0.22355,
+      0.16434,
+      0.31347,
+      0.19083,
+      0.2773,
+      0.28387,
+      0.47657,
+      0.1946,
+      0.34478,
+      0.2039,
+      0.35722,
+      0.19707,
+      0.28425,
+      0.19981,
+      0.335,
+      0.16482,
+      0.33548,
+      0.28031,
+      0.35011,
+      0.23334,
+      0.19087,
+      0.26691,
+      0.40383,
+      0.15245,
+      0.41338,
+      0.2413,
+      0.30144,
+      0.15064,
+      0.31417,
+      0.17859,
+      0.34405,
+      0.17272,
+      0.31252,
+      0.19816,
+      0.32482,
+      0.26088,
+      0.26157,
+      0.16643,
+      0.25351,
+      0.18347,
+      0.21045,
+      0.1436,
+      0.40284,
+      0.13748,
+      0.25844,
+      0.18898,
+      0.19065,
+      0.15859,
+      0.24815,
+      0.15488,
+      0.18157,
+      0.16851,
+      0.22297,
+      0.23349,
+      0.12255,
+      0.18262,
+      0.22664,
+      0.29052,
+      0.21936,
+      0.1866,
+      0.20028,
+      0.29364,
+      0.18823,
+      0.39484,
+      0.18685,
+      0.24753,
+      0.15689,
+      0.17398,
+      0.15496,
+      0.2283,
+      0.17409,
+      0.26841,
+      0.4596,
+      0.18525,
+      0.15201,
+      0.18918,
+      0.2367,
+      0.14883,
+      0.17077,
+      0.25628,
+      0.19729,
+      0.23751,
+      0.16745,
+      0.26396,
+      0.17852,
+      0.22076,
+      0.32512,
+      0.16668,
+      0.38781,
+      0.16215,
+      0.23595,
+      0.18553,
+      0.25401,
+      0.17369,
+      0.1587,
+      0.2429,
+      0.19829,
+      0.45172,
+      0.21073,
+      0.19831,
+      0.15608,
+      0.37328,
+      0.27089,
+      0.26138,
+      0.34195,
+      0.22968,
+      0.20099,
+      0.29335,
+      0.5485,
+      0.34552,
+      0.29832,
+      0.30439,
+      0.16921
+    ]
+  },
+  "umap": {
+    "note": "Fit on evolution (46) + turns (153). Not directly comparable to corpus_map.json coordinates. Use 768-dim cosine similarity for quantitative analysis.",
+    "opus_trajectory": [
+      {
+        "turn": 0,
+        "x": -3.3258,
+        "y": -6.212,
+        "timestamp": null
+      },
+      {
+        "turn": 2,
+        "x": -1.0646,
+        "y": -6.2638,
+        "timestamp": null
+      },
+      {
+        "turn": 5,
+        "x": -0.0353,
+        "y": -5.4557,
+        "timestamp": null
+      },
+      {
+        "turn": 7,
+        "x": -4.0118,
+        "y": -7.7833,
+        "timestamp": null
+      },
+      {
+        "turn": 9,
+        "x": -3.4294,
+        "y": -7.0438,
+        "timestamp": null
+      },
+      {
+        "turn": 11,
+        "x": -3.4599,
+        "y": -7.1609,
+        "timestamp": null
+      },
+      {
+        "turn": 13,
+        "x": -3.245,
+        "y": -7.6872,
+        "timestamp": null
+      },
+      {
+        "turn": 15,
+        "x": -4.0304,
+        "y": -8.2518,
+        "timestamp": null
+      },
+      {
+        "turn": 17,
+        "x": -4.1729,
+        "y": -8.1049,
+        "timestamp": null
+      },
+      {
+        "turn": 19,
+        "x": -3.8255,
+        "y": -7.7613,
+        "timestamp": null
+      },
+      {
+        "turn": 21,
+        "x": -4.2075,
+        "y": -7.8716,
+        "timestamp": null
+      },
+      {
+        "turn": 23,
+        "x": -3.9199,
+        "y": -6.943,
+        "timestamp": null
+      },
+      {
+        "turn": 25,
+        "x": -3.2989,
+        "y": -7.7084,
+        "timestamp": null
+      },
+      {
+        "turn": 27,
+        "x": -4.063,
+        "y": -7.6853,
+        "timestamp": null
+      },
+      {
+        "turn": 29,
+        "x": -3.3758,
+        "y": -6.0312,
+        "timestamp": null
+      },
+      {
+        "turn": 31,
+        "x": -3.3135,
+        "y": -6.86,
+        "timestamp": null
+      },
+      {
+        "turn": 33,
+        "x": -2.2549,
+        "y": -5.5237,
+        "timestamp": null
+      },
+      {
+        "turn": 35,
+        "x": -2.5311,
+        "y": -5.6826,
+        "timestamp": null
+      },
+      {
+        "turn": 37,
+        "x": -2.09,
+        "y": -5.6736,
+        "timestamp": null
+      },
+      {
+        "turn": 39,
+        "x": -2.8738,
+        "y": -5.5972,
+        "timestamp": null
+      },
+      {
+        "turn": 41,
+        "x": -2.8607,
+        "y": -6.3937,
+        "timestamp": null
+      },
+      {
+        "turn": 43,
+        "x": -1.4493,
+        "y": -4.9934,
+        "timestamp": null
+      },
+      {
+        "turn": 45,
+        "x": -1.6864,
+        "y": -6.1441,
+        "timestamp": null
+      },
+      {
+        "turn": 47,
+        "x": -1.0227,
+        "y": -6.5531,
+        "timestamp": null
+      },
+      {
+        "turn": 49,
+        "x": -0.8423,
+        "y": -6.4433,
+        "timestamp": null
+      },
+      {
+        "turn": 51,
+        "x": -3.1311,
+        "y": -7.3781,
+        "timestamp": null
+      },
+      {
+        "turn": 53,
+        "x": -3.5064,
+        "y": -4.7125,
+        "timestamp": null
+      },
+      {
+        "turn": 55,
+        "x": -3.6108,
+        "y": -4.6038,
+        "timestamp": null
+      },
+      {
+        "turn": 57,
+        "x": -3.2636,
+        "y": -4.2895,
+        "timestamp": null
+      },
+      {
+        "turn": 59,
+        "x": -3.0272,
+        "y": -4.4971,
+        "timestamp": null
+      },
+      {
+        "turn": 61,
+        "x": -4.7601,
+        "y": -7.8645,
+        "timestamp": null
+      },
+      {
+        "turn": 63,
+        "x": -4.1083,
+        "y": -6.198,
+        "timestamp": null
+      },
+      {
+        "turn": 65,
+        "x": -3.7696,
+        "y": -7.5452,
+        "timestamp": null
+      },
+      {
+        "turn": 67,
+        "x": -4.1022,
+        "y": -5.8226,
+        "timestamp": null
+      },
+      {
+        "turn": 69,
+        "x": -4.2302,
+        "y": -5.9942,
+        "timestamp": null
+      },
+      {
+        "turn": 71,
+        "x": -3.0451,
+        "y": -5.9796,
+        "timestamp": null
+      },
+      {
+        "turn": 73,
+        "x": -2.5732,
+        "y": -5.832,
+        "timestamp": null
+      },
+      {
+        "turn": 75,
+        "x": -3.4826,
+        "y": -5.4766,
+        "timestamp": null
+      },
+      {
+        "turn": 77,
+        "x": -3.8351,
+        "y": -5.6329,
+        "timestamp": null
+      },
+      {
+        "turn": 79,
+        "x": -3.911,
+        "y": -5.358,
+        "timestamp": null
+      },
+      {
+        "turn": 81,
+        "x": -3.8448,
+        "y": -6.1305,
+        "timestamp": null
+      },
+      {
+        "turn": 83,
+        "x": -3.7789,
+        "y": -6.007,
+        "timestamp": null
+      },
+      {
+        "turn": 85,
+        "x": -5.2695,
+        "y": -7.0069,
+        "timestamp": null
+      },
+      {
+        "turn": 87,
+        "x": -5.061,
+        "y": -6.1899,
+        "timestamp": null
+      },
+      {
+        "turn": 89,
+        "x": -5.5359,
+        "y": -6.5554,
+        "timestamp": null
+      },
+      {
+        "turn": 91,
+        "x": -5.5642,
+        "y": -6.2181,
+        "timestamp": null
+      },
+      {
+        "turn": 94,
+        "x": -4.9967,
+        "y": -6.2754,
+        "timestamp": null
+      },
+      {
+        "turn": 96,
+        "x": -5.5104,
+        "y": -6.6143,
+        "timestamp": null
+      },
+      {
+        "turn": 98,
+        "x": -4.6767,
+        "y": -6.4642,
+        "timestamp": null
+      },
+      {
+        "turn": 100,
+        "x": -5.3934,
+        "y": -6.5042,
+        "timestamp": null
+      },
+      {
+        "turn": 102,
+        "x": -4.6302,
+        "y": -5.862,
+        "timestamp": null
+      },
+      {
+        "turn": 104,
+        "x": -4.4217,
+        "y": -5.6414,
+        "timestamp": null
+      },
+      {
+        "turn": 106,
+        "x": -4.5158,
+        "y": -6.2595,
+        "timestamp": null
+      },
+      {
+        "turn": 108,
+        "x": -4.923,
+        "y": -6.1633,
+        "timestamp": null
+      },
+      {
+        "turn": 110,
+        "x": -6.0149,
+        "y": -6.4214,
+        "timestamp": null
+      },
+      {
+        "turn": 113,
+        "x": -5.0077,
+        "y": -5.7599,
+        "timestamp": null
+      },
+      {
+        "turn": 115,
+        "x": -5.3701,
+        "y": -6.1544,
+        "timestamp": null
+      },
+      {
+        "turn": 117,
+        "x": -4.7589,
+        "y": -5.7141,
+        "timestamp": null
+      },
+      {
+        "turn": 118,
+        "x": -5.6551,
+        "y": -5.9804,
+        "timestamp": null
+      },
+      {
+        "turn": 120,
+        "x": -5.7452,
+        "y": -6.1124,
+        "timestamp": null
+      },
+      {
+        "turn": 122,
+        "x": -2.2975,
+        "y": -3.4897,
+        "timestamp": null
+      },
+      {
+        "turn": 124,
+        "x": -2.4673,
+        "y": -3.6943,
+        "timestamp": null
+      },
+      {
+        "turn": 125,
+        "x": -2.4116,
+        "y": -3.3773,
+        "timestamp": null
+      },
+      {
+        "turn": 127,
+        "x": -2.5735,
+        "y": -3.5323,
+        "timestamp": "12:03 AM"
+      },
+      {
+        "turn": 129,
+        "x": -5.5637,
+        "y": -6.2685,
+        "timestamp": "12:15 AM"
+      },
+      {
+        "turn": 131,
+        "x": -1.9783,
+        "y": -3.7822,
+        "timestamp": null
+      },
+      {
+        "turn": 133,
+        "x": -1.6686,
+        "y": -3.6342,
+        "timestamp": null
+      },
+      {
+        "turn": 134,
+        "x": -1.3747,
+        "y": -3.6485,
+        "timestamp": null
+      },
+      {
+        "turn": 136,
+        "x": -1.8495,
+        "y": -3.9572,
+        "timestamp": null
+      },
+      {
+        "turn": 138,
+        "x": -0.4031,
+        "y": -4.6499,
+        "timestamp": "1:12 AM"
+      },
+      {
+        "turn": 140,
+        "x": -0.5372,
+        "y": -4.4301,
+        "timestamp": null
+      },
+      {
+        "turn": 142,
+        "x": -1.2432,
+        "y": -4.3398,
+        "timestamp": "3:04 AM"
+      },
+      {
+        "turn": 144,
+        "x": -1.1845,
+        "y": -4.6112,
+        "timestamp": null
+      },
+      {
+        "turn": 146,
+        "x": -1.4937,
+        "y": -4.124,
+        "timestamp": null
+      },
+      {
+        "turn": 148,
+        "x": -1.6625,
+        "y": -5.2297,
+        "timestamp": "4:22 AM"
+      },
+      {
+        "turn": 150,
+        "x": -1.3157,
+        "y": -5.2205,
+        "timestamp": "4:27 AM"
+      },
+      {
+        "turn": 152,
+        "x": -3.1128,
+        "y": -7.9079,
+        "timestamp": "4:32 AM"
+      }
+    ],
+    "jake_trajectory": [
+      {
+        "turn": 1,
+        "x": -1.6149,
+        "y": -5.7751
+      },
+      {
+        "turn": 3,
+        "x": -4.1772,
+        "y": -7.2998
+      },
+      {
+        "turn": 4,
+        "x": -3.8879,
+        "y": -7.8477
+      },
+      {
+        "turn": 6,
+        "x": -1.9958,
+        "y": -6.4224
+      },
+      {
+        "turn": 8,
+        "x": -2.567,
+        "y": -6.486
+      },
+      {
+        "turn": 10,
+        "x": -1.7462,
+        "y": -4.8333
+      },
+      {
+        "turn": 12,
+        "x": -3.6377,
+        "y": -8.4086
+      },
+      {
+        "turn": 14,
+        "x": -3.5831,
+        "y": -8.4113
+      },
+      {
+        "turn": 16,
+        "x": -2.2934,
+        "y": -6.3171
+      },
+      {
+        "turn": 18,
+        "x": -4.2794,
+        "y": -6.9399
+      },
+      {
+        "turn": 20,
+        "x": -3.6207,
+        "y": -8.2914
+      },
+      {
+        "turn": 22,
+        "x": -4.3407,
+        "y": -7.9049
+      },
+      {
+        "turn": 24,
+        "x": -3.4384,
+        "y": -7.979
+      },
+      {
+        "turn": 26,
+        "x": -4.0466,
+        "y": -7.8081
+      },
+      {
+        "turn": 28,
+        "x": -3.1757,
+        "y": -5.6716
+      },
+      {
+        "turn": 30,
+        "x": -2.7725,
+        "y": -6.5036
+      },
+      {
+        "turn": 32,
+        "x": -2.844,
+        "y": -5.3315
+      },
+      {
+        "turn": 34,
+        "x": -2.6859,
+        "y": -5.2592
+      },
+      {
+        "turn": 36,
+        "x": -2.5059,
+        "y": -5.5434
+      },
+      {
+        "turn": 38,
+        "x": -2.7269,
+        "y": -5.9168
+      },
+      {
+        "turn": 40,
+        "x": -2.8731,
+        "y": -5.8663
+      },
+      {
+        "turn": 42,
+        "x": -1.6041,
+        "y": -5.093
+      },
+      {
+        "turn": 44,
+        "x": -1.7251,
+        "y": -6.1408
+      },
+      {
+        "turn": 46,
+        "x": -1.7977,
+        "y": -6.2202
+      },
+      {
+        "turn": 48,
+        "x": -0.7746,
+        "y": -5.7554
+      },
+      {
+        "turn": 50,
+        "x": -3.8044,
+        "y": -8.4576
+      },
+      {
+        "turn": 52,
+        "x": -3.5051,
+        "y": -4.7265
+      },
+      {
+        "turn": 54,
+        "x": -3.3583,
+        "y": -4.3418
+      },
+      {
+        "turn": 56,
+        "x": -3.0821,
+        "y": -4.2358
+      },
+      {
+        "turn": 58,
+        "x": -2.9013,
+        "y": -4.5902
+      },
+      {
+        "turn": 60,
+        "x": -4.5176,
+        "y": -7.9343
+      },
+      {
+        "turn": 62,
+        "x": -1.0787,
+        "y": -4.9814
+      },
+      {
+        "turn": 64,
+        "x": -4.2987,
+        "y": -7.5985
+      },
+      {
+        "turn": 66,
+        "x": -3.3552,
+        "y": -5.7512
+      },
+      {
+        "turn": 68,
+        "x": -3.2259,
+        "y": -5.3315
+      },
+      {
+        "turn": 70,
+        "x": -3.2605,
+        "y": -5.3783
+      },
+      {
+        "turn": 72,
+        "x": -3.1557,
+        "y": -5.3587
+      },
+      {
+        "turn": 74,
+        "x": -3.525,
+        "y": -5.5064
+      },
+      {
+        "turn": 76,
+        "x": -3.788,
+        "y": -5.3785
+      },
+      {
+        "turn": 78,
+        "x": -3.647,
+        "y": -5.2179
+      },
+      {
+        "turn": 80,
+        "x": -3.9434,
+        "y": -5.1417
+      },
+      {
+        "turn": 82,
+        "x": -2.1619,
+        "y": -6.0399
+      },
+      {
+        "turn": 84,
+        "x": -3.5411,
+        "y": -6.5446
+      },
+      {
+        "turn": 86,
+        "x": -5.159,
+        "y": -6.5796
+      },
+      {
+        "turn": 88,
+        "x": -5.0654,
+        "y": -7.3292
+      },
+      {
+        "turn": 90,
+        "x": -5.287,
+        "y": -7.141
+      },
+      {
+        "turn": 92,
+        "x": -5.2352,
+        "y": -7.0046
+      },
+      {
+        "turn": 93,
+        "x": -5.2087,
+        "y": -7.4176
+      },
+      {
+        "turn": 95,
+        "x": -5.347,
+        "y": -6.7568
+      },
+      {
+        "turn": 97,
+        "x": -1.5558,
+        "y": -6.8438
+      },
+      {
+        "turn": 99,
+        "x": -5.0863,
+        "y": -6.4734
+      },
+      {
+        "turn": 101,
+        "x": -1.6203,
+        "y": -6.7273
+      },
+      {
+        "turn": 103,
+        "x": -2.368,
+        "y": -5.1083
+      },
+      {
+        "turn": 105,
+        "x": -1.5058,
+        "y": -6.9344
+      },
+      {
+        "turn": 107,
+        "x": -4.9073,
+        "y": -6.6819
+      },
+      {
+        "turn": 109,
+        "x": -5.9441,
+        "y": -6.3749
+      },
+      {
+        "turn": 111,
+        "x": -5.941,
+        "y": -6.4829
+      },
+      {
+        "turn": 112,
+        "x": -4.9319,
+        "y": -7.3408
+      },
+      {
+        "turn": 114,
+        "x": -5.1009,
+        "y": -6.068
+      },
+      {
+        "turn": 116,
+        "x": -4.7332,
+        "y": -7.0003
+      },
+      {
+        "turn": 119,
+        "x": -4.4935,
+        "y": -6.2438
+      },
+      {
+        "turn": 121,
+        "x": -2.2366,
+        "y": -3.4717
+      },
+      {
+        "turn": 123,
+        "x": -1.9875,
+        "y": -3.7734
+      },
+      {
+        "turn": 126,
+        "x": -2.5762,
+        "y": -3.6032
+      },
+      {
+        "turn": 128,
+        "x": -5.0346,
+        "y": -7.5795
+      },
+      {
+        "turn": 130,
+        "x": -1.92,
+        "y": -4.4036
+      },
+      {
+        "turn": 132,
+        "x": 1.143,
+        "y": -3.9115
+      },
+      {
+        "turn": 135,
+        "x": -1.5362,
+        "y": -4.1992
+      },
+      {
+        "turn": 137,
+        "x": -1.4169,
+        "y": -5.4162
+      },
+      {
+        "turn": 139,
+        "x": -0.8736,
+        "y": -4.4016
+      },
+      {
+        "turn": 141,
+        "x": -1.3371,
+        "y": -4.6716
+      },
+      {
+        "turn": 143,
+        "x": -1.1797,
+        "y": -4.9781
+      },
+      {
+        "turn": 145,
+        "x": -1.3767,
+        "y": -4.5319
+      },
+      {
+        "turn": 147,
+        "x": -1.7237,
+        "y": -4.2903
+      },
+      {
+        "turn": 149,
+        "x": -1.4452,
+        "y": -5.0644
+      },
+      {
+        "turn": 151,
+        "x": -3.4547,
+        "y": -8.2582
+      }
+    ]
+  },
+  "trajectory_comparison": null
+}

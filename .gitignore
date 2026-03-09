@@ -1,3 +1,7 @@
 __pycache__/
 instrument/data/*.faiss
 instrument/data/*.npy
+instrument/data/v1/*.npy
+instrument/data/v2/*.npy
+instrument/step13_stderr.log
+instrument/docx_structure_scan*.txt

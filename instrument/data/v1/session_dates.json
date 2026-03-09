@@ -1,0 +1,202 @@
+{
+  "sessions": [
+    {
+      "date": "Feb 17",
+      "date_index": 0,
+      "turn_range": [
+        1,
+        160
+      ],
+      "turn_count": 160,
+      "opus_count": 81,
+      "jake_count": 79
+    },
+    {
+      "date": "Feb 18",
+      "date_index": 1,
+      "turn_range": [
+        161,
+        351
+      ],
+      "turn_count": 191,
+      "opus_count": 97,
+      "jake_count": 94
+    },
+    {
+      "date": "Feb 19",
+      "date_index": 2,
+      "turn_range": [
+        352,
+        520
+      ],
+      "turn_count": 169,
+      "opus_count": 85,
+      "jake_count": 84
+    },
+    {
+      "date": "Feb 20",
+      "date_index": 3,
+      "turn_range": [
+        521,
+        605
+      ],
+      "turn_count": 85,
+      "opus_count": 43,
+      "jake_count": 42
+    },
+    {
+      "date": "Feb 21",
+      "date_index": 4,
+      "turn_range": [
+        606,
+        713
+      ],
+      "turn_count": 108,
+      "opus_count": 54,
+      "jake_count": 54
+    },
+    {
+      "date": "Feb 22",
+      "date_index": 5,
+      "turn_range": [
+        714,
+        950
+      ],
+      "turn_count": 237,
+      "opus_count": 121,
+      "jake_count": 116
+    },
+    {
+      "date": "Feb 23",
+      "date_index": 6,
+      "turn_range": [
+        951,
+        1134
+      ],
+      "turn_count": 155,
+      "opus_count": 78,
+      "jake_count": 77
+    },
+    {
+      "date": "Feb 24",
+      "date_index": 7,
+      "turn_range": [
+        1104,
+        1219
+      ],
+      "turn_count": 114,
+      "opus_count": 58,
+      "jake_count": 56
+    },
+    {
+      "date": "Feb 25",
+      "date_index": 8,
+      "turn_range": [
+        1220,
+        1309
+      ],
+      "turn_count": 90,
+      "opus_count": 45,
+      "jake_count": 45
+    },
+    {
+      "date": "Feb 26",
+      "date_index": 9,
+      "turn_range": [
+        1310,
+        1347
+      ],
+      "turn_count": 38,
+      "opus_count": 19,
+      "jake_count": 19
+    },
+    {
+      "date": "Feb 27",
+      "date_index": 10,
+      "turn_range": [
+        1348,
+        1351
+      ],
+      "turn_count": 4,
+      "opus_count": 2,
+      "jake_count": 2
+    },
+    {
+      "date": "Feb 28",
+      "date_index": 11,
+      "turn_range": [
+        1352,
+        1392
+      ],
+      "turn_count": 41,
+      "opus_count": 21,
+      "jake_count": 20
+    },
+    {
+      "date": "Mar 1",
+      "date_index": 12,
+      "turn_range": [
+        1393,
+        1435
+      ],
+      "turn_count": 43,
+      "opus_count": 22,
+      "jake_count": 21
+    },
+    {
+      "date": "Mar 2",
+      "date_index": 13,
+      "turn_range": [
+        1436,
+        1477
+      ],
+      "turn_count": 42,
+      "opus_count": 21,
+      "jake_count": 21
+    },
+    {
+      "date": "Mar 3",
+      "date_index": 14,
+      "turn_range": [
+        1478,
+        1626
+      ],
+      "turn_count": 149,
+      "opus_count": 75,
+      "jake_count": 74
+    },
+    {
+      "date": "Mar 4",
+      "date_index": 15,
+      "turn_range": [
+        1627,
+        1749
+      ],
+      "turn_count": 123,
+      "opus_count": 63,
+      "jake_count": 60
+    },
+    {
+      "date": "Mar 5",
+      "date_index": 16,
+      "turn_range": [
+        1750,
+        1821
+      ],
+      "turn_count": 72,
+      "opus_count": 37,
+      "jake_count": 35
+    },
+    {
+      "date": "Mar 6",
+      "date_index": 17,
+      "turn_range": [
+        1918,
+        1919
+      ],
+      "turn_count": 2,
+      "opus_count": 1,
+      "jake_count": 1
+    }
+  ]
+}

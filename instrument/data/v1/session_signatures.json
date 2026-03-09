@@ -1,0 +1,568 @@
+{
+  "sessions": [
+    {
+      "date": "Feb 17",
+      "date_index": 0,
+      "turn_range": [
+        1,
+        160
+      ],
+      "turn_count": 160,
+      "opus_count": 81,
+      "jake_count": 79,
+      "umap_x": 3.075934410095215,
+      "umap_y": 5.366050720214844,
+      "umap_z": 1.5261454582214355,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8310530185699463,
+        "operational": 0.8956471681594849,
+        "reflective": 0.8339377045631409,
+        "relational": 0.7808666229248047,
+        "mixed": 0.8862214088439941
+      },
+      "internal_arc_length": 128.60311133380551,
+      "entropy": 1.1698958323519555,
+      "register_distribution": {
+        "operational": 116,
+        "mixed": 31,
+        "relational": 2,
+        "philosophical": 10,
+        "reflective": 1
+      },
+      "displacement_from_previous": 0.0
+    },
+    {
+      "date": "Feb 18",
+      "date_index": 1,
+      "turn_range": [
+        161,
+        351
+      ],
+      "turn_count": 191,
+      "opus_count": 97,
+      "jake_count": 94,
+      "umap_x": 2.667142868041992,
+      "umap_y": 6.026575565338135,
+      "umap_z": 1.39144766330719,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8428612351417542,
+        "operational": 0.909841775894165,
+        "reflective": 0.8343750834465027,
+        "relational": 0.7682086825370789,
+        "mixed": 0.890243411064148
+      },
+      "internal_arc_length": 153.95290808513874,
+      "entropy": 0.690613058674086,
+      "register_distribution": {
+        "operational": 166,
+        "mixed": 12,
+        "philosophical": 13
+      },
+      "displacement_from_previous": 0.7883825796110411
+    },
+    {
+      "date": "Feb 19",
+      "date_index": 2,
+      "turn_range": [
+        352,
+        520
+      ],
+      "turn_count": 169,
+      "opus_count": 85,
+      "jake_count": 84,
+      "umap_x": 2.9412360191345215,
+      "umap_y": 6.182487964630127,
+      "umap_z": 1.1630558967590332,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8693580627441406,
+        "operational": 0.9201115965843201,
+        "reflective": 0.8581341505050659,
+        "relational": 0.7989950180053711,
+        "mixed": 0.905629575252533
+      },
+      "internal_arc_length": 131.40966259222242,
+      "entropy": 1.2584271996272876,
+      "register_distribution": {
+        "operational": 117,
+        "mixed": 17,
+        "relational": 3,
+        "philosophical": 32
+      },
+      "displacement_from_previous": 0.38935655992394097
+    },
+    {
+      "date": "Feb 20",
+      "date_index": 3,
+      "turn_range": [
+        521,
+        605
+      ],
+      "turn_count": 85,
+      "opus_count": 43,
+      "jake_count": 42,
+      "umap_x": 2.857816457748413,
+      "umap_y": 6.205593585968018,
+      "umap_z": 2.0419373512268066,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8409595489501953,
+        "operational": 0.9155004024505615,
+        "reflective": 0.8492688536643982,
+        "relational": 0.7771002650260925,
+        "mixed": 0.9047127962112427
+      },
+      "internal_arc_length": 64.752451927374,
+      "entropy": 1.025095124888439,
+      "register_distribution": {
+        "operational": 63,
+        "philosophical": 5,
+        "mixed": 17
+      },
+      "displacement_from_previous": 0.8831337973187583
+    },
+    {
+      "date": "Feb 21",
+      "date_index": 4,
+      "turn_range": [
+        606,
+        713
+      ],
+      "turn_count": 108,
+      "opus_count": 54,
+      "jake_count": 54,
+      "umap_x": 3.4978320598602295,
+      "umap_y": 6.752965927124023,
+      "umap_z": 1.514777421951294,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8711654543876648,
+        "operational": 0.9230120182037354,
+        "reflective": 0.8648433685302734,
+        "relational": 0.7998984456062317,
+        "mixed": 0.9116479158401489
+      },
+      "internal_arc_length": 83.26110820689841,
+      "entropy": 1.2488849098547496,
+      "register_distribution": {
+        "operational": 77,
+        "philosophical": 13,
+        "mixed": 16,
+        "reflective": 1,
+        "relational": 1
+      },
+      "displacement_from_previous": 0.993546195122764
+    },
+    {
+      "date": "Feb 22",
+      "date_index": 5,
+      "turn_range": [
+        714,
+        950
+      ],
+      "turn_count": 237,
+      "opus_count": 121,
+      "jake_count": 116,
+      "umap_x": 3.4929158687591553,
+      "umap_y": 6.5374956130981445,
+      "umap_z": 1.5246409177780151,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8468677401542664,
+        "operational": 0.9186217784881592,
+        "reflective": 0.8552570939064026,
+        "relational": 0.7807372212409973,
+        "mixed": 0.9046701192855835
+      },
+      "internal_arc_length": 187.50765662108955,
+      "entropy": 1.2075967197154838,
+      "register_distribution": {
+        "operational": 179,
+        "philosophical": 26,
+        "mixed": 22,
+        "reflective": 4,
+        "relational": 6
+      },
+      "displacement_from_previous": 0.21575197267064997
+    },
+    {
+      "date": "Feb 23",
+      "date_index": 6,
+      "turn_range": [
+        951,
+        1134
+      ],
+      "turn_count": 155,
+      "opus_count": 78,
+      "jake_count": 77,
+      "umap_x": 3.107422351837158,
+      "umap_y": 6.891270160675049,
+      "umap_z": 0.7691243290901184,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8824955224990845,
+        "operational": 0.9227187633514404,
+        "reflective": 0.8714590072631836,
+        "relational": 0.8136255741119385,
+        "mixed": 0.9165225625038147
+      },
+      "internal_arc_length": 121.13170290809191,
+      "entropy": 1.5426637320569643,
+      "register_distribution": {
+        "mixed": 20,
+        "relational": 7,
+        "philosophical": 33,
+        "operational": 94,
+        "reflective": 1
+      },
+      "displacement_from_previous": 0.9190032632611975
+    },
+    {
+      "date": "Feb 24",
+      "date_index": 7,
+      "turn_range": [
+        1104,
+        1219
+      ],
+      "turn_count": 114,
+      "opus_count": 58,
+      "jake_count": 56,
+      "umap_x": 4.248331546783447,
+      "umap_y": 7.310306072235107,
+      "umap_z": -1.0432453155517578,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9224767088890076,
+        "operational": 0.9077014923095703,
+        "reflective": 0.8715994954109192,
+        "relational": 0.841401994228363,
+        "mixed": 0.9026858806610107
+      },
+      "internal_arc_length": 89.16228549091609,
+      "entropy": 1.679569123327137,
+      "register_distribution": {
+        "philosophical": 62,
+        "reflective": 3,
+        "mixed": 11,
+        "operational": 32,
+        "relational": 6
+      },
+      "displacement_from_previous": 2.182188950368249
+    },
+    {
+      "date": "Feb 25",
+      "date_index": 8,
+      "turn_range": [
+        1220,
+        1309
+      ],
+      "turn_count": 90,
+      "opus_count": 45,
+      "jake_count": 45,
+      "umap_x": 4.643237590789795,
+      "umap_y": 7.025848388671875,
+      "umap_z": -1.0142630338668823,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9173387289047241,
+        "operational": 0.8930392861366272,
+        "reflective": 0.8840722441673279,
+        "relational": 0.8508071899414062,
+        "mixed": 0.8988536596298218
+      },
+      "internal_arc_length": 70.3410760782123,
+      "entropy": 1.9107307018779445,
+      "register_distribution": {
+        "philosophical": 46,
+        "mixed": 18,
+        "reflective": 9,
+        "relational": 5,
+        "operational": 12
+      },
+      "displacement_from_previous": 0.48755197669844896
+    },
+    {
+      "date": "Feb 26",
+      "date_index": 9,
+      "turn_range": [
+        1310,
+        1347
+      ],
+      "turn_count": 38,
+      "opus_count": 19,
+      "jake_count": 19,
+      "umap_x": 4.060114860534668,
+      "umap_y": 6.842227458953857,
+      "umap_z": -0.4584885537624359,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8947270512580872,
+        "operational": 0.9180725812911987,
+        "reflective": 0.8778046369552612,
+        "relational": 0.8176673054695129,
+        "mixed": 0.917565643787384
+      },
+      "internal_arc_length": 29.003969843500776,
+      "entropy": 1.6808518549795148,
+      "register_distribution": {
+        "mixed": 12,
+        "operational": 16,
+        "philosophical": 9,
+        "reflective": 1
+      },
+      "displacement_from_previous": 0.8262167010573379
+    },
+    {
+      "date": "Feb 27",
+      "date_index": 10,
+      "turn_range": [
+        1348,
+        1351
+      ],
+      "turn_count": 4,
+      "opus_count": 2,
+      "jake_count": 2,
+      "umap_x": 4.39551305770874,
+      "umap_y": 7.082984447479248,
+      "umap_z": -1.0034208297729492,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.8459572196006775,
+        "operational": 0.8313013315200806,
+        "reflective": 0.8201820254325867,
+        "relational": 0.7696173787117004,
+        "mixed": 0.8451600074768066
+      },
+      "internal_arc_length": 2.354057519165031,
+      "entropy": 1.5,
+      "register_distribution": {
+        "operational": 1,
+        "philosophical": 2,
+        "mixed": 1
+      },
+      "displacement_from_previous": 0.6836717513759298
+    },
+    {
+      "date": "Feb 28",
+      "date_index": 11,
+      "turn_range": [
+        1352,
+        1392
+      ],
+      "turn_count": 41,
+      "opus_count": 21,
+      "jake_count": 20,
+      "umap_x": 4.036861419677734,
+      "umap_y": 7.238339424133301,
+      "umap_z": -0.8820725679397583,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9255971908569336,
+        "operational": 0.9085036516189575,
+        "reflective": 0.878832221031189,
+        "relational": 0.8557447195053101,
+        "mixed": 0.9160847067832947
+      },
+      "internal_arc_length": 30.367244710538028,
+      "entropy": 1.5016288870005712,
+      "register_distribution": {
+        "mixed": 4,
+        "philosophical": 24,
+        "operational": 11,
+        "relational": 2
+      },
+      "displacement_from_previous": 0.40925733577230056
+    },
+    {
+      "date": "Mar 1",
+      "date_index": 12,
+      "turn_range": [
+        1393,
+        1435
+      ],
+      "turn_count": 43,
+      "opus_count": 22,
+      "jake_count": 21,
+      "umap_x": 4.428993225097656,
+      "umap_y": 6.818812370300293,
+      "umap_z": -0.9191402196884155,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.8991377949714661,
+        "operational": 0.8826419115066528,
+        "reflective": 0.8846665024757385,
+        "relational": 0.8512875437736511,
+        "mixed": 0.8866090178489685
+      },
+      "internal_arc_length": 33.86767290156241,
+      "entropy": 2.2707335800729744,
+      "register_distribution": {
+        "mixed": 9,
+        "relational": 5,
+        "reflective": 9,
+        "philosophical": 12,
+        "operational": 8
+      },
+      "displacement_from_previous": 0.5754513989259654
+    },
+    {
+      "date": "Mar 2",
+      "date_index": 13,
+      "turn_range": [
+        1436,
+        1477
+      ],
+      "turn_count": 42,
+      "opus_count": 21,
+      "jake_count": 21,
+      "umap_x": 3.8901803493499756,
+      "umap_y": 7.092295169830322,
+      "umap_z": -0.19391275942325592,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.9073354005813599,
+        "operational": 0.9273725152015686,
+        "reflective": 0.8940092921257019,
+        "relational": 0.8499056696891785,
+        "mixed": 0.9290280938148499
+      },
+      "internal_arc_length": 32.525839640030604,
+      "entropy": 1.9580595428376295,
+      "register_distribution": {
+        "operational": 16,
+        "mixed": 12,
+        "philosophical": 10,
+        "reflective": 2,
+        "relational": 2
+      },
+      "displacement_from_previous": 0.9439634663655799
+    },
+    {
+      "date": "Mar 3",
+      "date_index": 14,
+      "turn_range": [
+        1478,
+        1626
+      ],
+      "turn_count": 149,
+      "opus_count": 75,
+      "jake_count": 74,
+      "umap_x": 4.112455368041992,
+      "umap_y": 6.917088031768799,
+      "umap_z": -0.22544963657855988,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.9179701209068298,
+        "operational": 0.9197540283203125,
+        "reflective": 0.8855800628662109,
+        "relational": 0.8475151658058167,
+        "mixed": 0.9228392839431763
+      },
+      "internal_arc_length": 119.28662298438714,
+      "entropy": 1.9505676985876297,
+      "register_distribution": {
+        "operational": 43,
+        "mixed": 41,
+        "philosophical": 52,
+        "relational": 5,
+        "reflective": 8
+      },
+      "displacement_from_previous": 0.28477763216754715
+    },
+    {
+      "date": "Mar 4",
+      "date_index": 15,
+      "turn_range": [
+        1627,
+        1749
+      ],
+      "turn_count": 123,
+      "opus_count": 63,
+      "jake_count": 60,
+      "umap_x": 4.270930290222168,
+      "umap_y": 6.80837869644165,
+      "umap_z": -0.4279538691043854,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.9055341482162476,
+        "operational": 0.9100861549377441,
+        "reflective": 0.892787754535675,
+        "relational": 0.8606224656105042,
+        "mixed": 0.9129321575164795
+      },
+      "internal_arc_length": 93.16897812797463,
+      "entropy": 2.15970668463444,
+      "register_distribution": {
+        "philosophical": 41,
+        "operational": 32,
+        "reflective": 16,
+        "relational": 9,
+        "mixed": 25
+      },
+      "displacement_from_previous": 0.27917733564556557
+    },
+    {
+      "date": "Mar 5",
+      "date_index": 16,
+      "turn_range": [
+        1750,
+        1821
+      ],
+      "turn_count": 72,
+      "opus_count": 37,
+      "jake_count": 35,
+      "umap_x": 3.379974603652954,
+      "umap_y": 7.621771812438965,
+      "umap_z": -0.039829060435295105,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.9109180569648743,
+        "operational": 0.9239232540130615,
+        "reflective": 0.8823962807655334,
+        "relational": 0.8348290324211121,
+        "mixed": 0.924235463142395
+      },
+      "internal_arc_length": 57.58335590239339,
+      "entropy": 1.9235329741890417,
+      "register_distribution": {
+        "philosophical": 26,
+        "reflective": 4,
+        "mixed": 17,
+        "relational": 2,
+        "operational": 23
+      },
+      "displacement_from_previous": 1.267300778697093
+    },
+    {
+      "date": "Mar 6",
+      "date_index": 17,
+      "turn_range": [
+        1918,
+        1919
+      ],
+      "turn_count": 2,
+      "opus_count": 1,
+      "jake_count": 1,
+      "umap_x": 4.286789894104004,
+      "umap_y": 7.289860248565674,
+      "umap_z": -0.939409613609314,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8166623711585999,
+        "operational": 0.82680743932724,
+        "reflective": 0.8201090693473816,
+        "relational": 0.7576034665107727,
+        "mixed": 0.826659083366394
+      },
+      "internal_arc_length": 0.7228686835915236,
+      "entropy": 1.0,
+      "register_distribution": {
+        "philosophical": 1,
+        "mixed": 1
+      },
+      "displacement_from_previous": 1.3197440770382376
+    }
+  ]
+}
