@@ -1,0 +1,24 @@
+{
+  "doc2": {
+    "source": "WhenIsawOpus2.md",
+    "total_turns": 153,
+    "opus_turns": 77,
+    "jake_turns": 76,
+    "dates": [
+      "Mar 6",
+      "Mar 7"
+    ]
+  },
+  "doc3": {
+    "source": "chatlog_030826.md",
+    "total_turns": 51,
+    "opus_turns": 36,
+    "jake_turns": 15,
+    "ambiguous_turns": 0,
+    "ambiguous_ids": [],
+    "dates": [
+      "Mar 8",
+      "Mar 9"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "total_turns": 2118,
+  "doc1_pre_turns": 1914,
+  "doc1_replaced_turns": 20,
+  "doc2_turns": 153,
+  "doc3_turns": 51,
+  "stitch_point_doc1": 1914,
+  "by_source": {
+    "doc1": 1914,
+    "doc2": 153,
+    "doc3": 51
+  },
+  "date_order": [
+    "Feb 17",
+    "Feb 18",
+    "Feb 19",
+    "Feb 20",
+    "Feb 21",
+    "Feb 22",
+    "Feb 23",
+    "Feb 24",
+    "Feb 25",
+    "Feb 26",
+    "Feb 27",
+    "Feb 28",
+    "Mar 1",
+    "Mar 2",
+    "Mar 3",
+    "Mar 4",
+    "Mar 5",
+    "Mar 6",
+    "Mar 7",
+    "Mar 8",
+    "Mar 9"
+  ],
+  "opus_total": 1081,
+  "jake_total": 1037
+}
