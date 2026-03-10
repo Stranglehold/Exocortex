@@ -1,0 +1,5072 @@
+{
+  "window_size": 20,
+  "step_size": 5,
+  "max_theoretical_entropy": 2.321928094887362,
+  "trace": [
+    {
+      "center_turn": 10,
+      "center_date": "Feb 17",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 15,
+      "center_date": "Feb 17",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 20,
+      "center_date": "Feb 17",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 25,
+      "center_date": "Feb 17",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 30,
+      "center_date": "Feb 17",
+      "entropy": 1.1917601481809734,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 35,
+      "center_date": "Feb 17",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 40,
+      "center_date": "Feb 17",
+      "entropy": 1.2567796494470393,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 45,
+      "center_date": "Feb 17",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 50,
+      "center_date": "Feb 17",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 55,
+      "center_date": "Feb 17",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 60,
+      "center_date": "Feb 17",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 65,
+      "center_date": "Feb 17",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 70,
+      "center_date": "Feb 17",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 75,
+      "center_date": "Feb 17",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 80,
+      "center_date": "Feb 17",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 85,
+      "center_date": "Feb 17",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 90,
+      "center_date": "Feb 17",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 95,
+      "center_date": "Feb 17",
+      "entropy": 1.1411535278793057,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 100,
+      "center_date": "Feb 17",
+      "entropy": 1.2192407046368487,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 105,
+      "center_date": "Feb 17",
+      "entropy": 0.9709505944546686,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 110,
+      "center_date": "Feb 17",
+      "entropy": 0.9927744539878083,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 115,
+      "center_date": "Feb 17",
+      "entropy": 1.360964047443681,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 120,
+      "center_date": "Feb 17",
+      "entropy": 1.4060075793123286,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 125,
+      "center_date": "Feb 17",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 130,
+      "center_date": "Feb 17",
+      "entropy": 1.4387586809150081,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 135,
+      "center_date": "Feb 17",
+      "entropy": 1.1812908992306925,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 140,
+      "center_date": "Feb 17",
+      "entropy": 1.295461844238322,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 145,
+      "center_date": "Feb 17",
+      "entropy": 1.295461844238322,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 150,
+      "center_date": "Feb 17",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 155,
+      "center_date": "Feb 17",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 160,
+      "center_date": "Feb 17",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 165,
+      "center_date": "Feb 18",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 170,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 175,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 180,
+      "center_date": "Feb 18",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 185,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 190,
+      "center_date": "Feb 18",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 195,
+      "center_date": "Feb 18",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 200,
+      "center_date": "Feb 18",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 205,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 210,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 215,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 220,
+      "center_date": "Feb 18",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 225,
+      "center_date": "Feb 18",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 230,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 235,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 240,
+      "center_date": "Feb 18",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 245,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 250,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 255,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 260,
+      "center_date": "Feb 18",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 265,
+      "center_date": "Feb 18",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 270,
+      "center_date": "Feb 18",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 275,
+      "center_date": "Feb 18",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 280,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 285,
+      "center_date": "Feb 18",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 290,
+      "center_date": "Feb 18",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 295,
+      "center_date": "Feb 18",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 300,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 305,
+      "center_date": "Feb 18",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 310,
+      "center_date": "Feb 18",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 315,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 320,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 325,
+      "center_date": "Feb 18",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 330,
+      "center_date": "Feb 18",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 335,
+      "center_date": "Feb 18",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 340,
+      "center_date": "Feb 18",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 345,
+      "center_date": "Feb 18",
+      "entropy": 1.295461844238322,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 350,
+      "center_date": "Feb 18",
+      "entropy": 1.1411535278793055,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 355,
+      "center_date": "Feb 19",
+      "entropy": 1.236160254373812,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 360,
+      "center_date": "Feb 19",
+      "entropy": 0.9219280948873623,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 365,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 370,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 375,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 380,
+      "center_date": "Feb 19",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 385,
+      "center_date": "Feb 19",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 390,
+      "center_date": "Feb 19",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 395,
+      "center_date": "Feb 19",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 400,
+      "center_date": "Feb 19",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 405,
+      "center_date": "Feb 19",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 410,
+      "center_date": "Feb 19",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 415,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 420,
+      "center_date": "Feb 19",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 425,
+      "center_date": "Feb 19",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 430,
+      "center_date": "Feb 19",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 435,
+      "center_date": "Feb 19",
+      "entropy": 1.3709505944546687,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 440,
+      "center_date": "Feb 19",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 445,
+      "center_date": "Feb 19",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 450,
+      "center_date": "Feb 19",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 455,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 460,
+      "center_date": "Feb 19",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 465,
+      "center_date": "Feb 19",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 470,
+      "center_date": "Feb 19",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 475,
+      "center_date": "Feb 19",
+      "entropy": 1.4406454496153462,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 480,
+      "center_date": "Feb 19",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 485,
+      "center_date": "Feb 19",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 490,
+      "center_date": "Feb 19",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.95,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 495,
+      "center_date": "Feb 19",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.1,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 500,
+      "center_date": "Feb 19",
+      "entropy": 1.0762976257251988,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 505,
+      "center_date": "Feb 19",
+      "entropy": 1.2344977967946407,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 510,
+      "center_date": "Feb 19",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 515,
+      "center_date": "Feb 19",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 520,
+      "center_date": "Feb 19",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 525,
+      "center_date": "Feb 20",
+      "entropy": 1.278897902987479,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 530,
+      "center_date": "Feb 20",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 535,
+      "center_date": "Feb 20",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 540,
+      "center_date": "Feb 20",
+      "entropy": 1.3709505944546687,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 545,
+      "center_date": "Feb 20",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 550,
+      "center_date": "Feb 20",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 555,
+      "center_date": "Feb 20",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 560,
+      "center_date": "Feb 20",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 565,
+      "center_date": "Feb 20",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 570,
+      "center_date": "Feb 20",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 575,
+      "center_date": "Feb 20",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 580,
+      "center_date": "Feb 20",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 585,
+      "center_date": "Feb 20",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 590,
+      "center_date": "Feb 20",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 595,
+      "center_date": "Feb 20",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 600,
+      "center_date": "Feb 20",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 605,
+      "center_date": "Feb 20",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 610,
+      "center_date": "Feb 21",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 615,
+      "center_date": "Feb 21",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 620,
+      "center_date": "Feb 21",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 625,
+      "center_date": "Feb 21",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 630,
+      "center_date": "Feb 21",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 635,
+      "center_date": "Feb 21",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 640,
+      "center_date": "Feb 21",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 645,
+      "center_date": "Feb 21",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 650,
+      "center_date": "Feb 21",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 655,
+      "center_date": "Feb 21",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 660,
+      "center_date": "Feb 21",
+      "entropy": 1.076297625725199,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.7,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 665,
+      "center_date": "Feb 21",
+      "entropy": 1.2567796494470396,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.7,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 670,
+      "center_date": "Feb 21",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.65,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 675,
+      "center_date": "Feb 21",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.65,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 680,
+      "center_date": "Feb 21",
+      "entropy": 1.4609640474436811,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 685,
+      "center_date": "Feb 21",
+      "entropy": 1.4609640474436811,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 690,
+      "center_date": "Feb 21",
+      "entropy": 1.2344977967946407,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 695,
+      "center_date": "Feb 21",
+      "entropy": 1.1883763717345073,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 700,
+      "center_date": "Feb 21",
+      "entropy": 1.278897902987479,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 705,
+      "center_date": "Feb 21",
+      "entropy": 0.8812908992306927,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 710,
+      "center_date": "Feb 21",
+      "entropy": 0.8812908992306927,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 715,
+      "center_date": "Feb 22",
+      "entropy": 1.1411535278793057,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 720,
+      "center_date": "Feb 22",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 725,
+      "center_date": "Feb 22",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 730,
+      "center_date": "Feb 22",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 735,
+      "center_date": "Feb 22",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 740,
+      "center_date": "Feb 22",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 745,
+      "center_date": "Feb 22",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 750,
+      "center_date": "Feb 22",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 755,
+      "center_date": "Feb 22",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 760,
+      "center_date": "Feb 22",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 765,
+      "center_date": "Feb 22",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 770,
+      "center_date": "Feb 22",
+      "entropy": 1.1812908992306925,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 775,
+      "center_date": "Feb 22",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 780,
+      "center_date": "Feb 22",
+      "entropy": 1.4904685707328282,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 785,
+      "center_date": "Feb 22",
+      "entropy": 1.6477309221191607,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.5,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 790,
+      "center_date": "Feb 22",
+      "entropy": 1.6010143058068347,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.55,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 795,
+      "center_date": "Feb 22",
+      "entropy": 1.6477309221191607,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.5,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 800,
+      "center_date": "Feb 22",
+      "entropy": 1.076297625725199,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 805,
+      "center_date": "Feb 22",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 810,
+      "center_date": "Feb 22",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 815,
+      "center_date": "Feb 22",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 820,
+      "center_date": "Feb 22",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 825,
+      "center_date": "Feb 22",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 830,
+      "center_date": "Feb 22",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 835,
+      "center_date": "Feb 22",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 840,
+      "center_date": "Feb 22",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 845,
+      "center_date": "Feb 22",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 850,
+      "center_date": "Feb 22",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 855,
+      "center_date": "Feb 22",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 860,
+      "center_date": "Feb 22",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 865,
+      "center_date": "Feb 22",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 870,
+      "center_date": "Feb 22",
+      "entropy": 1.0762976257251988,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 875,
+      "center_date": "Feb 22",
+      "entropy": 1.5128876215181604,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.45,
+        "reflective": 0.0,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 880,
+      "center_date": "Feb 22",
+      "entropy": 1.6804820237218405,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.25,
+        "reflective": 0.05,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 885,
+      "center_date": "Feb 22",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.1,
+        "reflective": 0.05,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 890,
+      "center_date": "Feb 22",
+      "entropy": 1.647730922119161,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.3,
+        "reflective": 0.05,
+        "relational": 0.15,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 895,
+      "center_date": "Feb 22",
+      "entropy": 1.2344977967946407,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.5,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 900,
+      "center_date": "Feb 22",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 905,
+      "center_date": "Feb 22",
+      "entropy": 0.8475846798245739,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 910,
+      "center_date": "Feb 22",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.75,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 915,
+      "center_date": "Feb 22",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 920,
+      "center_date": "Feb 22",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 925,
+      "center_date": "Feb 22",
+      "entropy": 0.9219280948873623,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 930,
+      "center_date": "Feb 22",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 935,
+      "center_date": "Feb 22",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 940,
+      "center_date": "Feb 22",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 945,
+      "center_date": "Feb 22",
+      "entropy": 1.4904685707328282,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 950,
+      "center_date": "Feb 22",
+      "entropy": 1.3567796494470397,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 955,
+      "center_date": "Feb 23",
+      "entropy": 1.5954618442383217,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 960,
+      "center_date": "Feb 23",
+      "entropy": 1.5954618442383217,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 965,
+      "center_date": "Feb 23",
+      "entropy": 0.9219280948873623,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.8,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 970,
+      "center_date": "Feb 23",
+      "entropy": 1.295461844238322,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 975,
+      "center_date": "Feb 23",
+      "entropy": 1.2361602543738117,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 980,
+      "center_date": "Feb 23",
+      "entropy": 1.4387586809150081,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 985,
+      "center_date": "Feb 23",
+      "entropy": 1.5128876215181604,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 990,
+      "center_date": "Feb 23",
+      "entropy": 1.1883763717345073,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 995,
+      "center_date": "Feb 23",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1000,
+      "center_date": "Feb 23",
+      "entropy": 1.4406454496153462,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1005,
+      "center_date": "Feb 23",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1010,
+      "center_date": "Feb 23",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1015,
+      "center_date": "Feb 23",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1020,
+      "center_date": "Feb 23",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.85,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1025,
+      "center_date": "Feb 23",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1030,
+      "center_date": "Feb 23",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1035,
+      "center_date": "Feb 23",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.8,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1040,
+      "center_date": "Feb 23",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1045,
+      "center_date": "Feb 23",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1050,
+      "center_date": "Feb 23",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 1.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1055,
+      "center_date": "Feb 23",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1060,
+      "center_date": "Feb 23",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1065,
+      "center_date": "Feb 23",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.95,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1070,
+      "center_date": "Feb 23",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.9,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1075,
+      "center_date": "Feb 23",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.85,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1080,
+      "center_date": "Feb 23",
+      "entropy": 1.0762976257251988,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1085,
+      "center_date": "Feb 23",
+      "entropy": 1.3609640474436813,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1090,
+      "center_date": "Feb 23",
+      "entropy": 1.7659573209491748,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.3,
+        "reflective": 0.0,
+        "relational": 0.25,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1095,
+      "center_date": "Feb 23",
+      "entropy": 1.6010143058068347,
+      "register_distribution": {
+        "philosophical": 0.55,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.25,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1100,
+      "center_date": "Feb 23",
+      "entropy": 1.6709505944546688,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.05,
+        "reflective": 0.1,
+        "relational": 0.2,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1105,
+      "center_date": "Feb 24",
+      "entropy": 1.8814963295286755,
+      "register_distribution": {
+        "philosophical": 0.55,
+        "operational": 0.1,
+        "reflective": 0.1,
+        "relational": 0.15,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1110,
+      "center_date": "Feb 24",
+      "entropy": 1.647730922119161,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1115,
+      "center_date": "Feb 24",
+      "entropy": 2.0086949695628418,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1120,
+      "center_date": "Feb 24",
+      "entropy": 1.7854752972273344,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.3,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1125,
+      "center_date": "Feb 24",
+      "entropy": 1.5166422780956523,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.2,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1130,
+      "center_date": "Feb 24",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1135,
+      "center_date": "Feb 24",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 1.0,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1140,
+      "center_date": "Feb 24",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.95,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1145,
+      "center_date": "Feb 24",
+      "entropy": 0.7219280948873623,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1150,
+      "center_date": "Feb 24",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.1,
+        "reflective": 0.0,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1155,
+      "center_date": "Feb 24",
+      "entropy": 1.278897902987479,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.2,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1160,
+      "center_date": "Feb 24",
+      "entropy": 1.4406454496153462,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.15,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1165,
+      "center_date": "Feb 24",
+      "entropy": 0.9709505944546686,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1170,
+      "center_date": "Feb 24",
+      "entropy": 1.1411535278793055,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1175,
+      "center_date": "Feb 24",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1180,
+      "center_date": "Feb 24",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.75,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1185,
+      "center_date": "Feb 24",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1190,
+      "center_date": "Feb 24",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1195,
+      "center_date": "Feb 24",
+      "entropy": 1.2344977967946407,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.45,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1200,
+      "center_date": "Feb 24",
+      "entropy": 0.8112781244591328,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1205,
+      "center_date": "Feb 24",
+      "entropy": 0.28639695711595625,
+      "register_distribution": {
+        "philosophical": 0.95,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1210,
+      "center_date": "Feb 24",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1215,
+      "center_date": "Feb 24",
+      "entropy": 0.8475846798245739,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1220,
+      "center_date": "Feb 25",
+      "entropy": 1.2567796494470396,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1225,
+      "center_date": "Feb 25",
+      "entropy": 1.5954618442383217,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.0,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 1230,
+      "center_date": "Feb 25",
+      "entropy": 1.8128876215181604,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.1,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 1235,
+      "center_date": "Feb 25",
+      "entropy": 1.9232196723355077,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.2,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.5
+      }
+    },
+    {
+      "center_turn": 1240,
+      "center_date": "Feb 25",
+      "entropy": 1.9149798205164812,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.25,
+        "reflective": 0.2,
+        "relational": 0.05,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 1245,
+      "center_date": "Feb 25",
+      "entropy": 2.165957320949175,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.25,
+        "reflective": 0.2,
+        "relational": 0.05,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1250,
+      "center_date": "Feb 25",
+      "entropy": 1.903701696057348,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.15,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1255,
+      "center_date": "Feb 25",
+      "entropy": 1.5954618442383217,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.1,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1260,
+      "center_date": "Feb 25",
+      "entropy": 1.3361602543738118,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.25,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1265,
+      "center_date": "Feb 25",
+      "entropy": 0.8812908992306927,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.3,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1270,
+      "center_date": "Feb 25",
+      "entropy": 0.9709505944546686,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1275,
+      "center_date": "Feb 25",
+      "entropy": 1.2192407046368487,
+      "register_distribution": {
+        "philosophical": 0.55,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1280,
+      "center_date": "Feb 25",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1285,
+      "center_date": "Feb 25",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1290,
+      "center_date": "Feb 25",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.15,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1295,
+      "center_date": "Feb 25",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.15,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1300,
+      "center_date": "Feb 25",
+      "entropy": 1.7854752972273342,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.0,
+        "reflective": 0.15,
+        "relational": 0.2,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1305,
+      "center_date": "Feb 25",
+      "entropy": 2.1833830982290134,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.25,
+        "reflective": 0.15,
+        "relational": 0.1,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1310,
+      "center_date": "Feb 26",
+      "entropy": 2.088376371734507,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1315,
+      "center_date": "Feb 26",
+      "entropy": 1.9772354454083079,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.45,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1320,
+      "center_date": "Feb 26",
+      "entropy": 1.4854752972273344,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1325,
+      "center_date": "Feb 26",
+      "entropy": 1.55887184844536,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1330,
+      "center_date": "Feb 26",
+      "entropy": 1.4854752972273344,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1335,
+      "center_date": "Feb 26",
+      "entropy": 1.6804820237218405,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.5,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1340,
+      "center_date": "Feb 26",
+      "entropy": 1.7427376486136672,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.5,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1345,
+      "center_date": "Feb 26",
+      "entropy": 1.8567796494470394,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.35,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1350,
+      "center_date": "Feb 27",
+      "entropy": 1.8464393446710154,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.3,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1355,
+      "center_date": "Feb 28",
+      "entropy": 1.7393538721672006,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.35,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1360,
+      "center_date": "Feb 28",
+      "entropy": 1.4060075793123286,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1365,
+      "center_date": "Feb 28",
+      "entropy": 1.4366664819166872,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1370,
+      "center_date": "Feb 28",
+      "entropy": 1.595461844238322,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.45,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1375,
+      "center_date": "Feb 28",
+      "entropy": 1.3361602543738118,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1380,
+      "center_date": "Feb 28",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1385,
+      "center_date": "Feb 28",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1390,
+      "center_date": "Feb 28",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.0,
+        "reflective": 0.15,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1395,
+      "center_date": "Mar 1",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.0,
+        "reflective": 0.15,
+        "relational": 0.25,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1400,
+      "center_date": "Mar 1",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.0,
+        "reflective": 0.15,
+        "relational": 0.25,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1405,
+      "center_date": "Mar 1",
+      "entropy": 1.9232196723355077,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.05,
+        "reflective": 0.15,
+        "relational": 0.2,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1410,
+      "center_date": "Mar 1",
+      "entropy": 2.019973094021975,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.2,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1415,
+      "center_date": "Mar 1",
+      "entropy": 1.9016094970590272,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.4,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1420,
+      "center_date": "Mar 1",
+      "entropy": 1.8577174691301483,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.45,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1425,
+      "center_date": "Mar 1",
+      "entropy": 1.860964047443681,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.4,
+        "reflective": 0.25,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1430,
+      "center_date": "Mar 1",
+      "entropy": 1.7344977967946407,
+      "register_distribution": {
+        "philosophical": 0.05,
+        "operational": 0.45,
+        "reflective": 0.25,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1435,
+      "center_date": "Mar 1",
+      "entropy": 1.9527241956246546,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.3,
+        "reflective": 0.25,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1440,
+      "center_date": "Mar 2",
+      "entropy": 1.8394910703001344,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.45,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1445,
+      "center_date": "Mar 2",
+      "entropy": 1.6010143058068347,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.55,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1450,
+      "center_date": "Mar 2",
+      "entropy": 1.5219280948873621,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1455,
+      "center_date": "Mar 2",
+      "entropy": 1.4577174691301484,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.45,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1460,
+      "center_date": "Mar 2",
+      "entropy": 1.7393538721672006,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.4,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1465,
+      "center_date": "Mar 2",
+      "entropy": 2.041446071165522,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.4,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1470,
+      "center_date": "Mar 2",
+      "entropy": 1.9232196723355077,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.5,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1475,
+      "center_date": "Mar 2",
+      "entropy": 1.9199730940219752,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.45,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1480,
+      "center_date": "Mar 3",
+      "entropy": 1.9833830982290133,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.3,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1485,
+      "center_date": "Mar 3",
+      "entropy": 1.5394910703001345,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.3,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1490,
+      "center_date": "Mar 3",
+      "entropy": 1.8149798205164813,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1495,
+      "center_date": "Mar 3",
+      "entropy": 1.7822287189138017,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1500,
+      "center_date": "Mar 3",
+      "entropy": 1.860964047443681,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 1505,
+      "center_date": "Mar 3",
+      "entropy": 1.8149798205164813,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 1510,
+      "center_date": "Mar 3",
+      "entropy": 1.5394910703001345,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.3,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 1515,
+      "center_date": "Mar 3",
+      "entropy": 1.9833830982290135,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.25,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.35
+      }
+    },
+    {
+      "center_turn": 1520,
+      "center_date": "Mar 3",
+      "entropy": 1.9772354454083079,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.15,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.45
+      }
+    },
+    {
+      "center_turn": 1525,
+      "center_date": "Mar 3",
+      "entropy": 2.0414460711655216,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.25,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 1530,
+      "center_date": "Mar 3",
+      "entropy": 2.019035274338866,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.35,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.35
+      }
+    },
+    {
+      "center_turn": 1535,
+      "center_date": "Mar 3",
+      "entropy": 1.360964047443681,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.5,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.4
+      }
+    },
+    {
+      "center_turn": 1540,
+      "center_date": "Mar 3",
+      "entropy": 1.1411535278793057,
+      "register_distribution": {
+        "philosophical": 0.0,
+        "operational": 0.65,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1545,
+      "center_date": "Mar 3",
+      "entropy": 1.6387586809150083,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.55,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1550,
+      "center_date": "Mar 3",
+      "entropy": 1.490468570732828,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.6,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1555,
+      "center_date": "Mar 3",
+      "entropy": 1.6192407046368487,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.55,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1560,
+      "center_date": "Mar 3",
+      "entropy": 1.675143246409987,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1565,
+      "center_date": "Mar 3",
+      "entropy": 1.4406454496153462,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1570,
+      "center_date": "Mar 3",
+      "entropy": 1.0540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1575,
+      "center_date": "Mar 3",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1580,
+      "center_date": "Mar 3",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1585,
+      "center_date": "Mar 3",
+      "entropy": 1.1917601481809734,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.1,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1590,
+      "center_date": "Mar 3",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.1,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1595,
+      "center_date": "Mar 3",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.2,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1600,
+      "center_date": "Mar 3",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1605,
+      "center_date": "Mar 3",
+      "entropy": 1.7854752972273344,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.3,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1610,
+      "center_date": "Mar 3",
+      "entropy": 1.595461844238322,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.4,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1615,
+      "center_date": "Mar 3",
+      "entropy": 2.1261207468426804,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.1,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1620,
+      "center_date": "Mar 3",
+      "entropy": 2.065957320949175,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.4,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1625,
+      "center_date": "Mar 3",
+      "entropy": 2.1464393446710153,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.2,
+        "reflective": 0.15,
+        "relational": 0.1,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1630,
+      "center_date": "Mar 4",
+      "entropy": 2.1037016960573482,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.1,
+        "reflective": 0.1,
+        "relational": 0.25,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1635,
+      "center_date": "Mar 4",
+      "entropy": 1.7854752972273342,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.1,
+        "reflective": 0.05,
+        "relational": 0.3,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1640,
+      "center_date": "Mar 4",
+      "entropy": 1.721928094887362,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.1,
+        "reflective": 0.1,
+        "relational": 0.4,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1645,
+      "center_date": "Mar 4",
+      "entropy": 2.0883763717345074,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.15,
+        "reflective": 0.15,
+        "relational": 0.35,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1650,
+      "center_date": "Mar 4",
+      "entropy": 2.2709505944546686,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.2,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1655,
+      "center_date": "Mar 4",
+      "entropy": 2.228212945841001,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.1,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1660,
+      "center_date": "Mar 4",
+      "entropy": 1.9854752972273344,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.2,
+        "reflective": 0.3,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1665,
+      "center_date": "Mar 4",
+      "entropy": 1.9709505944546686,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.3,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1670,
+      "center_date": "Mar 4",
+      "entropy": 1.7609640474436812,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.2,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1675,
+      "center_date": "Mar 4",
+      "entropy": 1.6804820237218405,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.25,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1680,
+      "center_date": "Mar 4",
+      "entropy": 1.4577174691301484,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1685,
+      "center_date": "Mar 4",
+      "entropy": 1.7762976257251988,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.35,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1690,
+      "center_date": "Mar 4",
+      "entropy": 1.7659573209491748,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.4,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1695,
+      "center_date": "Mar 4",
+      "entropy": 1.7659573209491748,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.4,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1700,
+      "center_date": "Mar 4",
+      "entropy": 1.7659573209491748,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.4,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1705,
+      "center_date": "Mar 4",
+      "entropy": 1.7659573209491748,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1710,
+      "center_date": "Mar 4",
+      "entropy": 1.7393538721672008,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.4,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.35
+      }
+    },
+    {
+      "center_turn": 1715,
+      "center_date": "Mar 4",
+      "entropy": 1.8128876215181604,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.35
+      }
+    },
+    {
+      "center_turn": 1720,
+      "center_date": "Mar 4",
+      "entropy": 1.7854752972273342,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.5,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1725,
+      "center_date": "Mar 4",
+      "entropy": 1.7344977967946407,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1730,
+      "center_date": "Mar 4",
+      "entropy": 2.065957320949175,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.4,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1735,
+      "center_date": "Mar 4",
+      "entropy": 2.0086949695628418,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.3,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1740,
+      "center_date": "Mar 4",
+      "entropy": 1.8804820237218407,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.1,
+        "reflective": 0.25,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1745,
+      "center_date": "Mar 4",
+      "entropy": 1.590468570732828,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.05,
+        "reflective": 0.25,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1750,
+      "center_date": "Mar 5",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.0,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1755,
+      "center_date": "Mar 5",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.0,
+        "reflective": 0.2,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1760,
+      "center_date": "Mar 5",
+      "entropy": 1.3567796494470397,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.1,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1765,
+      "center_date": "Mar 5",
+      "entropy": 1.6814963295286753,
+      "register_distribution": {
+        "philosophical": 0.55,
+        "operational": 0.15,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1770,
+      "center_date": "Mar 5",
+      "entropy": 1.9954618442383218,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.2,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1775,
+      "center_date": "Mar 5",
+      "entropy": 1.9833830982290135,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.25,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.35
+      }
+    },
+    {
+      "center_turn": 1780,
+      "center_date": "Mar 5",
+      "entropy": 1.9954618442383216,
+      "register_distribution": {
+        "philosophical": 0.3,
+        "operational": 0.3,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1785,
+      "center_date": "Mar 5",
+      "entropy": 1.9149798205164812,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1790,
+      "center_date": "Mar 5",
+      "entropy": 1.3527241956246545,
+      "register_distribution": {
+        "philosophical": 0.25,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1795,
+      "center_date": "Mar 5",
+      "entropy": 1.278897902987479,
+      "register_distribution": {
+        "philosophical": 0.2,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1800,
+      "center_date": "Mar 5",
+      "entropy": 1.278897902987479,
+      "register_distribution": {
+        "philosophical": 0.15,
+        "operational": 0.65,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1805,
+      "center_date": "Mar 5",
+      "entropy": 1.1567796494470395,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.7,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1810,
+      "center_date": "Mar 5",
+      "entropy": 1.295461844238322,
+      "register_distribution": {
+        "philosophical": 0.1,
+        "operational": 0.6,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1815,
+      "center_date": "Mar 5",
+      "entropy": 1.4406454496153462,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1820,
+      "center_date": "Mar 5",
+      "entropy": 1.9567796494470393,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.35,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1825,
+      "center_date": "unknown",
+      "entropy": 1.860964047443681,
+      "register_distribution": {
+        "philosophical": 0.5,
+        "operational": 0.2,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1830,
+      "center_date": "unknown",
+      "entropy": 1.578897902987479,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1835,
+      "center_date": "unknown",
+      "entropy": 1.578897902987479,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1840,
+      "center_date": "unknown",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1845,
+      "center_date": "unknown",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1850,
+      "center_date": "unknown",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1855,
+      "center_date": "unknown",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1860,
+      "center_date": "unknown",
+      "entropy": 1.2567796494470393,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1865,
+      "center_date": "unknown",
+      "entropy": 1.0762976257251988,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.25,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1870,
+      "center_date": "unknown",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1875,
+      "center_date": "unknown",
+      "entropy": 1.4904685707328282,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.25,
+        "reflective": 0.05,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1880,
+      "center_date": "unknown",
+      "entropy": 1.595461844238322,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1885,
+      "center_date": "unknown",
+      "entropy": 1.595461844238322,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.45,
+        "reflective": 0.05,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1890,
+      "center_date": "unknown",
+      "entropy": 1.3609640474436813,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.5,
+        "reflective": 0.0,
+        "relational": 0.1,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1895,
+      "center_date": "unknown",
+      "entropy": 1.2192407046368487,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.55,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1900,
+      "center_date": "unknown",
+      "entropy": 0.934068055375491,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1905,
+      "center_date": "unknown",
+      "entropy": 0.8812908992306927,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.3,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1910,
+      "center_date": "unknown",
+      "entropy": 1.5709505944546687,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.2,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1915,
+      "center_date": "unknown",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.05,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 1920,
+      "center_date": "Mar 7",
+      "entropy": 1.8149798205164813,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.2,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1925,
+      "center_date": "Mar 7",
+      "entropy": 1.8833830982290136,
+      "register_distribution": {
+        "philosophical": 0.35,
+        "operational": 0.25,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.3
+      }
+    },
+    {
+      "center_turn": 1930,
+      "center_date": "Mar 7",
+      "entropy": 1.55887184844536,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.35,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.25
+      }
+    },
+    {
+      "center_turn": 1935,
+      "center_date": "Mar 7",
+      "entropy": 1.7393538721672006,
+      "register_distribution": {
+        "philosophical": 0.4,
+        "operational": 0.35,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.2
+      }
+    },
+    {
+      "center_turn": 1940,
+      "center_date": "Mar 7",
+      "entropy": 1.4166422780956525,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.2,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1945,
+      "center_date": "Mar 7",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 1950,
+      "center_date": "Mar 7",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.05,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1955,
+      "center_date": "Mar 7",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.15,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1960,
+      "center_date": "Mar 7",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.15,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1965,
+      "center_date": "Mar 7",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.15,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1970,
+      "center_date": "Mar 7",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.15,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1975,
+      "center_date": "Mar 7",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1980,
+      "center_date": "Mar 7",
+      "entropy": 0.747584679824574,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1985,
+      "center_date": "Mar 7",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 1990,
+      "center_date": "Mar 7",
+      "entropy": 0.0,
+      "register_distribution": {
+        "philosophical": 1.0,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 1995,
+      "center_date": "Mar 7",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.0,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 2000,
+      "center_date": "Mar 7",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.05,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 2005,
+      "center_date": "Mar 7",
+      "entropy": 1.4190352743388661,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.05,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2010,
+      "center_date": "Mar 7",
+      "entropy": 1.578897902987479,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.05,
+        "reflective": 0.15,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2015,
+      "center_date": "Mar 7",
+      "entropy": 1.5954618442383217,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.1,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 2020,
+      "center_date": "Mar 7",
+      "entropy": 1.7332062193464952,
+      "register_distribution": {
+        "philosophical": 0.6,
+        "operational": 0.1,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 2025,
+      "center_date": "Mar 7",
+      "entropy": 1.578897902987479,
+      "register_distribution": {
+        "philosophical": 0.65,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2030,
+      "center_date": "Mar 7",
+      "entropy": 1.419035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.15,
+        "reflective": 0.05,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2035,
+      "center_date": "Mar 7",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 2040,
+      "center_date": "Mar 7",
+      "entropy": 0.6098403047164004,
+      "register_distribution": {
+        "philosophical": 0.85,
+        "operational": 0.15,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 2045,
+      "center_date": "Mar 7",
+      "entropy": 0.4689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.1,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.0
+      }
+    },
+    {
+      "center_turn": 2050,
+      "center_date": "Mar 7",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.1,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2055,
+      "center_date": "Mar 7",
+      "entropy": 0.5689955935892812,
+      "register_distribution": {
+        "philosophical": 0.9,
+        "operational": 0.0,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2060,
+      "center_date": "Mar 7",
+      "entropy": 1.0219280948873624,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2065,
+      "center_date": "Mar 7",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.05,
+        "reflective": 0.0,
+        "relational": 0.05,
+        "mixed": 0.15
+      }
+    },
+    {
+      "center_turn": 2070,
+      "center_date": "Mar 8",
+      "entropy": 1.1917601481809736,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.05,
+        "reflective": 0.1,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2075,
+      "center_date": "Mar 8",
+      "entropy": 1.319035274338866,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.05,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2080,
+      "center_date": "Mar 8",
+      "entropy": 0.8841837197791889,
+      "register_distribution": {
+        "philosophical": 0.8,
+        "operational": 0.0,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2085,
+      "center_date": "Mar 8",
+      "entropy": 1.1540157730728,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.05,
+        "reflective": 0.15,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2090,
+      "center_date": "Mar 8",
+      "entropy": 1.2567796494470393,
+      "register_distribution": {
+        "philosophical": 0.7,
+        "operational": 0.2,
+        "reflective": 0.05,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2095,
+      "center_date": "Mar 8",
+      "entropy": 0.9917601481809735,
+      "register_distribution": {
+        "philosophical": 0.75,
+        "operational": 0.2,
+        "reflective": 0.0,
+        "relational": 0.0,
+        "mixed": 0.05
+      }
+    },
+    {
+      "center_turn": 2100,
+      "center_date": "Mar 8",
+      "entropy": 1.8192407046368488,
+      "register_distribution": {
+        "philosophical": 0.55,
+        "operational": 0.2,
+        "reflective": 0.1,
+        "relational": 0.05,
+        "mixed": 0.1
+      }
+    },
+    {
+      "center_turn": 2105,
+      "center_date": "Mar 9",
+      "entropy": 1.8822287189138014,
+      "register_distribution": {
+        "philosophical": 0.45,
+        "operational": 0.15,
+        "reflective": 0.3,
+        "relational": 0.05,
+        "mixed": 0.05
+      }
+    }
+  ],
+  "mean_entropy": 1.101355974503859,
+  "max_entropy_moment": {
+    "center_turn": 1650,
+    "center_date": "Mar 4",
+    "entropy": 2.2709505944546686,
+    "register_distribution": {
+      "philosophical": 0.2,
+      "operational": 0.3,
+      "reflective": 0.15,
+      "relational": 0.2,
+      "mixed": 0.15
+    }
+  },
+  "min_entropy_moment": {
+    "center_turn": 15,
+    "center_date": "Feb 17",
+    "entropy": 0.0,
+    "register_distribution": {
+      "philosophical": 0.0,
+      "operational": 1.0,
+      "reflective": 0.0,
+      "relational": 0.0,
+      "mixed": 0.0
+    }
+  }
+}

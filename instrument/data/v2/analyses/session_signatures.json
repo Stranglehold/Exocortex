@@ -1,0 +1,760 @@
+{
+  "sessions": [
+    {
+      "date": "Feb 17",
+      "date_index": 0,
+      "turn_range": [
+        1,
+        160
+      ],
+      "turn_count": 160,
+      "opus_count": 81,
+      "jake_count": 79,
+      "umap_x": 1.5696141719818115,
+      "umap_y": 3.2896130084991455,
+      "umap_z": 1.989693284034729,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8277614712715149,
+        "operational": 0.8916338682174683,
+        "reflective": 0.8298864960670471,
+        "relational": 0.7730801701545715,
+        "mixed": 0.8809201717376709
+      },
+      "internal_arc_length": 124.92409064027262,
+      "entropy": 1.0915178394129008,
+      "register_distribution": {
+        "operational": 122,
+        "relational": 2,
+        "mixed": 25,
+        "philosophical": 10,
+        "reflective": 1
+      },
+      "source_distribution": {
+        "doc1": 160
+      },
+      "displacement_from_previous": 0.0
+    },
+    {
+      "date": "Feb 18",
+      "date_index": 1,
+      "turn_range": [
+        161,
+        351
+      ],
+      "turn_count": 191,
+      "opus_count": 97,
+      "jake_count": 94,
+      "umap_x": 1.0408873558044434,
+      "umap_y": 3.4023146629333496,
+      "umap_z": 2.2556192874908447,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8369362354278564,
+        "operational": 0.9034948348999023,
+        "reflective": 0.8287847638130188,
+        "relational": 0.7592891454696655,
+        "mixed": 0.8831512928009033
+      },
+      "internal_arc_length": 148.9570342877565,
+      "entropy": 0.6495004284988923,
+      "register_distribution": {
+        "operational": 168,
+        "mixed": 10,
+        "philosophical": 13
+      },
+      "source_distribution": {
+        "doc1": 191
+      },
+      "displacement_from_previous": 0.6024702053806522
+    },
+    {
+      "date": "Feb 19",
+      "date_index": 2,
+      "turn_range": [
+        352,
+        520
+      ],
+      "turn_count": 169,
+      "opus_count": 85,
+      "jake_count": 84,
+      "umap_x": 0.9052461981773376,
+      "umap_y": 3.1758487224578857,
+      "umap_z": 1.9332125186920166,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8650285601615906,
+        "operational": 0.915050745010376,
+        "reflective": 0.851747453212738,
+        "relational": 0.7914667725563049,
+        "mixed": 0.8997359871864319
+      },
+      "internal_arc_length": 127.88232506160982,
+      "entropy": 1.1876069182453584,
+      "register_distribution": {
+        "operational": 121,
+        "mixed": 13,
+        "relational": 3,
+        "philosophical": 32
+      },
+      "source_distribution": {
+        "doc1": 169
+      },
+      "displacement_from_previous": 0.41669109710330826
+    },
+    {
+      "date": "Feb 20",
+      "date_index": 3,
+      "turn_range": [
+        521,
+        605
+      ],
+      "turn_count": 85,
+      "opus_count": 43,
+      "jake_count": 42,
+      "umap_x": 1.3446781635284424,
+      "umap_y": 4.147303581237793,
+      "umap_z": 2.4358651638031006,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.83645099401474,
+        "operational": 0.9102968573570251,
+        "reflective": 0.8447599411010742,
+        "relational": 0.7699124813079834,
+        "mixed": 0.8981911540031433
+      },
+      "internal_arc_length": 62.72152983481554,
+      "entropy": 0.8664312208772225,
+      "register_distribution": {
+        "operational": 69,
+        "philosophical": 5,
+        "mixed": 11
+      },
+      "source_distribution": {
+        "doc1": 85
+      },
+      "displacement_from_previous": 1.1787640461333189
+    },
+    {
+      "date": "Feb 21",
+      "date_index": 4,
+      "turn_range": [
+        606,
+        713
+      ],
+      "turn_count": 108,
+      "opus_count": 54,
+      "jake_count": 54,
+      "umap_x": 0.7223849892616272,
+      "umap_y": 3.589808225631714,
+      "umap_z": 2.0260250568389893,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8641080856323242,
+        "operational": 0.9154253005981445,
+        "reflective": 0.85655277967453,
+        "relational": 0.7881006598472595,
+        "mixed": 0.902417778968811
+      },
+      "internal_arc_length": 79.31538697121799,
+      "entropy": 1.181131203435159,
+      "register_distribution": {
+        "operational": 80,
+        "philosophical": 13,
+        "mixed": 13,
+        "reflective": 1,
+        "relational": 1
+      },
+      "source_distribution": {
+        "doc1": 108
+      },
+      "displacement_from_previous": 0.9306012999871489
+    },
+    {
+      "date": "Feb 22",
+      "date_index": 5,
+      "turn_range": [
+        714,
+        950
+      ],
+      "turn_count": 237,
+      "opus_count": 121,
+      "jake_count": 116,
+      "umap_x": 0.9119184613227844,
+      "umap_y": 3.3954432010650635,
+      "umap_z": 1.9545221328735352,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8424038887023926,
+        "operational": 0.9129005670547485,
+        "reflective": 0.8492078185081482,
+        "relational": 0.7723469734191895,
+        "mixed": 0.8975980877876282
+      },
+      "internal_arc_length": 181.12925512177426,
+      "entropy": 1.1539207674301717,
+      "register_distribution": {
+        "operational": 183,
+        "philosophical": 26,
+        "mixed": 18,
+        "reflective": 4,
+        "relational": 6
+      },
+      "source_distribution": {
+        "doc1": 237
+      },
+      "displacement_from_previous": 0.2807371866033454
+    },
+    {
+      "date": "Feb 23",
+      "date_index": 6,
+      "turn_range": [
+        951,
+        1134
+      ],
+      "turn_count": 155,
+      "opus_count": 78,
+      "jake_count": 77,
+      "umap_x": 0.5465829372406006,
+      "umap_y": 3.276151180267334,
+      "umap_z": 1.442823052406311,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8756729960441589,
+        "operational": 0.916404128074646,
+        "reflective": 0.863520622253418,
+        "relational": 0.8020461201667786,
+        "mixed": 0.9086740016937256
+      },
+      "internal_arc_length": 116.1209595911971,
+      "entropy": 1.4445412182948865,
+      "register_distribution": {
+        "mixed": 16,
+        "relational": 6,
+        "philosophical": 32,
+        "operational": 100,
+        "reflective": 1
+      },
+      "source_distribution": {
+        "doc1": 155
+      },
+      "displacement_from_previous": 0.6399504514674652
+    },
+    {
+      "date": "Feb 24",
+      "date_index": 7,
+      "turn_range": [
+        1104,
+        1219
+      ],
+      "turn_count": 114,
+      "opus_count": 58,
+      "jake_count": 56,
+      "umap_x": 0.34474122524261475,
+      "umap_y": 2.0050063133239746,
+      "umap_z": -0.20395103096961975,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9116283059120178,
+        "operational": 0.8961046934127808,
+        "reflective": 0.8566259145736694,
+        "relational": 0.8261587023735046,
+        "mixed": 0.8886590003967285
+      },
+      "internal_arc_length": 83.91556988788754,
+      "entropy": 1.59658770017937,
+      "register_distribution": {
+        "philosophical": 65,
+        "reflective": 4,
+        "mixed": 6,
+        "operational": 33,
+        "relational": 6
+      },
+      "source_distribution": {
+        "doc1": 114
+      },
+      "displacement_from_previous": 2.090075173561316
+    },
+    {
+      "date": "Feb 25",
+      "date_index": 8,
+      "turn_range": [
+        1220,
+        1309
+      ],
+      "turn_count": 90,
+      "opus_count": 45,
+      "jake_count": 45,
+      "umap_x": 1.0172094106674194,
+      "umap_y": 2.2086336612701416,
+      "umap_z": -0.6296917200088501,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9097272157669067,
+        "operational": 0.8858725428581238,
+        "reflective": 0.8736151456832886,
+        "relational": 0.8381868004798889,
+        "mixed": 0.8895449042320251
+      },
+      "internal_arc_length": 66.80064866861342,
+      "entropy": 1.9240236658403385,
+      "register_distribution": {
+        "philosophical": 45,
+        "mixed": 18,
+        "reflective": 8,
+        "relational": 5,
+        "operational": 14
+      },
+      "source_distribution": {
+        "doc1": 90
+      },
+      "displacement_from_previous": 0.8215428726145201
+    },
+    {
+      "date": "Feb 26",
+      "date_index": 9,
+      "turn_range": [
+        1310,
+        1347
+      ],
+      "turn_count": 38,
+      "opus_count": 19,
+      "jake_count": 19,
+      "umap_x": 1.1159656047821045,
+      "umap_y": 2.895301580429077,
+      "umap_z": -0.1134812980890274,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8861640095710754,
+        "operational": 0.9079446792602539,
+        "reflective": 0.870037317276001,
+        "relational": 0.8044446110725403,
+        "mixed": 0.9056880474090576
+      },
+      "internal_arc_length": 27.57563266583785,
+      "entropy": 1.679996246109244,
+      "register_distribution": {
+        "operational": 19,
+        "philosophical": 10,
+        "mixed": 7,
+        "reflective": 2
+      },
+      "source_distribution": {
+        "doc1": 38
+      },
+      "displacement_from_previous": 0.8647189235680697
+    },
+    {
+      "date": "Feb 27",
+      "date_index": 10,
+      "turn_range": [
+        1348,
+        1351
+      ],
+      "turn_count": 4,
+      "opus_count": 2,
+      "jake_count": 2,
+      "umap_x": 0.5574796795845032,
+      "umap_y": 1.8402512073516846,
+      "umap_z": -0.3770175874233246,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.8477255702018738,
+        "operational": 0.8305515646934509,
+        "reflective": 0.8207270503044128,
+        "relational": 0.7711861729621887,
+        "mixed": 0.8435322046279907
+      },
+      "internal_arc_length": 2.236222730625706,
+      "entropy": 1.5,
+      "register_distribution": {
+        "operational": 1,
+        "philosophical": 2,
+        "mixed": 1
+      },
+      "source_distribution": {
+        "doc1": 4
+      },
+      "displacement_from_previous": 1.2224930241807748
+    },
+    {
+      "date": "Feb 28",
+      "date_index": 11,
+      "turn_range": [
+        1352,
+        1392
+      ],
+      "turn_count": 41,
+      "opus_count": 21,
+      "jake_count": 20,
+      "umap_x": 0.5059323906898499,
+      "umap_y": 2.0648748874664307,
+      "umap_z": -0.04452808201313019,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9148649573326111,
+        "operational": 0.8994466066360474,
+        "reflective": 0.8630848526954651,
+        "relational": 0.8385522961616516,
+        "mixed": 0.9036812782287598
+      },
+      "internal_arc_length": 27.77088512761893,
+      "entropy": 1.433038832629258,
+      "register_distribution": {
+        "mixed": 3,
+        "philosophical": 25,
+        "operational": 11,
+        "relational": 2
+      },
+      "source_distribution": {
+        "doc1": 41
+      },
+      "displacement_from_previous": 0.4045518407677764
+    },
+    {
+      "date": "Mar 1",
+      "date_index": 12,
+      "turn_range": [
+        1393,
+        1435
+      ],
+      "turn_count": 43,
+      "opus_count": 22,
+      "jake_count": 21,
+      "umap_x": 1.2817797660827637,
+      "umap_y": 2.309800148010254,
+      "umap_z": -0.34356504678726196,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.8911646604537964,
+        "operational": 0.8741890788078308,
+        "reflective": 0.8718213438987732,
+        "relational": 0.8361290097236633,
+        "mixed": 0.8755043745040894
+      },
+      "internal_arc_length": 31.59139398024392,
+      "entropy": 2.2535789107338218,
+      "register_distribution": {
+        "philosophical": 13,
+        "relational": 5,
+        "reflective": 9,
+        "mixed": 7,
+        "operational": 9
+      },
+      "source_distribution": {
+        "doc1": 43
+      },
+      "displacement_from_previous": 0.8668048450821315
+    },
+    {
+      "date": "Mar 2",
+      "date_index": 13,
+      "turn_range": [
+        1436,
+        1477
+      ],
+      "turn_count": 42,
+      "opus_count": 21,
+      "jake_count": 21,
+      "umap_x": 0.6075605750083923,
+      "umap_y": 2.734940767288208,
+      "umap_z": 0.2873614728450775,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.8967976570129395,
+        "operational": 0.9186449646949768,
+        "reflective": 0.8827365636825562,
+        "relational": 0.8332175016403198,
+        "mixed": 0.9170793890953064
+      },
+      "internal_arc_length": 30.403737274547492,
+      "entropy": 1.8091671917607244,
+      "register_distribution": {
+        "operational": 20,
+        "mixed": 8,
+        "philosophical": 11,
+        "reflective": 2,
+        "relational": 1
+      },
+      "source_distribution": {
+        "doc1": 42
+      },
+      "displacement_from_previous": 1.0165551322719288
+    },
+    {
+      "date": "Mar 3",
+      "date_index": 14,
+      "turn_range": [
+        1478,
+        1626
+      ],
+      "turn_count": 149,
+      "opus_count": 75,
+      "jake_count": 74,
+      "umap_x": 0.8927850723266602,
+      "umap_y": 2.493185043334961,
+      "umap_z": 0.11256859451532364,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.910335898399353,
+        "operational": 0.9112263917922974,
+        "reflective": 0.8744837641716003,
+        "relational": 0.8352882862091064,
+        "mixed": 0.9123408794403076
+      },
+      "internal_arc_length": 113.59072428741266,
+      "entropy": 1.9337251930397417,
+      "register_distribution": {
+        "operational": 43,
+        "mixed": 36,
+        "philosophical": 57,
+        "relational": 5,
+        "reflective": 8
+      },
+      "source_distribution": {
+        "doc1": 149
+      },
+      "displacement_from_previous": 0.4127364707042707
+    },
+    {
+      "date": "Mar 4",
+      "date_index": 15,
+      "turn_range": [
+        1627,
+        1749
+      ],
+      "turn_count": 123,
+      "opus_count": 63,
+      "jake_count": 60,
+      "umap_x": 1.1886274814605713,
+      "umap_y": 2.5816478729248047,
+      "umap_z": -0.019360223785042763,
+      "dominant_register": "mixed",
+      "centroid_distances": {
+        "philosophical": 0.8975184559822083,
+        "operational": 0.9000300765037537,
+        "reflective": 0.8795758485794067,
+        "relational": 0.8477373123168945,
+        "mixed": 0.9016613960266113
+      },
+      "internal_arc_length": 87.88718020073696,
+      "entropy": 2.147081676049646,
+      "register_distribution": {
+        "philosophical": 41,
+        "operational": 36,
+        "reflective": 15,
+        "relational": 10,
+        "mixed": 21
+      },
+      "source_distribution": {
+        "doc1": 123
+      },
+      "displacement_from_previous": 0.3357880527346518
+    },
+    {
+      "date": "Mar 5",
+      "date_index": 16,
+      "turn_range": [
+        1750,
+        1821
+      ],
+      "turn_count": 72,
+      "opus_count": 37,
+      "jake_count": 35,
+      "umap_x": 0.23557676374912262,
+      "umap_y": 2.9739439487457275,
+      "umap_z": 0.4564248323440552,
+      "dominant_register": "operational",
+      "centroid_distances": {
+        "philosophical": 0.903485119342804,
+        "operational": 0.9142707586288452,
+        "reflective": 0.8700390458106995,
+        "relational": 0.820368230342865,
+        "mixed": 0.911272406578064
+      },
+      "internal_arc_length": 53.09511398685473,
+      "entropy": 1.7966579611610451,
+      "register_distribution": {
+        "philosophical": 26,
+        "reflective": 3,
+        "mixed": 14,
+        "operational": 28,
+        "relational": 1
+      },
+      "source_distribution": {
+        "doc1": 72
+      },
+      "displacement_from_previous": 1.1351534263131886
+    },
+    {
+      "date": "Mar 6",
+      "date_index": 17,
+      "turn_range": [
+        1916,
+        1916
+      ],
+      "turn_count": 1,
+      "opus_count": 1,
+      "jake_count": 0,
+      "umap_x": 1.2255785465240479,
+      "umap_y": 2.4775068759918213,
+      "umap_z": -1.3304297924041748,
+      "dominant_register": "reflective",
+      "centroid_distances": {
+        "philosophical": 0.8460004329681396,
+        "operational": 0.8125656247138977,
+        "reflective": 0.8621593713760376,
+        "relational": 0.7658507823944092,
+        "mixed": 0.8261715769767761
+      },
+      "internal_arc_length": 0.0,
+      "entropy": 0.0,
+      "register_distribution": {
+        "reflective": 1
+      },
+      "source_distribution": {
+        "doc2": 1
+      },
+      "displacement_from_previous": 2.102237557243742
+    },
+    {
+      "date": "Mar 7",
+      "date_index": 18,
+      "turn_range": [
+        1917,
+        2066
+      ],
+      "turn_count": 150,
+      "opus_count": 75,
+      "jake_count": 75,
+      "umap_x": -0.265566885471344,
+      "umap_y": 1.8023972511291504,
+      "umap_z": -1.7884883880615234,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9255184531211853,
+        "operational": 0.884649395942688,
+        "reflective": 0.8649613261222839,
+        "relational": 0.8370028734207153,
+        "mixed": 0.8864326477050781
+      },
+      "internal_arc_length": 101.12928062576833,
+      "entropy": 1.3648025163000335,
+      "register_distribution": {
+        "reflective": 7,
+        "mixed": 13,
+        "philosophical": 109,
+        "operational": 15,
+        "relational": 6
+      },
+      "source_distribution": {
+        "doc2": 150
+      },
+      "displacement_from_previous": 1.699736856692389
+    },
+    {
+      "date": "Mar 8",
+      "date_index": 19,
+      "turn_range": [
+        2067,
+        2101
+      ],
+      "turn_count": 35,
+      "opus_count": 25,
+      "jake_count": 10,
+      "umap_x": -0.5812515616416931,
+      "umap_y": 2.27093505859375,
+      "umap_z": -1.9662320613861084,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.909446120262146,
+        "operational": 0.8887392282485962,
+        "reflective": 0.869411051273346,
+        "relational": 0.8185132145881653,
+        "mixed": 0.8897254467010498
+      },
+      "internal_arc_length": 23.926724437904813,
+      "entropy": 1.3119635955536793,
+      "register_distribution": {
+        "mixed": 3,
+        "philosophical": 25,
+        "reflective": 3,
+        "operational": 4
+      },
+      "source_distribution": {
+        "doc3": 35
+      },
+      "displacement_from_previous": 0.5922645567644828
+    },
+    {
+      "date": "Mar 9",
+      "date_index": 20,
+      "turn_range": [
+        2102,
+        2117
+      ],
+      "turn_count": 16,
+      "opus_count": 11,
+      "jake_count": 5,
+      "umap_x": 1.074216604232788,
+      "umap_y": 2.0908055305480957,
+      "umap_z": -1.3293635845184326,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.8829238414764404,
+        "operational": 0.8564982414245605,
+        "reflective": 0.8745477795600891,
+        "relational": 0.8384018540382385,
+        "mixed": 0.87489914894104
+      },
+      "internal_arc_length": 12.935847842771361,
+      "entropy": 1.5435644431995963,
+      "register_distribution": {
+        "philosophical": 7,
+        "reflective": 7,
+        "mixed": 1,
+        "relational": 1
+      },
+      "source_distribution": {
+        "doc3": 16
+      },
+      "displacement_from_previous": 1.782869303096983
+    },
+    {
+      "date": "unknown",
+      "date_index": -1,
+      "turn_range": [
+        0,
+        1915
+      ],
+      "turn_count": 95,
+      "opus_count": 47,
+      "jake_count": 48,
+      "umap_x": -0.5345469117164612,
+      "umap_y": 2.0002284049987793,
+      "umap_z": -1.253566861152649,
+      "dominant_register": "philosophical",
+      "centroid_distances": {
+        "philosophical": 0.9225638508796692,
+        "operational": 0.8975108861923218,
+        "reflective": 0.8527871966362,
+        "relational": 0.8213061690330505,
+        "mixed": 0.8842145204544067
+      },
+      "internal_arc_length": 64.03808457766293,
+      "entropy": 1.4044674900401637,
+      "register_distribution": {
+        "reflective": 3,
+        "philosophical": 62,
+        "mixed": 3,
+        "relational": 4,
+        "operational": 23
+      },
+      "source_distribution": {
+        "doc1": 93,
+        "doc2": 2
+      },
+      "displacement_from_previous": 1.6130931185753525
+    }
+  ]
+}
