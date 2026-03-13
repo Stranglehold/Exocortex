@@ -39,6 +39,9 @@ from activation import run_activation_scan
 import audit
 import retcon_ledger
 import source_intel
+import contamination_cascade
+import hypothesis
+import narrative_drift
 
 logging.basicConfig(level=logging.INFO, format='[APP] %(message)s', force=True)
 log = logging.getLogger(__name__)
@@ -143,9 +146,11 @@ def health():
             'sources_count': sources_count,
             'network_edges': edge_count,
             'last_ingestion': counts['last_ingestion'].isoformat() if counts['last_ingestion'] else None,
-            'capabilities': ['drift', 'contradictions', 'silence', 'activation', 'record',
-                             'staging', 'network'],
-            'version': '2.0.0',
+            'capabilities': [
+                'drift', 'contradictions', 'silence', 'activation', 'record',
+                'staging', 'network', 'cascade', 'hypotheses', 'topic_drift',
+            ],
+            'version': '2.1.0',
         })
     except Exception as e:
         return jsonify({'status': 'degraded', 'error': str(e)}), 503
@@ -639,6 +644,238 @@ def admin_register_edge():
             session_id=g.session_id,
         )
         return jsonify({'status': 'registered', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: run contamination cascade
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/run_cascade', methods=['POST'])
+@require_analyst_auth
+def admin_run_cascade():
+    """
+    Trigger the contamination cascade for a source whose trust score has dropped.
+
+    Traces all PROMOTED claims where the source contributed, applies tier logic:
+      - Survived (>= 2 predictions confirmed independently): re-promoted
+      - Immediate return (>= 80% load): returned to staged without review
+      - Urgent flag (>= 50% load): flagged for operator decision
+      - Review flag (< 50% load): confidence haircut, flag for review
+
+    Input: {
+        source_id:       int,
+        new_trust_score: float (0.0–1.0),
+        analyst_token:   str
+    }
+    Output: contamination report
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'source_id')
+    require_field(data, 'new_trust_score')
+
+    new_trust = float(data['new_trust_score'])
+    if not (0.0 <= new_trust <= 1.0):
+        abort(400, description="new_trust_score must be between 0.0 and 1.0")
+
+    try:
+        report = contamination_cascade.run_cascade(
+            source_id=int(data['source_id']),
+            new_trust_score=new_trust,
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'cascade_complete', **report})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/promoted — promoted claims with snapshots
+# ---------------------------------------------------------------------------
+
+@app.route('/api/promoted', methods=['POST'])
+@require_analyst_auth
+def promoted_claims():
+    """
+    List PROMOTED claims with their frozen promotion snapshots.
+
+    Input:  { topic?: str, limit?: int, analyst_token: str }
+    Output: { claims: [...], total: int }
+    """
+    data = request.get_json(force=True)
+    topic = data.get('topic')
+    limit = min(int(data.get('limit', 100)), 500)
+
+    claims = retcon_ledger.get_promoted_claims(topic=topic, limit=limit)
+
+    audit.log_event(
+        session_id=g.session_id,
+        event_type='analyst_query',
+        actor='analyst',
+        action=f"Promoted claims query: topic={topic!r}, returned {len(claims)}",
+        data_accessed={'topic': topic, 'result_count': len(claims)},
+    )
+
+    return jsonify({'claims': claims, 'total': len(claims)})
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/topic_drift — narrative framing shift detection
+# ---------------------------------------------------------------------------
+
+@app.route('/api/topic_drift', methods=['POST'])
+def topic_drift():
+    """
+    Detect narrative framing drift for a topic.
+
+    Compares current window vs prior window. Returns drift signals
+    (technique_shift, cluster_shift, salience_shift, volume_shift,
+    confidence_shift), a drift_score (0.0–1.0), and a drifted flag.
+
+    Input:  { topic: str, window_hours?: int (default 168 = 7 days) }
+    Output: drift analysis dict
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'topic')
+
+    topic_tag    = data['topic']
+    window_hours = int(data.get('window_hours', 168))
+    if window_hours < 1:
+        abort(400, description="window_hours must be >= 1")
+
+    result = narrative_drift.detect_drift(topic_tag=topic_tag, window_hours=window_hours)
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: hypothesis registry
+# ---------------------------------------------------------------------------
+
+@app.route('/api/hypotheses', methods=['GET', 'POST'])
+def hypotheses_list():
+    """
+    List hypotheses with optional filters.
+
+    GET /api/hypotheses?observation_id=N&status=ACTIVE
+    POST /api/hypotheses  { observation_id?: int, status?: str, limit?: int }
+    Output: { hypotheses: [...], total: int }
+    """
+    if request.method == 'GET':
+        data = request.args
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+
+    observation_id = data.get('observation_id')
+    status_filter  = data.get('status')
+    limit          = min(int(data.get('limit', 50)), 200)
+
+    try:
+        hyps = hypothesis.get_hypotheses(
+            observation_id=int(observation_id) if observation_id else None,
+            status=status_filter,
+            limit=limit,
+        )
+    except ValueError as e:
+        abort(400, description=str(e))
+
+    return jsonify({'hypotheses': hyps, 'total': len(hyps)})
+
+
+@app.route('/api/hypothesis', methods=['POST'])
+@require_analyst_auth
+def hypothesis_register():
+    """
+    Register a new hypothesis for an observation.
+
+    Multiple hypotheses can be registered per observation_id (Chamberlin's method).
+
+    Input: {
+        observation_id:      int,
+        explanation:         str,
+        initial_confidence?: float (default 0.0),
+        predictions?:        [{"prediction": str, "falsifiable_by": str|null}, ...],
+        analyst_token:       str
+    }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'observation_id')
+    require_field(data, 'explanation')
+
+    try:
+        result = hypothesis.register_hypothesis(
+            observation_id=int(data['observation_id']),
+            explanation=data['explanation'],
+            initial_confidence=float(data.get('initial_confidence', 0.0)),
+            predictions=data.get('predictions'),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'registered', **result}), 201
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/hypothesis/<int:hypothesis_id>/confirm_prediction', methods=['POST'])
+@require_analyst_auth
+def hypothesis_confirm_prediction(hypothesis_id: int):
+    """
+    Record that a prediction came true.
+
+    Input: { prediction_idx: int, analyst_token: str }
+    """
+    data = request.get_json(force=True)
+    if data.get('prediction_idx') is None:
+        abort(400, description="Missing required field: prediction_idx")
+
+    try:
+        result = hypothesis.confirm_prediction(
+            hypothesis_id=hypothesis_id,
+            prediction_idx=int(data['prediction_idx']),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'confirmed', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/hypothesis/<int:hypothesis_id>/falsify', methods=['POST'])
+@require_analyst_auth
+def hypothesis_falsify(hypothesis_id: int):
+    """
+    Mark a hypothesis as falsified.
+
+    Input: { evidence: str, analyst_token: str }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'evidence')
+
+    try:
+        result = hypothesis.falsify_hypothesis(
+            hypothesis_id=hypothesis_id,
+            evidence=data['evidence'],
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'falsified', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/hypothesis/<int:hypothesis_id>/promote', methods=['POST'])
+@require_analyst_auth
+def hypothesis_promote(hypothesis_id: int):
+    """
+    Promote the winning hypothesis.
+
+    Input: { analyst_token: str }
+    """
+    data = request.get_json(force=True, silent=True) or {}
+
+    try:
+        result = hypothesis.promote_hypothesis(
+            hypothesis_id=hypothesis_id,
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'promoted', **result})
     except ValueError as e:
         abort(400, description=str(e))
 
