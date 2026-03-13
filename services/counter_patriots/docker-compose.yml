@@ -26,7 +26,11 @@ services:
       dockerfile: Dockerfile
     container_name: cp_app
     environment:
-      CP_DB_URL: postgresql://cp_user:${CP_DB_PASSWORD:-cp_dev_password}@postgres:5432/counter_patriots
+      # Application connects as cds_app — non-superuser with REVOKE on audit_log.
+      # Run ./install.sh --migrate first to create the cds_app role.
+      # cp_user is admin-only: used by migrations, never by the running service.
+      CP_DB_URL: postgresql://cds_app:${CP_APP_DB_PASSWORD:-cds_app_dev_password}@postgres:5432/counter_patriots
+      CP_APP_DB_PASSWORD: ${CP_APP_DB_PASSWORD:-cds_app_dev_password}
       CP_LLM_URL: ${CP_LLM_URL:-http://host.docker.internal:1234/v1}
       CP_LLM_MODEL: ${CP_LLM_MODEL:-qwen2.5-14b-instruct}
       CP_ANALYST_TOKEN: ${CP_ANALYST_TOKEN:-dev_analyst_token}

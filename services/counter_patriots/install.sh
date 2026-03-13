@@ -27,6 +27,22 @@ if [[ "$1" == "--stop" ]]; then
     exit 0
 fi
 
+if [[ "$1" == "--migrate" ]]; then
+    echo "[cp] Running CDS v2 Phase 1 migration..."
+    echo "[cp] Waiting for PostgreSQL to be ready..."
+    for i in $(seq 1 30); do
+        if docker exec cp_postgres pg_isready -U cp_user -d counter_patriots > /dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+    done
+    docker exec -i cp_postgres psql -U cp_user -d counter_patriots \
+        < "$SCRIPT_DIR/migrations/001_cds_v2_founding.sql"
+    echo "[cp] Migration complete."
+    echo "[cp] Update CP_DB_URL in docker-compose.yml to use cds_app for the app service."
+    exit 0
+fi
+
 if [[ "$1" == "--rebuild" ]]; then
     echo "[cp] Rebuilding Counter-Patriots image..."
     docker compose build --no-cache
@@ -64,7 +80,14 @@ echo "  POST http://localhost:7731/api/drift"
 echo "  POST http://localhost:7731/api/silence"
 echo "  POST http://localhost:7731/api/activation"
 echo "  POST http://localhost:7731/api/record"
+echo "  GET  http://localhost:7731/api/network"
 echo "  POST http://localhost:7731/api/contradictions   (analyst auth required)"
+echo "  POST http://localhost:7731/api/staging           (analyst auth required)"
+echo "  POST http://localhost:7731/admin/promote_claim   (analyst auth required)"
+echo "  POST http://localhost:7731/admin/return_to_staged (analyst auth required)"
+echo "  POST http://localhost:7731/admin/register_edge   (analyst auth required)"
+echo "  POST http://localhost:7731/admin/ingest          (analyst auth required)"
 echo ""
 echo "[cp] Analyst token: $CP_ANALYST_TOKEN"
 echo "[cp] To tail logs: docker logs -f cp_app"
+echo "[cp] To run migration (existing deploy): ./install.sh --migrate"

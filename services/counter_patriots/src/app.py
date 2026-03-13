@@ -22,6 +22,7 @@ Agent Zero integration:
 
 import os
 import json
+import uuid
 import logging
 from datetime import datetime, timezone
 from functools import wraps
@@ -29,21 +30,33 @@ from typing import Optional
 
 import psycopg2
 import psycopg2.extras
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, g
 
 from ingest import run_once as run_ingestion
 from contradict import scan_new_claims
 from silence import run_silence_scan
 from activation import run_activation_scan
+import audit
+import retcon_ledger
+import source_intel
 
 logging.basicConfig(level=logging.INFO, format='[APP] %(message)s', force=True)
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-DB_URL         = os.environ.get("CP_DB_URL", "postgresql://cp_user:cp_dev_password@localhost:5433/counter_patriots")
+DB_URL         = os.environ.get("CP_DB_URL", "postgresql://cds_app:cds_app_dev_password@localhost:5433/counter_patriots")
 ANALYST_TOKEN  = os.environ.get("CP_ANALYST_TOKEN", "dev_analyst_token")
 SERVICE_PORT   = int(os.environ.get("CP_PORT", "7731"))
+
+
+# ---------------------------------------------------------------------------
+# Per-request session ID for audit trail
+# ---------------------------------------------------------------------------
+
+@app.before_request
+def assign_session_id():
+    g.session_id = uuid.uuid4()
 
 
 # ---------------------------------------------------------------------------
@@ -103,22 +116,36 @@ def health():
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) AS n FROM claims")
-                claims_count = cur.fetchone()['n']
+                cur.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE trust_level = 'STAGED')          AS staged_count,
+                        COUNT(*) FILTER (WHERE trust_level = 'PROMOTED')         AS promoted_count,
+                        COUNT(*) FILTER (WHERE trust_level = 'RETURNED_TO_STAGED') AS returned_count,
+                        COUNT(*)                                                 AS total_count,
+                        MAX(extracted_at)                                        AS last_ingestion
+                    FROM claims
+                """)
+                counts = cur.fetchone()
                 cur.execute("SELECT COUNT(*) AS n FROM sources")
                 sources_count = cur.fetchone()['n']
-                cur.execute("SELECT MAX(extracted_at) AS last FROM claims")
-                last_row = cur.fetchone()
-                last_ingestion = last_row['last'].isoformat() if last_row['last'] else None
+                cur.execute("SELECT COUNT(*) AS n FROM source_network_edges")
+                edge_count = cur.fetchone()['n']
 
         return jsonify({
             'status': 'operational',
             'service': 'counter-patriots',
-            'claims_count': claims_count,
+            'claims': {
+                'total':    counts['total_count'],
+                'staged':   counts['staged_count'],
+                'promoted': counts['promoted_count'],
+                'returned': counts['returned_count'],
+            },
             'sources_count': sources_count,
-            'last_ingestion': last_ingestion,
-            'capabilities': ['drift', 'contradictions', 'silence', 'activation', 'record'],
-            'version': '1.0.0',
+            'network_edges': edge_count,
+            'last_ingestion': counts['last_ingestion'].isoformat() if counts['last_ingestion'] else None,
+            'capabilities': ['drift', 'contradictions', 'silence', 'activation', 'record',
+                             'staging', 'network'],
+            'version': '2.0.0',
         })
     except Exception as e:
         return jsonify({'status': 'degraded', 'error': str(e)}), 503
@@ -152,6 +179,7 @@ def drift_query():
             query = """
                 SELECT c.id, c.claim_text, c.article_url, c.article_title,
                        c.technique_class, c.extracted_at, c.published_at,
+                       c.trust_level, c.staging_confidence,
                        s.name AS source_name, s.cluster, s.confidence_score
                 FROM claims c
                 JOIN sources s ON s.id = c.source_id
@@ -169,7 +197,7 @@ def drift_query():
             claims = cur.fetchall()
 
             # Count contradictions for these claims
-            claim_ids = [c['id'] for c in claims]
+            claim_ids = [c["id"] for c in claims]
             silent_count = 0
             contradiction_count = 0
             if claim_ids:
@@ -251,6 +279,14 @@ def contradiction_query():
         rel = p['relationship']
         if rel in by_type:
             by_type[rel] += 1
+
+    audit.log_event(
+        session_id=g.session_id,
+        event_type='analyst_query',
+        actor='analyst',
+        action=f"Contradiction query: source={source_name!r} topic={topic_tag!r}",
+        data_accessed={'source': source_name, 'topic': topic_tag, 'result_count': len(pairs)},
+    )
 
     return jsonify({
         'pairs': [dict(p) for p in pairs],
@@ -450,6 +486,161 @@ def full_record():
         result['contradictions_note'] = 'Analyst auth required. Pass X-Analyst-Token header.'
 
     return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/staging  — claims awaiting analyst review
+# ---------------------------------------------------------------------------
+
+@app.route('/api/staging', methods=['POST'])
+@require_analyst_auth
+def staging_queue():
+    """
+    Claims in STAGED or RETURNED_TO_STAGED state awaiting analyst review.
+
+    Input:  { topic?: str, limit?: int, analyst_token: str }
+    Output: { claims: [...], total: int }
+    """
+    data = request.get_json(force=True)
+    topic = data.get('topic')
+    limit = min(int(data.get('limit', 100)), 500)
+
+    claims = retcon_ledger.get_staged_claims(topic=topic, limit=limit)
+
+    audit.log_event(
+        session_id=g.session_id,
+        event_type='analyst_query',
+        actor='analyst',
+        action=f"Staging queue query: topic={topic!r}, returned {len(claims)} claims",
+        data_accessed={'topic': topic, 'result_count': len(claims)},
+    )
+
+    return jsonify({'claims': claims, 'total': len(claims)})
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/network  — source network topology
+# ---------------------------------------------------------------------------
+
+@app.route('/api/network', methods=['GET', 'POST'])
+def network_topology():
+    """
+    Source network topology — amplification, coordination, and cluster edges.
+
+    Input (POST): { source_id?: int }
+    Output: { edges: [...], total: int }
+
+    This is the map the contamination cascade uses for independence verification.
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    source_id = data.get('source_id')
+
+    edges = source_intel.get_network_topology(source_id=source_id)
+    return jsonify({'edges': edges, 'total': len(edges)})
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: promote a claim
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/promote_claim', methods=['POST'])
+@require_analyst_auth
+def admin_promote_claim():
+    """
+    Promote a STAGED claim to PROMOTED. Creates a frozen promotion snapshot.
+
+    Input: {
+        claim_id:       int,
+        confidence:     float (0.0-1.0),
+        source_weights: { "source_id": weight, ... },  -- must sum ~1.0
+        threshold?:     float,
+        evidence?:      [str, ...],
+        predictions?:   [{"prediction": str, "confirmed_by": null, ...}, ...],
+        analyst_token:  str
+    }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'claim_id')
+    require_field(data, 'confidence')
+    require_field(data, 'source_weights')
+
+    try:
+        result = retcon_ledger.promote_claim(
+            claim_id=int(data['claim_id']),
+            confidence=float(data['confidence']),
+            source_weights=data['source_weights'],
+            threshold=float(data['threshold']) if data.get('threshold') else None,
+            evidence=data.get('evidence'),
+            predictions=data.get('predictions'),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'promoted', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: return a claim to staging
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/return_to_staged', methods=['POST'])
+@require_analyst_auth
+def admin_return_to_staged():
+    """
+    Return a PROMOTED claim to RETURNED_TO_STAGED for re-review.
+
+    Input: { claim_id: int, reason: str, analyst_token: str }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'claim_id')
+    require_field(data, 'reason')
+
+    try:
+        result = retcon_ledger.return_to_staged(
+            claim_id=int(data['claim_id']),
+            reason=data['reason'],
+            immediate=False,
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'returned', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: register source network edge
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/register_edge', methods=['POST'])
+@require_analyst_auth
+def admin_register_edge():
+    """
+    Register an observed network edge between two sources.
+
+    Input: {
+        source_id:            int,
+        connected_source_id:  int,
+        relationship_type:    amplifies | is_amplified_by | mutual_engagement | cluster_member,
+        weight?:              float (default 1.0),
+        analyst_token:        str
+    }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'source_id')
+    require_field(data, 'connected_source_id')
+    require_field(data, 'relationship_type')
+
+    try:
+        result = source_intel.register_edge(
+            source_id=int(data['source_id']),
+            connected_source_id=int(data['connected_source_id']),
+            relationship_type=data['relationship_type'],
+            weight=float(data.get('weight', 1.0)),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'registered', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
 
 
 # ---------------------------------------------------------------------------
