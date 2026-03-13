@@ -1,5 +1,5 @@
 """
-app.py — Counter-Patriots A2A query interface.
+app.py — OSS A2A query interface.
 
 Six endpoints. Returns records, not assessments.
 The analyst holds the conclusions.
@@ -11,7 +11,7 @@ The Curtis Rule is enforced here by the absence of certain endpoints:
 These endpoints do not exist. They cannot be called.
 
 The Festinger Boundary is enforced here by analyst authentication:
-  - /api/contradictions requires CP_ANALYST_TOKEN header
+  - /api/contradictions requires OSS_ANALYST_TOKEN header
   - No public bulk export of contradiction data
 
 Agent Zero integration:
@@ -52,9 +52,9 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-DB_URL         = os.environ.get("CP_DB_URL", "postgresql://cds_app:cds_app_dev_password@localhost:5433/counter_patriots")
-ANALYST_TOKEN  = os.environ.get("CP_ANALYST_TOKEN", "dev_analyst_token")
-SERVICE_PORT   = int(os.environ.get("CP_PORT", "7731"))
+DB_URL         = os.environ.get("OSS_DB_URL", "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss")
+ANALYST_TOKEN  = os.environ.get("OSS_ANALYST_TOKEN", "dev_analyst_token")
+SERVICE_PORT   = int(os.environ.get("OSS_PORT", "7731"))
 
 
 # ---------------------------------------------------------------------------
@@ -1161,5 +1161,5 @@ def admin_ingest():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    log.info(f"Counter-Patriots starting on port {SERVICE_PORT}")
+    log.info(f"OSS starting on port {SERVICE_PORT}")
     app.run(host="0.0.0.0", port=SERVICE_PORT, debug=False)

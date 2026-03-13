@@ -1,11 +1,11 @@
 -- migrations/001_cds_v2_founding.sql
 -- CDS v2 Phase 1: Founding Infrastructure
 --
--- Run against an existing counter_patriots deployment.
+-- Run against an existing oss deployment.
 -- Idempotent: safe to re-run. All statements use IF NOT EXISTS / ON CONFLICT.
 --
 -- Run via install.sh --migrate, or manually:
---   docker exec -i cp_postgres psql -U cp_user -d counter_patriots \
+--   docker exec -i oss_postgres psql -U oss_admin -d oss \
 --       < migrations/001_cds_v2_founding.sql
 --
 -- "The promotion snapshot schema must exist at founding. Claims promoted before
@@ -168,7 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_nd_computed ON narrative_dynamics(computed_at DES
 -- ── 7. Audit log — append only, never updated, never deleted ─────────────────
 -- autovacuum disabled: append-only table never accumulates dead rows.
 -- Enforcement is two-layer:
---   DB level:   cds_app role has UPDATE and DELETE revoked (see role setup below)
+--   DB level:   oss_app role has UPDATE and DELETE revoked (see role setup below)
 --   Code level: audit.py exposes only insert functions — no update, no delete
 
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -187,28 +187,28 @@ CREATE INDEX IF NOT EXISTS idx_audit_session ON audit_log(session_id);
 CREATE INDEX IF NOT EXISTS idx_audit_event ON audit_log(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp DESC);
 
--- ── 8. Application role: cds_app ─────────────────────────────────────────────
--- cds_app is the non-superuser role used by the Flask application.
--- cp_user is the admin role used only for migrations and schema management.
+-- ── 8. Application role: oss_app ─────────────────────────────────────────────
+-- oss_app is the non-superuser role used by the Flask application.
+-- oss_admin is the admin role used only for migrations and schema management.
 -- Having a separate application role enables the REVOKE enforcement below.
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'cds_app') THEN
-        CREATE ROLE cds_app LOGIN PASSWORD 'cds_app_dev_password';
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'oss_app') THEN
+        CREATE ROLE oss_app LOGIN PASSWORD 'oss_app_dev_password';
     END IF;
 END
 $$;
 
-GRANT CONNECT ON DATABASE counter_patriots TO cds_app;
-GRANT USAGE ON SCHEMA public TO cds_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cds_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cds_app;
+GRANT CONNECT ON DATABASE oss TO oss_app;
+GRANT USAGE ON SCHEMA public TO oss_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO oss_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO oss_app;
 
 -- Enforce append-only on audit_log at the database level.
--- cds_app can INSERT but not UPDATE or DELETE.
--- cp_user (superuser) bypasses this — migrations only, never application logic.
-REVOKE UPDATE ON audit_log FROM cds_app;
-REVOKE DELETE ON audit_log FROM cds_app;
+-- oss_app can INSERT but not UPDATE or DELETE.
+-- oss_admin (superuser) bypasses this — migrations only, never application logic.
+REVOKE UPDATE ON audit_log FROM oss_app;
+REVOKE DELETE ON audit_log FROM oss_app;
 
 COMMIT;

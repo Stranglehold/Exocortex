@@ -27,11 +27,11 @@ import audit
 log = logging.getLogger(__name__)
 
 DB_URL = os.environ.get(
-    "CP_DB_URL",
-    "postgresql://cds_app:cds_app_dev_password@localhost:5433/counter_patriots"
+    "OSS_DB_URL",
+    "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss"
 )
 
-DEFAULT_PROMOTION_THRESHOLD = float(os.environ.get("CP_PROMOTION_THRESHOLD", "0.75"))
+DEFAULT_PROMOTION_THRESHOLD = float(os.environ.get("OSS_PROMOTION_THRESHOLD", "0.75"))
 
 
 def get_conn():

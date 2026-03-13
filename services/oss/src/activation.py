@@ -1,5 +1,5 @@
 """
-activation.py — Activation pattern detection for Counter-Patriots.
+activation.py — Activation pattern detection for OSS.
 
 Detects narrative spikes: the same claim pattern appearing simultaneously
 across ideologically distinct source clusters within a narrow time window.
@@ -33,17 +33,17 @@ from sentence_transformers import SentenceTransformer
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-DB_URL    = os.environ.get("CP_DB_URL", "postgresql://cp_user:cp_dev_password@localhost:5433/counter_patriots")
-EMB_MODEL = os.environ.get("CP_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+DB_URL    = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
+EMB_MODEL = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # Claims are considered the same narrative pattern if cosine >= this
-PATTERN_CLUSTER_THRESHOLD = float(os.environ.get("CP_ACTIVATION_CLUSTER_THRESHOLD", "0.75"))
+PATTERN_CLUSTER_THRESHOLD = float(os.environ.get("OSS_ACTIVATION_CLUSTER_THRESHOLD", "0.75"))
 
 # Minimum distinct clusters for an activation flag
-MIN_CLUSTER_SPREAD = int(os.environ.get("CP_ACTIVATION_MIN_CLUSTER_SPREAD", "3"))
+MIN_CLUSTER_SPREAD = int(os.environ.get("OSS_ACTIVATION_MIN_CLUSTER_SPREAD", "3"))
 
 # Time window in minutes for a spike to count
-ACTIVATION_WINDOW_MINUTES = int(os.environ.get("CP_ACTIVATION_WINDOW_MINUTES", "180"))
+ACTIVATION_WINDOW_MINUTES = int(os.environ.get("OSS_ACTIVATION_WINDOW_MINUTES", "180"))
 
 
 # ---------------------------------------------------------------------------

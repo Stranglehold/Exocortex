@@ -58,4 +58,4 @@ INSERT INTO operator_state (alert_level, threshold_multiplier, reason, set_by)
 SELECT 'NOMINAL', 1.0, 'system_init', 'system'
 WHERE NOT EXISTS (SELECT 1 FROM operator_state);
 
-RAISE NOTICE 'Migration 002 complete';
+DO $$ BEGIN RAISE NOTICE 'Migration 002 complete'; END $$;

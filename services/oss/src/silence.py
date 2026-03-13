@@ -31,17 +31,17 @@ from sentence_transformers import SentenceTransformer
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-DB_URL    = os.environ.get("CP_DB_URL", "postgresql://cp_user:cp_dev_password@localhost:5433/counter_patriots")
-LLM_URL   = os.environ.get("CP_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL = os.environ.get("CP_LLM_MODEL", "qwen2.5-14b-instruct")
-EMB_MODEL = os.environ.get("CP_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+DB_URL    = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
+LLM_URL   = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
+LLM_MODEL = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+EMB_MODEL = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # Two elements are treated as the same element if their embedding cosine >= this
-ELEMENT_DEDUP_THRESHOLD = float(os.environ.get("CP_ELEMENT_DEDUP_THRESHOLD", "0.82"))
+ELEMENT_DEDUP_THRESHOLD = float(os.environ.get("OSS_ELEMENT_DEDUP_THRESHOLD", "0.82"))
 
 # A silence is flagged if the element appears in >= this many clusters
 # but is absent from >= 1 cluster
-MIN_PRESENT_CLUSTERS = int(os.environ.get("CP_SILENCE_MIN_PRESENT_CLUSTERS", "2"))
+MIN_PRESENT_CLUSTERS = int(os.environ.get("OSS_SILENCE_MIN_PRESENT_CLUSTERS", "2"))
 
 # ---------------------------------------------------------------------------
 # Models

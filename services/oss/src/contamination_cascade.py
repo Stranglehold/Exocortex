@@ -38,8 +38,8 @@ import source_intel
 log = logging.getLogger(__name__)
 
 DB_URL = os.environ.get(
-    "CP_DB_URL",
-    "postgresql://cds_app:cds_app_dev_password@localhost:5433/counter_patriots"
+    "OSS_DB_URL",
+    "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss"
 )
 
 # Tier thresholds — from CDS v2 spec

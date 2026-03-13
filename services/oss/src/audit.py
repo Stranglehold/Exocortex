@@ -1,11 +1,11 @@
 """
-audit.py — Append-only audit log for Counter-Patriots.
+audit.py — Append-only audit log for OSS.
 
 Records decision events, analyst access, trust level transitions,
 and injection detection flags.
 
 Enforcement is two-layer:
-  DB level:   cds_app role has UPDATE and DELETE revoked on audit_log
+  DB level:   oss_app role has UPDATE and DELETE revoked on audit_log
   Code level: this module exposes only insert functions — no update, no delete
 
 Never call UPDATE or DELETE on audit_log anywhere in the codebase.
@@ -21,8 +21,8 @@ import psycopg2.extras
 log = logging.getLogger(__name__)
 
 DB_URL = os.environ.get(
-    "CP_DB_URL",
-    "postgresql://cds_app:cds_app_dev_password@localhost:5433/counter_patriots"
+    "OSS_DB_URL",
+    "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss"
 )
 
 

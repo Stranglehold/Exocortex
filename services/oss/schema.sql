@@ -295,27 +295,27 @@ CREATE INDEX idx_audit_event     ON audit_log(event_type);
 CREATE INDEX idx_audit_timestamp ON audit_log(timestamp DESC);
 
 -- ---------------------------------------------------------------------------
--- Application role: cds_app
+-- Application role: oss_app
 -- Non-superuser role used by the Flask application.
--- cp_user is the admin role for migrations and schema management only.
+-- oss_admin is the admin role for migrations and schema management only.
 -- ---------------------------------------------------------------------------
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'cds_app') THEN
-        CREATE ROLE cds_app LOGIN PASSWORD 'cds_app_dev_password';
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'oss_app') THEN
+        CREATE ROLE oss_app LOGIN PASSWORD 'oss_app_dev_password';
     END IF;
 END
 $$;
 
-GRANT CONNECT ON DATABASE counter_patriots TO cds_app;
-GRANT USAGE ON SCHEMA public TO cds_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cds_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cds_app;
+GRANT CONNECT ON DATABASE oss TO oss_app;
+GRANT USAGE ON SCHEMA public TO oss_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO oss_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO oss_app;
 
 -- Enforce append-only on audit_log at the database level
-REVOKE UPDATE ON audit_log FROM cds_app;
-REVOKE DELETE ON audit_log FROM cds_app;
+REVOKE UPDATE ON audit_log FROM oss_app;
+REVOKE DELETE ON audit_log FROM oss_app;
 
 -- ---------------------------------------------------------------------------
 -- Seed: founding topic thread

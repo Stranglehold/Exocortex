@@ -1,10 +1,10 @@
 """
-ingest.py — RSS ingestion pipeline for Counter-Patriots.
+ingest.py — RSS ingestion pipeline for OSS.
 
 Fetches RSS feeds, extracts claims via LLM, embeds them, deduplicates
 against FAISS index, and persists to PostgreSQL.
 
-Runs on a schedule (CP_INGEST_INTERVAL_MINUTES). Also callable directly
+Runs on a schedule (OSS_INGEST_INTERVAL_MINUTES). Also callable directly
 for retroactive ingestion of archived articles.
 """
 
@@ -31,12 +31,12 @@ log = logging.getLogger(__name__)
 # Config
 # ---------------------------------------------------------------------------
 
-DB_URL        = os.environ.get("CP_DB_URL", "postgresql://cp_user:cp_dev_password@localhost:5433/counter_patriots")
-LLM_URL       = os.environ.get("CP_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL     = os.environ.get("CP_LLM_MODEL", "qwen2.5-14b-instruct")
-EMB_MODEL     = os.environ.get("CP_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-FAISS_PATH    = os.environ.get("CP_FAISS_PATH", "/app/data/faiss/claims.index")
-DEDUP_THRESHOLD = float(os.environ.get("CP_DEDUP_THRESHOLD", "0.95"))
+DB_URL        = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
+LLM_URL       = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
+LLM_MODEL     = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+EMB_MODEL     = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+FAISS_PATH    = os.environ.get("OSS_FAISS_PATH", "/app/data/faiss/claims.index")
+DEDUP_THRESHOLD = float(os.environ.get("OSS_DEDUP_THRESHOLD", "0.95"))
 
 # ---------------------------------------------------------------------------
 # LLM client (OpenAI-compatible, points to LM Studio)
@@ -367,7 +367,7 @@ def run_once():
 
 
 def run_scheduler():
-    interval_minutes = int(os.environ.get("CP_INGEST_INTERVAL_MINUTES", "30"))
+    interval_minutes = int(os.environ.get("OSS_INGEST_INTERVAL_MINUTES", "30"))
     log.info(f"Ingestion scheduler starting (interval={interval_minutes}m)")
     while True:
         try:

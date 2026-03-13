@@ -55,6 +55,16 @@
         "auto_activate": false,
         "@priority_description": "Execution preference: 1 (Highest/Mandatory) to 10 (Lowest/Optional).",
         "priority": 4
+      },
+      {
+        "@type": "aieos:Skill",
+        "name": "Cognitive Defense System Operations",
+        "description": "Access to the OSS intelligence ledger via five dedicated tools: oss_topic (query claims by topic), oss_drift (detect narrative framing shifts), oss_dynamics (propagation velocity and escape-velocity alert), oss_hypotheses (list competing hypotheses under Chamberlin's method), oss_health (system operational health including operator state). Use these tools to detect coordinated disinformation, track narrative evolution, and assess propagation risk before it exceeds operator response windows. The analyst holds the conclusions. The system provides the record.",
+        "uri": "https://aieos.org/skills/cognitive-defense-v1",
+        "version": "1.0.0",
+        "auto_activate": true,
+        "@priority_description": "Execution preference: 1 (Highest/Mandatory) to 10 (Lowest/Optional).",
+        "priority": 2
       }
     ]
   },

@@ -62,7 +62,8 @@ for pyfile in \
     "${ONT_SRC}/connectors/csv_connector.py" \
     "${ONT_SRC}/connectors/json_connector.py" \
     "${ONT_SRC}/connectors/html_connector.py" \
-    "${TOOLS_SRC}/investigation_tools.py"; do
+    "${TOOLS_SRC}/investigation_tools.py" \
+    "${TOOLS_SRC}/oss.py"; do
     if [[ -f "$pyfile" ]]; then
         if python3 -m py_compile "$pyfile" 2>/dev/null; then
             echo "    ✓ $(basename "$pyfile")"
@@ -124,6 +125,15 @@ else
 fi
 
 echo ""
+echo "  → Deploying OSS tools"
+if [[ -f "${TOOLS_SRC}/oss.py" ]]; then
+    install_file "${TOOLS_SRC}/oss.py" "${TOOLS_DEST}/oss.py" "oss.py"
+else
+    echo "    MISSING: oss.py"
+    ERRORS=$((ERRORS + 1))
+fi
+
+echo ""
 echo "  → Deploying intelligence analyst role"
 if [[ -f "${ROLES_SRC}/intelligence_analyst.json" ]]; then
     install_file "${ROLES_SRC}/intelligence_analyst.json" "${ROLES_DEST}/intelligence_analyst.json" "intelligence_analyst.json"
@@ -159,6 +169,7 @@ for f in \
     "${ONT_DEST}/resolution_audit.jsonl" \
     "${ONT_DEST}/review_queue.jsonl" \
     "${TOOLS_DEST}/investigation_tools.py" \
+    "${TOOLS_DEST}/oss.py" \
     "${ROLES_DEST}/intelligence_analyst.json" \
     "${EXT_DIR}/message_loop_prompts_after/_58_ontology_query.py" \
     "${EXT_DIR}/monologue_end/_59_ontology_maintenance.py"; do
@@ -176,7 +187,7 @@ echo "━━━ Summary ━━━"
 echo "  Core files  → ${ONT_DEST}/"
 echo "  Connectors  → ${ONT_DEST}/connectors/"
 echo "  Runtime     → ${ONT_DEST}/*.jsonl"
-echo "  Tools       → ${TOOLS_DEST}/investigation_tools.py"
+echo "  Tools       → ${TOOLS_DEST}/investigation_tools.py, oss.py"
 echo "  Roles       → ${ROLES_DEST}/intelligence_analyst.json"
 echo "  Extensions  → installed by install_all.sh (_58, _59)"
 echo ""

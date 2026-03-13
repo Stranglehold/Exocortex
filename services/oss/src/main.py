@@ -1,5 +1,5 @@
 """
-main.py — Counter-Patriots process entrypoint.
+main.py — OSS process entrypoint.
 
 Starts the ingestion scheduler in a background thread,
 then runs the Flask API in the foreground.
@@ -22,10 +22,10 @@ def start_background_scheduler():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[CP] %(message)s', force=True)
 
-    log.info("[main] Counter-Patriots starting...")
+    log.info("[main] OSS starting...")
     start_background_scheduler()
 
-    port = int(os.environ.get("CP_PORT", "7731"))
+    port = int(os.environ.get("OSS_PORT", "7731"))
     log.info(f"[main] Flask API starting on port {port}")
 
     from app import app

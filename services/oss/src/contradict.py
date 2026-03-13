@@ -1,5 +1,5 @@
 """
-contradict.py — Contradiction detection engine for Counter-Patriots.
+contradict.py — Contradiction detection engine for OSS.
 
 Compares new claims against existing claims from the same source
 to detect contradictions, silent retcons, and acknowledged retcons.
@@ -24,14 +24,14 @@ from openai import OpenAI
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-DB_URL      = os.environ.get("CP_DB_URL", "postgresql://cp_user:cp_dev_password@localhost:5433/counter_patriots")
-LLM_URL     = os.environ.get("CP_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL   = os.environ.get("CP_LLM_MODEL", "qwen2.5-14b-instruct")
-FAISS_PATH  = os.environ.get("CP_FAISS_PATH", "/app/data/faiss/claims.index")
+DB_URL      = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
+LLM_URL     = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
+LLM_MODEL   = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+FAISS_PATH  = os.environ.get("OSS_FAISS_PATH", "/app/data/faiss/claims.index")
 
 # Cosine similarity threshold: above this, two claims are semantically close
 # enough to warrant contradiction analysis
-SIMILARITY_THRESHOLD = float(os.environ.get("CP_CONTRADICTION_SIMILARITY", "0.72"))
+SIMILARITY_THRESHOLD = float(os.environ.get("OSS_CONTRADICTION_SIMILARITY", "0.72"))
 
 # ---------------------------------------------------------------------------
 # LLM helpers
