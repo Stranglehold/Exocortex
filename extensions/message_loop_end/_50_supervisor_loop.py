@@ -16,6 +16,11 @@ an active organization (they depend on HTN state and PACE level).
 
 from typing import Any
 
+import sys as _sys
+_PM_PATH = "/a0/usr/Exocortex"
+if _PM_PATH not in _sys.path:
+    _sys.path.insert(0, _PM_PATH)
+
 from agent import LoopData
 from python.helpers.extension import Extension
 
@@ -43,6 +48,18 @@ CONTEXT_CRITICAL_THRESHOLD = 0.90
 
 # Loop detection: minimum repetitions of same pattern
 LOOP_DETECTION_THRESHOLD = 3
+
+# Graduated tier thresholds (consecutive same-tool failures, via failure tracker)
+WARN_THRESHOLD      = 3   # Tier 1: warn (existing behavior)
+SUMMARIZE_THRESHOLD = 6   # Tier 2: context surgery
+RESET_THRESHOLD     = 9   # Tier 3: circuit breaker — forced response
+
+# Loop episode state keys (stored in supervisor state dict)
+LOOP_TIER_KEY         = "loop_tier"           # "none"|"warn"|"summarize"|"reset"
+LOOP_TOOL_KEY         = "loop_failing_tool"   # str | None
+LOOP_START_IDX_KEY    = "loop_start_msg_idx"  # int: topic.messages index at episode start
+LOOP_SURGERY_DONE_KEY = "loop_surgery_done"   # bool: Tier 2 fired for this episode
+LOOP_RESET_DONE_KEY   = "loop_reset_done"     # bool: Tier 3 fired for this episode
 
 # Cascade detection: N different tools failing in last M history entries
 CASCADE_TOOL_COUNT = 3
@@ -95,6 +112,12 @@ DEFAULT_ALTERNATIVES = [
     "report current progress and ask the user for guidance",
 ]
 
+LOOP_ALTERNATIVES["response_format"] = [
+    "Output ONLY a valid JSON object with thoughts, tool_name, and tool_args fields",
+    "Use the response tool to report current progress if unsure what to do next",
+    "Simplify the response — no markdown, no <analysis> tags, just the JSON object",
+]
+
 
 class SupervisorLoop(Extension):
     """XO supervisory loop — anomaly detection and steering injection."""
@@ -120,7 +143,40 @@ class SupervisorLoop(Extension):
             ctx = _gather_context(self.agent, role or {})
 
             # Run anomaly detectors (order: most severe first)
+            # ── Graduated loop tier detection ─────────────────────────────────────
+            consecutive, failing_tool = _get_loop_metrics(ctx)
+            # Also detect response-format loops (misformat + repeat) — these bypass tool_failures
+            fmt_consecutive = _get_format_failure_count(self.agent)
+            if fmt_consecutive > consecutive:
+                consecutive = fmt_consecutive
+                failing_tool = "response_format"
+            new_loop_tier, old_loop_tier = _update_loop_state(self.agent, state, consecutive, failing_tool)
+            _write_loop_signals(self.agent, state, consecutive, failing_tool)
+
+            # Tier 4: capture anti-pattern on loop recovery
+            if old_loop_tier != "none" and new_loop_tier == "none":
+                try:
+                    bst_store = getattr(self.agent, "_bst_store", {}) or {}
+                    compound_sig = bst_store.get("_compound_sig", "unknown")
+                    domain = compound_sig.split("+")[0]  # primary domain only
+                    _capture_anti_pattern(self.agent, state, domain)
+                except Exception:
+                    pass
+
             injected = False
+
+            # Tier 3 — circuit breaker (highest priority, no cooldown)
+            if new_loop_tier == "reset" and not state.get(LOOP_RESET_DONE_KEY):
+                _execute_tier3(self.agent, failing_tool, consecutive, state)
+                state[LOOP_RESET_DONE_KEY] = True
+                state[LOOP_SURGERY_DONE_KEY] = True  # Tier 3 subsumes Tier 2
+                injected = True
+
+            # Tier 2 — context surgery (second priority, no cooldown)
+            elif new_loop_tier == "summarize" and not state.get(LOOP_SURGERY_DONE_KEY):
+                _execute_tier2(self.agent, failing_tool, consecutive, state)
+                state[LOOP_SURGERY_DONE_KEY] = True
+                injected = True
 
             # 1. PACE escalation response (org-dependent, emergency exempt from cooldown)
             if org_active:
@@ -150,11 +206,10 @@ class SupervisorLoop(Extension):
                     _inject_stall(self.agent, ctx, role, state)
                     injected = True
 
-            # 5. Loop detection (always runs)
-            if not injected and _cooldown_ok(state, ANOMALY_LOOP):
-                if _detect_loop(ctx):
-                    _inject_loop(self.agent, ctx, state)
-                    injected = True
+            # 5. Loop detection — Tier 1 (warn, respects cooldown)
+            if not injected and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
+                _inject_loop(self.agent, ctx, state)
+                injected = True
 
             _set_state(self.agent, state)
 
@@ -307,6 +362,234 @@ def _detect_loop(ctx: dict) -> bool:
                 return True
 
     return False
+
+
+
+def _get_loop_metrics(ctx: dict) -> tuple:
+    """
+    Return (consecutive_failure_count, failing_tool) from the tool failure tracker.
+    Uses the 'consecutive' dict maintained by the tool fallback chain — more reliable
+    than scanning failure_history list length.
+    Returns (0, None) if no loop condition is present.
+    """
+    failures = ctx.get("tool_failures") or {}
+    consecutive = failures.get("consecutive") or {}
+    if not consecutive:
+        return 0, None
+    failing_tool = max(consecutive, key=consecutive.get)
+    count = consecutive[failing_tool]
+    if count < WARN_THRESHOLD:
+        return 0, None
+    return count, failing_tool
+
+
+
+def _get_format_failure_count(agent) -> int:
+    """
+    Count consecutive response-format failures at the end of current history.
+    Detects fw.msg_misformat (not valid JSON) and fw.msg_repeat (identical response)
+    warnings injected by the agent-zero core. These bypass tool_failures.consecutive
+    so the graduated cascade wouldn't otherwise detect them.
+    """
+    MISFORMAT_SIGNAL = "Your last response was not valid JSON"
+    REPEAT_SIGNAL = "LOOP DETECTED. Your last response was identical"
+    try:
+        msgs = agent.history.current.messages
+        count = 0
+        for msg in reversed(msgs):
+            if getattr(msg, "ai", False):
+                continue  # skip AI response messages, only check warnings
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if MISFORMAT_SIGNAL in content or REPEAT_SIGNAL in content:
+                count += 1
+            else:
+                break  # stop at first non-format-failure warning
+        return count
+    except Exception:
+        return 0
+
+
+def _update_loop_state(agent, state: dict, consecutive: int, failing_tool) -> tuple:
+    """
+    Update persistent loop episode state. Computes tier from consecutive count,
+    tracks tier transitions, records message index at episode start.
+    Returns (new_tier, old_tier) as strings.
+    """
+    old_tier = state.get(LOOP_TIER_KEY, "none")
+
+    if consecutive < WARN_THRESHOLD:
+        # Loop resolved -- clear episode state
+        if old_tier != "none":
+            state[LOOP_TIER_KEY] = "none"
+            state[LOOP_TOOL_KEY] = None
+            state.pop(LOOP_START_IDX_KEY, None)
+            state.pop(LOOP_SURGERY_DONE_KEY, None)
+            state.pop(LOOP_RESET_DONE_KEY, None)
+        return "none", old_tier
+
+    # Compute new tier
+    if consecutive >= RESET_THRESHOLD:
+        new_tier = "reset"
+    elif consecutive >= SUMMARIZE_THRESHOLD:
+        new_tier = "summarize"
+    else:
+        new_tier = "warn"
+
+    # Record message index at start of episode (first time entering warn)
+    if old_tier == "none" and new_tier == "warn":
+        try:
+            state[LOOP_START_IDX_KEY] = len(agent.history.current.messages)
+        except Exception:
+            pass
+
+    state[LOOP_TIER_KEY] = new_tier
+    state[LOOP_TOOL_KEY] = failing_tool
+    # Track peak for anti-pattern capture (how bad did it get?)
+    state["loop_peak_consecutive"] = max(state.get("loop_peak_consecutive", 0), consecutive)
+    return new_tier, old_tier
+
+
+def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
+    """
+    Tier 2: Context surgery. Remove loop messages from the current history topic,
+    inject a diagnostic summary. Breaks the history feedback loop that sustains
+    repetitive failures without requiring a container restart.
+    """
+    try:
+        current_topic = agent.history.current
+        loop_start_idx = state.get(
+            LOOP_START_IDX_KEY,
+            max(0, len(current_topic.messages) - consecutive * 2)
+        )
+        removed_count = max(0, len(current_topic.messages) - loop_start_idx)
+        if removed_count > 0:
+            del current_topic.messages[loop_start_idx:]
+
+        summary = (
+            f"[SUPERVISOR TIER 2 - LOOP SURGERY] {consecutive} consecutive tool failures "
+            f"removed from context to break the feedback loop. "
+        )
+        if failing_tool:
+            alternatives = LOOP_ALTERNATIVES.get(failing_tool, DEFAULT_ALTERNATIVES)
+            alt_text = "; ".join(alternatives[:2])
+            summary += f"Failing tool: '{failing_tool}'. Alternatives: {alt_text}. "
+        summary += (
+            "Do NOT retry the same approach. "
+            "If no alternative is available, use the response tool to report your progress."
+        )
+
+        agent.hist_add_warning(summary)
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Tier 2 surgery: removed {removed_count} messages, tool={failing_tool}, consecutive={consecutive}",
+            flush=True
+        )
+    except Exception as e:
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 2 surgery failed: {e}",
+            flush=True
+        )
+
+
+def _execute_tier3(agent, failing_tool, consecutive: int, state: dict):
+    """
+    Tier 3: Circuit breaker. Aggressive surgery + mandatory response instruction.
+    The model's next action MUST be the response tool.
+    """
+    try:
+        current_topic = agent.history.current
+        loop_start_idx = state.get(
+            LOOP_START_IDX_KEY,
+            max(0, len(current_topic.messages) - consecutive * 2)
+        )
+        removed_count = max(0, len(current_topic.messages) - loop_start_idx)
+        if removed_count > 0:
+            del current_topic.messages[loop_start_idx:]
+
+        tool_name = failing_tool or "unknown"
+        msg = (
+            f"[SUPERVISOR TIER 3 - CIRCUIT BREAKER] {consecutive} consecutive failures on "
+            f"'{tool_name}'. Loop context has been cleared.\n"
+            f"YOU MUST USE THE RESPONSE TOOL NOW. No other tool call is acceptable.\n"
+            f"Your next action must be:\n"
+            f'{{"thoughts": "Task interrupted by supervisor circuit breaker after {consecutive} failures.", '
+            f'"tool_name": "response", '
+            f'"tool_args": {{"text": "Describe what was completed before the loop started and what is blocking progress."}}}}'
+        )
+
+        agent.hist_add_warning(msg)
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 3 circuit breaker: {consecutive} failures on {tool_name}",
+            flush=True
+        )
+    except Exception as e:
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 3 failed: {e}",
+            flush=True
+        )
+
+
+def _write_loop_signals(agent, state: dict, consecutive: int, failing_tool):
+    """
+    Write loop state to _layer_signals for BST and memorizer coordination.
+    BST reads loop_active to break momentum lock.
+    Memorizer reads loop_active to suppress writes during active loops.
+    """
+    try:
+        signals = agent.get_data("_layer_signals") or {}
+        signals["loop_active"]       = consecutive >= WARN_THRESHOLD
+        signals["loop_tier"]         = state.get(LOOP_TIER_KEY, "none")
+        signals["loop_consecutive"]  = consecutive
+        signals["loop_failing_tool"] = failing_tool
+        agent.set_data("_layer_signals", signals)
+    except Exception:
+        pass
+
+
+
+def _capture_anti_pattern(agent, state: dict, domain: str):
+    """
+    Tier 4: Capture loop-and-recovery as an anti-pattern entry in procedural memory.
+    Called when a loop episode resolves (consecutive failures drop below WARN_THRESHOLD).
+    Writes to /a0/usr/Exocortex/procedural_memory/ for cross-session prevention.
+    """
+    try:
+        from procedural_memory_api import ProceduralMemory
+        failing_tool = state.get(LOOP_TOOL_KEY) or "unknown"
+        consecutive = state.get("loop_peak_consecutive", 3)
+
+        pre_action_check = (
+            f"Before calling '{failing_tool}' for {domain} tasks: "
+            f"verify the tool can handle the input in this context. "
+        )
+        alternatives = LOOP_ALTERNATIVES.get(failing_tool, DEFAULT_ALTERNATIVES)
+        if alternatives:
+            pre_action_check += f"If uncertain, use alternative: {alternatives[0]}"
+
+        pm = ProceduralMemory()
+        path = pm.create_anti_pattern(
+            failing_tool=failing_tool,
+            domain=domain,
+            consecutive=consecutive,
+            pre_action_check=pre_action_check,
+        )
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Tier 4 anti-pattern captured: {failing_tool} in {domain} -> {path}",
+            flush=True
+        )
+    except Exception as e:
+        try:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Tier 4 capture failed: {e}",
+                flush=True
+            )
+        except Exception:
+            pass
 
 
 def _detect_context_exhaustion(agent, ctx: dict) -> bool:

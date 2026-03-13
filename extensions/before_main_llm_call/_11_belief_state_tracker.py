@@ -18,6 +18,11 @@ v3.1 — Compound Classification Layer
 """
 
 import json
+
+import sys as _sys
+_PM_PATH = "/a0/usr/Exocortex"
+if _PM_PATH not in _sys.path:
+    _sys.path.insert(0, _PM_PATH)
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -818,6 +823,13 @@ class BeliefStateTracker(Extension):
             # Generate compound enrichment text
             compound_enrichment = _generate_enrichment(compound_cls)
 
+            # Anti-pattern retrieval — higher priority than generic enrichment
+            _anti_pattern_text = _retrieve_anti_patterns(self.agent, compound_cls.primary_domain)
+            if _anti_pattern_text and compound_enrichment:
+                compound_enrichment = _anti_pattern_text + "\n\n" + compound_enrichment
+            elif _anti_pattern_text:
+                compound_enrichment = _anti_pattern_text
+
             # ── Slot resolution (unchanged) ───────────────────────────────────
             tracker = _BSTEngine(self.agent)
             result  = tracker.process(message)
@@ -858,6 +870,46 @@ class BeliefStateTracker(Extension):
                 )
             except Exception:
                 pass
+
+
+def _retrieve_anti_patterns(agent, primary_domain: str) -> str:
+    """
+    Search procedural memory for anti-patterns matching the current domain.
+    Returns injection text for BST enrichment, or empty string if none found.
+    Deterministic — no LLM calls. Uses tag-intersection search on index.
+    Higher priority than generic enrichment templates.
+    """
+    try:
+        from procedural_memory_api import ProceduralMemory
+        pm = ProceduralMemory()
+
+        # Search by domain tag — finds all anti-patterns for this domain
+        matches = pm.search_by_tags([primary_domain], type_filter="ANTI-PATTERN")
+        if not matches:
+            return ""
+
+        # Also check _layer_signals for the currently failing tool — narrow results
+        try:
+            signals = agent.get_data("_layer_signals") or {}
+            failing_tool = signals.get("loop_failing_tool")
+            if failing_tool:
+                tool_matches = pm.search_by_tags([primary_domain, failing_tool], type_filter="ANTI-PATTERN")
+                if tool_matches:
+                    matches = tool_matches  # narrower match takes priority
+        except Exception:
+            pass
+
+        lines = ["[PROCEDURAL MEMORY — ANTI-PATTERNS]"]
+        for entry in matches[:3]:  # cap at 3 to avoid bloating context
+            check = entry.get("pre_action_check", "")
+            tool = entry.get("failing_tool", "unknown")
+            if check:
+                lines.append(f"- {tool}: {check}")
+
+        return "\n".join(lines) if len(lines) > 1 else ""
+
+    except Exception:
+        return ""
 
 
 # ── Message extraction ────────────────────────────────────────────────────────
