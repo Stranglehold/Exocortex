@@ -42,6 +42,10 @@ import source_intel
 import contamination_cascade
 import hypothesis
 import narrative_drift
+import propagation_dynamics
+import meta_detection
+import threat_model
+import operator_state
 
 logging.basicConfig(level=logging.INFO, format='[APP] %(message)s', force=True)
 log = logging.getLogger(__name__)
@@ -149,8 +153,9 @@ def health():
             'capabilities': [
                 'drift', 'contradictions', 'silence', 'activation', 'record',
                 'staging', 'network', 'cascade', 'hypotheses', 'topic_drift',
+                'propagation_dynamics', 'meta_detection', 'threat_model', 'operator_state',
             ],
-            'version': '2.1.0',
+            'version': '3.0.0',
         })
     except Exception as e:
         return jsonify({'status': 'degraded', 'error': str(e)}), 503
@@ -878,6 +883,252 @@ def hypothesis_promote(hypothesis_id: int):
         return jsonify({'status': 'promoted', **result})
     except ValueError as e:
         abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: propagation dynamics
+# ---------------------------------------------------------------------------
+
+@app.route('/api/propagation_dynamics', methods=['POST'])
+def propagation_dynamics_compute():
+    """
+    Compute and persist propagation dynamics for a topic.
+
+    Input:  { topic: str, window_hours?: int (default 24) }
+    Output: velocity, acceleration, escape_velocity, time_to_escape, alert_level
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'topic')
+
+    topic_tag    = data['topic']
+    window_hours = int(data.get('window_hours', 24))
+    if window_hours < 1:
+        abort(400, description="window_hours must be >= 1")
+
+    result = propagation_dynamics.compute_dynamics(
+        topic_tag=topic_tag,
+        velocity_window_hours=window_hours,
+        session_id=g.session_id,
+    )
+    return jsonify(result)
+
+
+@app.route('/api/propagation_dynamics/<topic>', methods=['GET'])
+def propagation_dynamics_latest(topic: str):
+    """
+    Retrieve most recent computed dynamics for a topic.
+
+    Output: most recent narrative_dynamics row, or 404 if none computed yet.
+    """
+    result = propagation_dynamics.get_latest(topic_tag=topic)
+    if not result:
+        abort(404, description=f"No dynamics computed yet for topic: {topic!r}")
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: meta-detection / operational health
+# ---------------------------------------------------------------------------
+
+@app.route('/api/health/meta', methods=['GET', 'POST'])
+def health_meta():
+    """
+    Operational health report. Detects system degradation / attack.
+
+    GET  /api/health/meta
+    POST /api/health/meta  { window_hours?: int (default 168) }
+
+    Output: health_signal (NOMINAL|DEGRADED|COMPROMISED), per-metric status.
+    """
+    if request.method == 'POST':
+        data = request.get_json(force=True, silent=True) or {}
+        window_hours = int(data.get('window_hours', 168))
+    else:
+        window_hours = int(request.args.get('window_hours', 168))
+
+    result = meta_detection.get_health_report(window_hours=window_hours)
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: threat model (living adversary model)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/threat_model', methods=['GET', 'POST'])
+def threat_model_list():
+    """
+    List tracked adversarial techniques with optional filters.
+
+    GET  /api/threat_model?technique_class=fracture&abandoned=false
+    POST /api/threat_model  { technique_class?: str, abandoned?: bool, limit?: int }
+
+    Output: { techniques: [...], total: int }
+    """
+    if request.method == 'GET':
+        data = request.args
+        abandoned_raw = data.get('abandoned')
+        abandoned = None if abandoned_raw is None else abandoned_raw.lower() == 'true'
+    else:
+        data = request.get_json(force=True, silent=True) or {}
+        abandoned = data.get('abandoned')
+
+    technique_class = data.get('technique_class') or None
+    limit           = min(int(data.get('limit', 50)), 200)
+
+    try:
+        techniques = threat_model.get_threat_model(
+            technique_class=technique_class,
+            abandoned=abandoned,
+            limit=limit,
+        )
+    except ValueError as e:
+        abort(400, description=str(e))
+
+    return jsonify({'techniques': techniques, 'total': len(techniques)})
+
+
+@app.route('/api/threat_model/technique', methods=['POST'])
+@require_analyst_auth
+def threat_model_record():
+    """
+    Record or update a technique observation.
+
+    Idempotent: calling again for the same technique_name increments observed_count.
+
+    Input: {
+        technique_name:       str,
+        technique_class:      str (presuasion|fracture|emergent|direct|none),
+        detected_by_system?:  bool (default false),
+        notes?:               str,
+        analyst_token:        str
+    }
+    Output: { technique_id, technique_name, status (created|updated) }, 201
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'technique_name')
+    require_field(data, 'technique_class')
+
+    try:
+        result = threat_model.record_technique(
+            technique_name=data['technique_name'],
+            technique_class=data['technique_class'],
+            detected_by_system=bool(data.get('detected_by_system', False)),
+            notes=data.get('notes'),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'recorded', **result}), 201
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/threat_model/<int:technique_id>/abandon', methods=['POST'])
+@require_analyst_auth
+def threat_model_abandon(technique_id: int):
+    """
+    Mark a technique as abandoned by the adversary.
+
+    Abandonment = adversary knows it's detected. Triggers feedback loop
+    signal if multiple techniques abandoned in same window.
+
+    Input: { predicted_adaptation?: str, analyst_token: str }
+    Output: { technique_id, abandoned_at, feedback_loop_signal, recent_abandonments }
+    """
+    data = request.get_json(force=True, silent=True) or {}
+
+    try:
+        result = threat_model.flag_abandoned(
+            technique_id=technique_id,
+            predicted_adaptation=data.get('predicted_adaptation'),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'abandoned', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/threat_model/trend', methods=['GET', 'POST'])
+def threat_model_trend():
+    """
+    Technique observation trend and abandonment cluster analysis.
+
+    GET  /api/threat_model/trend?window_days=30
+    POST /api/threat_model/trend  { window_days?: int }
+
+    Output: per-day observations by technique_class, abandonment cluster signal.
+    """
+    if request.method == 'GET':
+        window_days = int(request.args.get('window_days', 30))
+    else:
+        data        = request.get_json(force=True, silent=True) or {}
+        window_days = int(data.get('window_days', 30))
+
+    result = threat_model.get_technique_trend(window_days=window_days)
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints: operator state monitoring
+# ---------------------------------------------------------------------------
+
+@app.route('/api/operator_state', methods=['GET'])
+def operator_state_get():
+    """
+    Current operator state and active threshold multiplier.
+
+    Output: { alert_level, threshold_multiplier, reason, set_by, set_at, override_active }
+    """
+    return jsonify(operator_state.get_current_state())
+
+
+@app.route('/admin/operator_state', methods=['POST'])
+@require_analyst_auth
+def operator_state_set():
+    """
+    Set operator alert level. Threshold elevation is applied mechanically.
+
+    NOMINAL:  1.0x — baseline threshold
+    DEGRADED: 1.25x — elevated (fatigue, distraction)
+    IMPAIRED: 1.50x — maximum elevation (significant impairment)
+
+    Behavioral signal integration: Phase 4 (requires operator interface).
+    Until then, state is set manually or by external monitor process.
+
+    Input: {
+        alert_level:            str (NOMINAL|DEGRADED|IMPAIRED),
+        reason:                 str,
+        override?:              bool (true = analyst overriding auto-detection),
+        analyst_token:          str
+    }
+    Output: new state dict
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'alert_level')
+    require_field(data, 'reason')
+
+    try:
+        result = operator_state.set_state(
+            alert_level=data['alert_level'],
+            reason=data['reason'],
+            set_by='analyst',
+            override=bool(data.get('override', False)),
+            session_id=g.session_id,
+        )
+        return jsonify({'status': 'state_updated', **result})
+    except ValueError as e:
+        abort(400, description=str(e))
+
+
+@app.route('/api/operator_state/history', methods=['GET'])
+def operator_state_history():
+    """
+    Recent operator state history.
+
+    GET /api/operator_state/history?limit=20
+    Output: { history: [...], total: int }
+    """
+    limit  = min(int(request.args.get('limit', 20)), 100)
+    result = operator_state.get_state_history(limit=limit)
+    return jsonify({'history': result, 'total': len(result)})
 
 
 # ---------------------------------------------------------------------------
