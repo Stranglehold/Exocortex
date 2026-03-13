@@ -22,7 +22,7 @@ BEGIN;
 -- cascade in Phase 2.
 
 ALTER TABLE claims
-    ADD COLUMN IF NOT EXISTS trust_level VARCHAR(16) DEFAULT 'STAGED'
+    ADD COLUMN IF NOT EXISTS trust_level VARCHAR(20) DEFAULT 'STAGED'
         CHECK (trust_level IN ('STAGED', 'PROMOTED', 'FALSIFIED', 'RETURNED_TO_STAGED')),
     ADD COLUMN IF NOT EXISTS staging_confidence FLOAT DEFAULT 0.0,
     ADD COLUMN IF NOT EXISTS cui_bono JSONB DEFAULT '[]',
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     actor VARCHAR(64) NOT NULL,
     action TEXT NOT NULL,
     data_accessed JSONB,
-    trust_level VARCHAR(16),
+    trust_level VARCHAR(20),
     injection_flag BOOLEAN DEFAULT FALSE
 ) WITH (autovacuum_enabled = false);
 

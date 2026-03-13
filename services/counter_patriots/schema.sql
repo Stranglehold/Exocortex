@@ -49,7 +49,7 @@ CREATE TABLE claims (
     embedding_model TEXT DEFAULT 'all-MiniLM-L6-v2',
 
     -- CDS v2 trust lifecycle
-    trust_level VARCHAR(16) DEFAULT 'STAGED'
+    trust_level VARCHAR(20) DEFAULT 'STAGED'
         CHECK (trust_level IN ('STAGED', 'PROMOTED', 'FALSIFIED', 'RETURNED_TO_STAGED')),
     staging_confidence FLOAT DEFAULT 0.0,
     cui_bono JSONB DEFAULT '[]',
@@ -286,7 +286,7 @@ CREATE TABLE audit_log (
     actor VARCHAR(64) NOT NULL,
     action TEXT NOT NULL,
     data_accessed JSONB,
-    trust_level VARCHAR(16),
+    trust_level VARCHAR(20),
     injection_flag BOOLEAN DEFAULT FALSE
 ) WITH (autovacuum_enabled = false);
 
