@@ -11,6 +11,10 @@
 #   patches/prompts/agent.system.main.communication.md
 #     → clarifies that plain text is accepted for conversational replies
 #
+#   extensions/response_stream_chunk/_21_plain_text_response.py
+#     → creates browser log item for plain text responses during streaming
+#     → fixes responses not showing in web UI for reasoning-distilled models
+#
 # Usage: ./scripts/install_core_patches.sh [container_name]
 # Default container: flamboyant_bell
 
@@ -48,6 +52,22 @@ if [ -f "$PROMPT_SRC" ]; then
   echo "[PATCH] prompts/agent.system.main.communication.md deployed."
 else
   echo "[PATCH] WARNING: $PROMPT_SRC not found — skipped."
+fi
+
+# ── 3. Extension: _21_plain_text_response.py ─────────────────────────────────
+
+EXT_SRC="$REPO_ROOT/extensions/response_stream_chunk/_21_plain_text_response.py"
+EXT_DST="/a0/python/extensions/response_stream_chunk/_21_plain_text_response.py"
+EXT_PYCACHE="/a0/python/extensions/response_stream_chunk/__pycache__"
+
+if [ -f "$EXT_SRC" ]; then
+  docker exec "$CONTAINER" mkdir -p /a0/python/extensions/response_stream_chunk
+  docker cp "$EXT_SRC" "$CONTAINER:$EXT_DST"
+  docker exec "$CONTAINER" bash -c "rm -rf '$EXT_PYCACHE'" 2>/dev/null || true
+  docker exec "$CONTAINER" bash -c "python3 -m py_compile '$EXT_DST' && echo '[PATCH] _21_plain_text_response.py OK'"
+  echo "[PATCH] extensions/response_stream_chunk/_21_plain_text_response.py deployed."
+else
+  echo "[PATCH] WARNING: $EXT_SRC not found — skipped."
 fi
 
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
