@@ -145,6 +145,11 @@ class ErrorComprehension(Extension):
             if not response or not response.message:
                 return
 
+            # Step 2a: Skip response tool — its output is agent speech, not command output.
+            # Signal patterns like r"(?i)\?\s*$" would false-positive on any greeting.
+            if kwargs.get("tool_name") == "response":
+                return
+
             config = _load_config()
             if not config.get("enabled", True):
                 return
