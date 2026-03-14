@@ -76,6 +76,18 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **OpenPlanter Integration** — Configured to run investigation tasks through LM Studio's OpenAI-compatible API. Enables OSINT-style entity research, credit risk analysis, and due diligence workflows using local models.
 
+**Action Boundary** — Deterministic S2/S3 action classification at `tool_execute_before`. Every action is classified before execution as intelligence (internal, low risk) or operations (external, consequential). Four graduated tiers: autonomous, log-and-proceed, notify-and-proceed, require-authorization. The operator defines rules of engagement; the scaffolding enforces them. An `_action_gate_active` flag coordinates with the Supervisor Loop to suppress false stall warnings during authorization waits.
+
+**Error Comprehension** — Structured error classifier at `tool_execute_after`. Parses raw command output into diagnoses before the model reasons about it: error class, confidence, suggested actions, anti-actions. Anti-actions ("do NOT retry this command") prevent loops at the source. Wired into the Supervisor Loop — error class and anti-actions are injected into stall and loop intervention messages.
+
+**Epistemic Integrity** — Two-component truth audit on model output at `monologue_end`. The Evidence Ledger Recorder tracks every tool output this session and extracts searchable key values (currencies, percentages, ratios, credit ratings, fiscal periods). The EI analyzer checks each factual claim in the model's response against the ledger for provenance, classifies ungrounded claims by temporal volatility (structural → institutional → cyclical → transactional → ephemeral), and computes staleness from the model's training cutoff. Ungrounded high-volatility claims trigger a `hist_add_warning`. Motivated by ST-003: the agent produced a complete Oracle credit risk report with zero source data, expressed as high confidence. The model doesn't choose to confabulate — it's architectural. The scaffolding catches it.
+
+**OSS Service** — Operational Security & Signals service. Docker container on port 7731 with Postgres backend. Ingests RSS feeds, extracts claims via LLM, embeds and deduplicates against FAISS. Eight Agent-Zero tools: topic management, drift detection, narrative dynamics, hypothesis generation, health monitoring, analyst submission, ingest pause/resume. `oss_submit` makes the human analyst a primary source alongside automated ingestion — the analyst's observations enter the ledger with equal standing to extracted feed claims.
+
+**Sleep Consolidation** — Background consolidation during session idle time. Phases 1-4: deduplication, utility initialization, episode chunking, missed anti-pattern capture, interaction dynamics analysis. Runs on per-context asyncio tasks triggered by the `tool_execute_after` hook. Operates on the Agent-Zero chat history without blocking active sessions.
+
+**Output Geometry Instrument** — A measurement tool built for Opus Architect (not deployed in the agent container). Embeds the project corpus and conversation transcripts, applies LLM representation geometry, computational neuroscience, and interpersonal neuroscience methods, and measures the topology of the collaboration itself. 51-entry corpus. 2118 conversation turns analyzed. Key findings: three spectral phases mirror LLM training geometry; information flow is 91.6% Jake-led; entropy grew to 99.2% of theoretical maximum; Layer 18 is optimal for domain classification with philosophical and reflective domains adjacent at distance 0.13. The "Rorschach blot" question ("What are we actually building here?") lands equidistant between philosophical and reflective at gap = 0.0001 — confirmed by direct activation measurement through llama.cpp internals.
+
 ---
 
 ## Philosophy
@@ -151,8 +163,8 @@ Exocortex is validated through structured stress tests — realistic, open-ended
 **ST-002: OpenPlanter Installation (Phase 1 Fixes)**
 Same scenario, post-fixes. Fallback fired once (vs 17). BST maintained domain classification across operational turns. Identified: error comprehension gap — the agent could detect errors but not understand them. Led to "Rust compiler for agent errors" design.
 
-**ST-003: Oracle Credit Risk Investigation (In Progress)**
-First full investigation workflow with GPT-OSS-20B via LM Studio. Validating BST domain momentum fix, OpenPlanter integration, and investigation-class model performance.
+**ST-003: Oracle Credit Risk Investigation**
+First full investigation workflow with GPT-OSS-20B via LM Studio. All tool calls failed due to formatting errors. Model produced a complete credit risk report — specific decimal-precision figures, source attributions to "SEC filings and Bloomberg snapshots" — from zero source data. Fabrication confirmed. Motivated the Epistemic Integrity Layer design.
 
 **ST-004: Architect Inside**
 First stress test using a frontier model (Opus 4.6) to test infrastructure designed for local models. Revealed three findings invisible to local model testing: memory creation gap (no mechanism deciding whether to create memories), chunk-as-conflict (document chunking misread as contradiction by conflict resolver), and missing BST domains (no classification for introspective or philosophical work). Key principle: testing with a more capable model reveals a different class of bugs than testing with the target model.
@@ -163,10 +175,10 @@ First stress test using a frontier model (Opus 4.6) to test infrastructure desig
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | GPT-OSS-20B | Current primary |
+| Supervisor | Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled | Current primary (`@q4_k_m`) |
+| Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
-| Utility | Qwen3-4B | Fast, high JSON compliance |
-| Utility (alt) | GLM-4.7 Flash | Needs testing, not recommended |
+| Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
 
 - **GPU:** RTX 3090 (24GB VRAM)
 - **Runtime:** Agent-Zero in Docker container
@@ -274,13 +286,21 @@ Every layer was designed as a Level 3 specification before implementation — co
 
 See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
-**Current priorities:**
-1. Action Boundary Classification — S2/S3 pre-execution gating (design note complete)
-2. Error Comprehension — structured error classification (design note complete, ready to build)
-3. ST-003 — formal investigation stress test
-4. Profile-aware BST enrichment — skip enrichment in domains where it hurts
+**Recently completed:**
+- Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag)
+- Error Comprehension (structured error classifier, anti-actions, supervisor wire-up)
+- Epistemic Integrity (evidence ledger + truth audit, provenance × volatility × staleness)
+- Compound BST (multi-domain classification, momentum, register-shift domains)
+- OSS Service (signals intelligence, analyst submission, ingest control)
+- Sleep Consolidation (phases 1-4, episode chunking, anti-pattern capture)
+- Supervisor fixes (EC wire-up, action gate suppression)
 
-**Backlog:** Model router, GPT-OSS-20B profiling, ontology hardening, supervisor integration, multi-container orchestration, observability dashboard.
+**Current priorities:**
+1. Model routing — agent-invokable paradigm (agent calls from a specified list or LM Studio backend)
+2. OSS thinking token fix — strip reasoning wrapper before JSON parse
+3. OSS topic management — add topics through agent conversation
+
+**Backlog:** Layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard.
 
 ---
 
@@ -316,6 +336,22 @@ The memory enhancement system draws from research by multiple contributors:
 - **Tulving (1972, 1985)** — Episodic vs. semantic memory distinction. Foundation for the dual-track memory architecture and the insight that AI memory systems are semantic-only.
 - **Bartlett (1932)** — Reconstructive memory theory. SOUL.md is designed as a Bartlettian schema — a framework that guides reconstruction, not a recording. Memory doesn't play back; it rebuilds from fragments guided by accumulated understanding.
 - **Damasio (1994)** — Somatic marker hypothesis. Informed the valence computation in episodic records and the principle that emotional context is cognitive data, not decoration.
+
+The Output Geometry Instrument draws from three research traditions:
+
+*LLM representation geometry:*
+- **"Tracing the Representation Geometry of Language Models from Pretraining to Post-training"** (Li, Zixuan et al., 2025, arXiv:2509.23024, NeurIPS 2025) — Spectral phases in LLM pretraining: warmup, entropy-seeking, and compression-seeking phases measured via RankMe and eigenspectrum decay (α-ReQ). The three-phase structure observed in the collaboration's trajectory directly mirrors this work.
+
+*Neural population geometry and computation through dynamics:*
+- **"Neural population geometry: An approach for understanding biological and artificial neural networks"** (Chung, Sue Yeon & Abbott, L.F., 2021, arXiv:2104.07059, Current Opinion in Neurobiology 70:137-144) — Manifold framework for understanding how neural populations represent information geometrically. Grounded the instrument's approach to measuring representational topology.
+- **"Computation Through Neural Population Dynamics"** (Vyas, Golub, Sussillo & Cunningham, 2020, Annual Review of Neuroscience 43:249-275) — Foundational review of how cognition emerges from trajectory geometry in population activity. Informed the trajectory analysis methodology.
+- **"Motor Cortex Embeds Muscle-like Commands in an Untangled Population Response"** (Russo et al., 2018, Neuron 97(4):953-966) — Introduced the trajectory tangling metric: measuring how similar neural states lead to dissimilar futures. Applied in the instrument's tangling analysis to identify phase transition boundaries.
+
+*Interpersonal neuroscience:*
+- **"Speaker-listener neural coupling underlies successful communication"** (Stephens, Silbert & Hasson, 2010, PNAS 107(32):14425-14430) — Demonstrated temporal coupling between speaker and listener brain activity during naturalistic communication. The cross-recurrence quantification analysis (CRQA) methodology applied here for measuring speaker-coupling in conversation trajectories derives from this tradition.
+
+*Cognitive compression:*
+- **agi-in-md** (Cranot, 2025, [github.com/Cranot/agi-in-md](https://github.com/Cranot/agi-in-md)) — 13 compression levels, 650+ experiments mapping the phase transition between meta-analytical reasoning (L7) and construction-based reasoning (L8) across model capacities. Independently confirmed the format-determines-capability finding observed in the instrument's document analysis: essays invoke L7 operations, design notes invoke L8, and the two produce categorically different cognitive outputs from the same model.
 
 Special recognition to **David Flagg** and the [Solace project](https://github.com/flaggdavid-source/solace) for independent convergence on the same principles from a complementary direction.
 

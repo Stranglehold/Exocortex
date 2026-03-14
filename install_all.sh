@@ -102,6 +102,7 @@ LAYERS=(
   "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
   "2|Extensions — error comprehension   |scripts/install_error_comprehension.sh"
   "2|Extensions — tool fallback chain   |scripts/install_tool_fallback.sh"
+  "2|Extensions — action boundary gate   |scripts/install_action_boundary.sh"
   "2|Extensions — meta-reasoning gate   |scripts/install_meta_gate.sh"
   "2|Extensions — organization kernel   |scripts/install_org_kernel.sh"
   "2|Extensions — supervisor loop       |scripts/install_supervisor_loop.sh"
@@ -114,6 +115,7 @@ LAYERS=(
   "6|A2A compatibility server           |scripts/install_a2a_server.sh"
   "7|Memory classification system       |scripts/install_memory_classification.sh"
   "8|Ontology layer                     |scripts/install_ontology.sh"
+  "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
 )
 
 CHECK_SCRIPTS=(
@@ -215,6 +217,8 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 6  A2A server        → /a0/python/a2a_server/"
   echo "    Layer 7  memory classify   → /a0/usr/extensions/ + /a0/usr/memory/"
   echo "    Layer 8  ontology layer    → /a0/usr/ontology/ + /a0/python/tools/"
+  echo "    Layer 9  sleep consolidation → /a0/usr/Exocortex/ + tool_execute_after/ + before_main_llm_call/
+    Action boundary            → /a0/python/extensions/tool_execute_before/_15_action_boundary.py"
   echo ""
   echo "  Restart agent-zero or start a fresh chat to load all changes."
   echo "  A2A server: python -m a2a_server.run (port 8200)"

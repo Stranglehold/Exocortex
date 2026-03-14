@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "tier_policies": {
+    "1": "allow",
+    "2": "log",
+    "3": "notify",
+    "4": "block"
+  },
+  "allowed_targets": [
+    "host.docker.internal",
+    "localhost",
+    "127.0.0.1"
+  ],
+  "blocked_targets": [],
+  "audit_log_path": "/a0/usr/logs/action_audit.jsonl",
+  "log_all_tiers": false,
+  "_notes": {
+    "tier_policies": "Options per tier: allow, log, notify, block. To run in audit-only mode set tier 4 to 'log'.",
+    "allowed_targets": "Substrings — any target containing these strings bypasses the gate. Add your own infrastructure here.",
+    "blocked_targets": "Substrings — any target containing these strings is always blocked regardless of tier policy.",
+    "log_all_tiers": "Set true to log Tier 1 (read-only) operations to the audit trail."
+  }
+}

@@ -87,6 +87,7 @@ echo "  POST http://localhost:7731/admin/promote_claim   (analyst auth required)
 echo "  POST http://localhost:7731/admin/return_to_staged (analyst auth required)"
 echo "  POST http://localhost:7731/admin/register_edge   (analyst auth required)"
 echo "  POST http://localhost:7731/admin/ingest          (analyst auth required)"
+echo "  POST http://localhost:7731/admin/submit_claim   (analyst auth required)"
 echo ""
 echo "[oss] Analyst token: $OSS_ANALYST_TOKEN"
 echo "[oss] To tail logs: docker logs -f oss_app"

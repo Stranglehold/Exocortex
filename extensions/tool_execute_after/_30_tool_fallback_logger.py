@@ -70,6 +70,11 @@ class ToolFallbackLogger(Extension):
                 # not a task success. History should only clear when actual work succeeds.
                 if tool_name != "response":
                     failures["history"] = []
+                    # Clear supervisor warning flag — failure cycle is over.
+                    try:
+                        self.agent.set_data("_supervisor_warned", False)
+                    except Exception:
+                        pass
                 self.agent.set_data(FAILURES_KEY, failures)
                 # Reset format failure counter — reflection prompts shouldn't persist after recovery
                 tracker = self.agent.get_data(FORMAT_TRACKER_KEY) or {}

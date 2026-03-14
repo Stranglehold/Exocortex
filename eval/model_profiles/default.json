@@ -61,5 +61,11 @@
     "noise_discrimination": "moderate"
   },
 
+  "temporal": {
+    "training_data_cutoff": null,
+    "staleness_awareness": "unknown",
+    "confabulation_risk": "high"
+  },
+
   "raw_metrics": {}
 }

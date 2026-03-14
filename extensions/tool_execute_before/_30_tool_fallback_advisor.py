@@ -79,7 +79,12 @@ class ToolFallbackAdvisor(Extension):
                         advice_parts.append(advice)
 
             if len(history) >= GLOBAL_THRESHOLD:
-                advice_parts.append(STEP_BACK_ADVICE)
+                # Only inject step-back advice if the supervisor hasn't already
+                # fired strategic guidance this failure cycle — prevents duplicate
+                # "try a different approach" messages from both layers.
+                supervisor_warned = self.agent.get_data("_supervisor_warned")
+                if not supervisor_warned:
+                    advice_parts.append(STEP_BACK_ADVICE)
 
             if advice_parts:
                 full_advice = " | ".join(advice_parts)

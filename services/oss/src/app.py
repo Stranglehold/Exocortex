@@ -32,7 +32,7 @@ import psycopg2
 import psycopg2.extras
 from flask import Flask, request, jsonify, abort, g
 
-from ingest import run_once as run_ingestion
+from ingest import run_once as run_ingestion, embed, is_duplicate, add_to_faiss, save_faiss, is_paused, set_paused
 from contradict import scan_new_claims
 from silence import run_silence_scan
 from activation import run_activation_scan
@@ -140,7 +140,7 @@ def health():
 
         return jsonify({
             'status': 'operational',
-            'service': 'counter-patriots',
+            'service': 'oss',
             'claims': {
                 'total':    counts['total_count'],
                 'staged':   counts['staged_count'],
@@ -150,10 +150,12 @@ def health():
             'sources_count': sources_count,
             'network_edges': edge_count,
             'last_ingestion': counts['last_ingestion'].isoformat() if counts['last_ingestion'] else None,
+            'ingest_paused': is_paused(),
             'capabilities': [
                 'drift', 'contradictions', 'silence', 'activation', 'record',
                 'staging', 'network', 'cascade', 'hypotheses', 'topic_drift',
                 'propagation_dynamics', 'meta_detection', 'threat_model', 'operator_state',
+                'submit_claim',
             ],
             'version': '3.0.0',
         })
@@ -1129,6 +1131,142 @@ def operator_state_history():
     limit  = min(int(request.args.get('limit', 20)), 100)
     result = operator_state.get_state_history(limit=limit)
     return jsonify({'history': result, 'total': len(result)})
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: submit a claim directly (analyst dictation path)
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/submit_claim', methods=['POST'])
+@require_analyst_auth
+def admin_submit_claim():
+    """
+    Submit a claim directly to the ledger without RSS ingestion.
+
+    Use when the analyst observes something worth recording that isn't
+    coming through monitored feeds — e.g. a live press briefing, a
+    firsthand observation, or a source outside the ingestion pipeline.
+
+    Claim is embedded, deduplicated, and inserted as STAGED with
+    staging_confidence=1.0 (analyst-asserted). Promotion requires
+    the standard /admin/promote_claim workflow.
+
+    Input: {
+        claim_text:      str,
+        topic_tags?:     [str, ...],
+        technique_class?: str (presuasion|fracture|emergent|direct|none, default: direct),
+        source_name?:    str (looked up in sources; default: 'Analyst Manual Entry'),
+        article_url?:    str,
+        article_title?:  str,
+        analyst_token:   str
+    }
+    Output: { claim_id, status, duplicate, topics_matched, topics_unrecognized }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'claim_text')
+
+    claim_text      = data['claim_text'].strip()
+    topic_tags      = data.get('topic_tags') or []
+    if isinstance(topic_tags, str):
+        topic_tags = [t.strip() for t in topic_tags.split(',') if t.strip()]
+    technique_class = data.get('technique_class', 'direct')
+    source_name     = data.get('source_name', 'Analyst Manual Entry')
+    article_url     = data.get('article_url', 'manual://analyst-entry')
+    article_title   = data.get('article_title') or f'Manual entry — {claim_text[:80]}'
+
+    valid_techniques = {'presuasion', 'fracture', 'emergent', 'direct', 'none'}
+    if technique_class not in valid_techniques:
+        abort(400, description=f"technique_class must be one of: {', '.join(sorted(valid_techniques))}")
+
+    # Embed and deduplicate
+    vec = embed([claim_text])[0]
+    if is_duplicate(vec):
+        return jsonify({
+            'status': 'duplicate',
+            'duplicate': True,
+            'claim_id': None,
+            'message': 'Near-identical claim already in ledger. Not added.',
+        })
+
+    faiss_id = add_to_faiss(vec)
+    save_faiss()
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            # Resolve source: match by name, else use/create manual entry source
+            cur.execute("SELECT id FROM sources WHERE name ILIKE %s LIMIT 1", (source_name,))
+            row = cur.fetchone()
+            if row:
+                source_id = row['id']
+            else:
+                cur.execute("""
+                    INSERT INTO sources (name, url, source_type, cluster, confidence_score)
+                    VALUES ('Analyst Manual Entry', 'manual://analyst-entry', 'official', 'official', 1.0)
+                    ON CONFLICT (url) DO NOTHING
+                """)
+                cur.execute("SELECT id FROM sources WHERE url = 'manual://analyst-entry'")
+                source_id = cur.fetchone()['id']
+
+            # Validate topic_tags against known topics
+            if topic_tags:
+                cur.execute("SELECT tag FROM topics WHERE tag = ANY(%s)", (topic_tags,))
+                valid_tags = [r['tag'] for r in cur.fetchall()]
+            else:
+                valid_tags = []
+
+            # Insert claim
+            cur.execute("""
+                INSERT INTO claims
+                    (source_id, raw_text, claim_text, article_url, article_title,
+                     topic_tags, technique_class, faiss_id, staging_confidence)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1.0)
+                RETURNING id
+            """, (source_id, claim_text, claim_text, article_url, article_title,
+                  valid_tags, technique_class, faiss_id))
+            claim_id = cur.fetchone()['id']
+
+            if valid_tags:
+                cur.execute("""
+                    UPDATE topics SET last_active = NOW(), claim_count = claim_count + 1
+                    WHERE tag = ANY(%s)
+                """, (valid_tags,))
+
+    audit.log_event(
+        session_id=g.session_id,
+        event_type='manual_claim_entry',
+        actor='analyst',
+        action=f"Manual claim submitted: {claim_text[:120]!r}",
+        data_accessed={'claim_id': claim_id, 'topic_tags': valid_tags, 'technique_class': technique_class},
+    )
+
+    return jsonify({
+        'status': 'staged',
+        'claim_id': claim_id,
+        'duplicate': False,
+        'topics_matched': valid_tags,
+        'topics_unrecognized': [t for t in topic_tags if t not in valid_tags],
+        'message': f"Claim staged as ID {claim_id}. Review with /api/staging or promote with /admin/promote_claim.",
+    }), 201
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoints: pause / resume ingestion scheduler
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/ingest/pause', methods=['POST'])
+@require_analyst_auth
+def admin_ingest_pause():
+    """Pause the ingestion scheduler. Query endpoints and oss_submit remain active."""
+    set_paused(True)
+    return jsonify({'status': 'paused', 'ingest_paused': True})
+
+
+@app.route('/admin/ingest/resume', methods=['POST'])
+@require_analyst_auth
+def admin_ingest_resume():
+    """Resume the ingestion scheduler."""
+    set_paused(False)
+    return jsonify({'status': 'resumed', 'ingest_paused': False})
 
 
 # ---------------------------------------------------------------------------

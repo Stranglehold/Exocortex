@@ -200,14 +200,21 @@ class SupervisorLoop(Extension):
                     _inject_context_warning(self.agent, ctx, state)
                     injected = True
 
+            # Read action gate — suppresses stall/loop-Tier1 when agent is pending authorization
+            action_gate = False
+            try:
+                action_gate = bool(self.agent.get_data("_action_gate_active"))
+            except Exception:
+                pass
+
             # 4. Stall detection (org-dependent — requires HTN state)
-            if not injected and org_active and _cooldown_ok(state, ANOMALY_STALL):
+            if not injected and org_active and not action_gate and _cooldown_ok(state, ANOMALY_STALL):
                 if _detect_stall(ctx, role):
                     _inject_stall(self.agent, ctx, role, state)
                     injected = True
 
             # 5. Loop detection — Tier 1 (warn, respects cooldown)
-            if not injected and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
+            if not injected and not action_gate and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
                 _inject_loop(self.agent, ctx, state)
                 injected = True
 
@@ -272,6 +279,7 @@ def _gather_context(agent, role: dict) -> dict:
         "failure_history": [],
         "max_consecutive_failures": 0,
         "context_fill": 0.0,
+        "error_diagnosis": {},
     }
 
     # PACE level
@@ -318,6 +326,12 @@ def _gather_context(agent, role: dict) -> dict:
         window_size = agent.get_data("context_window_size") or 100000
         if tokens and window_size:
             ctx["context_fill"] = tokens / window_size
+    except Exception:
+        pass
+
+    # Error diagnosis (from error comprehension layer)
+    try:
+        ctx["error_diagnosis"] = agent.get_data("_error_diagnosis") or {}
     except Exception:
         pass
 
@@ -477,6 +491,17 @@ def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
             "Do NOT retry the same approach. "
             "If no alternative is available, use the response tool to report your progress."
         )
+        try:
+            ec = agent.get_data("_error_diagnosis") or {}
+            if ec.get("confidence", 0) > 0.6:
+                error_class = ec.get("error_class", "")
+                anti = ec.get("anti_actions", [])
+                if error_class:
+                    summary += f" Error class: {error_class}."
+                if anti:
+                    summary += f" Do NOT: {anti[0]}."
+        except Exception:
+            pass
 
         agent.hist_add_warning(summary)
         agent.context.log.log(
@@ -517,6 +542,15 @@ def _execute_tier3(agent, failing_tool, consecutive: int, state: dict):
             f'"tool_name": "response", '
             f'"tool_args": {{"text": "Describe what was completed before the loop started and what is blocking progress."}}}}'
         )
+
+        try:
+            ec = agent.get_data("_error_diagnosis") or {}
+            if ec.get("confidence", 0) > 0.6:
+                error_class = ec.get("error_class", "")
+                if error_class:
+                    msg += f"\n[EC] Error class: {error_class}."
+        except Exception:
+            pass
 
         agent.hist_add_warning(msg)
         agent.context.log.log(
@@ -623,6 +657,14 @@ def _inject_stall(agent, ctx: dict, role: dict, state: dict):
         f"no progress for {ctx['turns_since_progress']} turns. "
         f"Reassess your approach: try a different method, simplify the task, or ask the user for guidance."
     )
+    ec = ctx.get("error_diagnosis", {})
+    if ec.get("confidence", 0) > 0.6:
+        error_class = ec.get("error_class", "")
+        suggested = ec.get("suggested_actions", [])
+        if error_class:
+            msg += f" [{error_class}]"
+        if suggested:
+            msg += f" Suggested: {suggested[0]}."
     _emit(agent, msg, ANOMALY_STALL, state)
 
 
@@ -647,6 +689,16 @@ def _inject_loop(agent, ctx: dict, state: dict):
             "[SUPERVISOR] You are repeating the same failing action. "
             "Stop and try a fundamentally different approach — different tool, different path, or different strategy."
         )
+
+    ec = ctx.get("error_diagnosis", {})
+    if ec.get("confidence", 0) > 0.6:
+        error_class = ec.get("error_class", "")
+        anti = ec.get("anti_actions", [])
+        if error_class or anti:
+            extra = f"\n[EC] Error class: {error_class}." if error_class else ""
+            if anti:
+                extra += f" Do NOT: {'; '.join(anti[:2])}."
+            msg += extra
 
     _emit(agent, msg, ANOMALY_LOOP, state)
 
@@ -706,3 +758,9 @@ def _emit(agent, msg: str, anomaly_type: str, state: dict):
     except Exception:
         pass
     _mark_cooldown(state, anomaly_type)
+    # Signal to fallback advisor that supervisor has fired strategic guidance.
+    # Prevents duplicate "try a different approach" messages on the next turn.
+    try:
+        agent.set_data("_supervisor_warned", True)
+    except Exception:
+        pass

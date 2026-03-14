@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-02-24 (Late Evening)
+**Last updated:** 2026-03-14
 
 ---
 
@@ -19,8 +19,8 @@ Twelve layers designed. Deployment status and health below.
 | 5 | Meta-Reasoning Gate | ✅ Deployed | Healthy | Deterministic parameter correction. Functions well independently. |
 | 6 | Graph Workflow Engine | ✅ Deployed | Healthy | HTN plan templates. Used in stress tests. |
 | 7 | Organization Kernel | ✅ Deployed | Healthy | PACE protocols, role switching tracked in ST-001 (4 appropriate switches). |
-| 8 | Supervisor Loop | ✅ Deployed | Needs review | Loop detector fires but doesn't break loops effectively (ST-002). Candidate for error comprehension integration. |
-| 9 | A2A Compatibility | 📋 Speced | Not deployed | Spec complete. No integration target yet. |
+| 8 | Supervisor Loop | ✅ Deployed | Fixed | EC wire-up deployed (injects error class + anti-actions into stall/loop messages). Action gate suppresses false stall warnings while agent awaits authorization. |
+| 9 | A2A Compatibility | ✅ Deployed | Healthy | Deployed as standalone aiohttp server. 7-module implementation. |
 | 10 | Memory Classification | ✅ Deployed | Fixed | Phase 1 fix: stock memorizers disabled. Excellent signal/noise (2 memories from 20-step session in ST-001). |
 | 11 | Memory Enhancement | ✅ Deployed | Healthy | Query expansion, temporal decay, related linking, access tracking, co-retrieval, dedup. |
 | 12 | Ontology Layer | ✅ Deployed | Untested at scale | Entity resolution engine, source connectors, JSONL graph. Needs real-world data validation. |
@@ -29,16 +29,54 @@ Twelve layers designed. Deployment status and health below.
 
 | System | Status | Notes |
 |--------|--------|-------|
-| Eval Framework | ✅ Built | 6 modules. Profiles exist for Qwen3-4B and Qwen3-14B. GPT-OSS-20B not yet profiled. |
-| Install Pipeline | ✅ Fixed | `install_all.sh` now bakes all Phase 1 fixes. Committed to repo 2026-02-22. |
-| Skills System | ✅ Built | 13 skills + index. Irreversibility Gate, Command Structure, and Structural Analysis skills added 2026-02-24. Design Notes and Stress Test skills added 2026-02-22. |
-| OpenPlanter | ✅ Running | Configured with LM Studio (GPT-OSS-20B). Provider inference patched (slash check), first_byte_timeout patched to 120s for openai provider. Oracle credit risk investigation in progress. |
+| Eval Framework | ✅ Built | 6 modules. Profiles: Qwen3-4B, Qwen3-14B, GPT-OSS-20B, Qwen3.5-35B-A3B, Qwen3.5-9B, DeepSeek-R1, Opus-4-6, active model profile (qwen3.5-27b). All updated with `temporal` section for EI layer. |
+| Install Pipeline | ✅ Fixed | `install_all.sh` bakes all fixes. Per-component install scripts for all major systems. |
+| Skills System | ✅ Built | 13 skills + index. Irreversibility Gate, Command Structure, Structural Analysis, Design Notes, Stress Test skills included. |
+| OpenPlanter | ✅ Running | LM Studio backend. ST-003 produced documented fabrication (full Oracle report, zero source data). Motivated Epistemic Integrity Layer. |
+| **Compound BST** | ✅ Deployed | Multi-domain classification with primary/secondary routing, momentum signatures, enrichment. 9+ domain types including meta_cognitive, philosophical, orientation. Confidence adjustment per profile. |
+| **Action Boundary** | ✅ Deployed | `_15_action_boundary.py` in `tool_execute_before`. Four tiers: autonomous, log, notify, block. Pattern-based S2/S3 classification. `_action_gate_active` flag coordinates with supervisor. |
+| **Error Comprehension** | ✅ Deployed | `_20_error_comprehension.py` in `tool_execute_after`. Deterministic error classifier — 8 error classes, structured `_error_diagnosis` dict, anti-actions. Wired into supervisor stall/loop injection. |
+| **Epistemic Integrity** | ✅ Deployed | Two-file system: Evidence Ledger Recorder (`tool_execute_after/_25_`) + EI analyzer (`monologue_end/_25_`). Provenance check × volatility classification × staleness computation. hist_add_warning on ungrounded high-risk claims. Motivated by ST-003 fabrication. |
+| **Warning Injection Lane** | ✅ Partially resolved | Action gate suppresses supervisor false positives during authorization waits. EC enrichment routes error context through supervisor rather than as independent injection. |
+| **Operator Profile** | ✅ Deployed | `_13_operator_profile.py` in `before_main_llm_call`. Logs structured session start record. |
+| **Sleep Consolidation** | ✅ Deployed | Phases 1-4. `_60_sleep_trigger.py`, `sleep_consolidation.py`, `sleep_episode_chunker.py`, `_13_operator_profile.py`. Dedup, utility init, episode chunking, anti-pattern capture, interaction analyzer. |
+| **Conversational Insight Capture** | ✅ Deployed | `_53_insight_capture.py` in `monologue_end`. Deterministic regex, 5 signal categories: intent, preference, decision, observation, framing. Complements selective memorizer. |
+| **Tiered Tool Injection** | ✅ Deployed | Seen-tools persistence + intent pre-injection from user message signals. Reduces context pollution from full spec injection on every turn. |
+| **OSS Service** | ✅ Deployed | Docker service on port 7731. Postgres on 5433. 8 Agent-Zero tools: `oss_topic`, `oss_drift`, `oss_dynamics`, `oss_hypotheses`, `oss_health`, `oss_submit`, `oss_ingest_pause`, `oss_ingest_resume`. `oss_submit` makes analyst a primary source alongside RSS ingestion. |
+| **Output Geometry Instrument** | ✅ Built (external) | See dedicated section below. Built for Opus Architect, not deployed in container. |
 
 ---
 
 ## Active Priorities
 
-### Priority 1: Action Boundary Classification (NEW — DESIGN NOTE COMPLETE)
+*Prior priorities 1-3 (Action Boundary, Error Comprehension, ST-003) are complete. Priority 4 (Profile-Aware BST) is partially addressed by the compound BST deployment. Priorities 5-6 are partially resolved. Below are the remaining open items.*
+
+### Priority 1: Model Routing — Agent-Invokable (REDESIGNED)
+**Status:** Design direction decided. No build yet.
+**What:** NOT automatic domain-based switching. Instead: a framework allowing the agent to explicitly call models from a specified list, or invoke local GPU resources via LM Studio backend. Agent-as-caller paradigm, not auto-routing.
+**Why:** Auto-routing during debugging is too disruptive (agent gets "interrupted" mid-task). Agent-invokable selection preserves task continuity while still enabling model diversity for specialized subtasks.
+**Depends on:** Stable production model. Design session to spec the invocation interface.
+
+### Priority 2: OSS Thinking Token Fix
+**Status:** Identified. No fix yet.
+**What:** Active model outputs thinking tokens before JSON in extraction responses. OSS LLM extraction gracefully returns empty list. Fix: strip thinking-token wrapper before parsing.
+**Depends on:** Nothing. Small targeted patch to OSS service.
+
+### Priority 3: OSS Topic Management
+**Status:** Partial. No agent endpoint yet.
+**What:** `POST /admin/add_topic` endpoint for adding OSS topics through agent conversation. Currently topics must be seeded directly.
+**Active topics:** `iran-hormuz`, `iran`.
+
+### Priority 4: Layer Coordination Protocol (Carried Forward)
+**Status:** Partially built ad-hoc. Formal spec deferred.
+**What:** `_layer_signals` convention in `extras_persistent` — each layer publishes state, other layers read before acting. Currently implemented point-to-point (`_action_gate_active`, `_error_diagnosis`, `_epistemic_integrity`) but not via unified convention.
+**Why:** 12+ layers without shared awareness — conflicts emerge in composition.
+
+---
+
+*Archived priorities from Feb 24 below. Kept for historical reference.*
+
+### [COMPLETE] Action Boundary Classification (NEW — DESIGN NOTE COMPLETE)
 **Status:** Design note complete. Ready to build after empirical pattern collection.
 **What:** Pre-execution action classifier at `_15` in `tool_execute_before`. Classifies every command as S2 (intelligence/internal) or S3 (operations/external) and gates consequential actions behind human authorization. Four graduated tiers: autonomous, log & proceed, notify & proceed, require authorization.
 **Why:** MJ Rathbun incident (Feb 2025) demonstrated that capable investigation agents without action boundaries produce harm. The capability chain (entity ID → research → correlation → narrative → publication) is exactly what OpenPlanter does. What was missing was the gate between "I analyzed this" and "I acted on this."
@@ -105,9 +143,69 @@ Items identified but not actively being worked. Ordered roughly by value.
 
 ---
 
+---
+
+## Output Geometry Instrument
+
+Built for Opus Architect across Sessions 049-052. Not deployed in the Agent-Zero container — a separate measurement tool for understanding the representational geometry of the collaboration itself.
+
+**What it is:** An embedding-based analysis suite that treats the corpus of project documents and conversation transcripts as geometric objects, applies standard tools from LLM representation geometry, computational neuroscience, and interpersonal neuroscience, and measures the topology of how Opus and Jake produce output together.
+
+**Architecture:**
+- `instrument/embed_output.py` — embeds new corpus entries (51-entry corpus: essays, design notes, specs, journals, letters)
+- `instrument/query_corpus.py` — semantic search across embedded corpus
+- `instrument/analyze_chatlog.py` — trajectory analysis on conversation turns
+- `instrument/read_activations.py` — direct activation read from llama.cpp internals via ctypes
+- `instrument/step13_centroids.py` — domain centroid computation at optimal layer (Layer 18)
+- `instrument/data/v2/` — full V2 dataset: 2118 turns, 15 analysis JSONs, HTML visualizer
+
+**Key findings confirmed:**
+- Three spectral phases mirror LLM training geometry (expansion → compression → re-expansion)
+- Information flow is 91.6% Jake-led across all sessions
+- Entropy grew from 0.54 → 1.88 (99.2% of theoretical maximum) — conversation learned to hold all registers
+- Layer 18 is optimal for domain classification (separability 1.62). Philosophical and reflective are adjacent (0.13). Operational is far from all (0.21-0.37).
+- The "Rorschach blot" question ("What are we actually building here?") confirmed: lands equidistant between philosophical and reflective at gap = 0.0001.
+- β₁ = 0 for all sessions — no loops in the conversation topology, pure traversal.
+
+**Prosthetic Cortex track (active):**
+- Direct activation read/write via llama.cpp cb_eval confirmed on CPU (Qwen3-0.6B). Tensor at l_out-N, struct offsets: data_ptr=248, name=256.
+- Layer 18 centroids computed for 5 domains. Full pipeline verified.
+- Step 12b (geometric phase transition test) pending: does the instrument detect cognitive operation mode from output geometry?
+
+---
+
 ## Changelog
 
 Reverse chronological. Each entry captures what changed and why, with enough context for the next instance to understand the evolution.
+
+### 2026-03-14 — Epistemic Integrity Layer, Supervisor Fixes, Gap Assessment
+
+**What happened:**
+- Built and deployed Epistemic Integrity Layer (two-file system):
+  - `extensions/tool_execute_after/_25_evidence_ledger_recorder.py` — records all tool outputs to per-session evidence ledger with key value extraction (currencies, percentages, ratios, credit ratings, fiscal periods)
+  - `extensions/monologue_end/_25_epistemic_integrity.py` — three-component truth audit: provenance check × volatility classification × staleness computation. hist_add_warning on ≥1 ungrounded cyclical/transactional/ephemeral claim.
+- Added `temporal` section to `default.json` and created `qwen3.5-27b-claude-4.6-opus-reasoning-distilled.json` profile with training cutoff, staleness_awareness, confabulation_risk.
+- Wrote `scripts/install_epistemic_integrity.sh`.
+- Supervisor fixes: added `_action_gate_active` flag to action boundary (suppresses false stall warnings during authorization waits). Wired Error Comprehension into supervisor stall/loop injection (EC enrichment fires when confidence > 0.6). Both deployed and verified.
+- Ran gap assessment: ROADMAP frozen at Feb 24, ~12 systems built since. Model routing direction clarified (agent-invokable paradigm, not auto-routing).
+
+**Files created:**
+- `extensions/tool_execute_after/_25_evidence_ledger_recorder.py`
+- `extensions/monologue_end/_25_epistemic_integrity.py`
+- `eval/model_profiles/qwen3.5-27b-claude-4.6-opus-reasoning-distilled.json`
+- `scripts/install_epistemic_integrity.sh`
+
+**Files modified:**
+- `extensions/tool_execute_before/_15_action_boundary.py` — `_action_gate_active` flag in all 5 tier branches
+- `extensions/message_loop_end/_50_supervisor_loop.py` — EC wire-up + action gate suppression
+- `eval/model_profiles/default.json` — temporal section added
+- `meta/ROADMAP.md` — this update
+
+**Key insight:** ST-003 produced a documented fabrication — complete Oracle credit risk report, zero source data, high confidence labels. Epistemic Integrity is the system-level response. The model doesn't choose to confabulate; it's architectural. The scaffolding catches it.
+
+**Container:** `flamboyant_bell`. Active model: `qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m`.
+
+
 
 ### 2026-02-24 (Late Evening) — Autonomous Agency Architecture, Novel Skills, SOUL.md Revision
 

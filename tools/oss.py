@@ -5,11 +5,14 @@ Provides Agent Zero access to the OSS intelligence ledger: claims, narrative
 drift, propagation dynamics, competing hypotheses, and system health.
 
 Available tools (call by snake_case class name):
-  oss_topic       — query claims for a topic from the ledger
-  oss_drift       — detect narrative framing shift for a topic
-  oss_dynamics    — propagation velocity, alert level, time-to-escape
-  oss_hypotheses  — list competing hypotheses for an observation
-  oss_health      — system operational health report
+  oss_topic          — query claims for a topic from the ledger
+  oss_drift          — detect narrative framing shift for a topic
+  oss_dynamics       — propagation velocity, alert level, time-to-escape
+  oss_hypotheses     — list competing hypotheses for an observation
+  oss_health         — system operational health report
+  oss_submit         — log a new claim directly to the ledger (analyst dictation)
+  oss_ingest_pause   — pause the automated RSS ingestion pipeline
+  oss_ingest_resume  — resume the automated RSS ingestion pipeline
 
 Service: OSS_URL env var (default: http://host.docker.internal:7731)
 Auth:    OSS_ANALYST_TOKEN env var (default: dev_analyst_token)
@@ -384,3 +387,155 @@ class OssHealth(Tool):
         lines.append(f"\nOperator state: {op_level} (staging threshold ×{op_mult})")
 
         return Response(message="\n".join(lines), break_loop=False)
+
+
+# ---------------------------------------------------------------------------
+# oss_submit
+# ---------------------------------------------------------------------------
+
+class OssSubmit(Tool):
+    """
+    Log a new claim directly to the OSS intelligence ledger.
+
+    Use when the analyst (Jake) dictates something worth recording that isn't
+    coming through the monitored RSS feeds — live briefings, firsthand
+    observations, open-source signals outside the pipeline.
+
+    Claim is embedded, deduplicated against existing entries, and inserted
+    as STAGED with full analyst confidence. Promotion to the permanent
+    record requires /admin/promote_claim.
+
+    If a near-identical claim already exists, it will be reported as a
+    duplicate and not added again.
+
+    Args:
+        claim_text (str):      The claim to record (required)
+        topic_tags (str|list): Comma-separated or list of topic tags
+                               (e.g. 'iran-hormuz' or ['iran-hormuz', 'iran'])
+        technique_class (str): presuasion | fracture | emergent | direct | none
+                               (default: direct)
+        source_name (str):     Source attribution (default: 'Analyst Manual Entry')
+        article_url (str):     Source URL (default: manual://analyst-entry)
+        article_title (str):   Optional title for the source context
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        claim_text      = self.args.get("claim_text", "").strip()
+        topic_tags      = self.args.get("topic_tags", "")
+        technique_class = self.args.get("technique_class", "direct").strip()
+        source_name     = self.args.get("source_name", "Analyst Manual Entry").strip()
+        article_url     = self.args.get("article_url", "").strip()
+        article_title   = self.args.get("article_title", "").strip()
+
+        print(f"[OSS] oss_submit: claim={claim_text[:60]!r} topics={topic_tags!r}", flush=True)
+
+        if not claim_text:
+            return Response(
+                message="[OSS] oss_submit requires claim_text.",
+                break_loop=False,
+            )
+
+        # Normalise topic_tags: accept comma-string or list
+        if isinstance(topic_tags, str):
+            topic_tags = [t.strip() for t in topic_tags.split(",") if t.strip()]
+
+        payload: dict = {
+            "claim_text":      claim_text,
+            "topic_tags":      topic_tags,
+            "technique_class": technique_class,
+            "analyst_token":   OSS_ANALYST_TOKEN,
+        }
+        if source_name and source_name != "Analyst Manual Entry":
+            payload["source_name"] = source_name
+        if article_url:
+            payload["article_url"] = article_url
+        if article_title:
+            payload["article_title"] = article_title
+
+        try:
+            data    = json.dumps(payload).encode()
+            req     = urllib.request.Request(
+                f"{OSS_URL}/admin/submit_claim", data=data,
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read())
+        except Exception as e:
+            return _oss_error(e)
+
+        if result.get("status") == "duplicate":
+            return Response(
+                message="[OSS] Near-identical claim already in ledger — not added.",
+                break_loop=False,
+            )
+
+        claim_id   = result.get("claim_id")
+        matched    = result.get("topics_matched", [])
+        unmatched  = result.get("topics_unrecognized", [])
+
+        lines = [
+            f"[OSS] Claim staged — ID {claim_id}",
+            f"Topics matched: {matched if matched else '(none — claim stored without topic tags)'}",
+        ]
+        if unmatched:
+            lines.append(
+                f"Topics not recognized (not applied): {unmatched}. "
+                f"Check active topics with oss_topic or ask Jake to add them."
+            )
+        lines.append("Awaiting promotion. Use oss_topic to verify the entry.")
+
+        return Response(message="\n".join(lines), break_loop=False)
+
+
+# ---------------------------------------------------------------------------
+# oss_ingest_pause
+# ---------------------------------------------------------------------------
+
+class OssIngestPause(Tool):
+    """
+    Pause the OSS automated RSS ingestion pipeline.
+
+    Stops the scheduler from issuing new LLM extraction calls. The container
+    stays running; no state is lost. Use oss_ingest_resume to restart.
+
+    No arguments required.
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        print("[OSS] oss_ingest_pause: pausing ingestion pipeline", flush=True)
+        try:
+            result = _post("/admin/ingest/pause", {})
+        except Exception as e:
+            return _oss_error(e)
+
+        return Response(
+            message="[OSS] Ingestion pipeline paused. No new extraction calls will be issued until resumed.",
+            break_loop=False,
+        )
+
+
+# ---------------------------------------------------------------------------
+# oss_ingest_resume
+# ---------------------------------------------------------------------------
+
+class OssIngestResume(Tool):
+    """
+    Resume the OSS automated RSS ingestion pipeline.
+
+    Re-enables the scheduler after a pause. The next ingestion pass will
+    run at the next scheduled interval.
+
+    No arguments required.
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        print("[OSS] oss_ingest_resume: resuming ingestion pipeline", flush=True)
+        try:
+            result = _post("/admin/ingest/resume", {})
+        except Exception as e:
+            return _oss_error(e)
+
+        return Response(
+            message="[OSS] Ingestion pipeline resumed. Next pass will run at the scheduled interval.",
+            break_loop=False,
+        )

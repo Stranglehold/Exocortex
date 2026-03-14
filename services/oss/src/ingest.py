@@ -10,6 +10,7 @@ for retroactive ingestion of archived articles.
 
 import os
 import json
+import re
 import time
 import hashlib
 import logging
@@ -26,6 +27,12 @@ from openai import OpenAI
 
 logging.basicConfig(level=logging.INFO, format='[INGEST] %(message)s', force=True)
 log = logging.getLogger(__name__)
+
+
+def _strip_thinking(raw: str) -> str:
+    """Strip <think>...</think> blocks produced by reasoning models before JSON parse."""
+    return re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+
 
 # ---------------------------------------------------------------------------
 # Config
@@ -144,7 +151,7 @@ def extract_claims(article_text: str, article_title: str) -> list[str]:
             temperature=0.1,
             max_tokens=512,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = _strip_thinking(resp.choices[0].message.content.strip())
         # Robust parse: handle markdown code fences
         if raw.startswith("```"):
             raw = raw.split("```")[1]
@@ -182,7 +189,7 @@ def classify_technique(claim: str) -> str:
             temperature=0.0,
             max_tokens=10,
         )
-        result = resp.choices[0].message.content.strip().lower()
+        result = _strip_thinking(resp.choices[0].message.content.strip()).lower()
         valid = {'presuasion', 'fracture', 'emergent', 'direct', 'none'}
         return result if result in valid else 'none'
     except Exception:
@@ -209,7 +216,7 @@ def assign_topics(claim: str, available_tags: list[str]) -> list[str]:
             temperature=0.0,
             max_tokens=64,
         )
-        raw = resp.choices[0].message.content.strip()
+        raw = _strip_thinking(resp.choices[0].message.content.strip())
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -348,6 +355,23 @@ def fetch_feed(source: dict, available_topics: list[str]) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Ingestion pause flag (toggled via /admin/ingest/pause and /admin/ingest/resume)
+# ---------------------------------------------------------------------------
+
+_ingest_paused = os.environ.get("OSS_INGEST_PAUSED", "false").lower() == "true"
+
+
+def is_paused() -> bool:
+    return _ingest_paused
+
+
+def set_paused(paused: bool):
+    global _ingest_paused
+    _ingest_paused = paused
+    log.info(f"Ingestion {'PAUSED' if paused else 'RESUMED'}")
+
+
+# ---------------------------------------------------------------------------
 # Main scheduler loop
 # ---------------------------------------------------------------------------
 
@@ -370,10 +394,13 @@ def run_scheduler():
     interval_minutes = int(os.environ.get("OSS_INGEST_INTERVAL_MINUTES", "30"))
     log.info(f"Ingestion scheduler starting (interval={interval_minutes}m)")
     while True:
-        try:
-            run_once()
-        except Exception as e:
-            log.error(f"Ingestion pass error: {e}")
+        if not _ingest_paused:
+            try:
+                run_once()
+            except Exception as e:
+                log.error(f"Ingestion pass error: {e}")
+        else:
+            log.info("Ingestion pass skipped (paused)")
         time.sleep(interval_minutes * 60)
 
 

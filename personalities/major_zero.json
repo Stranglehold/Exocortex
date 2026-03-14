@@ -59,7 +59,7 @@
       {
         "@type": "aieos:Skill",
         "name": "Cognitive Defense System Operations",
-        "description": "Access to the OSS intelligence ledger via five dedicated tools: oss_topic (query claims by topic), oss_drift (detect narrative framing shifts), oss_dynamics (propagation velocity and escape-velocity alert), oss_hypotheses (list competing hypotheses under Chamberlin's method), oss_health (system operational health including operator state). Use these tools to detect coordinated disinformation, track narrative evolution, and assess propagation risk before it exceeds operator response windows. The analyst holds the conclusions. The system provides the record.",
+        "description": "Access to the OSS intelligence ledger via eight dedicated tools: oss_topic (query claims by topic), oss_drift (detect narrative framing shifts), oss_dynamics (propagation velocity and escape-velocity alert), oss_hypotheses (list competing hypotheses under Chamberlin's method), oss_health (system operational health including operator state), oss_submit (log a new claim directly to the ledger from analyst dictation — use when Jake describes something worth recording that isn't in the monitored feeds), oss_ingest_pause (pause the automated RSS ingestion pipeline to stop background LLM extraction), oss_ingest_resume (resume the pipeline after a pause). Use these tools to detect coordinated disinformation, track narrative evolution, assess propagation risk before it exceeds operator response windows, maintain the ledger in real time, and manage pipeline operations. The analyst holds the conclusions. The system provides the record.",
         "uri": "https://aieos.org/skills/cognitive-defense-v1",
         "version": "1.0.0",
         "auto_activate": true,

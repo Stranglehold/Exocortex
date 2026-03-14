@@ -30,6 +30,7 @@ Writes:
   - /a0/usr/memory/co_retrieval_log.json (cluster_candidates)
 """
 
+import asyncio
 import json
 import os
 from collections import Counter
@@ -106,85 +107,13 @@ class MemoryMaintenance(Extension):
             if interval <= 0 or counter % interval != 0:
                 return
 
-            db = await Memory.get(self.agent)
-            if not db or not db.db:
-                return
-
-            all_docs = db.db.get_all_docs()
-            if not all_docs:
-                return
-
-            dedup_config = config.get("deduplication", DEFAULT_DEDUP_CONFIG)
-            related_config = config.get("related_memories", DEFAULT_RELATED_CONFIG)
-            changed = False
-
-            # ── Phase 1: Deduplication ────────────────────────────────────
-            if dedup_config.get("enabled", True):
-                dedup_count = await _run_deduplication(
-                    db, all_docs, dedup_config,
-                )
-                if dedup_count > 0:
-                    changed = True
-                    self.agent.context.log.log(
-                        type="info",
-                        content=(
-                            f"[MEM-MAINT] Deduplicated {dedup_count} "
-                            f"memory pairs"
-                        ),
-                    )
-
-            # ── Phase 2: Related Memory Linking ───────────────────────────
-            if related_config.get("enabled", True):
-                link_count = _run_related_linking(
-                    all_docs, related_config,
-                )
-                if link_count > 0:
-                    changed = True
-                    self.agent.context.log.log(
-                        type="info",
-                        content=(
-                            f"[MEM-MAINT] Linked {link_count} "
-                            f"related memory pairs"
-                        ),
-                    )
-
-            # ── Phase 3: Cluster Candidate Detection ──────────────────────
-            cluster_count = _detect_cluster_candidates()
-            if cluster_count > 0:
-                self.agent.context.log.log(
-                    type="info",
-                    content=(
-                        f"[MEM-MAINT] Found {cluster_count} "
-                        f"cluster candidates"
-                    ),
-                )
-
-            # ── Phase 4: Dormancy Check ───────────────────────────────────
-            archival_threshold = config.get("archival_threshold_cycles", 50)
-            dormant_count = _check_dormancy(
-                all_docs, counter, archival_threshold,
+            # Fire maintenance as a background task so this hook returns
+            # immediately. Running inline blocks the event loop long enough
+            # (FAISS searches + file I/O) to delay response rendering in
+            # the web UI — the response appears in logs but not the chat window.
+            asyncio.create_task(
+                _run_maintenance_bg(self.agent, config, counter)
             )
-            if dormant_count > 0:
-                changed = True
-                self.agent.context.log.log(
-                    type="info",
-                    content=(
-                        f"[MEM-MAINT] {dormant_count} memories "
-                        f"flagged as dormancy candidates"
-                    ),
-                )
-
-            # ── Persist changes ───────────────────────────────────────────
-            if changed:
-                try:
-                    db._save_db()
-                except Exception:
-                    pass
-
-            # ── Ontology maintenance hook ─────────────────────────────────
-            # Promote Layer 10b memory links to typed relationships when
-            # the ontology layer is enabled.
-            _run_ontology_hook(all_docs)
 
         except Exception as e:
             try:
@@ -194,6 +123,99 @@ class MemoryMaintenance(Extension):
                 )
             except Exception:
                 pass
+
+
+async def _run_maintenance_bg(agent, config: dict, counter: int) -> None:
+    """Run all maintenance phases in the background after the hook returns."""
+    try:
+        db = await Memory.get(agent)
+        if not db or not db.db:
+            return
+
+        all_docs = db.db.get_all_docs()
+        if not all_docs:
+            return
+
+        dedup_config = config.get("deduplication", DEFAULT_DEDUP_CONFIG)
+        related_config = config.get("related_memories", DEFAULT_RELATED_CONFIG)
+        changed = False
+
+        # ── Phase 1: Deduplication ────────────────────────────────────
+        if dedup_config.get("enabled", True):
+            dedup_count = await _run_deduplication(
+                db, all_docs, dedup_config,
+            )
+            if dedup_count > 0:
+                changed = True
+                agent.context.log.log(
+                    type="info",
+                    content=(
+                        f"[MEM-MAINT] Deduplicated {dedup_count} "
+                        f"memory pairs"
+                    ),
+                )
+
+        # ── Phase 2: Related Memory Linking ───────────────────────────
+        if related_config.get("enabled", True):
+            link_count = _run_related_linking(
+                all_docs, related_config,
+            )
+            if link_count > 0:
+                changed = True
+                agent.context.log.log(
+                    type="info",
+                    content=(
+                        f"[MEM-MAINT] Linked {link_count} "
+                        f"related memory pairs"
+                    ),
+                )
+
+        # ── Phase 3: Cluster Candidate Detection ──────────────────────
+        cluster_count = _detect_cluster_candidates()
+        if cluster_count > 0:
+            agent.context.log.log(
+                type="info",
+                content=(
+                    f"[MEM-MAINT] Found {cluster_count} "
+                    f"cluster candidates"
+                ),
+            )
+
+        # ── Phase 4: Dormancy Check ───────────────────────────────────
+        archival_threshold = config.get("archival_threshold_cycles", 50)
+        dormant_count = _check_dormancy(
+            all_docs, counter, archival_threshold,
+        )
+        if dormant_count > 0:
+            changed = True
+            agent.context.log.log(
+                type="info",
+                content=(
+                    f"[MEM-MAINT] {dormant_count} memories "
+                    f"flagged as dormancy candidates"
+                ),
+            )
+
+        # ── Persist changes ───────────────────────────────────────────
+        if changed:
+            try:
+                db._save_db()
+            except Exception:
+                pass
+
+        # ── Ontology maintenance hook ─────────────────────────────────
+        # Promote Layer 10b memory links to typed relationships when
+        # the ontology layer is enabled.
+        _run_ontology_hook(all_docs)
+
+    except Exception as e:
+        try:
+            agent.context.log.log(
+                type="warning",
+                content=f"[MEM-MAINT] Background error (passthrough): {e}",
+            )
+        except Exception:
+            pass
 
 
 # ── Phase 1: Deduplication ───────────────────────────────────────────────────
