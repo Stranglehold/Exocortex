@@ -98,6 +98,7 @@ fi
 
 LAYERS=(
   "1|Framework message replacements      |fw-replacements/install_fw_replacements.sh"
+  "1|Core file patches (JSON fallback)   |scripts/install_core_patches.sh"
   "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
   "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
   "2|Extensions — error comprehension   |scripts/install_error_comprehension.sh"
@@ -205,7 +206,8 @@ if [ "$failed" -eq 0 ]; then
   echo -e "${GREEN}${BOLD}All layers installed successfully.${NC}"
   echo ""
   echo "  Deployment map:"
-  echo "    Layer 1  fw-replacements   → /a0/prompts/"
+  echo "    Layer 1  fw-replacements   → /a0/prompts/
+    Layer 1  core patches      → /a0/python/helpers/ + /a0/prompts/"
   echo "    Layer 2  extensions        → /a0/python/extensions/"
   echo "    Layer 2  org kernel        → /a0/python/extensions/ + /a0/usr/organizations/"
   echo "    Layer 2  supervisor loop   → /a0/python/extensions/message_loop_end/"
