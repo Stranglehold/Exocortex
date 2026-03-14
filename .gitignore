@@ -5,3 +5,14 @@ instrument/data/v1/*.npy
 instrument/data/v2/*.npy
 instrument/step13_stderr.log
 instrument/docx_structure_scan*.txt
+
+# Runtime data — generated at operation time, never committed
+memory/
+sleep_reports/
+procedural_memory/
+operator_profile.json
+operator_profile_approved.json
+operator_profile_versions/
+action_boundary_config.json
+agents/
+state/
