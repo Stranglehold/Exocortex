@@ -100,22 +100,20 @@ echo "  OK    operator_profile_versions/ directory"
 
 # ── Syntax check ─────────────────────────────────────────────────────────────
 
+py_check() {
+    local f="$1"
+    [[ ! -f "$f" ]] && { echo "  SKIP  $(basename "$f") syntax check (not found)"; return 0; }
+    python3 -m py_compile "$f" && \
+        echo "  OK    $(basename "$f") syntax check" || \
+        { echo "  ERR   $(basename "$f") syntax check failed"; ERRORS=$((ERRORS + 1)); }
+}
+
 if command -v python3 &>/dev/null; then
-    python3 -m py_compile "${REPO_DIR}/sleep_consolidation.py" && \
-        echo "  OK    sleep_consolidation.py syntax check" || \
-        { echo "  ERR   sleep_consolidation.py syntax check failed"; ERRORS=$((ERRORS + 1)); }
-    python3 -m py_compile "${REPO_DIR}/sleep_episode_chunker.py" && \
-        echo "  OK    sleep_episode_chunker.py syntax check" || \
-        { echo "  ERR   sleep_episode_chunker.py syntax check failed"; ERRORS=$((ERRORS + 1)); }
-    python3 -m py_compile "${REPO_DIR}/sleep_interaction_analyzer.py" && \
-        echo "  OK    sleep_interaction_analyzer.py syntax check" || \
-        { echo "  ERR   sleep_interaction_analyzer.py syntax check failed"; ERRORS=$((ERRORS + 1)); }
-    python3 -m py_compile "${REPO_DIR}/extensions/tool_execute_after/_60_sleep_trigger.py" && \
-        echo "  OK    _60_sleep_trigger.py syntax check" || \
-        { echo "  ERR   _60_sleep_trigger.py syntax check failed"; ERRORS=$((ERRORS + 1)); }
-    python3 -m py_compile "${REPO_DIR}/extensions/before_main_llm_call/_13_operator_profile.py" && \
-        echo "  OK    _13_operator_profile.py syntax check" || \
-        { echo "  ERR   _13_operator_profile.py syntax check failed"; ERRORS=$((ERRORS + 1)); }
+    py_check "${REPO_DIR}/sleep_consolidation.py"
+    py_check "${REPO_DIR}/sleep_episode_chunker.py"
+    py_check "${REPO_DIR}/sleep_interaction_analyzer.py"
+    py_check "${REPO_DIR}/extensions/tool_execute_after/_60_sleep_trigger.py"
+    py_check "${REPO_DIR}/extensions/before_main_llm_call/_13_operator_profile.py"
 fi
 
 # ── Result ────────────────────────────────────────────────────────────────────
