@@ -15,6 +15,10 @@
 #     → creates browser log item for plain text responses during streaming
 #     → fixes responses not showing in web UI for reasoning-distilled models
 #
+#   extensions/before_main_llm_call/_18_memory_catalog.py
+#     → injects compact memory domain catalog once at session start
+#     → gives agent visibility into what's stored before querying blind
+#
 # Usage: ./scripts/install_core_patches.sh [container_name]
 # Default container: flamboyant_bell
 
@@ -68,6 +72,22 @@ if [ -f "$EXT_SRC" ]; then
   echo "[PATCH] extensions/response_stream_chunk/_21_plain_text_response.py deployed."
 else
   echo "[PATCH] WARNING: $EXT_SRC not found — skipped."
+fi
+
+# ── 4. Extension: _18_memory_catalog.py ──────────────────────────────────────
+
+CAT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_18_memory_catalog.py"
+CAT_DST="/a0/python/extensions/before_main_llm_call/_18_memory_catalog.py"
+CAT_PYCACHE="/a0/python/extensions/before_main_llm_call/__pycache__"
+
+if [ -f "$CAT_SRC" ]; then
+  docker exec "$CONTAINER" mkdir -p /a0/python/extensions/before_main_llm_call
+  docker cp "$CAT_SRC" "$CONTAINER:$CAT_DST"
+  docker exec "$CONTAINER" bash -c "rm -rf '$CAT_PYCACHE'" 2>/dev/null || true
+  docker exec "$CONTAINER" bash -c "python3 -m py_compile '$CAT_DST' && echo '[PATCH] _18_memory_catalog.py OK'"
+  echo "[PATCH] extensions/before_main_llm_call/_18_memory_catalog.py deployed."
+else
+  echo "[PATCH] WARNING: $CAT_SRC not found — skipped."
 fi
 
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
