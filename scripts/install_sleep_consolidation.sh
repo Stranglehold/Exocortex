@@ -31,6 +31,14 @@ install_file() {
         echo "  SKIP  ${label} (not found at ${src})"
         return 0
     fi
+    # Skip if source and destination resolve to the same path (in-container install)
+    local src_real dest_real
+    src_real="$(realpath "$src" 2>/dev/null || echo "$src")"
+    dest_real="$(realpath "$dest" 2>/dev/null || echo "$dest")"
+    if [[ "$src_real" == "$dest_real" ]]; then
+        echo "  OK    ${label} (already in place)"
+        return 0
+    fi
     if docker cp "${src}" "${CONTAINER_NAME}:${dest}" 2>/dev/null; then
         echo "  OK    ${label} → ${dest}"
     else
