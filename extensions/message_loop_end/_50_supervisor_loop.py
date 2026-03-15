@@ -169,6 +169,12 @@ class SupervisorLoop(Extension):
                 _set_state(self.agent, state)
                 return
 
+            # Phase 3: load profile store (cached per session) and drain episode buffer.
+            # Must run before threshold selection — buffer may contain new observations
+            # that improve the learned thresholds for this very turn.
+            profile_store = _get_profile_store(self.agent)
+            _process_episode_buffer(self.agent, profile_store)
+
             # Read operational context
             ctx = _gather_context(self.agent, role or {})
 
@@ -187,7 +193,17 @@ class SupervisorLoop(Extension):
                     )
                 except Exception:
                     pass
-            thresholds = _get_domain_thresholds(effective_domain)
+
+            # Phase 3: identify the candidate failing tool before threshold selection.
+            # The learned profile lookup is keyed on (tool_name, domain), so we need to
+            # know which tool is accumulating failures to pick the right profile.
+            # We read from ctx.tool_failures.consecutive — same source as _get_loop_metrics.
+            failures_raw = ctx.get("tool_failures") or {}
+            consecutive_raw = failures_raw.get("consecutive") or {}
+            candidate_tool = max(consecutive_raw, key=consecutive_raw.get) if consecutive_raw else ""
+
+            # Three-layer threshold selection: learned → static → default.
+            thresholds = _get_learned_thresholds(candidate_tool, effective_domain, profile_store)
 
             # Run anomaly detectors (order: most severe first)
             # ── Graduated loop tier detection ─────────────────────────────────────
@@ -427,6 +443,41 @@ def _get_domain_thresholds(bst_domain: str) -> dict:
             "tier3": max(p["tier3"] for p in profiles),
         }
     return DOMAIN_THRESHOLDS.get(bst_domain, DOMAIN_THRESHOLDS["default"])
+
+
+def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store) -> dict:
+    """
+    Three-layer threshold selection — Phase 3 Adaptive Supervisor.
+
+    Priority:
+      1. Learned profile (observation_count >= MIN_OBSERVATIONS): p50/p90 from accumulated data.
+         Safety floors: learned values never go below cold-start defaults (3/6/9).
+      2. Static DOMAIN_THRESHOLDS: hand-tuned per-domain values. Used when no profile exists
+         or profile has insufficient observations.
+      3. Default 3/6/9: implicit via _get_domain_thresholds("").
+
+    No LLM calls in this path. Pure arithmetic on the profile's observation list.
+    """
+    MIN_OBSERVATIONS = 3
+    if profile_store and tool_name:
+        try:
+            profile = profile_store.get_for_compound(tool_name, effective_domain)
+            if profile and profile.observation_count >= MIN_OBSERVATIONS:
+                t1 = max(3, int(profile.p50))
+                t2 = max(6, int(profile.p90))
+                t3 = max(9, int(profile.p90 * 1.5))
+                return {
+                    "tier1": t1,
+                    "tier2": t2,
+                    "tier3": t3,
+                    "source": "learned",
+                    "observations": profile.observation_count,
+                }
+        except Exception:
+            pass
+    # Fallback: static domain thresholds
+    static = _get_domain_thresholds(effective_domain)
+    return {**static, "source": "static"}
 
 
 def _get_effective_domain(bst_domain: str, failure_history: list) -> str:
@@ -801,6 +852,67 @@ def _write_loop_signals(agent, state: dict, consecutive: int, failing_tool):
     except Exception:
         pass
 
+
+
+def _get_profile_store(agent):
+    """
+    Get or initialize the session's ProfileStore. Cached on the agent attribute
+    so it's loaded once per session and reused across supervisor invocations.
+    Returns None on import failure so callers degrade gracefully.
+    """
+    try:
+        store = getattr(agent, "_success_profile_store", None)
+        if store is None:
+            from success_profile_store import ProfileStore
+            store = ProfileStore()
+            setattr(agent, "_success_profile_store", store)
+        return store
+    except Exception:
+        return None
+
+
+def _process_episode_buffer(agent, profile_store):
+    """
+    Drain the success episode buffer accumulated by the fallback logger.
+    Called at the start of each supervisor check (every 3 turns).
+    Records each episode into the profile store and flushes to disk.
+
+    Buffer format: list of dicts with {tool_name, failure_count, compound_domain}
+    Written by: _30_tool_fallback_logger.py on successful tool execution
+    after >= 1 consecutive failures.
+    """
+    if profile_store is None:
+        return
+    try:
+        buffer = agent.get_data("_success_episode_buffer") or []
+        if not buffer:
+            return
+        # Clear buffer before processing to avoid double-recording if an exception fires mid-loop
+        agent.set_data("_success_episode_buffer", [])
+        for episode in buffer:
+            tool_name = episode.get("tool_name", "")
+            failure_count = episode.get("failure_count", 0)
+            compound_domain = episode.get("compound_domain", "")
+            if not tool_name:
+                continue
+            try:
+                profile = profile_store.record_episode(tool_name, failure_count, compound_domain)
+                agent.context.log.log(
+                    type="info",
+                    content=(
+                        f"[SUPERVISOR] Phase 3 observation: {tool_name}"
+                        f"/{compound_domain or 'default'} "
+                        f"failures_before_success={failure_count} "
+                        f"n={profile.observation_count} "
+                        f"p50={profile.p50:.1f} p90={profile.p90:.1f}"
+                    ),
+                    flush=True,
+                )
+            except Exception:
+                pass
+        profile_store.flush()
+    except Exception:
+        pass
 
 
 def _capture_anti_pattern(agent, state: dict, domain: str):

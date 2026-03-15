@@ -67,6 +67,10 @@ class ToolFallbackLogger(Extension):
                 failures["consecutive"] = {}
 
             if not error_type:
+                # Phase 3: read prev failures before resetting — for success profile buffering.
+                # Capture the count that just resolved so the supervisor can record
+                # (tool_name, domain, failures_before_success) as a learning datapoint.
+                prev_failures = failures["consecutive"].get(tool_name, 0)
                 failures["consecutive"][tool_name] = 0
                 # Don't clear history on response tool — it's a terminal action,
                 # not a task success. History should only clear when actual work succeeds.
@@ -96,6 +100,23 @@ class ToolFallbackLogger(Extension):
                         if len(output_tracker) > MAX_OUTPUT_HISTORY:
                             output_tracker = output_tracker[-MAX_OUTPUT_HISTORY:]
                         self.agent.set_data(OUTPUT_TRACKER_KEY, output_tracker)
+                    except Exception:
+                        pass
+                # Phase 3: buffer success episode for profile store.
+                # Only when there were actual failures to learn from (prev_failures >= 1).
+                # The supervisor processes this buffer every 3 turns and records the
+                # (tool_name, primary_domain, failures_before_success) observation.
+                if prev_failures >= 1 and tool_name != "response":
+                    try:
+                        buffer = self.agent.get_data("_success_episode_buffer") or []
+                        bst_store = getattr(self.agent, "_bst_store", {}) or {}
+                        compound_sig = bst_store.get("_compound_sig", "")
+                        buffer.append({
+                            "tool_name": tool_name,
+                            "failure_count": prev_failures,
+                            "compound_domain": compound_sig,
+                        })
+                        self.agent.set_data("_success_episode_buffer", buffer)
                     except Exception:
                         pass
                 return
