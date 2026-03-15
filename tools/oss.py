@@ -11,6 +11,7 @@ Available tools (call by snake_case class name):
   oss_hypotheses     — list competing hypotheses for an observation
   oss_health         — system operational health report
   oss_submit         — log a new claim directly to the ledger (analyst dictation)
+  oss_list_topics    — list all monitored topics with claim counts
   oss_add_topic      — register a new topic tag for the ingestion pipeline to monitor
   oss_ingest_pause   — pause the automated RSS ingestion pipeline
   oss_ingest_resume  — resume the automated RSS ingestion pipeline
@@ -540,6 +541,52 @@ class OssIngestResume(Tool):
             message="[OSS] Ingestion pipeline resumed. Next pass will run at the scheduled interval.",
             break_loop=False,
         )
+
+
+# ---------------------------------------------------------------------------
+# oss_list_topics
+# ---------------------------------------------------------------------------
+
+class OssListTopics(Tool):
+    """
+    List all topics the OSS ingestion pipeline is currently monitoring.
+
+    Shows each topic's tag, display name, claim count, and last activity.
+    Use this to see what's being tracked before querying or adding topics.
+
+    Arguments:
+        active_only (optional) — "false" to include inactive topics (default: true)
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        active_only = self.args.get("active_only", "true").lower()
+        print(f"[OSS] oss_list_topics: active_only={active_only}", flush=True)
+
+        try:
+            result = _get(f"/api/topics?active_only={active_only}")
+        except Exception as e:
+            return _oss_error(e)
+
+        topics = result.get("topics", [])
+        if not topics:
+            return Response(
+                message="[OSS] No monitored topics registered yet. Use oss_add_topic to add one.",
+                break_loop=False,
+            )
+
+        lines = [f"**OSS monitored topics ({len(topics)})**\n"]
+        for t in topics:
+            tag     = t.get("tag", "?")
+            name    = t.get("display_name", tag)
+            count   = t.get("claim_count", 0)
+            active  = t.get("active", True)
+            last    = (t.get("last_active") or "")[:10]
+            desc    = t.get("description") or ""
+            status  = "" if active else " [inactive]"
+            detail  = f" — {desc}" if desc else ""
+            lines.append(f"  · **{tag}** ({name}){status}: {count} claims | last active {last}{detail}")
+
+        return Response(message="\n".join(lines), break_loop=False)
 
 
 # ---------------------------------------------------------------------------

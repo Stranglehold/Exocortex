@@ -1295,6 +1295,47 @@ def admin_ingest():
 
 
 # ---------------------------------------------------------------------------
+# API endpoint: list monitored topics
+# ---------------------------------------------------------------------------
+
+@app.route('/api/topics', methods=['GET'])
+def list_topics():
+    """
+    List all registered topics with claim counts and activity.
+
+    Query params:
+        active_only: bool (default true) — omit inactive topics
+    Output: { topics: [...], total: int }
+    """
+    active_only = request.args.get('active_only', 'true').lower() != 'false'
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                query = """
+                    SELECT tag, display_name, description, parent_tag,
+                           claim_count, last_active, active
+                    FROM topics
+                """
+                if active_only:
+                    query += " WHERE active = TRUE"
+                query += " ORDER BY claim_count DESC, tag ASC"
+                cur.execute(query)
+                rows = [dict(r) for r in cur.fetchall()]
+
+        # Serialize timestamps
+        for r in rows:
+            if r.get('last_active'):
+                r['last_active'] = r['last_active'].isoformat()
+
+        return jsonify({'topics': rows, 'total': len(rows)})
+
+    except Exception as e:
+        log.error(f"list_topics failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Admin endpoint: add a new monitoring topic
 # ---------------------------------------------------------------------------
 
