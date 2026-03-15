@@ -4,7 +4,9 @@ from python.helpers.tool import Response
 
 FAILURES_KEY = "_tool_failures"
 FORMAT_TRACKER_KEY = "_failure_tracker"  # Owned by error_format/_30_failure_tracker.py
+OUTPUT_TRACKER_KEY = "_tool_output_tracker"  # Successful output hashes for stagnation detection
 MAX_HISTORY = 20
+MAX_OUTPUT_HISTORY = 8  # Rolling window for stagnation detection
 
 SUCCESS_INDICATORS = [
     r"(?i)successfully installed",
@@ -81,6 +83,21 @@ class ToolFallbackLogger(Extension):
                 if tracker.get(tool_name, 0) > 0:
                     tracker[tool_name] = 0
                     self.agent.set_data(FORMAT_TRACKER_KEY, tracker)
+                # Track successful output hash for stagnation detection.
+                # Only track actual work tools — response is a terminal action, not progress.
+                if tool_name != "response" and response.message:
+                    try:
+                        output_tracker = self.agent.get_data(OUTPUT_TRACKER_KEY) or []
+                        output_tracker.append({
+                            "tool": tool_name,
+                            "output_hash": hash(response.message[:500]),
+                            "status": "success",
+                        })
+                        if len(output_tracker) > MAX_OUTPUT_HISTORY:
+                            output_tracker = output_tracker[-MAX_OUTPUT_HISTORY:]
+                        self.agent.set_data(OUTPUT_TRACKER_KEY, output_tracker)
+                    except Exception:
+                        pass
                 return
 
             failures["history"].append({

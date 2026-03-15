@@ -94,6 +94,13 @@ ANOMALY_LOOP = "loop"
 ANOMALY_CONTEXT = "context"
 ANOMALY_CASCADE = "cascade"
 ANOMALY_PACE = "pace"
+ANOMALY_STAGNATION = "stagnation"
+
+# Stagnation detection: successful-execution-no-progress (Finding 2, Session 055).
+# Fires when N+ successful tool calls in a window produce identical output hashes.
+STAGNATION_WINDOW = 4          # Rolling window of recent tool outputs to examine
+STAGNATION_MIN_SUCCESSES = 3   # Minimum successful calls needed to evaluate
+STAGNATION_MAX_UNIQUE = 2      # Max unique output hashes before stagnation is declared
 
 # Lenz's law: opposing approaches indexed by tool name.
 # When a loop is detected, the injection names the closed strategy
@@ -165,8 +172,22 @@ class SupervisorLoop(Extension):
             # Read operational context
             ctx = _gather_context(self.agent, role or {})
 
-            # Direction A: select domain-aware thresholds from BST classification
-            thresholds = _get_domain_thresholds(ctx.get("bst_domain", ""))
+            # Direction A: select domain-aware thresholds from BST classification.
+            # Direction A+: effective domain override from behavioral signals (Finding 1).
+            # The supervisor maintains its own observation loop — when BST intent-label
+            # diverges from actual execution pattern, trust the behavioral signal.
+            bst_domain = ctx.get("bst_domain", "")
+            effective_domain = _get_effective_domain(bst_domain, ctx.get("failure_history", []))
+            if effective_domain != bst_domain and effective_domain:
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content=f"[SUPERVISOR] Effective domain override: BST={bst_domain or 'none'} → {effective_domain}",
+                        flush=True,
+                    )
+                except Exception:
+                    pass
+            thresholds = _get_domain_thresholds(effective_domain)
 
             # Run anomaly detectors (order: most severe first)
             # ── Graduated loop tier detection ─────────────────────────────────────
@@ -226,6 +247,16 @@ class SupervisorLoop(Extension):
             if not injected and _cooldown_ok(state, ANOMALY_CONTEXT):
                 if _detect_context_exhaustion(self.agent, ctx):
                     _inject_context_warning(self.agent, ctx, state)
+                    injected = True
+
+            # 3.5. Output stagnation detection (Finding 2, Session 055).
+            # Fires when successful tool calls produce identical output — the agent is
+            # working but not advancing. No failure count, no tier escalation. Different
+            # signal, different message, different intervention from loop detection.
+            if not injected and _cooldown_ok(state, ANOMALY_STAGNATION):
+                stagnation = _detect_output_stagnation(ctx.get("tool_output_hashes", []))
+                if stagnation.get("stagnating"):
+                    _inject_stagnation(self.agent, stagnation, state)
                     injected = True
 
             # Read action gate — suppresses stall/loop-Tier1 when agent is pending authorization
@@ -363,6 +394,12 @@ def _gather_context(agent, role: dict) -> dict:
     except Exception:
         pass
 
+    # Tool output hashes for stagnation detection (from fallback logger success tracking)
+    try:
+        ctx["tool_output_hashes"] = agent.get_data("_tool_output_tracker") or []
+    except Exception:
+        pass
+
     return ctx
 
 
@@ -390,6 +427,48 @@ def _get_domain_thresholds(bst_domain: str) -> dict:
             "tier3": max(p["tier3"] for p in profiles),
         }
     return DOMAIN_THRESHOLDS.get(bst_domain, DOMAIN_THRESHOLDS["default"])
+
+
+def _get_effective_domain(bst_domain: str, failure_history: list) -> str:
+    """
+    Compute the supervisor's operational domain from both BST classification
+    and observed behavioral signals.
+
+    Finding 1 (Session 055): The BST classifies from the user's message intent
+    and maintains momentum. When the user says "run X" and X breaks, the BST
+    stays in 'conversation' while the agent is actually debugging. The supervisor
+    needs a signal that responds to what's ACTUALLY HAPPENING in the execution
+    pattern — its own observation loop, not a dependency on the BST's label.
+
+    The AAR OCT model: the OCT reads the operations order before the exercise
+    (= BST classification) but also observes what's happening on the ground.
+    When reality diverges from the plan, the OCT maintains its own operational
+    picture — it does not rewrite the operations order.
+
+    IMPORTANT: This override flows only to threshold selection. It does NOT
+    modify the BST. The BST continues classifying for enrichment purposes.
+    Two observation loops, two update cadences, same agent.
+    """
+    if not failure_history or len(failure_history) < 3:
+        return bst_domain
+
+    recent = failure_history[-10:]
+    code_exec_failures = [e for e in recent if e.get("tool") == "code_execution_tool"]
+
+    if len(code_exec_failures) >= 2:
+        unique_errors = len(set(
+            e.get("error_type", "") for e in code_exec_failures if e.get("error_type")
+        ))
+        if unique_errors >= 2:
+            # Behavioral signal: iterative debugging on code_execution_tool
+            # regardless of what the user asked for
+            if "debugging" not in bst_domain and "codegen" not in bst_domain:
+                if bst_domain in ("", "conversation", "default"):
+                    return "debugging"
+                else:
+                    return bst_domain + "+debugging"
+
+    return bst_domain
 
 
 def _get_error_diversity(ctx: dict, consecutive: int) -> int:
@@ -447,6 +526,48 @@ def _detect_loop(ctx: dict) -> bool:
 
     return False
 
+
+
+def _detect_output_stagnation(tool_output_hashes: list) -> dict:
+    """
+    Detect when tool executions succeed but produce identical output — the
+    agent is working mechanically without advancing the task.
+
+    Finding 2 (Session 055): The consecutive failure counter stays at zero
+    during stagnation (all calls succeed). The supervisor has no failure-based
+    signal. The loop detection message that fired came from Agent Zero's core
+    duplicate response detector (syntactic), not from the supervisor tier system.
+
+    A loop is: same action → same error → same action. Stuck on INPUT side.
+    Stagnation is: different action → same result → different action. Stuck on
+    OUTPUT side. Different diagnosis, different prescription.
+
+    The intervention for stagnation is also different:
+    - Loop: "Your tool is failing. Try a different tool."
+    - Stagnation: "Your tool is working but you're not advancing. Reconsider
+      whether you're done or whether the objective needs clarification."
+    """
+    if len(tool_output_hashes) < STAGNATION_WINDOW:
+        return {"stagnating": False}
+
+    recent = tool_output_hashes[-STAGNATION_WINDOW:]
+    successful = [o for o in recent if o.get("status") == "success"]
+
+    if len(successful) < STAGNATION_MIN_SUCCESSES:
+        return {"stagnating": False}
+
+    hashes = [o.get("output_hash") for o in successful if o.get("output_hash") is not None]
+    unique_hashes = len(set(hashes))
+
+    if unique_hashes <= STAGNATION_MAX_UNIQUE:
+        return {
+            "stagnating": True,
+            "identical_count": len(successful),
+            "unique_hashes": unique_hashes,
+            "tool": successful[-1].get("tool", "unknown") if successful else "unknown",
+        }
+
+    return {"stagnating": False}
 
 
 def _get_loop_metrics(ctx: dict, thresholds: dict) -> tuple:
@@ -809,6 +930,35 @@ def _inject_context_warning(agent, ctx: dict, state: dict):
         f"Complete your immediate task and respond to the user. Do not start new subtasks."
     )
     _emit(agent, msg, ANOMALY_CONTEXT, state)
+
+
+def _inject_stagnation(agent, stagnation: dict, state: dict):
+    """
+    Inject stagnation warning — successful execution without forward progress.
+
+    Distinct from loop detection: the tool is working, the agent is not stuck
+    on a failing approach. The problem is that successful output is identical
+    across multiple calls — the agent is succeeding mechanically without
+    changing the state of the task.
+
+    The prescription is different from a loop intervention:
+    - Loop says: "Your tool failed N times, try X alternative instead."
+    - Stagnation says: "Your tool worked but nothing changed. Reconsider
+      whether you're done or whether the goal needs clarification."
+    """
+    count = stagnation.get("identical_count", 3)
+    tool = stagnation.get("tool", "unknown")
+    msg = (
+        f"[SUPERVISOR] STAGNATION DETECTED — '{tool}' has produced identical output "
+        f"across {count} consecutive successful calls. The method is working but the "
+        f"task is not advancing.\n"
+        f"Consider:\n"
+        f"  1. Whether the current output already satisfies the task objective\n"
+        f"  2. Whether the goal needs refinement (what specifically should change?)\n"
+        f"  3. Using the response tool to report current results and ask for guidance\n"
+        f"Do not re-run the same approach expecting a different result."
+    )
+    _emit(agent, msg, ANOMALY_STAGNATION, state)
 
 
 def _inject_cascade(agent, state: dict):
