@@ -11,6 +11,7 @@ Available tools (call by snake_case class name):
   oss_hypotheses     — list competing hypotheses for an observation
   oss_health         — system operational health report
   oss_submit         — log a new claim directly to the ledger (analyst dictation)
+  oss_add_topic      — register a new topic tag for the ingestion pipeline to monitor
   oss_ingest_pause   — pause the automated RSS ingestion pipeline
   oss_ingest_resume  — resume the automated RSS ingestion pipeline
 
@@ -539,3 +540,69 @@ class OssIngestResume(Tool):
             message="[OSS] Ingestion pipeline resumed. Next pass will run at the scheduled interval.",
             break_loop=False,
         )
+
+
+# ---------------------------------------------------------------------------
+# oss_add_topic
+# ---------------------------------------------------------------------------
+
+class OssAddTopic(Tool):
+    """
+    Register a new topic tag for the OSS ingestion pipeline to monitor.
+
+    Once added, incoming claims from all RSS sources will be tagged with
+    this topic when their content matches. The pipeline does not need to
+    restart — tagging applies on the next ingestion pass.
+
+    Arguments:
+        topic        (required) — tag slug, e.g. 'taiwan-strait', 'us-tariffs'
+        display_name (optional) — human-readable label (defaults to topic)
+        description  (optional) — what this topic covers
+        parent_topic (optional) — parent tag for hierarchical grouping
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        topic        = self.args.get("topic", "").strip()
+        display_name = self.args.get("display_name", "").strip()
+        description  = self.args.get("description", "").strip()
+        parent_topic = self.args.get("parent_topic", "").strip()
+
+        print(f"[OSS] oss_add_topic: topic={topic!r}", flush=True)
+
+        if not topic:
+            return Response(message="Error: topic argument required", break_loop=False)
+
+        payload: dict = {"tag": topic}
+        if display_name:
+            payload["display_name"] = display_name
+        if description:
+            payload["description"] = description
+        if parent_topic:
+            payload["parent_tag"] = parent_topic
+
+        try:
+            result = _post("/admin/add_topic", payload)
+        except Exception as e:
+            return _oss_error(e)
+
+        status = result.get("status", "unknown")
+        tag    = result.get("tag", topic)
+        name   = result.get("display_name", tag)
+        msg    = result.get("message", "")
+
+        if status == "created":
+            return Response(
+                message=f"[OSS] Topic '{tag}' ({name}) added. {msg}",
+                break_loop=False,
+            )
+        elif status == "exists":
+            active = result.get("active", True)
+            return Response(
+                message=f"[OSS] Topic '{tag}' already registered (active={active}). {msg}",
+                break_loop=False,
+            )
+        else:
+            return Response(
+                message=f"[OSS] add_topic result: {result}",
+                break_loop=False,
+            )

@@ -1295,6 +1295,83 @@ def admin_ingest():
 
 
 # ---------------------------------------------------------------------------
+# Admin endpoint: add a new monitoring topic
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/add_topic', methods=['POST'])
+@require_analyst_auth
+def admin_add_topic():
+    """
+    Register a new topic tag for the ingestion pipeline to monitor.
+
+    Once added and active=true, the ingestion pipeline will tag incoming
+    claims with this topic when the content matches.
+
+    Input:  {
+        tag:          str  (required) — slug identifier, e.g. 'taiwan-strait'
+        display_name: str  (optional) — human label, defaults to tag
+        description:  str  (optional) — what this topic covers
+        parent_tag:   str  (optional) — parent topic tag for hierarchical grouping
+        analyst_token: str (required)
+    }
+    Output: { status: 'created'|'exists', tag, display_name, active }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'tag')
+
+    tag          = data['tag'].strip().lower()
+    display_name = (data.get('display_name') or tag.replace('-', ' ').title()).strip()
+    description  = (data.get('description') or '').strip() or None
+    parent_tag   = (data.get('parent_tag') or '').strip() or None
+
+    if not tag:
+        abort(400, description="tag cannot be empty")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                # Validate parent exists if provided
+                if parent_tag:
+                    cur.execute("SELECT tag FROM topics WHERE tag = %s", (parent_tag,))
+                    if not cur.fetchone():
+                        abort(400, description=f"parent_tag '{parent_tag}' does not exist")
+
+                # Check if already exists
+                cur.execute("SELECT tag, display_name, active FROM topics WHERE tag = %s", (tag,))
+                existing = cur.fetchone()
+                if existing:
+                    return jsonify({
+                        'status': 'exists',
+                        'tag': existing['tag'],
+                        'display_name': existing['display_name'],
+                        'active': existing['active'],
+                        'message': f"Topic '{tag}' already registered.",
+                    })
+
+                cur.execute(
+                    """
+                    INSERT INTO topics (tag, display_name, description, parent_tag)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (tag, display_name, description, parent_tag),
+                )
+                conn.commit()
+
+        log.info(f"Topic added: {tag} ({display_name})")
+        return jsonify({
+            'status': 'created',
+            'tag': tag,
+            'display_name': display_name,
+            'active': True,
+            'message': f"Topic '{tag}' added. Ingestion pipeline will tag matching claims going forward.",
+        }), 201
+
+    except Exception as e:
+        log.error(f"add_topic failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
