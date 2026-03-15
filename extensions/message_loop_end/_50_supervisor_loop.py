@@ -49,10 +49,33 @@ CONTEXT_CRITICAL_THRESHOLD = 0.90
 # Loop detection: minimum repetitions of same pattern
 LOOP_DETECTION_THRESHOLD = 3
 
-# Graduated tier thresholds (consecutive same-tool failures, via failure tracker)
+# Graduated tier thresholds — defaults, used by DOMAIN_THRESHOLDS["default"]
 WARN_THRESHOLD      = 3   # Tier 1: warn (existing behavior)
 SUMMARIZE_THRESHOLD = 6   # Tier 2: context surgery
 RESET_THRESHOLD     = 9   # Tier 3: circuit breaker — forced response
+
+# Direction A: Domain-aware threshold profiles.
+# Structural domains (codegen, debugging, system_admin) involve repeated failures
+# by design — that's the mechanism of the work, not evidence of being stuck.
+# Exploratory domains (research, analysis, investigation) should escalate faster.
+# Compound domains (e.g. "codegen+debugging") use the most permissive profile.
+DOMAIN_THRESHOLDS = {
+    "codegen":        {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "debugging":      {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "system_admin":   {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "research":       {"tier1": 3,  "tier2": 6,  "tier3": 12},
+    "analysis":       {"tier1": 3,  "tier2": 6,  "tier3": 12},
+    "investigation":  {"tier1": 3,  "tier2": 6,  "tier3": 12},
+    "agentic":        {"tier1": 4,  "tier2": 8,  "tier3": 15},
+    "meta_cognitive": {"tier1": 4,  "tier2": 8,  "tier3": 15},
+    "default":        {"tier1": 3,  "tier2": 6,  "tier3": 9},
+}
+
+# Direction B: Minimum unique error types required to suppress Tier 2+ escalation.
+# If the agent is hitting 3+ distinct error types across consecutive failures,
+# it is iterating (learning from each failure), not stuck in a loop.
+# Genuine loops produce the same error repeatedly (1-2 unique types).
+DIVERSITY_SUPPRESS_THRESHOLD = 3
 
 # Loop episode state keys (stored in supervisor state dict)
 LOOP_TIER_KEY         = "loop_tier"           # "none"|"warn"|"summarize"|"reset"
@@ -142,15 +165,20 @@ class SupervisorLoop(Extension):
             # Read operational context
             ctx = _gather_context(self.agent, role or {})
 
+            # Direction A: select domain-aware thresholds from BST classification
+            thresholds = _get_domain_thresholds(ctx.get("bst_domain", ""))
+
             # Run anomaly detectors (order: most severe first)
             # ── Graduated loop tier detection ─────────────────────────────────────
-            consecutive, failing_tool = _get_loop_metrics(ctx)
+            consecutive, failing_tool = _get_loop_metrics(ctx, thresholds)
             # Also detect response-format loops (misformat + repeat) — these bypass tool_failures
             fmt_consecutive = _get_format_failure_count(self.agent)
             if fmt_consecutive > consecutive:
                 consecutive = fmt_consecutive
                 failing_tool = "response_format"
-            new_loop_tier, old_loop_tier = _update_loop_state(self.agent, state, consecutive, failing_tool)
+            new_loop_tier, old_loop_tier = _update_loop_state(
+                self.agent, state, consecutive, failing_tool, thresholds, ctx
+            )
             _write_loop_signals(self.agent, state, consecutive, failing_tool)
 
             # Tier 4: capture anti-pattern on loop recovery
@@ -340,6 +368,48 @@ def _gather_context(agent, role: dict) -> dict:
 
 # ── Anomaly Detection ───────────────────────────────────────────
 
+def _get_domain_thresholds(bst_domain: str) -> dict:
+    """
+    Select tier threshold profile based on BST domain classification.
+
+    Compound domains (e.g. "analysis+codegen") use the most permissive
+    profile — an agent doing both things simultaneously needs at least as
+    much latitude as either domain alone.
+
+    Always returns values >= the defaults (3/6/9). The system becomes
+    more permissive with domain knowledge, never more restrictive.
+    """
+    if not bst_domain:
+        return DOMAIN_THRESHOLDS["default"]
+    if "+" in bst_domain:
+        parts = bst_domain.split("+")
+        profiles = [DOMAIN_THRESHOLDS.get(p.strip(), DOMAIN_THRESHOLDS["default"]) for p in parts]
+        return {
+            "tier1": max(p["tier1"] for p in profiles),
+            "tier2": max(p["tier2"] for p in profiles),
+            "tier3": max(p["tier3"] for p in profiles),
+        }
+    return DOMAIN_THRESHOLDS.get(bst_domain, DOMAIN_THRESHOLDS["default"])
+
+
+def _get_error_diversity(ctx: dict, consecutive: int) -> int:
+    """
+    Count unique error types across the last N failure history entries.
+
+    The fallback logger classifies every tool failure into a structured
+    error_type field (timeout, not_found, syntax, execution, etc.), using
+    the EC diagnosis when available. Counting distinct types over the recent
+    failure window distinguishes iteration (3+ unique types = learning) from
+    fixation (1-2 unique types = same error repeated).
+    """
+    history = ctx.get("failure_history", [])
+    if not history or consecutive < 1:
+        return 0
+    recent = history[-max(consecutive, 1):]
+    types = set(e.get("error_type", "") for e in recent if e.get("error_type"))
+    return len(types)
+
+
 def _detect_stall(ctx: dict, role: dict) -> bool:
     """Detect if the agent is stalled (no progress for too long)."""
     if not ctx["htn_state"]:
@@ -379,12 +449,15 @@ def _detect_loop(ctx: dict) -> bool:
 
 
 
-def _get_loop_metrics(ctx: dict) -> tuple:
+def _get_loop_metrics(ctx: dict, thresholds: dict) -> tuple:
     """
     Return (consecutive_failure_count, failing_tool) from the tool failure tracker.
     Uses the 'consecutive' dict maintained by the tool fallback chain — more reliable
     than scanning failure_history list length.
     Returns (0, None) if no loop condition is present.
+
+    thresholds: domain-aware profile from _get_domain_thresholds(), so that
+    a codegen task doesn't register as a loop until 6 failures rather than 3.
     """
     failures = ctx.get("tool_failures") or {}
     consecutive = failures.get("consecutive") or {}
@@ -392,7 +465,7 @@ def _get_loop_metrics(ctx: dict) -> tuple:
         return 0, None
     failing_tool = max(consecutive, key=consecutive.get)
     count = consecutive[failing_tool]
-    if count < WARN_THRESHOLD:
+    if count < thresholds["tier1"]:
         return 0, None
     return count, failing_tool
 
@@ -423,15 +496,22 @@ def _get_format_failure_count(agent) -> int:
         return 0
 
 
-def _update_loop_state(agent, state: dict, consecutive: int, failing_tool) -> tuple:
+def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
+                       thresholds: dict, ctx: dict) -> tuple:
     """
     Update persistent loop episode state. Computes tier from consecutive count,
     tracks tier transitions, records message index at episode start.
     Returns (new_tier, old_tier) as strings.
+
+    Direction A: thresholds are domain-aware (from _get_domain_thresholds).
+    Direction B: Tier 2+ escalation is gated on error type consistency.
+                 If the agent is producing diverse errors (DIVERSITY_SUPPRESS_THRESHOLD+
+                 unique types), it is iterating — suppress surgery/circuit-breaker
+                 and hold at Tier 1 warn only.
     """
     old_tier = state.get(LOOP_TIER_KEY, "none")
 
-    if consecutive < WARN_THRESHOLD:
+    if consecutive < thresholds["tier1"]:
         # Loop resolved -- clear episode state
         if old_tier != "none":
             state[LOOP_TIER_KEY] = "none"
@@ -441,13 +521,31 @@ def _update_loop_state(agent, state: dict, consecutive: int, failing_tool) -> tu
             state.pop(LOOP_RESET_DONE_KEY, None)
         return "none", old_tier
 
-    # Compute new tier
-    if consecutive >= RESET_THRESHOLD:
-        new_tier = "reset"
-    elif consecutive >= SUMMARIZE_THRESHOLD:
-        new_tier = "summarize"
+    # Direction B: check error diversity before escalating past Tier 1
+    error_diversity = _get_error_diversity(ctx, consecutive)
+    diverse_errors = error_diversity >= DIVERSITY_SUPPRESS_THRESHOLD
+
+    # Compute new tier — suppress surgery/reset when errors are diverse
+    if consecutive >= thresholds["tier3"]:
+        new_tier = "warn" if diverse_errors else "reset"
+    elif consecutive >= thresholds["tier2"]:
+        new_tier = "warn" if diverse_errors else "summarize"
     else:
         new_tier = "warn"
+
+    if diverse_errors and consecutive >= thresholds["tier2"]:
+        try:
+            agent.context.log.log(
+                type="info",
+                content=(
+                    f"[SUPERVISOR] Diversity gate: {consecutive} failures on '{failing_tool}' "
+                    f"but {error_diversity} unique error types — agent is iterating, "
+                    f"suppressing Tier 2+ escalation."
+                ),
+                flush=True
+            )
+        except Exception:
+            pass
 
     # Record message index at start of episode (first time entering warn)
     if old_tier == "none" and new_tier == "warn":
