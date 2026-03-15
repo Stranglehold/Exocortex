@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: swarmfish_postgres
+    environment:
+      POSTGRES_DB: swarmfish
+      POSTGRES_USER: swarmfish_admin
+      POSTGRES_PASSWORD: ${SWARMFISH_DB_PASSWORD:-swarmfish_admin_dev_password}
+    volumes:
+      - swarmfish_postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swarmfish_admin -d swarmfish"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: swarmfish_redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  swarmfish:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: swarmfish_app
+    environment:
+      # Database — app user (non-superuser, created in schema.sql migrations)
+      SWARMFISH_DB_URL: postgresql://swarmfish_app:${SWARMFISH_APP_DB_PASSWORD:-swarmfish_app_dev_password}@postgres:5432/swarmfish
+      SWARMFISH_APP_DB_PASSWORD: ${SWARMFISH_APP_DB_PASSWORD:-swarmfish_app_dev_password}
+      # LLM — shares the LM Studio instance already serving Agent Zero.
+      # Point at whatever model is currently loaded — no JIT reload triggered
+      # when both systems use the same model name.
+      SWARMFISH_LLM_URL: ${SWARMFISH_LLM_URL:-http://host.docker.internal:1234/v1}
+      SWARMFISH_LLM_MODEL: ${SWARMFISH_LLM_MODEL:-qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m}
+      SWARMFISH_LLM_API_KEY: ${SWARMFISH_LLM_API_KEY:-lm-studio}
+      # Redis
+      SWARMFISH_REDIS_URL: redis://redis:6379/0
+      # Auth
+      SWARMFISH_ANALYST_TOKEN: ${SWARMFISH_ANALYST_TOKEN:-dev_analyst_token}
+    ports:
+      - "7732:7732"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  swarmfish_postgres_data:
