@@ -47,10 +47,20 @@ services:
       SWARMFISH_LLM_URL: ${SWARMFISH_LLM_URL:-http://host.docker.internal:1234/v1}
       SWARMFISH_LLM_MODEL: ${SWARMFISH_LLM_MODEL:-qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m}
       SWARMFISH_LLM_API_KEY: ${SWARMFISH_LLM_API_KEY:-lm-studio}
+      # Historian profile has 6 extra required output fields; reasoning model adds thinking tokens.
+      # 4096 gives enough headroom for the longest possible Historian response.
+      SWARMFISH_LLM_MAX_TOKENS: ${SWARMFISH_LLM_MAX_TOKENS:-4096}
       # Redis
       SWARMFISH_REDIS_URL: redis://redis:6379/0
       # Auth
       SWARMFISH_ANALYST_TOKEN: ${SWARMFISH_ANALYST_TOKEN:-dev_analyst_token}
+      # OSS bridge
+      OSS_BASE_URL: ${OSS_BASE_URL:-http://host.docker.internal:7731}
+      OSS_ANALYST_TOKEN: ${OSS_ANALYST_TOKEN:-dev_analyst_token}
+      # Monitor loop — set to "true" to enable autonomous hypothesis generation
+      SWARMFISH_MONITOR_ENABLED: ${SWARMFISH_MONITOR_ENABLED:-false}
+      SWARMFISH_MONITOR_INTERVAL_MINUTES: ${SWARMFISH_MONITOR_INTERVAL_MINUTES:-30}
+      SWARMFISH_MONITOR_MIN_CLAIMS: ${SWARMFISH_MONITOR_MIN_CLAIMS:-1}
     ports:
       - "7732:7732"
     depends_on:

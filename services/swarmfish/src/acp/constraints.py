@@ -5,8 +5,14 @@ Per design note Step 2.5 (Eitan's review): profiles whose analytical method alwa
 produces an answer need hard constraints enforced by the aggregation layer,
 not left to behavioral compliance of the LLM.
 
-Sprint 1: Historian constraint (dual similarity scoring, confidence capping).
-Sprint 4+: Sentinel attribution guard, Reflexivity Modeler magnitude constraint.
+Active constraints:
+  Historian            — dual similarity scoring, confidence scaled by relevant_similarity
+  Reflexivity Modeler  — feedback_direction required; missing = cap at 0.50
+  Decomposer           — components list required; missing or <2 components = cap at 0.60
+  Risk Manager         — tail_weight required; fat-tail cap at 0.70; missing = cap at 0.55
+
+Planned (stub only):
+  Sentinel             — attribution evidence threshold (Sprint 4+)
 
 The apply_constraints() function is called on raw LLM output before the prediction
 is stored. It modifies confidence and adds constraint metadata. The LLM cannot
@@ -124,18 +130,157 @@ def apply_sentinel_constraints(prediction: dict) -> dict:
 
 
 # ============================================================
-# Reflexivity Modeler: magnitude constraint (Sprint 4+)
+# Reflexivity Modeler: feedback_direction required
 # ============================================================
 
 def apply_reflexivity_constraints(prediction: dict) -> dict:
     """
-    Enforce the Reflexivity Modeler's magnitude requirement.
-    Cannot claim a feedback loop is the dominant driver without quantifying effect size.
-    Without magnitude: confidence capped at 0.50 on dominant-driver claims.
+    Enforce the Reflexivity Modeler's feedback direction requirement.
 
-    Not yet active — placeholder for Sprint 4 when Reflexivity Modeler is added.
+    The core claim of the Reflexivity Modeler is that a feedback loop is operating.
+    If the model does not specify which direction the loop is running, the claim
+    is ungrounded. Missing feedback_direction → confidence capped at 0.50.
+
+    Valid feedback_direction values: self-reinforcing, self-correcting, transitioning,
+    unclear. Returning "unclear" with explanation is acceptable and does not trigger
+    the cap — the model acknowledged the ambiguity explicitly.
     """
-    # Stub — implement when Reflexivity Modeler profile is added in Sprint 4
+    feedback_direction = prediction.get("feedback_direction")
+    original_confidence = prediction.get("confidence", 0.5)
+
+    if not feedback_direction:
+        prediction["confidence"] = min(original_confidence, 0.50)
+        prediction["confidence_capped"] = True
+        prediction["confidence_cap_reason"] = (
+            "Reflexivity constraint: feedback_direction not provided. "
+            "The reflexivity framework requires identifying whether the loop is "
+            "self-reinforcing, self-correcting, transitioning, or unclear. "
+            "Confidence capped at 0.50 until direction is specified."
+        )
+        prediction["constraints_applied"] = [
+            {"constraint": "missing_feedback_direction", "original_confidence": original_confidence}
+        ]
+    else:
+        prediction.setdefault("confidence_capped", False)
+        prediction.setdefault("confidence_cap_reason", None)
+        prediction.setdefault("constraints_applied", [])
+
+    return prediction
+
+
+# ============================================================
+# Decomposer: components list required (minimum 2)
+# ============================================================
+
+def apply_decomposer_constraints(prediction: dict) -> dict:
+    """
+    Enforce the Decomposer's decomposition requirement.
+
+    The Decomposer's value is explicit component-by-component estimation. If no
+    components are provided, the prediction is just an opaque judgment — it has
+    not used its analytical method. Missing or single-component decomposition
+    is a constraint violation.
+
+    - No components field: cap at 0.60
+    - Only 1 component: cap at 0.65 (minimal decomposition)
+    - 2+ components: no cap applied
+    """
+    components = prediction.get("components", [])
+    original_confidence = prediction.get("confidence", 0.5)
+
+    if not components:
+        prediction["confidence"] = min(original_confidence, 0.60)
+        prediction["confidence_capped"] = True
+        prediction["confidence_cap_reason"] = (
+            "Decomposer constraint: no components provided. "
+            "The Decomposer must break the question into independently estimable "
+            "sub-components with explicit ranges. Without decomposition, the prediction "
+            "is an opaque judgment rather than a Fermi estimate. "
+            "Confidence capped at 0.60."
+        )
+        prediction["constraints_applied"] = [
+            {"constraint": "missing_decomposition", "original_confidence": original_confidence}
+        ]
+    elif len(components) == 1:
+        prediction["confidence"] = min(original_confidence, 0.65)
+        prediction["confidence_capped"] = True
+        prediction["confidence_cap_reason"] = (
+            "Decomposer constraint: only 1 component provided. "
+            "Fermi methodology requires at least 2 independently estimable components. "
+            "Confidence capped at 0.65."
+        )
+        prediction["constraints_applied"] = [
+            {"constraint": "insufficient_decomposition",
+             "components_provided": 1,
+             "original_confidence": original_confidence}
+        ]
+    else:
+        prediction.setdefault("confidence_capped", False)
+        prediction.setdefault("confidence_cap_reason", None)
+        prediction.setdefault("constraints_applied", [])
+
+    return prediction
+
+
+# ============================================================
+# Risk Manager: tail_weight required; fat-tail confidence cap
+# ============================================================
+
+RISK_MANAGER_FAT_TAIL_CAP = 0.70
+
+def apply_risk_manager_constraints(prediction: dict) -> dict:
+    """
+    Enforce the Risk Manager's distribution characterization requirements.
+
+    The Risk Manager's core contribution is tail risk assessment. Two constraints:
+
+    1. tail_weight required — if missing, the distribution hasn't been characterized.
+       Missing → cap at 0.55.
+
+    2. Fat-tail cap — if tail_weight == "fat", the domain is extremistan (power-law).
+       In extremistan, point estimates of confidence are systematically misleading.
+       Fat tail → cap at 0.70 (still allows moderate confidence on directional calls,
+       but forces acknowledgment that the distribution limits precision).
+    """
+    tail_weight = prediction.get("tail_weight")
+    original_confidence = prediction.get("confidence", 0.5)
+
+    if not tail_weight:
+        prediction["confidence"] = min(original_confidence, 0.55)
+        prediction["confidence_capped"] = True
+        prediction["confidence_cap_reason"] = (
+            "Risk Manager constraint: tail_weight not provided. "
+            "The Risk Manager must characterize the outcome distribution as "
+            "fat, normal, or thin before expressing confidence. "
+            "Confidence capped at 0.55."
+        )
+        prediction["constraints_applied"] = [
+            {"constraint": "missing_tail_weight", "original_confidence": original_confidence}
+        ]
+    elif tail_weight.lower() == "fat":
+        capped = min(original_confidence, RISK_MANAGER_FAT_TAIL_CAP)
+        if capped < original_confidence:
+            prediction["confidence"] = capped
+            prediction["confidence_capped"] = True
+            prediction["confidence_cap_reason"] = (
+                f"Risk Manager constraint: tail_weight=fat (extremistan domain). "
+                f"Power-law distributions render high-precision confidence claims "
+                f"misleading. Confidence capped at {RISK_MANAGER_FAT_TAIL_CAP}."
+            )
+            prediction["constraints_applied"] = [
+                {"constraint": "fat_tail_cap",
+                 "cap": RISK_MANAGER_FAT_TAIL_CAP,
+                 "original_confidence": original_confidence}
+            ]
+        else:
+            prediction.setdefault("confidence_capped", False)
+            prediction.setdefault("confidence_cap_reason", None)
+            prediction.setdefault("constraints_applied", [])
+    else:
+        prediction.setdefault("confidence_capped", False)
+        prediction.setdefault("confidence_cap_reason", None)
+        prediction.setdefault("constraints_applied", [])
+
     return prediction
 
 
@@ -145,8 +290,10 @@ def apply_reflexivity_constraints(prediction: dict) -> dict:
 
 CONSTRAINT_MAP = {
     "Historian":           apply_historian_constraints,
-    "Sentinel":            apply_sentinel_constraints,
     "Reflexivity Modeler": apply_reflexivity_constraints,
+    "Decomposer":          apply_decomposer_constraints,
+    "Risk Manager":        apply_risk_manager_constraints,
+    "Sentinel":            apply_sentinel_constraints,   # stub — Sprint 4+
 }
 
 def apply_constraints(profile_name: str, prediction: dict) -> dict:
