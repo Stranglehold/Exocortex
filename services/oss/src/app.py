@@ -1034,6 +1034,32 @@ def hypothesis_from_swarmfish():
     obs_hash = hashlib.sha256(f"{topic}:{observation_label}".encode()).hexdigest()
     observation_id = int(obs_hash[:8], 16) % (2**31 - 1)  # fit in SERIAL range
 
+    # Idempotency: skip if an ACTIVE hypothesis already exists for this observation.
+    # Same topic + same month label = same observation_id; duplicate cycles should
+    # not accumulate separate hypothesis rows.
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id FROM hypothesis_registry
+                WHERE observation_id = %s AND status = 'ACTIVE'
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (observation_id,),
+            )
+            existing = cur.fetchone()
+
+    if existing:
+        log.info(
+            f"[HYPO] SWARMFISH hypothesis already exists for observation {observation_id} "
+            f"(existing id={existing['id']}), skipping duplicate"
+        )
+        return jsonify({
+            'status': 'exists',
+            'hypothesis_id': existing['id'],
+            'observation_id': observation_id,
+        }), 200
+
     try:
         result = hypothesis.register_hypothesis(
             observation_id=observation_id,

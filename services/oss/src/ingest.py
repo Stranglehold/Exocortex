@@ -323,6 +323,7 @@ def auto_promote_staged(conn) -> int:
             FROM claims c
             JOIN sources s ON s.id = c.source_id
             WHERE c.trust_level IN ('STAGED', 'RETURNED_TO_STAGED')
+              AND c.extracted_at >= NOW() - INTERVAL '7 days'
             """
         )
         staged = cur.fetchall()
@@ -354,19 +355,22 @@ def auto_promote_staged(conn) -> int:
 
 def check_hypothesis_predictions(conn) -> int:
     """
-    For each ACTIVE hypothesis with predictions, check whether newly promoted
-    claims semantically match any prediction text.
+    For each ACTIVE hypothesis with predictions, check whether promoted claims
+    since last_prediction_check match any prediction text semantically.
 
-    Uses cosine similarity on FAISS embeddings. Threshold: 0.70.
-    Confirmed predictions are recorded via hypothesis_registry UPDATE.
+    Uses a per-hypothesis cursor (last_prediction_check) so each claim is
+    evaluated exactly once per prediction — no double-counting across passes,
+    no missed claims from gaps longer than 2 hours.
 
+    Threshold: cosine similarity >= 0.70 on sentence embeddings.
     Returns total confirmation events fired.
     """
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, predictions_generated, created_at, predictions_confirmed
+                SELECT id, predictions_generated, created_at,
+                       predictions_confirmed, last_prediction_check
                 FROM hypothesis_registry
                 WHERE status = 'ACTIVE'
                   AND predictions_generated IS NOT NULL
@@ -378,31 +382,44 @@ def check_hypothesis_predictions(conn) -> int:
         if not active_hyps:
             return 0
 
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT id, claim_text, extracted_at
-                FROM claims
-                WHERE trust_level = 'PROMOTED'
-                  AND extracted_at >= NOW() - INTERVAL '2 hours'
-                ORDER BY extracted_at DESC
-                LIMIT 200
-                """
-            )
-            recent_claims = cur.fetchall()
-
-        if not recent_claims:
-            return 0
-
-        claim_texts = [c['claim_text'] for c in recent_claims]
-        claim_vecs = embed(claim_texts)  # (N, 384) float32
-
         total_confirmed = 0
+        now = datetime.now(timezone.utc)
+
         for hyp in active_hyps:
+            # Use last_prediction_check as cursor; fall back to created_at for
+            # first pass so we don't re-check claims from before the hypothesis.
+            since = hyp['last_prediction_check'] or hyp['created_at']
+
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT id, claim_text
+                    FROM claims
+                    WHERE trust_level = 'PROMOTED'
+                      AND extracted_at > %s
+                    ORDER BY extracted_at ASC
+                    LIMIT 200
+                    """,
+                    (since,),
+                )
+                new_claims = cur.fetchall()
+
+            if not new_claims:
+                # Advance cursor even with no new claims so the timestamp stays fresh
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE hypothesis_registry SET last_prediction_check = %s WHERE id = %s",
+                        (now, hyp['id']),
+                    )
+                conn.commit()
+                continue
+
+            claim_texts = [c['claim_text'] for c in new_claims]
+            claim_vecs = embed(claim_texts)
+
             preds = list(hyp['predictions_generated'] or [])
             for pidx, pred in enumerate(preds):
                 pred_val = pred.get('prediction', '')
-                # falsification_checklist items are dicts {condition, impact, ...}
                 if isinstance(pred_val, dict):
                     pred_text = pred_val.get('condition', '')
                 else:
@@ -410,7 +427,6 @@ def check_hypothesis_predictions(conn) -> int:
                 if not pred_text:
                     continue
                 pred_vec = embed([pred_text])[0]
-                # Cosine similarity: both normalized, so dot product = cosine
                 sims = claim_vecs.dot(pred_vec)
                 if float(sims.max()) >= 0.70:
                     with conn.cursor() as cur:
@@ -428,6 +444,14 @@ def check_hypothesis_predictions(conn) -> int:
                         f"[HYPO-CONFIRM] Hypothesis {hyp['id']} prediction {pidx} "
                         f"matched (sim={float(sims.max()):.3f})"
                     )
+
+            # Advance cursor to now so next pass only sees newer claims
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE hypothesis_registry SET last_prediction_check = %s WHERE id = %s",
+                    (now, hyp['id']),
+                )
+            conn.commit()
 
         return total_confirmed
 

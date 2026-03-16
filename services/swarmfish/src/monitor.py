@@ -293,9 +293,8 @@ def run_monitoring_cycle(state: dict) -> dict:
 
             session = _run_prediction(tag, label, new_claims)
             if not session:
-                log.warning(f"[MONITOR] Prediction failed for topic {tag!r}, skipping hypothesis post")
-                state[tag] = now_iso
-                continue
+                log.warning(f"[MONITOR] Prediction failed for topic {tag!r}, will retry next cycle")
+                continue  # do NOT advance state — same claims will be retried
 
             consensus    = float((session.get("consensus") or {}).get("consensus_confidence") or 0.0)
             predictions  = _extract_predictions(session)
