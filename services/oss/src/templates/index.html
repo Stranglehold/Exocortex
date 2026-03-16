@@ -589,7 +589,7 @@
                     x-text="p.profile_name + ' ' + pct(p.confidence)"></span>
             </template>
             <a x-show="h.swarmfish_session_id"
-               :href="'http://localhost:7732/acp/session/' + h.swarmfish_session_id"
+               :href="SWARMFISH_URL + '/acp/session/' + h.swarmfish_session_id"
                target="_blank" class="text-sm text-dim">↗ session</a>
           </div>
         </template>
@@ -633,6 +633,7 @@
 
 <script>
 const TOKEN = 'dev_analyst_token';
+const SWARMFISH_URL = '{{ swarmfish_url }}';
 
 function app() {
   return {

@@ -67,7 +67,7 @@ SWARMFISH_ANALYST_TOKEN = os.environ.get("SWARMFISH_ANALYST_TOKEN", "dev_analyst
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html')
+    return render_template('index.html', swarmfish_url=SWARMFISH_BASE_URL)
 
 
 # ---------------------------------------------------------------------------
