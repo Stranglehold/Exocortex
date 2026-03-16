@@ -6,6 +6,9 @@ instrument/data/v2/*.npy
 instrument/step13_stderr.log
 instrument/docx_structure_scan*.txt
 
+# Environment files — contain local overrides, not for version control
+.env
+
 # Runtime data — generated at operation time, never committed
 memory/
 sleep_reports/
