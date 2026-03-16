@@ -43,6 +43,7 @@ DISSENT_THRESHOLD = 0.20
 _ACTIVE   = MONITOR_ENABLED  # starts from env var; mutable at runtime
 _RUNNING  = False            # True while a cycle is in progress
 _LAST_RUN: dict = {}         # populated after each cycle
+_CYCLE_LOCK = threading.Lock()  # prevents concurrent monitor cycles
 
 
 def get_status() -> dict:
@@ -215,7 +216,7 @@ def _run_prediction(topic: str, topic_label: str, claims: list[dict]) -> dict | 
                 "context":   context,
             },
             headers={"X-Analyst-Token": config.ANALYST_TOKEN},
-            timeout=600,  # 8 profiles × ~45s + JIT retries
+            timeout=1800,  # 8 profiles × ~90s worst case + JIT reload + contention headroom
         )
         if r.is_success:
             return r.json()
@@ -256,6 +257,10 @@ def run_monitoring_cycle(state: dict) -> dict:
     Single monitoring cycle. Checks all active OSS topics for new signal.
     Updates and returns the state dict.
     """
+    if not _CYCLE_LOCK.acquire(blocking=False):
+        print("[MONITOR] Cycle already running (lock held), skipping", flush=True)
+        return state
+
     global _RUNNING, _LAST_RUN
     _RUNNING = True
     hypotheses_posted = 0
@@ -280,11 +285,11 @@ def run_monitoring_cycle(state: dict) -> dict:
             new_claims = _get_new_claims(tag, since)
 
             if len(new_claims) < MIN_NEW_CLAIMS:
-                log.info(f"[MONITOR] {tag!r}: {len(new_claims)} new claims (below threshold), skipping")
+                print(f"[MONITOR] {tag!r}: {len(new_claims)} new claims (below threshold), skipping", flush=True)
                 state[tag] = now_iso
                 continue
 
-            log.info(f"[MONITOR] {tag!r}: {len(new_claims)} new claims — running prediction session")
+            print(f"[MONITOR] {tag!r}: {len(new_claims)} new claims — running prediction session", flush=True)
 
             session = _run_prediction(tag, label, new_claims)
             if not session:
@@ -308,7 +313,8 @@ def run_monitoring_cycle(state: dict) -> dict:
             "hypotheses_posted": hypotheses_posted,
         }
         _RUNNING = False
-        log.info(f"[MONITOR] Cycle complete — topics={topics_checked}, hypotheses={hypotheses_posted}")
+        _CYCLE_LOCK.release()
+        print(f"[MONITOR] Cycle complete — topics={topics_checked}, hypotheses={hypotheses_posted}", flush=True)
 
     return state
 
