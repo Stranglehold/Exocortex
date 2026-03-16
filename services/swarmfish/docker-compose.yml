@@ -58,7 +58,7 @@ services:
       OSS_BASE_URL: ${OSS_BASE_URL:-http://host.docker.internal:7731}
       OSS_ANALYST_TOKEN: ${OSS_ANALYST_TOKEN:-dev_analyst_token}
       # Monitor loop — set to "true" to enable autonomous hypothesis generation
-      SWARMFISH_MONITOR_ENABLED: ${SWARMFISH_MONITOR_ENABLED:-false}
+      SWARMFISH_MONITOR_ENABLED: ${SWARMFISH_MONITOR_ENABLED:-true}
       SWARMFISH_MONITOR_INTERVAL_MINUTES: ${SWARMFISH_MONITOR_INTERVAL_MINUTES:-30}
       SWARMFISH_MONITOR_MIN_CLAIMS: ${SWARMFISH_MONITOR_MIN_CLAIMS:-1}
     ports:
