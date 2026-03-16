@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSS — Operational Signal Store</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="app()" x-init="init()">
+
+<!-- ── Toast ────────────────────────────────────────────────── -->
+<div x-show="toast.visible"
+     :class="'toast ' + toast.type"
+     x-text="toast.message"
+     x-transition
+     style="display:none"></div>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header>
+  <h1>OSS</h1>
+
+  <span :class="'status-pill ' + ingestStatus">
+    <span class="status-dot"></span>
+    <span x-text="ingestStatus === 'running' ? 'RUNNING' : ingestStatus === 'paused' ? 'PAUSED' : 'UNKNOWN'"></span>
+  </span>
+
+  <button class="btn btn-sm" @click="pauseIngest()"
+          x-show="ingestStatus === 'running'">Pause</button>
+  <button class="btn btn-sm btn-green" @click="resumeIngest()"
+          x-show="ingestStatus !== 'running'">Resume</button>
+  <button class="btn btn-sm" @click="runIngestNow()" :disabled="ingestRunning">
+    <span x-text="ingestRunning ? 'Running...' : 'Run Now'"></span>
+  </button>
+
+  <span class="header-divider"></span>
+
+  <span class="status-label text-dim text-sm">SWARMFISH</span>
+  <button class="btn btn-sm"
+          :class="swarmfish.active ? 'btn-green' : ''"
+          :disabled="swarmfish.toggling || swarmfish.unavailable"
+          @click="toggleSwarmfish()"
+          :title="swarmfish.unavailable ? 'SWARMFISH unavailable' : (swarmfish.active ? 'Monitor running — click to pause' : 'Monitor paused — click to enable')"
+          x-text="swarmfish.toggling ? '...' : (swarmfish.active ? 'Monitor ON' : 'Monitor OFF')">
+  </button>
+  <button class="btn btn-sm"
+          :disabled="swarmfish.running || swarmfish.unavailable"
+          @click="runSwarmfishNow()"
+          :title="swarmfish.last_run ? 'Last: ' + shortDate(swarmfish.last_run.at) + ' · topics=' + swarmfish.last_run.topics_checked + ' hypotheses=' + swarmfish.last_run.hypotheses_posted : 'No cycle run yet'"
+          x-text="swarmfish.running ? 'Running...' : 'Run Now'">
+  </button>
+
+  <span class="header-spacer"></span>
+
+  <span x-show="operatorState.alert_level"
+        :class="'operator-badge ' + (operatorState.alert_level || 'nominal').toLowerCase()"
+        x-text="operatorState.alert_level || 'NOMINAL'"></span>
+
+  <span class="text-dim text-sm" x-text="healthStats"></span>
+</header>
+
+<!-- ── Nav ──────────────────────────────────────────────────── -->
+<nav>
+  <template x-for="tab in tabs" :key="tab.id">
+    <button :class="activeTab === tab.id ? 'active' : ''"
+            @click="switchTab(tab.id)"
+            x-text="tab.label"></button>
+  </template>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────────────── -->
+<main>
+
+  <!-- ── FEED ─────────────────────────────────────────────── -->
+  <div id="tab-feed" class="view" :class="activeTab === 'feed' ? 'active' : ''">
+    <div class="section-header">
+      <h2>Feed</h2>
+      <select x-model="feedTopic" @change="loadFeed()" style="width:180px">
+        <option value="">— All topics —</option>
+        <template x-for="t in topics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
+        </template>
+      </select>
+      <button class="btn btn-sm" @click="loadFeed()">Refresh</button>
+      <span class="text-dim text-sm" x-text="feedClaims.length + ' claims'"></span>
+    </div>
+
+    <div x-show="feedLoading" class="loading">Loading claims...</div>
+
+    <div x-show="!feedLoading && feedClaims.length === 0" class="empty">
+      No claims found for this topic.
+    </div>
+
+    <template x-for="c in feedClaims" :key="c.id">
+      <div :class="'claim-card ' + (c.trust_level || 'staged').toLowerCase()">
+        <div class="claim-text" x-text="c.claim_text"></div>
+        <div class="claim-meta">
+          <span class="cluster-badge" x-text="c.cluster || '?'"></span>
+          <span :class="'tech-badge ' + (c.technique_class || 'none')"
+                x-text="c.technique_class || 'none'"></span>
+          <span :class="'trust-badge ' + (c.trust_level || 'staged').toLowerCase()"
+                x-text="c.trust_level || 'STAGED'"></span>
+          <span x-text="c.source_name"></span>
+          <span x-show="c.published_at" x-text="shortDate(c.published_at)"></span>
+          <a x-show="c.article_url && !c.article_url.startsWith('manual')"
+             :href="c.article_url" target="_blank" rel="noopener" class="text-sm">↗</a>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── STAGING ──────────────────────────────────────────── -->
+  <div id="tab-staging" class="view" :class="activeTab === 'staging' ? 'active' : ''">
+    <div class="section-header">
+      <h2>Staging Queue</h2>
+      <select x-model="stagingTopic" @change="loadStaging()" style="width:180px">
+        <option value="">— All topics —</option>
+        <template x-for="t in topics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
+        </template>
+      </select>
+      <button class="btn btn-sm" @click="loadStaging()">Refresh</button>
+      <span class="text-dim text-sm" x-text="stagingClaims.length + ' awaiting review'"></span>
+    </div>
+
+    <div x-show="stagingLoading" class="loading">Loading staging queue...</div>
+    <div x-show="!stagingLoading && stagingClaims.length === 0" class="empty">
+      No staged claims.
+    </div>
+
+    <template x-for="c in stagingClaims" :key="c.id">
+      <div class="card">
+        <div class="claim-text" x-text="c.claim_text"></div>
+        <div class="claim-meta mt-8">
+          <span class="cluster-badge" x-text="c.cluster || '?'"></span>
+          <span :class="'tech-badge ' + (c.technique_class || 'none')"
+                x-text="c.technique_class || 'none'"></span>
+          <span :class="'trust-badge ' + (c.trust_level || 'staged').toLowerCase()"
+                x-text="c.trust_level || 'STAGED'"></span>
+          <span x-text="c.source_name"></span>
+          <span class="text-dim" x-text="'conf: ' + pct(c.staging_confidence)"></span>
+        </div>
+
+        <!-- Promote / Irrelevant / Return buttons -->
+        <div class="flex-center mt-8 gap-6">
+          <button class="btn btn-sm btn-green"
+                  @click="c._showPromote = !c._showPromote"
+                  x-text="c._showPromote ? 'Cancel' : 'Promote'"></button>
+          <button class="btn btn-sm btn-red"
+                  x-show="c.trust_level === 'STAGED' || c.trust_level === 'RETURNED_TO_STAGED'"
+                  @click="markIrrelevant(c.id)">× Irrelevant</button>
+          <button class="btn btn-sm"
+                  x-show="c.trust_level === 'PROMOTED'"
+                  @click="returnToStaged(c.id)">Return</button>
+        </div>
+
+        <!-- Inline promote form -->
+        <div class="promote-form mt-8" x-show="c._showPromote">
+          <label>Confidence: <span x-text="pct(c._promoteConf || 0.8)"></span></label>
+          <input type="range" min="0" max="1" step="0.01"
+                 x-model="c._promoteConf" :value="c._promoteConf || 0.8">
+          <div class="flex-center mt-8 gap-6">
+            <button class="btn btn-sm btn-primary"
+                    @click="promoteClaim(c)">Promote</button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── TOPICS ───────────────────────────────────────────── -->
+  <div id="tab-topics" class="view" :class="activeTab === 'topics' ? 'active' : ''">
+    <div class="add-form">
+      <h3>Add Topic</h3>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Tag (slug)</label>
+          <input type="text" x-model="newTopic.tag" placeholder="e.g. iran-nuclear">
+        </div>
+        <div class="form-field">
+          <label>Display Name</label>
+          <input type="text" x-model="newTopic.display_name" placeholder="Iran Nuclear">
+        </div>
+        <div class="form-field">
+          <label>Description</label>
+          <input type="text" x-model="newTopic.description" placeholder="Optional">
+        </div>
+        <div class="form-field" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" @click="addTopic()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="topics-table">
+      <thead>
+        <tr>
+          <th>Tag</th>
+          <th>Display Name</th>
+          <th>Claims</th>
+          <th>Irrelevance %</th>
+          <th>Scrape Weight</th>
+          <th>Last Active</th>
+          <th>Parent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="t in topics" :key="t.tag">
+          <tr>
+            <td><code style="font-size:12px" x-text="t.tag"></code></td>
+            <td x-text="t.display_name || '—'"></td>
+            <td x-text="t.claim_count"></td>
+            <td>
+              <span x-show="t.total_staged_count >= 10"
+                    x-text="pct(t.irrelevance_count / t.total_staged_count)"
+                    :style="'color:' + (t.irrelevance_count / t.total_staged_count > 0.5 ? 'var(--red)' : t.irrelevance_count / t.total_staged_count > 0.25 ? 'var(--yellow)' : 'var(--green)')">
+              </span>
+              <span x-show="t.total_staged_count < 10" class="text-dim text-sm">—</span>
+            </td>
+            <td>
+              <div class="scrape-weight-bar">
+                <div class="scrape-weight-fill"
+                     :style="'width:' + Math.round((t.scrape_weight || 1.0) * 100) + '%;background:' + scrapeWeightColor(t.scrape_weight || 1.0)">
+                </div>
+                <span x-text="Math.round((t.scrape_weight || 1.0) * 100) + '%'"></span>
+              </div>
+            </td>
+            <td x-text="shortDate(t.last_active)"></td>
+            <td x-text="t.parent_tag || '—'"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── SOURCES ──────────────────────────────────────────── -->
+  <div id="tab-sources" class="view" :class="activeTab === 'sources' ? 'active' : ''">
+
+    <!-- Add RSS Source form -->
+    <div class="add-form">
+      <h3>Add RSS Source</h3>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" x-model="newSource.name" placeholder="e.g. Reuters">
+        </div>
+        <div class="form-field" style="flex:2">
+          <label>Feed URL</label>
+          <input type="url" x-model="newSource.url" placeholder="https://...">
+        </div>
+        <div class="form-field" style="flex:0;min-width:120px">
+          <label>Type</label>
+          <select x-model="newSource.source_type">
+            <option value="outlet">outlet</option>
+            <option value="wire">wire</option>
+            <option value="official">official</option>
+            <option value="social">social</option>
+          </select>
+        </div>
+        <div class="form-field" style="flex:0;min-width:140px">
+          <label>Cluster</label>
+          <select x-model="newSource.cluster">
+            <option value="left">left</option>
+            <option value="center">center</option>
+            <option value="right">right</option>
+            <option value="wire">wire</option>
+            <option value="official">official</option>
+            <option value="independent">independent</option>
+            <option value="international">international</option>
+          </select>
+        </div>
+        <div class="form-field" style="flex:0;min-width:160px">
+          <label>Confidence: <span x-text="pct(newSource.confidence_score)"></span></label>
+          <input type="range" min="0" max="1" step="0.05" x-model="newSource.confidence_score">
+        </div>
+        <div class="form-field" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" @click="addSource()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RSS Sources table -->
+    <div class="section-header" style="margin-top:16px">
+      <h3>RSS Sources</h3>
+      <button class="btn btn-sm" @click="loadSources()">Refresh</button>
+      <span class="text-dim text-sm" x-text="sources.length + ' sources'"></span>
+    </div>
+    <div x-show="sourcesLoading" class="loading">Loading sources...</div>
+    <table class="topics-table" x-show="!sourcesLoading">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Cluster</th>
+          <th>Type</th>
+          <th>Confidence</th>
+          <th>Claims</th>
+          <th>Feed URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="s in sources" :key="s.id">
+          <tr>
+            <td x-text="s.name"></td>
+            <td><span class="cluster-badge" x-text="s.cluster"></span></td>
+            <td><span class="tech-badge none" x-text="s.source_type"></span></td>
+            <td>
+              <div class="scrape-weight-bar">
+                <div class="scrape-weight-fill"
+                     :style="'width:' + Math.round((s.confidence_score || 0) * 100) + '%;background:var(--accent)'">
+                </div>
+                <span x-text="pct(s.confidence_score)"></span>
+              </div>
+            </td>
+            <td x-text="s.total_claims"></td>
+            <td><a :href="s.url" target="_blank" rel="noopener" class="text-sm text-dim" x-text="s.url.length > 50 ? s.url.slice(0,50)+'…' : s.url"></a></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+
+    <!-- Social Monitors section -->
+    <div class="add-form" style="margin-top:24px">
+      <h3>Social Monitors (X/Twitter)</h3>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" x-model="newMonitor.display_name" placeholder="e.g. Iran Hormuz Watch">
+        </div>
+        <div class="form-field" style="flex:2">
+          <label>Search Query</label>
+          <input type="text" x-model="newMonitor.query" placeholder="e.g. iran strait hormuz">
+        </div>
+        <div class="form-field" style="flex:0;min-width:120px">
+          <label>Type</label>
+          <select x-model="newMonitor.monitor_type">
+            <option value="search">search</option>
+            <option value="hashtag">hashtag</option>
+            <option value="user">user</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Topic Tags (comma-sep)</label>
+          <input type="text" x-model="newMonitor.topic_tags" placeholder="iran-hormuz, iran">
+        </div>
+        <div class="form-field" style="flex:0;min-width:120px">
+          <label>Interval (min)</label>
+          <input type="number" x-model="newMonitor.interval_minutes" min="15" max="1440" style="width:80px">
+        </div>
+        <div class="form-field" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" @click="addSocialMonitor()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="monitorsLoading" class="loading">Loading monitors...</div>
+    <div x-show="!monitorsLoading && socialMonitors.length === 0" class="empty" style="margin-top:8px">
+      No social monitors configured. Add one above.
+    </div>
+
+    <template x-for="m in socialMonitors" :key="m.id">
+      <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <div style="font-weight:600" x-text="m.display_name"></div>
+          <div class="text-dim text-sm" x-text="'query: ' + m.query"></div>
+        </div>
+        <span class="tech-badge none" x-text="m.monitor_type"></span>
+        <template x-for="tag in (m.topic_tags || [])" :key="tag">
+          <span class="cluster-badge" x-text="tag"></span>
+        </template>
+        <span class="text-dim text-sm" x-text="m.interval_minutes + 'min'"></span>
+        <span class="text-dim text-sm" x-text="m.last_run_at ? 'last: ' + shortDate(m.last_run_at) : 'never run'"></span>
+        <span class="text-dim text-sm" x-text="m.result_count + ' ingested'"></span>
+        <button class="btn btn-sm btn-primary" @click="xSearchNow(m)">Search Now</button>
+        <button class="btn btn-sm" @click="toggleMonitor(m)">
+          <span x-text="m.active ? 'Pause' : 'Resume'"></span>
+        </button>
+        <button class="btn btn-sm btn-red" @click="deleteMonitor(m.id)">×</button>
+      </div>
+    </template>
+
+  </div>
+
+  <!-- ── CONTRADICTIONS ───────────────────────────────────── -->
+  <div id="tab-contradictions" class="view" :class="activeTab === 'contradictions' ? 'active' : ''">
+    <div class="section-header">
+      <h2>Contradictions</h2>
+      <select x-model="contradTopic" @change="loadContradictions()" style="width:180px">
+        <option value="">— All topics —</option>
+        <template x-for="t in topics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
+        </template>
+      </select>
+      <button class="btn btn-sm" @click="loadContradictions()">Refresh</button>
+      <span class="text-dim text-sm" x-text="contradictions.length + ' pairs'"></span>
+    </div>
+
+    <div x-show="contradLoading" class="loading">Loading contradictions...</div>
+    <div x-show="!contradLoading && contradictions.length === 0" class="empty">
+      No contradictions found.
+    </div>
+
+    <template x-for="(p, idx) in contradictions" :key="p.id || idx">
+      <div class="contradiction-row" @click="p._expanded = !p._expanded">
+        <div class="flex-center">
+          <span :class="'rel-badge ' + (p.relationship || 'contradiction')"
+                x-text="p.relationship || 'contradiction'"></span>
+          <span class="text-dim text-sm"
+                x-text="'conf: ' + pct(p.confidence)"></span>
+          <span class="text-dim text-sm" x-text="shortDate(p.flagged_at)"></span>
+          <span class="text-dim text-sm" x-text="p.source_name"></span>
+          <span class="header-spacer"></span>
+          <span class="text-dim text-sm" x-text="p._expanded ? '▲' : '▼'"></span>
+        </div>
+        <div class="claim-text mt-8" style="font-size:12px;color:var(--text-dim)"
+             x-text="truncate(p.claim_a_text, 120) + ' / ' + truncate(p.claim_b_text, 80)"></div>
+
+        <div class="contradiction-expanded" x-show="p._expanded">
+          <div class="claim-side">
+            <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px">CLAIM A</div>
+            <span x-text="p.claim_a_text"></span>
+          </div>
+          <div class="claim-side">
+            <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px">CLAIM B</div>
+            <span x-text="p.claim_b_text"></span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── SILENCES ─────────────────────────────────────────── -->
+  <div id="tab-silences" class="view" :class="activeTab === 'silences' ? 'active' : ''">
+    <div class="section-header">
+      <h2>Silences</h2>
+      <select x-model="silenceTopic" @change="loadSilences()" style="width:180px">
+        <option value="">— Select topic —</option>
+        <template x-for="t in topics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
+        </template>
+      </select>
+      <button class="btn btn-sm" @click="loadSilences()">Refresh</button>
+      <span class="text-dim text-sm" x-text="silenceFlags.length + ' flags'"></span>
+    </div>
+
+    <div x-show="!silenceTopic" class="empty">Select a topic to view silence flags.</div>
+    <div x-show="silenceTopic && silenceLoading" class="loading">Loading silence flags...</div>
+    <div x-show="silenceTopic && !silenceLoading && silenceFlags.length === 0" class="empty">
+      No silence flags for this topic.
+    </div>
+
+    <template x-for="(f, i) in silenceFlags" :key="i">
+      <div class="silence-card">
+        <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="f.element"></div>
+        <div class="claim-meta mt-8">
+          <span class="text-dim text-sm">Present:</span>
+          <template x-for="cl in (f.present_in_clusters || [])" :key="cl">
+            <span class="cluster-badge" style="border-color:var(--green);color:var(--green)" x-text="cl"></span>
+          </template>
+          <span class="text-dim text-sm" x-show="(f.present_in_clusters || []).length === 0">none</span>
+        </div>
+        <div class="claim-meta mt-8">
+          <span class="text-dim text-sm">Absent:</span>
+          <template x-for="cl in (f.absent_from_clusters || [])" :key="cl">
+            <span class="cluster-badge" style="border-color:var(--red);color:var(--red)" x-text="cl"></span>
+          </template>
+        </div>
+        <div class="claim-meta mt-8">
+          <span class="text-dim text-sm" x-text="'method: ' + f.detection_method"></span>
+          <span class="text-dim text-sm" x-text="shortDate(f.first_detected)"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── ACTIVATIONS ──────────────────────────────────────── -->
+  <div id="tab-activations" class="view" :class="activeTab === 'activations' ? 'active' : ''">
+    <div class="section-header">
+      <h2>Activations</h2>
+      <select x-model="activationTopic" @change="loadActivations()" style="width:180px">
+        <option value="">— All topics —</option>
+        <template x-for="t in topics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
+        </template>
+      </select>
+      <button class="btn btn-sm" @click="loadActivations()">Refresh</button>
+      <span class="text-dim text-sm" x-text="activationPatterns.length + ' patterns'"></span>
+    </div>
+
+    <div x-show="activationLoading" class="loading">Loading activation patterns...</div>
+    <div x-show="!activationLoading && activationPatterns.length === 0" class="empty">
+      No activation patterns found.
+    </div>
+
+    <template x-for="(p, i) in activationPatterns" :key="i">
+      <div class="activation-card">
+        <div class="flex-center" style="margin-bottom:8px">
+          <span class="spread-bar">&#9888; <span x-text="p.cluster_spread"></span> clusters</span>
+          <span :class="'tech-badge ' + (p.technique_class || 'none')"
+                x-text="p.technique_class || 'none'"></span>
+          <span class="text-dim text-sm" x-text="p.topic_tag"></span>
+          <span class="header-spacer"></span>
+          <span class="text-dim text-sm"
+                x-text="shortDate(p.first_seen) + ' → ' + shortDate(p.last_seen)"></span>
+        </div>
+        <div class="claim-text" x-text="p.claim_pattern"></div>
+        <div class="cluster-list mt-8">
+          <template x-for="cl in (p.clusters_present || [])" :key="cl">
+            <span class="cluster-badge" x-text="cl"></span>
+          </template>
+        </div>
+        <div class="claim-meta mt-8">
+          <span class="text-dim text-sm" x-text="p.claim_count + ' claims'"></span>
+          <span class="text-dim text-sm" x-text="p.window_minutes + 'm window'"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── HYPOTHESES ───────────────────────────────────────── -->
+  <div id="tab-hypotheses" class="view" :class="activeTab === 'hypotheses' ? 'active' : ''">
+
+    <!-- Register form -->
+    <div class="add-form">
+      <h3>Register Hypothesis</h3>
+      <div class="form-row">
+        <div class="form-field" style="flex:0;min-width:120px">
+          <label>Observation ID</label>
+          <input type="text" x-model="newHyp.observation_id" placeholder="123">
+        </div>
+        <div class="form-field">
+          <label>Explanation</label>
+          <textarea x-model="newHyp.explanation" rows="2" placeholder="What explains the observation?"></textarea>
+        </div>
+        <div class="form-field" style="flex:0;min-width:100px">
+          <label>Initial Conf</label>
+          <input type="text" x-model="newHyp.initial_confidence" placeholder="0.0">
+        </div>
+        <div class="form-field" style="flex:0">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" @click="registerHypothesis()">Register</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="filter-tabs">
+      <template x-for="s in ['ACTIVE','PROMOTED','FALSIFIED','all']" :key="s">
+        <button :class="'filter-tab ' + (hypFilter === s ? 'active' : '')"
+                @click="hypFilter = s; loadHypotheses()"
+                x-text="s"></button>
+      </template>
+    </div>
+
+    <div x-show="hypLoading" class="loading">Loading hypotheses...</div>
+    <div x-show="!hypLoading && hypotheses.length === 0" class="empty">No hypotheses found.</div>
+
+    <template x-for="h in hypotheses" :key="h.id">
+      <div :class="'hyp-card ' + (h.status || 'active').toLowerCase()">
+        <!-- Header row -->
+        <div class="flex-center" style="margin-bottom:6px">
+          <span :class="'trust-badge ' + (h.status || 'ACTIVE').toLowerCase()"
+                x-text="h.status || 'ACTIVE'"></span>
+          <span x-show="h.auto_generated" class="tech-badge emergent" title="Generated by SWARMFISH monitor">auto</span>
+          <span class="text-dim text-sm"
+                x-text="h.observation_label || ('obs #' + h.observation_id)"></span>
+          <span class="header-spacer"></span>
+          <span class="text-dim text-sm"
+                x-text="pct(h.current_confidence) + ' confidence · ' + (h.predictions_confirmed || 0) + '/' + (h.predictions || []).length + ' predictions confirmed'"></span>
+        </div>
+
+        <!-- Confidence bar -->
+        <div class="confidence-bar-wrap">
+          <div class="confidence-bar-fill"
+               :style="'width:' + ((h.current_confidence || 0) * 100) + '%'"></div>
+        </div>
+
+        <!-- Explanation -->
+        <div class="claim-text" x-text="h.explanation" style="margin-top:6px"></div>
+
+        <!-- Source profiles (SWARMFISH attribution) -->
+        <template x-if="h.source_profiles && h.source_profiles.length > 0">
+          <div class="flex-center" style="margin-top:6px;gap:6px;flex-wrap:wrap">
+            <span class="text-dim text-sm">Profiles:</span>
+            <template x-for="p in (h.source_profiles || [])" :key="p.profile_name">
+              <span :class="'tech-badge ' + (p.was_dissenter ? 'fracture' : 'direct')"
+                    :title="p.was_dissenter ? 'Dissenter — deviated from consensus' : 'Consensus'"
+                    x-text="p.profile_name + ' ' + pct(p.confidence)"></span>
+            </template>
+            <a x-show="h.swarmfish_session_id"
+               :href="'http://localhost:7732/acp/session/' + h.swarmfish_session_id"
+               target="_blank" class="text-sm text-dim">↗ session</a>
+          </div>
+        </template>
+
+        <!-- Predictions -->
+        <template x-for="(pred, pidx) in (h.predictions || [])" :key="pidx">
+          <div class="prediction-row">
+            <span class="text-sm" x-text="pred.prediction"></span>
+            <span class="header-spacer"></span>
+            <button class="btn btn-sm btn-green"
+                    x-show="h.status === 'ACTIVE'"
+                    @click="confirmPrediction(h.id, pidx)">Confirm</button>
+          </div>
+        </template>
+
+        <!-- Actions -->
+        <div class="flex-center mt-8 gap-6" x-show="h.status === 'ACTIVE'">
+          <button class="btn btn-sm btn-primary" @click="promoteHypothesis(h.id)">Promote</button>
+          <button class="btn btn-sm btn-red" @click="promptFalsify(h)">Falsify</button>
+        </div>
+        <div x-show="h.status === 'FALSIFIED'" class="text-dim text-sm mt-8"
+             x-text="'Falsified: ' + (h.falsification_evidence || '')"></div>
+
+        <!-- Falsify input -->
+        <div class="promote-form mt-8" x-show="h._falsifyOpen">
+          <label>Evidence for falsification</label>
+          <textarea x-model="h._falsifyEvidence" rows="2"
+                    placeholder="What evidence falsifies this hypothesis?"></textarea>
+          <div class="flex-center mt-8 gap-6">
+            <button class="btn btn-sm btn-red"
+                    @click="falsifyHypothesis(h)">Confirm Falsify</button>
+            <button class="btn btn-sm"
+                    @click="h._falsifyOpen = false">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+</main>
+
+<script>
+const TOKEN = 'dev_analyst_token';
+
+function app() {
+  return {
+    // ── State ─────────────────────────────────────────────────
+    tabs: [
+      { id: 'feed',            label: 'Feed' },
+      { id: 'staging',         label: 'Staging' },
+      { id: 'topics',          label: 'Topics' },
+      { id: 'sources',         label: 'Sources' },
+      { id: 'contradictions',  label: 'Contradictions' },
+      { id: 'silences',        label: 'Silences' },
+      { id: 'activations',     label: 'Activations' },
+      { id: 'hypotheses',      label: 'Hypotheses' },
+    ],
+    activeTab: 'feed',
+
+    // Header
+    ingestStatus:    'unknown',
+    ingestRunning:   false,
+    operatorState:   {},
+    healthStats:     '',
+    swarmfish:       { active: false, unavailable: false, toggling: false, running: false, last_run: null },
+
+    // Topics (shared across views)
+    topics: [],
+
+    // Feed
+    feedTopic:   '',
+    feedClaims:  [],
+    feedLoading: false,
+
+    // Staging
+    stagingTopic:   '',
+    stagingClaims:  [],
+    stagingLoading: false,
+
+    // Topics tab
+    newTopic: { tag: '', display_name: '', description: '' },
+
+    // Sources tab
+    sources:          [],
+    sourcesLoading:   false,
+    newSource:        { name: '', url: '', source_type: 'outlet', cluster: 'independent', confidence_score: 0.7 },
+    socialMonitors:   [],
+    monitorsLoading:  false,
+    newMonitor:       { display_name: '', query: '', monitor_type: 'search', topic_tags: '', interval_minutes: 60 },
+
+    // Contradictions
+    contradTopic:   '',
+    contradictions: [],
+    contradLoading: false,
+
+    // Silences
+    silenceTopic:   '',
+    silenceFlags:   [],
+    silenceLoading: false,
+
+    // Activations
+    activationTopic:    '',
+    activationPatterns: [],
+    activationLoading:  false,
+
+    // Hypotheses
+    hypFilter:   'ACTIVE',
+    hypotheses:  [],
+    hypLoading:  false,
+    newHyp: { observation_id: '', explanation: '', initial_confidence: '0.0' },
+
+    // Toast
+    toast: { visible: false, message: '', type: 'success' },
+
+    // ── Init ──────────────────────────────────────────────────
+    async init() {
+      await Promise.all([this.loadHealth(), this.loadTopics(), this.loadSwarmfishStatus()]);
+      this.loadFeed();
+    },
+
+    // ── Tab switch ────────────────────────────────────────────
+    switchTab(id) {
+      this.activeTab = id;
+      if (id === 'feed')           this.loadFeed();
+      if (id === 'staging')        this.loadStaging();
+      if (id === 'sources')        { this.loadSources(); this.loadSocialMonitors(); }
+      if (id === 'contradictions') this.loadContradictions();
+      if (id === 'silences')       this.loadSilences();
+      if (id === 'activations')    this.loadActivations();
+      if (id === 'hypotheses')     this.loadHypotheses();
+    },
+
+    // ── Header ────────────────────────────────────────────────
+    async loadHealth() {
+      try {
+        const r = await fetch('/api/health');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.ingestStatus  = d.ingest_paused ? 'paused' : 'running';
+        this.healthStats   = `${d.claims?.total || 0} claims · ${d.claims?.promoted || 0} promoted`;
+        this.operatorState = await this.fetchOperatorState();
+      } catch (e) {
+        this.ingestStatus = 'unknown';
+      }
+    },
+
+    async fetchOperatorState() {
+      try {
+        const r = await fetch('/api/operator_state');
+        return r.ok ? await r.json() : {};
+      } catch { return {}; }
+    },
+
+    async loadSwarmfishStatus() {
+      try {
+        const r = await fetch('/admin/swarmfish/status', {
+          headers: { 'X-Analyst-Token': TOKEN },
+        });
+        if (r.ok) {
+          const d = await r.json();
+          this.swarmfish.active      = !!d.active;
+          this.swarmfish.running     = !!d.running;
+          this.swarmfish.last_run    = d.last_run || null;
+          this.swarmfish.unavailable = !!d.unavailable;
+        }
+      } catch { this.swarmfish.unavailable = true; }
+    },
+
+    async toggleSwarmfish() {
+      this.swarmfish.toggling = true;
+      try {
+        const r = await this.authPost('/admin/swarmfish/monitor/toggle', {});
+        if (r.ok) {
+          const d = await r.json();
+          this.swarmfish.active   = !!d.active;
+          this.swarmfish.last_run = d.last_run || null;
+          this.showToast(`SWARMFISH monitor ${d.active ? 'enabled' : 'disabled'}`);
+        }
+      } catch (e) { this.showToast('SWARMFISH unreachable', 'error'); }
+      this.swarmfish.toggling = false;
+    },
+
+    async runSwarmfishNow() {
+      this.swarmfish.running = true;
+      try {
+        const r = await this.authPost('/admin/swarmfish/monitor/run_now', {});
+        if (r.ok) {
+          this.showToast('SWARMFISH cycle started');
+          // Poll for completion every 5s (cycle can take minutes due to LLM)
+          const poll = setInterval(async () => {
+            await this.loadSwarmfishStatus();
+            if (!this.swarmfish.running) {
+              clearInterval(poll);
+              const lr = this.swarmfish.last_run;
+              if (lr) this.showToast(`Cycle done — ${lr.topics_checked} topics, ${lr.hypotheses_posted} hypotheses`);
+              this.loadHypotheses();
+            }
+          }, 5000);
+        } else {
+          const d = await r.json();
+          this.showToast(d.error || 'Run failed', 'error');
+          this.swarmfish.running = false;
+        }
+      } catch (e) {
+        this.showToast('SWARMFISH unreachable', 'error');
+        this.swarmfish.running = false;
+      }
+    },
+
+    async pauseIngest() {
+      const r = await this.authPost('/admin/ingest/pause', {});
+      if (r.ok) { this.ingestStatus = 'paused'; this.showToast('Ingestion paused'); }
+    },
+
+    async resumeIngest() {
+      const r = await this.authPost('/admin/ingest/resume', {});
+      if (r.ok) { this.ingestStatus = 'running'; this.showToast('Ingestion resumed'); }
+    },
+
+    async runIngestNow() {
+      this.ingestRunning = true;
+      try {
+        const r = await this.authPost('/admin/ingest', {});
+        if (r.ok) {
+          const d = await r.json();
+          this.showToast(
+            `Done: ${d.claims_inserted} claims, ${d.contradictions_flagged} contradictions`
+          );
+          this.loadHealth();
+        } else {
+          this.showToast('Ingest failed', 'error');
+        }
+      } catch (e) {
+        this.showToast('Ingest error: ' + e.message, 'error');
+      } finally {
+        this.ingestRunning = false;
+      }
+    },
+
+    // ── Topics ────────────────────────────────────────────────
+    async loadTopics() {
+      try {
+        const r = await fetch('/api/topics');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.topics = d.topics || [];
+      } catch {}
+    },
+
+    async addTopic() {
+      if (!this.newTopic.tag) return;
+      const r = await this.authPost('/admin/add_topic', this.newTopic);
+      if (r.ok) {
+        this.showToast('Topic added: ' + this.newTopic.tag);
+        this.newTopic = { tag: '', display_name: '', description: '' };
+        this.loadTopics();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.error || d.description || 'Failed to add topic', 'error');
+      }
+    },
+
+    // ── Sources ───────────────────────────────────────────────
+    async loadSources() {
+      this.sourcesLoading = true;
+      try {
+        const r = await fetch('/api/sources');
+        if (!r.ok) { this.sources = []; return; }
+        const d = await r.json();
+        this.sources = d.sources || [];
+      } catch {
+        this.sources = [];
+      } finally {
+        this.sourcesLoading = false;
+      }
+    },
+
+    async addSource() {
+      if (!this.newSource.name || !this.newSource.url) return;
+      const body = { ...this.newSource, confidence_score: parseFloat(this.newSource.confidence_score) };
+      const r = await this.authPost('/admin/add_source', body);
+      if (r.ok) {
+        const d = await r.json();
+        if (d.status === 'exists') {
+          this.showToast(d.message || 'Source already registered', 'error');
+        } else {
+          this.showToast('Source added: ' + this.newSource.name);
+          this.newSource = { name: '', url: '', source_type: 'outlet', cluster: 'independent', confidence_score: 0.7 };
+          this.loadSources();
+        }
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.description || d.error || 'Failed to add source', 'error');
+      }
+    },
+
+    // ── Social Monitors ───────────────────────────────────────
+    async loadSocialMonitors() {
+      this.monitorsLoading = true;
+      try {
+        const r = await fetch('/api/social_monitors');
+        if (!r.ok) { this.socialMonitors = []; return; }
+        const d = await r.json();
+        this.socialMonitors = d.monitors || [];
+      } catch {
+        this.socialMonitors = [];
+      } finally {
+        this.monitorsLoading = false;
+      }
+    },
+
+    async addSocialMonitor() {
+      if (!this.newMonitor.display_name || !this.newMonitor.query) return;
+      const tags = this.newMonitor.topic_tags
+        ? this.newMonitor.topic_tags.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+      const body = {
+        ...this.newMonitor,
+        topic_tags: tags,
+        interval_minutes: parseInt(this.newMonitor.interval_minutes) || 60,
+      };
+      const r = await this.authPost('/admin/add_social_monitor', body);
+      if (r.ok) {
+        this.showToast('Monitor added: ' + this.newMonitor.display_name);
+        this.newMonitor = { display_name: '', query: '', monitor_type: 'search', topic_tags: '', interval_minutes: 60 };
+        this.loadSocialMonitors();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.description || d.error || 'Failed to add monitor', 'error');
+      }
+    },
+
+    async toggleMonitor(m) {
+      const r = await fetch(`/admin/social_monitor/${m.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
+        body: JSON.stringify({ active: !m.active, analyst_token: TOKEN }),
+      });
+      if (r.ok) {
+        this.showToast(m.active ? 'Monitor paused' : 'Monitor resumed');
+        this.loadSocialMonitors();
+      } else {
+        this.showToast('Toggle failed', 'error');
+      }
+    },
+
+    async deleteMonitor(id) {
+      if (!confirm('Delete this social monitor?')) return;
+      const r = await fetch(`/admin/social_monitor/${id}`, {
+        method: 'DELETE',
+        headers: { 'X-Analyst-Token': TOKEN },
+      });
+      if (r.ok) {
+        this.showToast('Monitor deleted');
+        this.loadSocialMonitors();
+      } else {
+        this.showToast('Delete failed', 'error');
+      }
+    },
+
+    async xSearchNow(m) {
+      const tags = m.topic_tags || [];
+      const r = await this.authPost('/admin/x_search', {
+        query: m.query, topic_tags: tags, count: 20
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        this.showToast(`Search complete: ${d.staged} ingested, ${d.skipped} skipped`);
+        this.loadSocialMonitors();
+      } else {
+        this.showToast(d.error || d.description || 'Search failed', 'error');
+      }
+    },
+
+    scrapeWeightColor(w) {
+      if (w >= 0.7) return 'var(--green)';
+      if (w >= 0.4) return 'var(--yellow)';
+      return 'var(--red)';
+    },
+
+    // ── Feed ──────────────────────────────────────────────────
+    async loadFeed() {
+      this.feedLoading = true;
+      try {
+        const params = new URLSearchParams({ limit: 50 });
+        if (this.feedTopic) params.set('topic', this.feedTopic);
+        const r = await fetch('/api/feed?' + params);
+        if (!r.ok) { this.feedClaims = []; return; }
+        const d = await r.json();
+        this.feedClaims = d.claims || [];
+      } catch {
+        this.feedClaims = [];
+      } finally {
+        this.feedLoading = false;
+      }
+    },
+
+    // ── Staging ───────────────────────────────────────────────
+    async loadStaging() {
+      this.stagingLoading = true;
+      try {
+        const body = { analyst_token: TOKEN };
+        if (this.stagingTopic) body.topic = this.stagingTopic;
+        const r = await fetch('/api/staging', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) { this.stagingClaims = []; return; }
+        const d = await r.json();
+        this.stagingClaims = (d.claims || []).map(c => ({
+          ...c, _showPromote: false, _promoteConf: 0.8, _falsifyOpen: false,
+        }));
+      } catch {
+        this.stagingClaims = [];
+      } finally {
+        this.stagingLoading = false;
+      }
+    },
+
+    async promoteClaim(claim) {
+      const body = {
+        claim_id:       claim.id,
+        confidence:     parseFloat(claim._promoteConf) || 0.8,
+        source_weights: { [claim.source_id || claim.id]: 1.0 },
+        analyst_token:  TOKEN,
+      };
+      const r = await this.authPost('/admin/promote_claim', body);
+      if (r.ok) {
+        this.showToast('Claim promoted');
+        claim._showPromote = false;
+        this.loadStaging();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.description || d.error || 'Promote failed', 'error');
+      }
+    },
+
+    async markIrrelevant(claimId) {
+      const r = await this.authPost('/admin/mark_irrelevant', {
+        claim_id: claimId, analyst_token: TOKEN
+      });
+      if (r.ok) {
+        this.showToast('Claim marked irrelevant');
+        this.loadStaging();
+        this.loadTopics();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.description || d.error || 'Failed', 'error');
+      }
+    },
+
+    async returnToStaged(claimId) {
+      const reason = prompt('Reason for returning to staging?');
+      if (!reason) return;
+      const r = await this.authPost('/admin/return_to_staged', {
+        claim_id: claimId, reason, analyst_token: TOKEN
+      });
+      if (r.ok) {
+        this.showToast('Claim returned to staging');
+        this.loadStaging();
+      } else {
+        this.showToast('Return failed', 'error');
+      }
+    },
+
+    // ── Contradictions ────────────────────────────────────────
+    async loadContradictions() {
+      this.contradLoading = true;
+      try {
+        const body = { analyst_token: TOKEN };
+        if (this.contradTopic) body.topic = this.contradTopic;
+        const r = await fetch('/api/contradictions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) { this.contradictions = []; return; }
+        const d = await r.json();
+        this.contradictions = (d.pairs || []).map(p => ({ ...p, _expanded: false }));
+      } catch {
+        this.contradictions = [];
+      } finally {
+        this.contradLoading = false;
+      }
+    },
+
+    // ── Silences ──────────────────────────────────────────────
+    async loadSilences() {
+      if (!this.silenceTopic) return;
+      this.silenceLoading = true;
+      try {
+        const r = await fetch('/api/silence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: this.silenceTopic }),
+        });
+        if (!r.ok) { this.silenceFlags = []; return; }
+        const d = await r.json();
+        this.silenceFlags = d.flags || [];
+      } catch {
+        this.silenceFlags = [];
+      } finally {
+        this.silenceLoading = false;
+      }
+    },
+
+    // ── Activations ───────────────────────────────────────────
+    async loadActivations() {
+      this.activationLoading = true;
+      try {
+        const body = { min_cluster_spread: 2 };
+        if (this.activationTopic) body.topic = this.activationTopic;
+        const r = await fetch('/api/activation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) { this.activationPatterns = []; return; }
+        const d = await r.json();
+        this.activationPatterns = d.patterns || [];
+      } catch {
+        this.activationPatterns = [];
+      } finally {
+        this.activationLoading = false;
+      }
+    },
+
+    // ── Hypotheses ────────────────────────────────────────────
+    async loadHypotheses() {
+      this.hypLoading = true;
+      try {
+        const params = new URLSearchParams({ limit: '50' });
+        if (this.hypFilter !== 'all') params.set('status', this.hypFilter);
+        const r = await fetch('/api/hypotheses?' + params);
+        if (!r.ok) { this.hypotheses = []; return; }
+        const d = await r.json();
+        this.hypotheses = (d.hypotheses || []).map(h => ({
+          ...h, _falsifyOpen: false, _falsifyEvidence: '',
+        }));
+      } catch {
+        this.hypotheses = [];
+      } finally {
+        this.hypLoading = false;
+      }
+    },
+
+    async registerHypothesis() {
+      if (!this.newHyp.observation_id || !this.newHyp.explanation) {
+        this.showToast('observation_id and explanation required', 'error');
+        return;
+      }
+      const body = {
+        observation_id:      parseInt(this.newHyp.observation_id),
+        explanation:         this.newHyp.explanation,
+        initial_confidence:  parseFloat(this.newHyp.initial_confidence) || 0.0,
+        analyst_token:       TOKEN,
+      };
+      const r = await this.authPost('/api/hypothesis', body);
+      if (r.ok) {
+        this.showToast('Hypothesis registered');
+        this.newHyp = { observation_id: '', explanation: '', initial_confidence: '0.0' };
+        this.loadHypotheses();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        this.showToast(d.description || d.error || 'Register failed', 'error');
+      }
+    },
+
+    async confirmPrediction(hypId, predIdx) {
+      const r = await this.authPost(`/api/hypothesis/${hypId}/confirm_prediction`, {
+        prediction_idx: predIdx, analyst_token: TOKEN,
+      });
+      if (r.ok) {
+        this.showToast('Prediction confirmed');
+        this.loadHypotheses();
+      } else {
+        this.showToast('Confirm failed', 'error');
+      }
+    },
+
+    async promoteHypothesis(hypId) {
+      const r = await this.authPost(`/api/hypothesis/${hypId}/promote`, {
+        analyst_token: TOKEN,
+      });
+      if (r.ok) {
+        this.showToast('Hypothesis promoted');
+        this.loadHypotheses();
+      } else {
+        this.showToast('Promote failed', 'error');
+      }
+    },
+
+    promptFalsify(hyp) {
+      hyp._falsifyOpen = true;
+      hyp._falsifyEvidence = '';
+    },
+
+    async falsifyHypothesis(hyp) {
+      if (!hyp._falsifyEvidence) {
+        this.showToast('Evidence required', 'error');
+        return;
+      }
+      const r = await this.authPost(`/api/hypothesis/${hyp.id}/falsify`, {
+        evidence: hyp._falsifyEvidence, analyst_token: TOKEN,
+      });
+      if (r.ok) {
+        this.showToast('Hypothesis falsified');
+        hyp._falsifyOpen = false;
+        this.loadHypotheses();
+      } else {
+        this.showToast('Falsify failed', 'error');
+      }
+    },
+
+    // ── Helpers ───────────────────────────────────────────────
+    async authPost(url, body) {
+      return fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Analyst-Token': TOKEN,
+        },
+        body: JSON.stringify({ ...body, analyst_token: TOKEN }),
+      });
+    },
+
+    shortDate(iso) {
+      if (!iso) return '—';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }) +
+               ' ' + d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+      } catch { return iso.slice(0, 10); }
+    },
+
+    pct(v) {
+      if (v === null || v === undefined) return '—';
+      return (parseFloat(v) * 100).toFixed(0) + '%';
+    },
+
+    truncate(s, n) {
+      if (!s) return '';
+      return s.length > n ? s.slice(0, n) + '…' : s;
+    },
+
+    showToast(message, type = 'success') {
+      this.toast = { visible: true, message, type };
+      setTimeout(() => { this.toast.visible = false; }, 3500);
+    },
+  };
+}
+</script>
+</body>
+</html>

@@ -251,6 +251,14 @@ def get_active_topics() -> list[str]:
             return [row['tag'] for row in cur.fetchall()]
 
 
+def get_topic_scrape_weights() -> dict[str, float]:
+    """Return {tag: scrape_weight} for all active topics."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT tag, scrape_weight FROM topics WHERE active = TRUE")
+            return {row['tag']: float(row['scrape_weight']) for row in cur.fetchall()}
+
+
 def insert_claim(conn, source_id: int, raw_text: str, claim_text: str,
                  article_url: str, article_title: str, topic_tags: list[str],
                  technique_class: str, published_at: Optional[datetime],
@@ -274,9 +282,153 @@ def update_topic_last_active(conn, tags: list[str]):
         return
     with conn.cursor() as cur:
         cur.execute("""
-            UPDATE topics SET last_active = NOW(), claim_count = claim_count + 1
+            UPDATE topics
+            SET last_active = NOW(),
+                claim_count = claim_count + 1,
+                total_staged_count = total_staged_count + 1
             WHERE tag = ANY(%s)
         """, (tags,))
+
+
+# ---------------------------------------------------------------------------
+# Auto-promotion: advance staged claims by source tier
+# ---------------------------------------------------------------------------
+
+# Tier rules: require_topics controls whether topic_tags must be non-empty.
+# conf_factor scales source.confidence_score to the promotion confidence.
+_AUTO_PROMOTE_TIERS = {
+    'wire':        {'require_topics': False, 'conf_factor': 1.0},
+    'official':    {'require_topics': False, 'conf_factor': 1.0},
+    'outlet':      {'require_topics': True,  'conf_factor': 0.9},
+    'independent': {'require_topics': True,  'conf_factor': 0.75},
+    'social':      {'require_topics': True,  'conf_factor': 0.75},
+}
+
+
+def auto_promote_staged(conn) -> int:
+    """
+    Auto-promote STAGED claims using source tier rules.
+
+    Tier 1 (wire/official): promote unconditionally at source confidence.
+    Tier 2 (outlet): promote only if claim has topic_tags.
+    Tier 3 (independent/social): promote only if claim has topic_tags,
+        at reduced confidence.
+
+    Returns count of claims promoted.
+    """
+    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT c.id, c.topic_tags, s.source_type, s.confidence_score
+            FROM claims c
+            JOIN sources s ON s.id = c.source_id
+            WHERE c.trust_level IN ('STAGED', 'RETURNED_TO_STAGED')
+            """
+        )
+        staged = cur.fetchall()
+
+    promoted = 0
+    for claim in staged:
+        rule = _AUTO_PROMOTE_TIERS.get(claim['source_type'])
+        if not rule:
+            continue
+        if rule['require_topics'] and not claim['topic_tags']:
+            continue
+        conf = round(float(claim['confidence_score']) * rule['conf_factor'], 3)
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE claims SET trust_level = 'PROMOTED', staging_confidence = %s WHERE id = %s",
+                (conf, claim['id']),
+            )
+        promoted += 1
+
+    if promoted:
+        conn.commit()
+        log.info(f"[AUTO-PROMOTE] Promoted {promoted} claims")
+    return promoted
+
+
+# ---------------------------------------------------------------------------
+# Prediction confirmation: match new promoted claims to active hypotheses
+# ---------------------------------------------------------------------------
+
+def check_hypothesis_predictions(conn) -> int:
+    """
+    For each ACTIVE hypothesis with predictions, check whether newly promoted
+    claims semantically match any prediction text.
+
+    Uses cosine similarity on FAISS embeddings. Threshold: 0.70.
+    Confirmed predictions are recorded via hypothesis_registry UPDATE.
+
+    Returns total confirmation events fired.
+    """
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, predictions_generated, created_at, predictions_confirmed
+                FROM hypothesis_registry
+                WHERE status = 'ACTIVE'
+                  AND predictions_generated IS NOT NULL
+                  AND jsonb_array_length(predictions_generated) > 0
+                """
+            )
+            active_hyps = cur.fetchall()
+
+        if not active_hyps:
+            return 0
+
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, claim_text, extracted_at
+                FROM claims
+                WHERE trust_level = 'PROMOTED'
+                  AND extracted_at >= NOW() - INTERVAL '2 hours'
+                ORDER BY extracted_at DESC
+                LIMIT 200
+                """
+            )
+            recent_claims = cur.fetchall()
+
+        if not recent_claims:
+            return 0
+
+        claim_texts = [c['claim_text'] for c in recent_claims]
+        claim_vecs = embed(claim_texts)  # (N, 384) float32
+
+        total_confirmed = 0
+        for hyp in active_hyps:
+            preds = list(hyp['predictions_generated'] or [])
+            for pidx, pred in enumerate(preds):
+                pred_text = pred.get('prediction', '')
+                if not pred_text:
+                    continue
+                pred_vec = embed([pred_text])[0]
+                # Cosine similarity: both normalized, so dot product = cosine
+                sims = claim_vecs.dot(pred_vec)
+                if float(sims.max()) >= 0.70:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            UPDATE hypothesis_registry
+                            SET predictions_confirmed = predictions_confirmed + 1
+                            WHERE id = %s
+                            """,
+                            (hyp['id'],),
+                        )
+                    conn.commit()
+                    total_confirmed += 1
+                    log.info(
+                        f"[HYPO-CONFIRM] Hypothesis {hyp['id']} prediction {pidx} "
+                        f"matched (sim={float(sims.max()):.3f})"
+                    )
+
+        return total_confirmed
+
+    except Exception as e:
+        log.warning(f"[HYPO-CONFIRM] check_hypothesis_predictions failed: {e}")
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -293,14 +445,15 @@ def parse_published(entry) -> Optional[datetime]:
     return None
 
 
-def fetch_feed(source: dict, available_topics: list[str]) -> int:
+def fetch_feed(source: dict, available_topics: list[str], article_cap: int = 20) -> int:
     """
     Fetch one RSS source, extract claims, embed, dedup, persist.
     Returns count of new claims inserted.
+    article_cap is modulated by scrape_weight in run_once().
     """
     source_id = source['id']
     feed_url = source['url']
-    log.info(f"Fetching {source['name']} ({feed_url})")
+    log.info(f"Fetching {source['name']} ({feed_url}, cap={article_cap})")
 
     try:
         feed = feedparser.parse(feed_url)
@@ -312,7 +465,7 @@ def fetch_feed(source: dict, available_topics: list[str]) -> int:
     conn = get_conn()
 
     try:
-        for entry in feed.entries[:20]:  # cap per-feed article count
+        for entry in feed.entries[:article_cap]:  # cap modulated by scrape_weight
             article_url   = getattr(entry, 'link', '')
             article_title = getattr(entry, 'title', '')
             raw_text      = getattr(entry, 'summary', '') or getattr(entry, 'description', '')
@@ -377,16 +530,37 @@ def set_paused(paused: bool):
 
 def run_once():
     """Single ingestion pass across all sources."""
-    sources = get_all_sources()
-    topics  = get_active_topics()
-    log.info(f"Ingestion pass: {len(sources)} sources, {len(topics)} active topics")
+    sources       = get_all_sources()
+    topics        = get_active_topics()
+    topic_weights = get_topic_scrape_weights()
+
+    # Article cap = mean scrape_weight across active topics (floor 2, ceiling 20)
+    if topic_weights:
+        mean_weight = sum(topic_weights.values()) / len(topic_weights)
+        article_cap = max(2, round(20 * mean_weight))
+    else:
+        article_cap = 20
+
+    log.info(f"Ingestion pass: {len(sources)} sources, {len(topics)} active topics, article_cap={article_cap}")
     total = 0
     for source in sources:
         try:
-            total += fetch_feed(source, topics)
+            total += fetch_feed(source, topics, article_cap=article_cap)
         except Exception as e:
             log.error(f"Source {source['name']} failed: {e}")
     log.info(f"Pass complete: {total} new claims total")
+
+    # Auto-promote staged claims by source tier
+    conn = get_conn()
+    try:
+        promoted = auto_promote_staged(conn)
+        check_hypothesis_predictions(conn)
+        log.info(f"[AUTO-PROMOTE] {promoted} claims promoted this pass")
+    except Exception as e:
+        log.error(f"Auto-promote pass error: {e}")
+    finally:
+        conn.close()
+
     return total
 
 
@@ -399,6 +573,15 @@ def run_scheduler():
                 run_once()
             except Exception as e:
                 log.error(f"Ingestion pass error: {e}")
+            try:
+                import social_ingest
+                conn = get_conn()
+                try:
+                    social_ingest.run_social_monitors_sync(conn)
+                finally:
+                    conn.close()
+            except Exception as e:
+                log.warning(f"Social monitors pass error: {e}")
         else:
             log.info("Ingestion pass skipped (paused)")
         time.sleep(interval_minutes * 60)

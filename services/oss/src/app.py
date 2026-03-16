@@ -24,13 +24,15 @@ import os
 import json
 import uuid
 import logging
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from functools import wraps
 from typing import Optional
 
 import psycopg2
 import psycopg2.extras
-from flask import Flask, request, jsonify, abort, g
+from flask import Flask, request, jsonify, abort, g, render_template
 
 from ingest import run_once as run_ingestion, embed, is_duplicate, add_to_faiss, save_faiss, is_paused, set_paused
 from contradict import scan_new_claims
@@ -52,9 +54,20 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-DB_URL         = os.environ.get("OSS_DB_URL", "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss")
-ANALYST_TOKEN  = os.environ.get("OSS_ANALYST_TOKEN", "dev_analyst_token")
-SERVICE_PORT   = int(os.environ.get("OSS_PORT", "7731"))
+DB_URL                  = os.environ.get("OSS_DB_URL", "postgresql://oss_app:oss_app_dev_password@localhost:5433/oss")
+ANALYST_TOKEN           = os.environ.get("OSS_ANALYST_TOKEN", "dev_analyst_token")
+SERVICE_PORT            = int(os.environ.get("OSS_PORT", "7731"))
+SWARMFISH_BASE_URL      = os.environ.get("SWARMFISH_BASE_URL", "http://host.docker.internal:7732")
+SWARMFISH_ANALYST_TOKEN = os.environ.get("SWARMFISH_ANALYST_TOKEN", "dev_analyst_token")
+
+
+# ---------------------------------------------------------------------------
+# Web UI
+# ---------------------------------------------------------------------------
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +245,69 @@ def drift_query():
         'claims': [dict(c) for c in claims],
         'contradiction_count': contradiction_count,
         'silent_retcon_count': silent_count,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/feed  — recent claims, optionally filtered by topic
+# ---------------------------------------------------------------------------
+
+@app.route('/api/feed', methods=['GET'])
+def feed_query():
+    """
+    Recent claims, newest first, optionally filtered by topic tag.
+
+    Query params:
+        topic   — filter to claims tagged with this topic (optional)
+        limit   — max rows to return (default 50, max 200)
+
+    Returns all trust levels so the analyst can see the full incoming stream.
+    """
+    topic = request.args.get('topic', '').strip()
+    try:
+        limit = min(int(request.args.get('limit', 50)), 200)
+    except (ValueError, TypeError):
+        limit = 50
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            if topic:
+                cur.execute(
+                    """
+                    SELECT c.id, c.claim_text, c.article_url, c.article_title,
+                           c.technique_class, c.extracted_at, c.published_at,
+                           c.trust_level, c.staging_confidence, c.topic_tags,
+                           s.name AS source_name, s.cluster, s.confidence_score
+                    FROM claims c
+                    JOIN sources s ON s.id = c.source_id
+                    WHERE %s = ANY(c.topic_tags)
+                      AND c.trust_level != 'IRRELEVANT'
+                    ORDER BY COALESCE(c.published_at, c.extracted_at) DESC
+                    LIMIT %s
+                    """,
+                    (topic, limit),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT c.id, c.claim_text, c.article_url, c.article_title,
+                           c.technique_class, c.extracted_at, c.published_at,
+                           c.trust_level, c.staging_confidence, c.topic_tags,
+                           s.name AS source_name, s.cluster, s.confidence_score
+                    FROM claims c
+                    JOIN sources s ON s.id = c.source_id
+                    WHERE c.trust_level != 'IRRELEVANT'
+                    ORDER BY COALESCE(c.published_at, c.extracted_at) DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+            claims = cur.fetchall()
+
+    return jsonify({
+        'topic': topic or None,
+        'claims': [dict(c) for c in claims],
+        'total': len(claims),
     })
 
 
@@ -778,13 +854,22 @@ def hypotheses_list():
     limit          = min(int(data.get('limit', 50)), 200)
 
     try:
-        hyps = hypothesis.get_hypotheses(
+        raw = hypothesis.get_hypotheses(
             observation_id=int(observation_id) if observation_id else None,
             status=status_filter,
             limit=limit,
         )
     except ValueError as e:
         abort(400, description=str(e))
+
+    # Normalize field names for the frontend
+    hyps = []
+    for h in raw:
+        hyps.append({
+            **h,
+            'explanation':  h.get('candidate_explanation', ''),
+            'predictions':  h.get('predictions_generated') or [],
+        })
 
     return jsonify({'hypotheses': hyps, 'total': len(hyps)})
 
@@ -862,6 +947,18 @@ def hypothesis_falsify(hypothesis_id: int):
             evidence=data['evidence'],
             session_id=g.session_id,
         )
+        # Notify SWARMFISH so profiles calibrate from this outcome
+        sf_sid = result.get('swarmfish_session_id')
+        if sf_sid:
+            try:
+                _swarmfish_request('/acp/outcome', method='POST', body={
+                    'session_id':  sf_sid,
+                    'outcome':     data['evidence'][:500],
+                    'was_correct': False,
+                })
+                log.info(f"[HYPOTHESIS] SWARMFISH outcome posted (falsified, session={sf_sid})")
+            except Exception as e:
+                log.warning(f"[HYPOTHESIS] SWARMFISH outcome callout failed: {e}")
         return jsonify({'status': 'falsified', **result})
     except ValueError as e:
         abort(400, description=str(e))
@@ -882,9 +979,97 @@ def hypothesis_promote(hypothesis_id: int):
             hypothesis_id=hypothesis_id,
             session_id=g.session_id,
         )
+        # Notify SWARMFISH so profiles calibrate from this outcome
+        sf_sid = result.get('swarmfish_session_id')
+        if sf_sid:
+            try:
+                _swarmfish_request('/acp/outcome', method='POST', body={
+                    'session_id':  sf_sid,
+                    'outcome':     'Hypothesis promoted by analyst — predictions matched observed reality.',
+                    'was_correct': True,
+                })
+                log.info(f"[HYPOTHESIS] SWARMFISH outcome posted (promoted, session={sf_sid})")
+            except Exception as e:
+                log.warning(f"[HYPOTHESIS] SWARMFISH outcome callout failed: {e}")
         return jsonify({'status': 'promoted', **result})
     except ValueError as e:
         abort(400, description=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/hypothesis/from_swarmfish — receive SWARMFISH-generated hypothesis
+# ---------------------------------------------------------------------------
+
+@app.route('/api/hypothesis/from_swarmfish', methods=['POST'])
+@require_analyst_auth
+def hypothesis_from_swarmfish():
+    """
+    Register a hypothesis produced by the SWARMFISH monitoring loop.
+
+    Input:
+        topic:               str — OSS topic tag this relates to
+        observation_label:   str — human-readable label for the observation thread
+        swarmfish_session_id: str — SWARMFISH session UUID
+        explanation:         str — operator_brief from the SWARMFISH session
+        initial_confidence:  float — consensus_confidence from SWARMFISH
+        predictions:         list[{prediction, falsifiable_by?}]
+        source_profiles:     list[{profile_name, confidence, was_dissenter}]
+
+    Returns: {status, hypothesis_id, observation_id}
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'explanation')
+    require_field(data, 'swarmfish_session_id')
+
+    topic             = data.get('topic', '')
+    observation_label = data.get('observation_label', topic)
+    session_id_sw     = data['swarmfish_session_id']
+    explanation       = data['explanation']
+    initial_conf      = float(data.get('initial_confidence', 0.0))
+    predictions       = data.get('predictions') or []
+    source_profiles   = data.get('source_profiles') or []
+
+    # Derive a stable observation_id from topic + label
+    import hashlib
+    obs_hash = hashlib.sha256(f"{topic}:{observation_label}".encode()).hexdigest()
+    observation_id = int(obs_hash[:8], 16) % (2**31 - 1)  # fit in SERIAL range
+
+    try:
+        result = hypothesis.register_hypothesis(
+            observation_id=observation_id,
+            explanation=explanation,
+            initial_confidence=initial_conf,
+            predictions=predictions,
+            session_id=g.session_id,
+        )
+    except ValueError as e:
+        abort(400, description=str(e))
+
+    # Write attribution columns
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE hypothesis_registry
+                SET swarmfish_session_id = %s,
+                    source_profiles      = %s,
+                    auto_generated       = TRUE,
+                    observation_label    = %s
+                WHERE id = %s
+                """,
+                (
+                    session_id_sw,
+                    psycopg2.extras.Json(source_profiles),
+                    observation_label,
+                    result['hypothesis_id'],
+                ),
+            )
+
+    log.info(
+        f"[HYPO] SWARMFISH hypothesis #{result['hypothesis_id']} registered "
+        f"(session={session_id_sw}, topic={topic!r}, conf={initial_conf:.2f})"
+    )
+    return jsonify({'status': 'registered', **result}), 201
 
 
 # ---------------------------------------------------------------------------
@@ -1295,6 +1480,66 @@ def admin_ingest():
 
 
 # ---------------------------------------------------------------------------
+# Admin endpoints: SWARMFISH monitor toggle proxy
+# ---------------------------------------------------------------------------
+
+def _swarmfish_request(path: str, method: str = "GET", body: dict = None) -> dict:
+    """Make an authenticated request to SWARMFISH and return parsed JSON."""
+    url = f"{SWARMFISH_BASE_URL}{path}"
+    encoded = json.dumps(body).encode() if body is not None else None
+    headers = {"X-Analyst-Token": SWARMFISH_ANALYST_TOKEN}
+    if encoded is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=encoded, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body_text = e.read().decode()
+        try:
+            return json.loads(body_text)
+        except Exception:
+            raise RuntimeError(f"HTTP {e.code}: {body_text[:200]}")
+
+
+@app.route('/admin/swarmfish/status', methods=['GET'])
+@require_analyst_auth
+def admin_swarmfish_status():
+    """Return current SWARMFISH monitor status."""
+    try:
+        data = _swarmfish_request("/monitor/status")
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'active': False, 'error': str(e), 'unavailable': True})
+
+
+@app.route('/admin/swarmfish/monitor/toggle', methods=['POST'])
+@require_analyst_auth
+def admin_swarmfish_monitor_toggle():
+    """Toggle the SWARMFISH autonomous monitor on or off."""
+    try:
+        data = _swarmfish_request("/monitor/toggle", method="POST")
+        state = 'enabled' if data.get('active') else 'disabled'
+        log.info(f"[ADMIN] SWARMFISH monitor {state} via UI")
+        return jsonify(data)
+    except Exception as e:
+        log.warning(f"[ADMIN] SWARMFISH toggle failed: {e}")
+        return jsonify({'error': str(e)}), 502
+
+
+@app.route('/admin/swarmfish/monitor/run_now', methods=['POST'])
+@require_analyst_auth
+def admin_swarmfish_monitor_run_now():
+    """Trigger an immediate SWARMFISH monitoring cycle."""
+    try:
+        data = _swarmfish_request("/monitor/run_now", method="POST")
+        return jsonify(data)
+    except Exception as e:
+        log.warning(f"[ADMIN] SWARMFISH run_now failed: {e}")
+        return jsonify({'error': str(e)}), 502
+
+
+# ---------------------------------------------------------------------------
 # API endpoint: list monitored topics
 # ---------------------------------------------------------------------------
 
@@ -1409,6 +1654,392 @@ def admin_add_topic():
 
     except Exception as e:
         log.error(f"add_topic failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/sources  — list all registered sources
+# ---------------------------------------------------------------------------
+
+@app.route('/api/sources', methods=['GET'])
+def list_sources():
+    """
+    Return all registered sources with ingestion stats.
+    Used by the Sources UI tab.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, name, url, source_type, cluster,
+                           confidence_score, total_claims, created_at
+                    FROM sources
+                    ORDER BY name
+                """)
+                rows = [dict(r) for r in cur.fetchall()]
+                for r in rows:
+                    if r.get('created_at'):
+                        r['created_at'] = r['created_at'].isoformat()
+        return jsonify({'sources': rows, 'total': len(rows)})
+    except Exception as e:
+        log.error(f"list_sources failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: add a new source
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/add_source', methods=['POST'])
+@require_analyst_auth
+def admin_add_source():
+    """
+    Register a new RSS feed source for the ingestion pipeline.
+
+    Input: {
+        name:             str  (required)
+        url:              str  (required) — RSS feed URL
+        source_type:      str  (required) — official|wire|outlet|social
+        cluster:          str  (required) — left|center|right|wire|official|independent|international
+        confidence_score: float (optional, default 0.7)
+        analyst_token:    str  (required)
+    }
+    Output: { status: 'created'|'exists', source }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'name')
+    require_field(data, 'url')
+    require_field(data, 'source_type')
+    require_field(data, 'cluster')
+
+    name         = data['name'].strip()
+    url          = data['url'].strip()
+    source_type  = data['source_type'].strip()
+    cluster      = data['cluster'].strip()
+    confidence   = float(data.get('confidence_score', 0.7))
+
+    valid_types    = {'official', 'wire', 'outlet', 'social'}
+    valid_clusters = {'left', 'center', 'right', 'wire', 'official', 'independent', 'international'}
+
+    if source_type not in valid_types:
+        abort(400, description=f"source_type must be one of: {', '.join(sorted(valid_types))}")
+    if cluster not in valid_clusters:
+        abort(400, description=f"cluster must be one of: {', '.join(sorted(valid_clusters))}")
+    if not (0.0 <= confidence <= 1.0):
+        abort(400, description="confidence_score must be between 0.0 and 1.0")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, name FROM sources WHERE url = %s", (url,))
+                existing = cur.fetchone()
+                if existing:
+                    return jsonify({
+                        'status': 'exists',
+                        'message': f"Source with this URL already registered as '{existing['name']}'.",
+                        'source_id': existing['id'],
+                    })
+
+                cur.execute(
+                    """
+                    INSERT INTO sources (name, url, source_type, cluster, confidence_score)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id, name, url, source_type, cluster, confidence_score
+                    """,
+                    (name, url, source_type, cluster, confidence),
+                )
+                source = dict(cur.fetchone())
+
+                # Auto-seed cluster_member edge for non-official/non-independent sources
+                if cluster not in ('official', 'independent'):
+                    # Find another source in same cluster to link to
+                    cur.execute(
+                        """
+                        SELECT id FROM sources
+                        WHERE cluster = %s AND id != %s
+                        LIMIT 1
+                        """,
+                        (cluster, source['id']),
+                    )
+                    peer = cur.fetchone()
+                    if peer:
+                        cur.execute(
+                            """
+                            INSERT INTO source_network_edges
+                                (source_id, connected_source_id, relationship_type, weight)
+                            VALUES (%s, %s, 'cluster_member', 0.5)
+                            ON CONFLICT DO NOTHING
+                            """,
+                            (source['id'], peer['id']),
+                        )
+
+                conn.commit()
+
+        log.info(f"Source added: {name} ({source_type}/{cluster}) — {url}")
+        return jsonify({'status': 'created', 'source': source}), 201
+
+    except Exception as e:
+        log.error(f"add_source failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: mark a claim as irrelevant
+# ---------------------------------------------------------------------------
+
+def _recompute_scrape_weight(cur, tag: str):
+    """Recompute scrape_weight for a topic after irrelevance_count changes."""
+    cur.execute(
+        "SELECT irrelevance_count, total_staged_count FROM topics WHERE tag = %s",
+        (tag,),
+    )
+    row = cur.fetchone()
+    if not row or row['total_staged_count'] < 10:
+        return  # not enough data yet
+    rate = row['irrelevance_count'] / row['total_staged_count']
+    weight = max(0.05, 1.0 - (rate * 0.8))
+    cur.execute(
+        "UPDATE topics SET scrape_weight = %s WHERE tag = %s",
+        (weight, tag),
+    )
+
+
+@app.route('/admin/mark_irrelevant', methods=['POST'])
+@require_analyst_auth
+def admin_mark_irrelevant():
+    """
+    Mark a STAGED claim as IRRELEVANT. Increments irrelevance_count on
+    each associated topic and recomputes scrape_weight.
+
+    Input: { claim_id: int, reason?: str, analyst_token: str }
+    Output: { status: 'ok', claim_id, topic_tags }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'claim_id')
+    claim_id = int(data['claim_id'])
+    reason   = data.get('reason', '')
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT trust_level, topic_tags FROM claims WHERE id = %s",
+                    (claim_id,),
+                )
+                claim = cur.fetchone()
+                if not claim:
+                    abort(404, description=f"Claim {claim_id} not found")
+                if claim['trust_level'] not in ('STAGED', 'RETURNED_TO_STAGED'):
+                    abort(400, description=f"Cannot mark {claim['trust_level']} claim as irrelevant. Only STAGED or RETURNED_TO_STAGED claims can be dismissed.")
+
+                cur.execute(
+                    "UPDATE claims SET trust_level = 'IRRELEVANT' WHERE id = %s",
+                    (claim_id,),
+                )
+
+                tags = claim['topic_tags'] or []
+                for tag in tags:
+                    cur.execute(
+                        "UPDATE topics SET irrelevance_count = irrelevance_count + 1 WHERE tag = %s",
+                        (tag,),
+                    )
+                    _recompute_scrape_weight(cur, tag)
+
+                audit.log_event(
+                    session_id=g.session_id,
+                    event_type='claim_marked_irrelevant',
+                    actor='analyst',
+                    action=f"Claim {claim_id} marked IRRELEVANT",
+                    data_accessed={'claim_id': claim_id, 'reason': reason, 'topic_tags': tags},
+                )
+                conn.commit()
+
+        log.info(f"Claim {claim_id} marked IRRELEVANT (tags={tags})")
+        return jsonify({'status': 'ok', 'claim_id': claim_id, 'topic_tags': tags})
+
+    except Exception as e:
+        log.error(f"mark_irrelevant failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: /api/social_monitors — list social monitor configurations
+# ---------------------------------------------------------------------------
+
+@app.route('/api/social_monitors', methods=['GET'])
+def list_social_monitors():
+    """List all social media monitor configurations."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM social_monitors ORDER BY created_at DESC"
+                )
+                rows = [dict(r) for r in cur.fetchall()]
+                for r in rows:
+                    if r.get('created_at'):
+                        r['created_at'] = r['created_at'].isoformat()
+                    if r.get('last_run_at'):
+                        r['last_run_at'] = r['last_run_at'].isoformat()
+        return jsonify({'monitors': rows, 'total': len(rows)})
+    except Exception as e:
+        log.error(f"list_social_monitors failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: add a social monitor
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/add_social_monitor', methods=['POST'])
+@require_analyst_auth
+def admin_add_social_monitor():
+    """
+    Add a new social media monitor.
+
+    Input: {
+        display_name:     str  (required)
+        query:            str  (required) — search terms or handle
+        monitor_type:     str  (optional, default 'search') — search|hashtag|user
+        topic_tags:       list (optional)
+        interval_minutes: int  (optional, default 60)
+        analyst_token:    str  (required)
+    }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'display_name')
+    require_field(data, 'query')
+
+    display_name     = data['display_name'].strip()
+    query            = data['query'].strip()
+    monitor_type     = data.get('monitor_type', 'search')
+    topic_tags       = data.get('topic_tags', [])
+    interval_minutes = int(data.get('interval_minutes', 60))
+
+    if monitor_type not in ('search', 'hashtag', 'user'):
+        abort(400, description="monitor_type must be search, hashtag, or user")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO social_monitors
+                        (display_name, query, monitor_type, topic_tags, interval_minutes)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (display_name, query, monitor_type, topic_tags, interval_minutes),
+                )
+                monitor = dict(cur.fetchone())
+                if monitor.get('created_at'):
+                    monitor['created_at'] = monitor['created_at'].isoformat()
+                conn.commit()
+
+        log.info(f"Social monitor added: {display_name} (query={query!r})")
+        return jsonify({'status': 'created', 'monitor': monitor}), 201
+
+    except Exception as e:
+        log.error(f"add_social_monitor failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: update/toggle a social monitor
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/social_monitor/<int:monitor_id>', methods=['PATCH'])
+@require_analyst_auth
+def admin_update_social_monitor(monitor_id):
+    """Toggle active state or update query/tags/interval for a social monitor."""
+    data = request.get_json(force=True)
+
+    fields = {}
+    if 'active' in data:
+        fields['active'] = bool(data['active'])
+    if 'query' in data:
+        fields['query'] = data['query'].strip()
+    if 'topic_tags' in data:
+        fields['topic_tags'] = data['topic_tags']
+    if 'interval_minutes' in data:
+        fields['interval_minutes'] = int(data['interval_minutes'])
+    if 'display_name' in data:
+        fields['display_name'] = data['display_name'].strip()
+
+    if not fields:
+        abort(400, description="No updatable fields provided")
+
+    set_clause = ', '.join(f"{k} = %s" for k in fields)
+    values = list(fields.values()) + [monitor_id]
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE social_monitors SET {set_clause} WHERE id = %s RETURNING id",
+                    values,
+                )
+                if not cur.fetchone():
+                    abort(404, description=f"Social monitor {monitor_id} not found")
+                conn.commit()
+        return jsonify({'status': 'ok', 'monitor_id': monitor_id})
+    except Exception as e:
+        log.error(f"update_social_monitor failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: delete a social monitor
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/social_monitor/<int:monitor_id>', methods=['DELETE'])
+@require_analyst_auth
+def admin_delete_social_monitor(monitor_id):
+    """Remove a social media monitor configuration."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM social_monitors WHERE id = %s RETURNING id",
+                    (monitor_id,),
+                )
+                if not cur.fetchone():
+                    abort(404, description=f"Social monitor {monitor_id} not found")
+                conn.commit()
+        log.info(f"Social monitor {monitor_id} deleted")
+        return jsonify({'status': 'ok', 'monitor_id': monitor_id})
+    except Exception as e:
+        log.error(f"delete_social_monitor failed: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin endpoint: on-demand X search
+# ---------------------------------------------------------------------------
+
+@app.route('/admin/x_search', methods=['POST'])
+@require_analyst_auth
+def admin_x_search():
+    """
+    On-demand X/Twitter search — scrape and ingest immediately.
+
+    Input: { query: str, topic_tags?: list, count?: int (default 10), analyst_token: str }
+    Output: { status: 'ok', staged: int, skipped: int, query: str }
+    """
+    data = request.get_json(force=True)
+    require_field(data, 'query')
+    query      = data['query'].strip()
+    topic_tags = data.get('topic_tags', [])
+    count      = int(data.get('count', 10))
+
+    try:
+        import social_ingest
+        with get_conn() as conn:
+            staged, skipped = social_ingest.run_query_sync(conn, query, topic_tags, count)
+        log.info(f"On-demand X search '{query}': staged={staged}, skipped={skipped}")
+        return jsonify({'status': 'ok', 'staged': staged, 'skipped': skipped, 'query': query})
+    except Exception as e:
+        log.error(f"x_search failed: {e}")
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
 

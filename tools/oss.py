@@ -15,6 +15,7 @@ Available tools (call by snake_case class name):
   oss_add_topic      — register a new topic tag for the ingestion pipeline to monitor
   oss_ingest_pause   — pause the automated RSS ingestion pipeline
   oss_ingest_resume  — resume the automated RSS ingestion pipeline
+  oss_x_search       — search X/Twitter and ingest results into OSS immediately
 
 Service: OSS_URL env var (default: http://host.docker.internal:7731)
 Auth:    OSS_ANALYST_TOKEN env var (default: dev_analyst_token)
@@ -653,3 +654,61 @@ class OssAddTopic(Tool):
                 message=f"[OSS] add_topic result: {result}",
                 break_loop=False,
             )
+
+
+# ---------------------------------------------------------------------------
+# oss_x_search
+# ---------------------------------------------------------------------------
+
+class OssXSearch(Tool):
+    """
+    Search X/Twitter and immediately ingest matching posts into OSS.
+
+    Uses the OSS Playwright scraper — requires X_AUTH_TOKEN and X_CT0_TOKEN
+    to be set in the OSS container environment (cookie auth).
+
+    Arguments:
+      query       (required) — search terms, e.g. "iran strait hormuz"
+      topic_tags  (optional) — comma-separated OSS topic tags to assign, e.g. "iran-hormuz,iran"
+      count       (optional) — max posts to ingest (default 10)
+
+    Returns count of new claims staged and duplicates skipped.
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        query  = self.args.get("query", "").strip()
+        tags_s = self.args.get("topic_tags", "")
+        count  = int(self.args.get("count", 10))
+
+        if not query:
+            return Response(message="Error: query argument required", break_loop=False)
+
+        topic_tags = [t.strip() for t in tags_s.split(",") if t.strip()] if tags_s else []
+
+        print(f"[OSS] oss_x_search: query={query!r} tags={topic_tags} count={count}", flush=True)
+
+        payload = {"query": query, "topic_tags": topic_tags, "count": count}
+
+        try:
+            result = _post("/admin/x_search", payload)
+        except Exception as e:
+            return _oss_error(e)
+
+        staged  = result.get("staged", 0)
+        skipped = result.get("skipped", 0)
+        status  = result.get("status", "unknown")
+
+        if status == "error":
+            return Response(
+                message=f"[OSS] X search error: {result.get('error', 'unknown error')}",
+                break_loop=False,
+            )
+
+        return Response(
+            message=(
+                f"[OSS] X search '{query}' complete: "
+                f"{staged} claims staged, {skipped} duplicates skipped."
+                + (f" Tags assigned: {', '.join(topic_tags)}." if topic_tags else "")
+            ),
+            break_loop=False,
+        )

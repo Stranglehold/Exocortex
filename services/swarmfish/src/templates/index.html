@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWARMFISH — ACP</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+  <div id="app" x-data="swarmfish()" x-init="init()">
+
+    <!-- Header -->
+    <header>
+      <span class="logo">SWARMFISH</span>
+      <span class="subtitle">Analytical Cognitive Profiles</span>
+      <nav>
+        <button :class="{active: view==='predict'}" @click="view='predict'">Predict</button>
+        <button :class="{active: view==='sessions'}" @click="view='sessions'; loadSessions()">Sessions</button>
+        <button :class="{active: view==='profiles'}" @click="view='profiles'; loadProfiles()">Profiles</button>
+      </nav>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════
+         PREDICT VIEW
+    ═══════════════════════════════════════════════ -->
+    <main x-show="view==='predict'">
+
+      <!-- Input form -->
+      <section class="card" x-show="!running && !session">
+        <h2>New Prediction</h2>
+        <div class="field">
+          <label>Question</label>
+          <textarea x-model="form.question" rows="3"
+            placeholder="Will X happen within Y timeframe?"></textarea>
+        </div>
+        <div class="field">
+          <label>Domain</label>
+          <select x-model="form.domain">
+            <option value="geopolitical_risk">Geopolitical Risk</option>
+            <option value="commodities">Commodities</option>
+            <option value="market_structure">Market Structure</option>
+            <option value="technology">Technology</option>
+            <option value="credit_cycles">Credit Cycles</option>
+            <option value="general">General</option>
+          </select>
+        </div>
+        <div class="field">
+          <label style="cursor:pointer" @click="form.showContext=!form.showContext">
+            Context
+            <span class="toggle" x-text="form.showContext ? '▲ hide' : '▼ add'"></span>
+          </label>
+          <textarea x-show="form.showContext" x-model="form.context" rows="4"
+            placeholder="Optional: paste relevant data, news, analysis..."></textarea>
+        </div>
+        <div class="field">
+          <button class="btn-primary" @click="startPredict()"
+            :disabled="!form.question.trim()">
+            Run Profiles
+          </button>
+        </div>
+      </section>
+
+      <!-- Streaming: profile cards -->
+      <section x-show="running || session">
+        <div class="predict-header" x-show="form.question">
+          <span class="question-text" x-text="form.question"></span>
+          <button class="btn-ghost" @click="reset()">← New Question</button>
+        </div>
+
+        <!-- Profile cards -->
+        <div class="profile-grid">
+          <template x-for="p in profileCards" :key="p.name">
+            <div class="profile-card" :class="p.status">
+              <div class="profile-card-header">
+                <span class="profile-name" x-text="p.name"></span>
+                <span class="profile-status-icon">
+                  <span x-show="p.status==='waiting'">○</span>
+                  <span x-show="p.status==='running'" class="pulse">◉</span>
+                  <span x-show="p.status==='done'">✓</span>
+                  <span x-show="p.status==='error'">✗</span>
+                </span>
+              </div>
+
+              <!-- Running state -->
+              <div x-show="p.status==='running'" class="thinking">
+                <span class="dot-anim">thinking</span>
+              </div>
+
+              <!-- Done state -->
+              <div x-show="p.status==='done'" class="profile-result">
+                <div class="confidence-row">
+                  <span class="conf-label">Confidence</span>
+                  <div class="conf-bar-wrap">
+                    <div class="conf-bar" :style="`width:${(p.result.confidence*100).toFixed(0)}%`"
+                      :class="confClass(p.result.confidence)"></div>
+                  </div>
+                  <span class="conf-pct" x-text="`${(p.result.confidence*100).toFixed(0)}%`"></span>
+                  <span x-show="p.result.confidence_capped" class="badge cap" title="Confidence capped by constraint">CAP</span>
+                </div>
+
+                <p class="prediction-text" x-text="p.result.prediction"></p>
+
+                <details>
+                  <summary>Reasoning</summary>
+                  <p class="reasoning" x-text="p.result.reasoning_summary"></p>
+                </details>
+
+                <details x-show="p.result.key_assumptions && p.result.key_assumptions.length">
+                  <summary>Assumptions (<span x-text="p.result.key_assumptions?.length"></span>)</summary>
+                  <ul class="assumptions">
+                    <template x-for="a in p.result.key_assumptions">
+                      <li x-text="a"></li>
+                    </template>
+                  </ul>
+                </details>
+
+                <div x-show="p.result.analogue_reference" class="analogue-row">
+                  <span class="badge analogue">ANALOGUE</span>
+                  <span x-text="p.result.analogue_reference"></span>
+                  <span x-show="p.result.relevant_similarity_score != null" class="sim-scores">
+                    rel=<span x-text="p.result.relevant_similarity_score?.toFixed(2)"></span>
+                    ovr=<span x-text="p.result.overall_similarity_score?.toFixed(2)"></span>
+                  </span>
+                </div>
+
+                <div x-show="p.result.constraints_applied && p.result.constraints_applied.length" class="constraints-row">
+                  <template x-for="c in p.result.constraints_applied">
+                    <span class="badge constraint" x-text="c.constraint.replace(/_/g,' ')"></span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Error state -->
+              <div x-show="p.status==='error'" class="profile-error">
+                <span x-text="p.error || 'Profile failed'"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Consensus + Brief (shown after done event) -->
+        <div x-show="session" class="brief-section">
+          <div class="consensus-bar-row" x-show="session">
+            <span class="cons-label">Consensus</span>
+            <div class="cons-bar-wrap">
+              <div class="cons-bar" :style="`width:${((session?.consensus?.consensus_confidence||0)*100).toFixed(0)}%`"></div>
+            </div>
+            <span class="cons-pct" x-text="`${((session?.consensus?.consensus_confidence||0)*100).toFixed(0)}%`"></span>
+            <span class="cons-range" x-text="`${((session?.consensus?.range_low||0)*100).toFixed(0)}–${((session?.consensus?.range_high||0)*100).toFixed(0)}%`"></span>
+            <span class="badge" :class="metaClass(session?.consensus?.meta_confidence)"
+              x-text="session?.consensus?.meta_confidence"></span>
+          </div>
+
+          <div class="brief-block">
+            <div class="brief-title">OPERATOR BRIEF</div>
+            <pre class="brief-text" x-text="session?.operator_brief"></pre>
+          </div>
+
+          <details x-show="session?.falsification_checklist?.length" class="falsification-section">
+            <summary>Falsification Checklist (<span x-text="session?.falsification_checklist?.length"></span> conditions)</summary>
+            <div class="falsification-list">
+              <template x-for="f in session?.falsification_checklist">
+                <div class="falsification-item">
+                  <div class="f-condition" x-text="f.condition"></div>
+                  <div class="f-impact" x-text="f.impact"></div>
+                  <div class="f-magnitude">
+                    <div class="mag-bar" :style="`width:${(f.impact_magnitude*100).toFixed(0)}%`"></div>
+                    <span x-text="`mag ${(f.impact_magnitude*100).toFixed(0)}%`"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════
+         SESSIONS VIEW
+    ═══════════════════════════════════════════════ -->
+    <main x-show="view==='sessions'">
+      <section class="card">
+        <h2>Recent Sessions</h2>
+        <div x-show="sessionsLoading" class="loading">Loading...</div>
+        <div x-show="!sessionsLoading && !recentSessions.length" class="empty">No sessions yet.</div>
+        <table x-show="!sessionsLoading && recentSessions.length" class="sessions-table">
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Domain</th>
+              <th>Consensus</th>
+              <th>Confidence</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="s in recentSessions" :key="s.id">
+              <template x-if="true">
+                <tr @click="toggleSession(s)" class="session-row" :class="{expanded: expandedSession?.id===s.id}">
+                  <td class="q-cell" x-text="s.question.length>60 ? s.question.slice(0,60)+'…' : s.question"></td>
+                  <td><span class="badge domain" x-text="s.domain"></span></td>
+                  <td><span class="badge" :class="metaClass(s.meta_confidence)" x-text="s.meta_confidence||'—'"></span></td>
+                  <td x-text="s.consensus_confidence ? (s.consensus_confidence*100).toFixed(0)+'%' : '—'"></td>
+                  <td x-text="formatDate(s.created_at)"></td>
+                  <td><button class="btn-ghost" @click.stop="openScore(s)">Score</button></td>
+                </tr>
+                <!-- Expanded session detail -->
+                <tr x-show="expandedSession?.id===s.id" class="session-detail-row">
+                  <td colspan="6">
+                    <div x-show="sessionDetailLoading" class="loading">Loading...</div>
+                    <div x-show="!sessionDetailLoading && expandedSession?.id===s.id" class="session-detail">
+                      <div class="detail-predictions">
+                        <template x-for="p in expandedSession?.predictions||[]" :key="p.id">
+                          <div class="detail-pred-card" :class="p.confidence_capped ? 'capped' : ''">
+                            <div class="detail-pred-header">
+                              <span class="profile-name" x-text="p.profile_name"></span>
+                              <span class="conf-pct" x-text="`${(p.confidence*100).toFixed(0)}%`"></span>
+                              <span x-show="p.confidence_capped" class="badge cap">CAP</span>
+                            </div>
+                            <p class="prediction-text" x-text="p.prediction"></p>
+                            <details>
+                              <summary>Reasoning</summary>
+                              <p class="reasoning" x-text="p.reasoning_summary"></p>
+                            </details>
+                          </div>
+                        </template>
+                      </div>
+                      <pre class="brief-text" x-show="expandedSession?.operator_brief" x-text="expandedSession?.operator_brief"></pre>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </template>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Score modal -->
+      <div x-show="scoreModal" class="modal-overlay" @click.self="scoreModal=null">
+        <div class="modal" x-show="scoreModal">
+          <h3>Record Outcome</h3>
+          <p class="modal-question" x-text="scoreModal?.question"></p>
+          <div class="field">
+            <label>Was the prediction correct?</label>
+            <div class="toggle-group">
+              <button :class="{active: scoreForm.was_correct===true}" @click="scoreForm.was_correct=true">✓ Correct</button>
+              <button :class="{active: scoreForm.was_correct===false}" @click="scoreForm.was_correct=false">✗ Incorrect</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>What actually happened?</label>
+            <textarea x-model="scoreForm.outcome" rows="3" placeholder="Describe the outcome..."></textarea>
+          </div>
+          <div class="field modal-actions">
+            <button class="btn-primary" @click="submitScore()"
+              :disabled="scoreForm.was_correct===null || !scoreForm.outcome.trim()">Save</button>
+            <button class="btn-ghost" @click="scoreModal=null">Cancel</button>
+          </div>
+          <div x-show="scoreResult" class="score-result" x-text="scoreResult"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════
+         PROFILES VIEW
+    ═══════════════════════════════════════════════ -->
+    <main x-show="view==='profiles'">
+      <section class="card">
+        <h2>Analytical Profiles</h2>
+        <div x-show="profilesLoading" class="loading">Loading...</div>
+        <div class="profile-list">
+          <template x-for="p in profileList" :key="p.name">
+            <div class="profile-info-card">
+              <div class="profile-info-header">
+                <span class="profile-name" x-text="p.name"></span>
+                <span class="badge uncalibrated" x-show="isUncalibrated(p)">uncalibrated</span>
+                <span class="badge calibrated" x-show="!isUncalibrated(p)">calibrated</span>
+              </div>
+              <div class="affinity-row">
+                <template x-for="d in (p.domain_affinities||[])">
+                  <span class="badge domain" x-text="d.replace(/_/g,' ')"></span>
+                </template>
+              </div>
+              <div class="profile-stats" x-show="!isUncalibrated(p)">
+                <div class="stat">
+                  <span class="stat-label">Consensus Weight</span>
+                  <span class="stat-val" x-text="(p.consensus_weight?.default||1).toFixed(2)"></span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Calibration Bias</span>
+                  <span class="stat-val" x-text="formatBias(p.confidence_calibration?.default)"></span>
+                </div>
+              </div>
+              <div class="profile-stats" x-show="isUncalibrated(p)">
+                <span class="uncal-note">Calibration activates after 10+ scored predictions</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+    </main>
+
+  </div><!-- #app -->
+
+  <script>
+  const TOKEN = 'dev_analyst_token';
+
+  function swarmfish() {
+    return {
+      view: 'predict',
+
+      // Predict state
+      form: { question: '', domain: 'geopolitical_risk', context: '', showContext: false },
+      running: false,
+      session: null,
+      profileCards: [],
+
+      // Sessions state
+      recentSessions: [],
+      sessionsLoading: false,
+      expandedSession: null,
+      sessionDetailLoading: false,
+      scoreModal: null,
+      scoreForm: { was_correct: null, outcome: '' },
+      scoreResult: null,
+
+      // Profiles state
+      profileList: [],
+      profilesLoading: false,
+
+      init() {
+        // nothing on load
+      },
+
+      reset() {
+        this.running = false;
+        this.session = null;
+        this.profileCards = [];
+        this.form = { question: '', domain: 'geopolitical_risk', context: '', showContext: false };
+      },
+
+      async startPredict() {
+        if (!this.form.question.trim()) return;
+        this.running = true;
+        this.session = null;
+        this.profileCards = [];
+
+        const body = {
+          question: this.form.question.trim(),
+          domain: this.form.domain,
+          context: this.form.context || undefined,
+        };
+
+        try {
+          const resp = await fetch('/acp/predict/stream', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Analyst-Token': TOKEN,
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!resp.ok) {
+            console.error('Stream request failed', resp.status);
+            this.running = false;
+            return;
+          }
+
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = '';
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+
+            const lines = buf.split('\n');
+            buf = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
+                this.handleEvent(event);
+              } catch (e) {
+                console.warn('Bad SSE line:', line, e);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('SSE error', e);
+        } finally {
+          this.running = false;
+        }
+      },
+
+      handleEvent(event) {
+        switch (event.type) {
+          case 'profiles_loaded':
+            this.profileCards = event.profiles.map(name => ({
+              name, status: 'waiting', result: null, error: null,
+            }));
+            break;
+
+          case 'profile_start': {
+            const card = this.profileCards.find(c => c.name === event.profile);
+            if (card) card.status = 'running';
+            break;
+          }
+
+          case 'profile_done': {
+            const card = this.profileCards.find(c => c.name === event.result.profile_name);
+            if (card) {
+              if (event.result.error) {
+                card.status = 'error';
+                card.error = event.result.error;
+              } else {
+                card.status = 'done';
+                card.result = event.result;
+              }
+            }
+            break;
+          }
+
+          case 'done':
+            this.session = event.session;
+            this.running = false;
+            break;
+
+          case 'error':
+            console.error('Stream error:', event.message);
+            this.running = false;
+            break;
+        }
+      },
+
+      // Sessions
+      async loadSessions() {
+        this.sessionsLoading = true;
+        try {
+          const r = await fetch('/acp/status', { headers: { 'X-Analyst-Token': TOKEN } });
+          const d = await r.json();
+          this.recentSessions = d.recent_sessions || [];
+        } finally {
+          this.sessionsLoading = false;
+        }
+      },
+
+      async toggleSession(s) {
+        if (this.expandedSession?.id === s.id) {
+          this.expandedSession = null;
+          return;
+        }
+        this.expandedSession = { id: s.id };
+        this.sessionDetailLoading = true;
+        try {
+          const r = await fetch(`/acp/session/${s.id}`, { headers: { 'X-Analyst-Token': TOKEN } });
+          const d = await r.json();
+          this.expandedSession = d;
+        } finally {
+          this.sessionDetailLoading = false;
+        }
+      },
+
+      openScore(s) {
+        this.scoreModal = s;
+        this.scoreForm = { was_correct: null, outcome: '' };
+        this.scoreResult = null;
+      },
+
+      async submitScore() {
+        if (this.scoreForm.was_correct === null || !this.scoreForm.outcome.trim()) return;
+        try {
+          const r = await fetch('/acp/outcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
+            body: JSON.stringify({
+              session_id: this.scoreModal.id,
+              was_correct: this.scoreForm.was_correct,
+              outcome: this.scoreForm.outcome.trim(),
+            }),
+          });
+          const d = await r.json();
+          const n = d.scored?.length || 0;
+          this.scoreResult = `Scored ${n} prediction${n !== 1 ? 's' : ''}. Session closed.`;
+          setTimeout(() => { this.scoreModal = null; this.loadSessions(); }, 1500);
+        } catch (e) {
+          this.scoreResult = 'Error: ' + e.message;
+        }
+      },
+
+      // Profiles
+      async loadProfiles() {
+        this.profilesLoading = true;
+        try {
+          const r = await fetch('/acp/profiles', { headers: { 'X-Analyst-Token': TOKEN } });
+          this.profileList = await r.json();
+        } finally {
+          this.profilesLoading = false;
+        }
+      },
+
+      isUncalibrated(p) {
+        const w = p.consensus_weight || {};
+        return Object.keys(w).length <= 1 && (w.default === 1.0 || w.default == null);
+      },
+
+      // Helpers
+      confClass(c) {
+        if (c >= 0.75) return 'high';
+        if (c >= 0.55) return 'med';
+        return 'low';
+      },
+
+      metaClass(m) {
+        if (m === 'HIGH') return 'meta-high';
+        if (m === 'MEDIUM') return 'meta-med';
+        if (m === 'LOW') return 'meta-low';
+        return '';
+      },
+
+      formatDate(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      },
+
+      formatBias(b) {
+        if (b == null) return '—';
+        const sign = b > 0 ? '+' : '';
+        return `${sign}${(b * 100).toFixed(1)}%`;
+      },
+    };
+  }
+  </script>
+</body>
+</html>

@@ -268,7 +268,7 @@ def falsify_hypothesis(
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, status FROM hypothesis_registry WHERE id = %s",
+                "SELECT id, status, swarmfish_session_id FROM hypothesis_registry WHERE id = %s",
                 (hypothesis_id,),
             )
             hyp = cur.fetchone()
@@ -306,9 +306,10 @@ def falsify_hypothesis(
     log.info(f"[HYPOTHESIS] #{hypothesis_id} FALSIFIED")
 
     return {
-        "hypothesis_id": hypothesis_id,
-        "status":        "FALSIFIED",
-        "falsified_at":  row["falsified_at"].isoformat(),
+        "hypothesis_id":        hypothesis_id,
+        "status":               "FALSIFIED",
+        "falsified_at":         row["falsified_at"].isoformat(),
+        "swarmfish_session_id": hyp.get("swarmfish_session_id"),
     }
 
 
@@ -334,7 +335,7 @@ def promote_hypothesis(hypothesis_id: int, session_id=None) -> dict:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, status, observation_id FROM hypothesis_registry WHERE id = %s",
+                "SELECT id, status, observation_id, swarmfish_session_id FROM hypothesis_registry WHERE id = %s",
                 (hypothesis_id,),
             )
             hyp = cur.fetchone()
@@ -367,7 +368,11 @@ def promote_hypothesis(hypothesis_id: int, session_id=None) -> dict:
 
     log.info(f"[HYPOTHESIS] #{hypothesis_id} PROMOTED")
 
-    return {"hypothesis_id": hypothesis_id, "status": "PROMOTED"}
+    return {
+        "hypothesis_id":        hypothesis_id,
+        "status":               "PROMOTED",
+        "swarmfish_session_id": hyp.get("swarmfish_session_id"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -400,7 +405,9 @@ def get_hypotheses(
                        created_at, current_confidence, status,
                        predictions_generated, predictions_confirmed,
                        predictions_falsified, falsified_at,
-                       falsification_evidence
+                       falsification_evidence,
+                       swarmfish_session_id, source_profiles,
+                       auto_generated, observation_label
                 FROM hypothesis_registry
                 WHERE 1=1
             """

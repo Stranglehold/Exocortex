@@ -233,7 +233,7 @@ def build_user_message(question: str, domain: str, context: Optional[str]) -> st
 # LLM call + JSON extraction
 # ============================================================
 
-_JIT_ERRORS = ("model unloaded", "operation canceled", "failed to load model")
+_JIT_ERRORS = ("model unloaded", "operation canceled", "failed to load model", "context size")
 
 def call_llm(system_prompt: str, user_message: str) -> str:
     """Call LM Studio, return raw response content string.

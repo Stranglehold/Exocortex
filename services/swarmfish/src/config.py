@@ -33,6 +33,12 @@ LLM_TEMPERATURE    = float(os.getenv("SWARMFISH_LLM_TEMPERATURE", "0.3"))
 LLM_MAX_TOKENS     = int(os.getenv("SWARMFISH_LLM_MAX_TOKENS", "2048"))
 LLM_REQUEST_TIMEOUT = int(os.getenv("SWARMFISH_LLM_TIMEOUT", "120"))
 
+# --- OSS bridge --------------------------------------------------------
+# OSS runs on port 7731. From inside the swarmfish container (separate
+# compose network), reach it via host.docker.internal.
+OSS_BASE_URL      = os.getenv("OSS_BASE_URL", "http://host.docker.internal:7731")
+OSS_ANALYST_TOKEN = os.getenv("OSS_ANALYST_TOKEN", "dev_analyst_token")
+
 # --- Calibration thresholds --------------------------------------------
 # Minimum predictions before calibration data influences weights.
 MIN_CALIBRATION_PREDICTIONS = int(os.getenv("MIN_CALIBRATION_PREDICTIONS", "10"))
