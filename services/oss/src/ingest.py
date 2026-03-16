@@ -401,7 +401,12 @@ def check_hypothesis_predictions(conn) -> int:
         for hyp in active_hyps:
             preds = list(hyp['predictions_generated'] or [])
             for pidx, pred in enumerate(preds):
-                pred_text = pred.get('prediction', '')
+                pred_val = pred.get('prediction', '')
+                # falsification_checklist items are dicts {condition, impact, ...}
+                if isinstance(pred_val, dict):
+                    pred_text = pred_val.get('condition', '')
+                else:
+                    pred_text = str(pred_val) if pred_val else ''
                 if not pred_text:
                     continue
                 pred_vec = embed([pred_text])[0]

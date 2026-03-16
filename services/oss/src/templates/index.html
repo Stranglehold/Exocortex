@@ -597,7 +597,7 @@
         <!-- Predictions -->
         <template x-for="(pred, pidx) in (h.predictions || [])" :key="pidx">
           <div class="prediction-row">
-            <span class="text-sm" x-text="pred.prediction"></span>
+            <span class="text-sm" x-text="typeof pred.prediction === 'object' ? pred.prediction.condition : pred.prediction"></span>
             <span class="header-spacer"></span>
             <button class="btn btn-sm btn-green"
                     x-show="h.status === 'ACTIVE'"
