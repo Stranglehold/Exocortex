@@ -30,6 +30,35 @@ PATCH_DIR="$REPO_ROOT/patches"
 
 echo "[PATCH] Deploying core patches to container: $CONTAINER"
 
+# ── 0. Tool: browser_agent.py + captcha_solver.py ────────────────────────────
+
+BROWSER_TOOL_SRC="$PATCH_DIR/tools/browser_agent.py"
+BROWSER_TOOL_DST="/a0/python/tools/browser_agent.py"
+CAPTCHA_SRC="$PATCH_DIR/tools/captcha_solver.py"
+CAPTCHA_DST="/a0/python/tools/captcha_solver.py"
+TOOLS_PYCACHE="/a0/python/tools/__pycache__"
+
+if [ -f "$BROWSER_TOOL_SRC" ]; then
+  docker exec "$CONTAINER" mkdir -p /a0/python/tools
+  docker cp "$BROWSER_TOOL_SRC" "$CONTAINER:$BROWSER_TOOL_DST"
+  echo "[PATCH] tools/browser_agent.py deployed."
+else
+  echo "[PATCH] WARNING: $BROWSER_TOOL_SRC not found — skipped."
+fi
+
+if [ -f "$CAPTCHA_SRC" ]; then
+  docker cp "$CAPTCHA_SRC" "$CONTAINER:$CAPTCHA_DST"
+  echo "[PATCH] tools/captcha_solver.py deployed."
+else
+  echo "[PATCH] WARNING: $CAPTCHA_SRC not found — skipped."
+fi
+
+if [ -f "$BROWSER_TOOL_SRC" ] || [ -f "$CAPTCHA_SRC" ]; then
+  docker exec "$CONTAINER" bash -c "rm -rf '$TOOLS_PYCACHE'" 2>/dev/null || true
+  docker exec "$CONTAINER" bash -c "cd /a0 && /opt/venv-a0/bin/python3 -m py_compile python/tools/browser_agent.py && echo '[PATCH] browser_agent.py OK'"
+  docker exec "$CONTAINER" bash -c "cd /a0 && /opt/venv-a0/bin/python3 -m py_compile python/tools/captcha_solver.py && echo '[PATCH] captcha_solver.py OK'"
+fi
+
 # ── 1. Python helper: extract_tools.py ────────────────────────────────────────
 
 HELPER_SRC="$PATCH_DIR/helpers/extract_tools.py"
@@ -56,6 +85,18 @@ if [ -f "$PROMPT_SRC" ]; then
   echo "[PATCH] prompts/agent.system.main.communication.md deployed."
 else
   echo "[PATCH] WARNING: $PROMPT_SRC not found — skipped."
+fi
+
+# ── 2b. Prompt: browser_agent.system.md (CAPTCHA guidance) ───────────────────
+
+BROWSER_PROMPT_SRC="$PATCH_DIR/prompts/browser_agent.system.md"
+BROWSER_PROMPT_DST="/a0/prompts/browser_agent.system.md"
+
+if [ -f "$BROWSER_PROMPT_SRC" ]; then
+  docker cp "$BROWSER_PROMPT_SRC" "$CONTAINER:$BROWSER_PROMPT_DST"
+  echo "[PATCH] prompts/browser_agent.system.md (CAPTCHA guidance) deployed."
+else
+  echo "[PATCH] WARNING: $BROWSER_PROMPT_SRC not found — skipped."
 fi
 
 # ── 3. Extension: _21_plain_text_response.py ─────────────────────────────────

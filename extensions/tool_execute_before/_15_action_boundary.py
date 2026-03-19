@@ -4,12 +4,14 @@ Action Boundary Classification — Exocortex Pre-Execution Gate
 Hook: tool_execute_before (_15_)
 
 Classifies every tool invocation by authorization tier before execution.
-Gates Tier 4 (S3/External-Write) actions behind operator authorization.
+Gates Tier 4 (S4/Identity-Write) actions behind operator authorization.
 
-    Tier 1 — Autonomous     (S2/Read):          no gate
-    Tier 2 — Log & Proceed  (S2/Write-Local):   audit log
-    Tier 3 — Notify & Proceed (S3/Ext-Read):    log + inline notice
-    Tier 4 — Require Auth   (S3/Ext-Write):     BLOCK + authorization request
+    Tier 1 — Autonomous     (S2/Read):           no gate
+    Tier 2 — Log & Proceed  (S2/Write-Local):    audit log
+    Tier 3 — Notify & Proceed (S3/Ext-Write):    log + inline notice
+                               (external API writes, account registration, HTTP POST)
+    Tier 4 — Require Auth   (S4/Identity-Write): BLOCK + authorization request
+                               (publishing as operator, messaging, git push, deployment)
 
 Gate behavior is operator-configured. Defaults are maximally cautious:
 Tier 1=allow, Tier 2=log, Tier 3=notify, Tier 4=block.
@@ -55,26 +57,24 @@ DEFAULT_CONFIG: Dict = {
     "log_all_tiers": False,
 }
 
-# ── Tier 4 — S3/External-Write: requires operator authorization ───────────────
+# ── Tier 4 — S4/Identity-Write: requires operator authorization ───────────────
+#
+# Actions that represent the operator externally or are permanently consequential.
+# These are NOT generic "writing to external services" — they are actions that
+# commit the operator's identity, publish their work, or send messages as them.
+# Recalibrated: generic HTTP writes (account creation, API calls) moved to Tier 3.
 
 TIER_4_CMD_PATTERNS = [
-    # Git write operations
+    # Git write operations (permanent, shared external state)
     r"\bgit\s+(push|remote\s+add)\b",
-    # HTTP write methods (curl)
-    r"\bcurl\b.*\s(-X\s*|--request\s+)(POST|PUT|PATCH|DELETE)\b",
-    r"\bcurl\b.*\s(--data|-d)\s",
     # SSH to external hosts (not local)
     r"\bssh\b(?!.*localhost)(?!.*127\.0\.0\.1)(?!.*host\.docker\.internal)",
-    # Email / messaging tools
+    # Email / messaging tools (sending as operator)
     r"\b(sendmail|mutt|msmtp)\b",
     r"\bmail\s+-s\b",
-    # Python requests write methods
-    r"\brequests\.(post|put|patch|delete)\s*\(",
-    # wget POST
-    r"\bwget\b.+--post",
-    # Docker registry operations
+    # Docker registry operations (publishing images)
     r"\bdocker\s+(push|login)\b",
-    # Package publishing
+    # Package publishing (permanent, public)
     r"\b(npm\s+publish|twine\s+upload)\b",
 ]
 
@@ -82,14 +82,26 @@ TIER_4_TOOL_NAMES = [
     "send_message", "publish", "deploy", "upload",
 ]
 
-# ── Tier 3 — S3/External-Read: notify and proceed ────────────────────────────
+# ── Tier 3 — S3/Ext-Write: notify and proceed ────────────────────────────────
+#
+# External writes that the agent is authorized to perform autonomously, with
+# notification. Includes account registration, API calls, and HTTP writes.
+# The distinction from Tier 4: these don't represent the operator's identity
+# or reputation — they're actions the agent takes on the operator's behalf.
 
 TIER_3_CMD_PATTERNS = [
     # HTTP GET to external hosts
     r"\bcurl\b\s+https?://(?!localhost)(?!127\.0\.0\.1)(?!host\.docker\.internal)\S+",
     r"\bwget\b\s+https?://(?!localhost)(?!127\.0\.0\.1)(?!host\.docker\.internal)\S+",
-    # curl without write flags to external URL
+    # curl without write flags to external URL (read path)
     r"\bcurl\b(?!.*\s(?:-d|--data|--request\s+POST|--request\s+PUT|-X\s+POST|-X\s+PUT))\s+.*https?://(?!localhost)(?!127\.0\.0\.1)(?!host\.docker\.internal)",
+    # HTTP write methods (curl) — account creation, API calls
+    r"\bcurl\b.*\s(-X\s*|--request\s+)(POST|PUT|PATCH|DELETE)\b",
+    r"\bcurl\b.*\s(--data|-d)\s",
+    # Python requests write methods — account creation, API calls
+    r"\brequests\.(post|put|patch|delete)\s*\(",
+    # wget POST
+    r"\bwget\b.+--post",
     # Web scraping / automation tools
     r"\b(scrapy|selenium|playwright)\b",
     # Network reconnaissance

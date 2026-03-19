@@ -102,6 +102,63 @@ STAGNATION_WINDOW = 4          # Rolling window of recent tool outputs to examin
 STAGNATION_MIN_SUCCESSES = 3   # Minimum successful calls needed to evaluate
 STAGNATION_MAX_UNIQUE = 2      # Max unique output hashes before stagnation is declared
 
+# ── Phase 4: Parallel LLM supervisor — strategic pattern detection ────────────
+# A separate LLM call with compressed context only. No agent history, no Einstellung.
+# The LLM advises. The deterministic tier system enforces.
+
+PHASE4_LM_ENDPOINT = "http://host.docker.internal:1234/v1/chat/completions"
+PHASE4_MODEL = "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m"
+PHASE4_MAX_TOKENS = 200
+PHASE4_TEMPERATURE = 0.0
+PHASE4_TIMEOUT = 10.0                  # hard timeout — never block the agent
+PHASE4_ESCALATION_CONFIDENCE = 0.7
+PHASE4_DEESCALATION_CONFIDENCE = 0.7
+PHASE4_MIN_TURN = 3                    # don't fire in first 3 turns
+ANOMALY_PHASE4 = "phase4"
+
+# Trigger thresholds
+PHASE4_MIN_FAILURES_TRIGGER = 2        # failure count before Phase 4 considers firing
+PHASE4_CONFIRMATION_TRIGGER = 2        # operator confirmations without output → trigger
+PHASE4_BST_MOMENTUM_TRIGGER = 5        # extended momentum in one domain → trigger
+
+# Operator confirmation signal keywords (lightweight history scan)
+_CONFIRMATION_SIGNALS = frozenset([
+    "proceed", "go ahead", "start", "create", "build", "make", "write",
+    "yes", "ok", "continue", "please", "sounds good", "lets", "let's",
+    "implement", "generate", "sure", "great", "do it",
+])
+
+# Phase 4 system prompt — the only context the parallel supervisor sees
+PHASE4_SYSTEM_PROMPT = (
+    "You are a supervisor monitoring an AI agent's execution. "
+    "You receive a compressed status report and must decide whether to intervene.\n\n"
+    "Your options:\n"
+    "- HOLD: Agent is working normally. No intervention needed.\n"
+    "- ESCALATE: Agent is stuck in a strategic pattern it cannot break itself. "
+    "Provide a specific intervention message.\n"
+    "- DEESCALATE: Agent has recovered from a previous issue. "
+    "Restore normal thresholds.\n\n"
+    "Known failure patterns to watch for:\n\n"
+    "1. RESEARCH_AFTER_CONFIRMATION: Agent re-enters information-gathering mode after "
+    "operator has confirmed the task. Signal: operator_confirmations > 0 AND "
+    "productive_output = 0 AND agent is reading/researching.\n\n"
+    "2. STRATEGY_REPETITION: Multiple attempts fail for the same root cause despite "
+    "surface-level variation. Signal: blocking_factors show the same root cause "
+    "across 3+ attempts, even if error types differ.\n\n"
+    "3. MACRO_CYCLE: Agent repeats a multi-step behavioral cycle (research -> propose -> "
+    "ask -> research) after the cycle was already completed and confirmed. Signal: "
+    "same strategy_hash appears twice with operator confirmation between them.\n\n"
+    "4. SELF_DIAGNOSIS_WITHOUT_CHANGE: Agent correctly identifies it is stuck but then "
+    "re-enters the same pattern. Signal: agent_self_diagnosis = present AND "
+    "followed_by_change = no.\n\n"
+    "Respond ONLY with a JSON object: "
+    "{\"action\": \"HOLD\"|\"ESCALATE\"|\"DEESCALATE\", "
+    "\"confidence\": 0.0-1.0, \"reason\": \"one line\", "
+    "\"intervention\": \"message if escalating\", "
+    "\"pattern_matched\": \"pattern name or null\"}.\n\n"
+    "If uncertain, choose HOLD. False negatives are better than false positives."
+)
+
 # Lenz's law: opposing approaches indexed by tool name.
 # When a loop is detected, the injection names the closed strategy
 # and provides the orthogonal alternative — not generic "try something else"
@@ -218,6 +275,10 @@ class SupervisorLoop(Extension):
             )
             _write_loop_signals(self.agent, state, consecutive, failing_tool)
 
+            # Phase 4 trigger tracking: record that the loop detector fired this session
+            if new_loop_tier != "none":
+                state["_p4_loop_fired"] = True
+
             # Tier 4: capture anti-pattern on loop recovery
             if old_loop_tier != "none" and new_loop_tier == "none":
                 try:
@@ -274,6 +335,24 @@ class SupervisorLoop(Extension):
                 if stagnation.get("stagnating"):
                     _inject_stagnation(self.agent, stagnation, state)
                     injected = True
+
+            # 3.6. Phase 4: parallel LLM supervisor — strategic pattern detection.
+            # Fires only when trigger conditions are met and Phases 1-3 have not
+            # already escalated to Tier 2+. The LLM advises; the tier system enforces.
+            # Never blocks the agent: 10s timeout, any failure returns HOLD.
+            if not injected and _cooldown_ok(state, ANOMALY_PHASE4):
+                if _should_trigger_phase4(ctx, state, self.agent):
+                    compressed = _build_phase4_context(
+                        self.agent, ctx, effective_domain, state
+                    )
+                    p4_rec = await _call_phase4_supervisor(compressed)
+                    _log_phase4_decision(self.agent, compressed, p4_rec)
+                    _update_phase4_strategy_hashes(self.agent, state)
+                    if p4_rec.get("action") == "ESCALATE":
+                        _apply_phase4_recommendation(self.agent, p4_rec, state)
+                        injected = True
+                    elif p4_rec.get("action") == "DEESCALATE":
+                        _apply_phase4_recommendation(self.agent, p4_rec, state)
 
             # Read action gate — suppresses stall/loop-Tier1 when agent is pending authorization
             action_gate = False
@@ -1122,5 +1201,279 @@ def _emit(agent, msg: str, anomaly_type: str, state: dict):
     # Prevents duplicate "try a different approach" messages on the next turn.
     try:
         agent.set_data("_supervisor_warned", True)
+    except Exception:
+        pass
+
+
+# ── Phase 4: Parallel LLM Supervisor ─────────────────────────────────────────
+
+def _scan_recent_history(agent, window: int = 30) -> dict:
+    """
+    Scan the last N conversation messages for Phase 4 context signals.
+    Returns operator_confirmations, files_read_count, code_written bool,
+    agent_self_diagnosis bool, and last_proposal_hash.
+    """
+    result = {
+        "operator_confirmations": 0,
+        "files_read_count": 0,
+        "code_written": False,
+        "agent_self_diagnosis": False,
+        "last_proposal_hash": None,
+    }
+    try:
+        msgs = agent.history.current.messages
+        scan = list(msgs)[-window:] if len(msgs) > window else list(msgs)
+        for msg in scan:
+            ai = getattr(msg, "ai", False)
+            raw = msg.content if isinstance(msg.content, str) else str(msg.content or "")
+            low = raw.lower()
+            if not ai:
+                # Operator message — check for confirmation language
+                words = set(low.split())
+                if words & _CONFIRMATION_SIGNALS:
+                    result["operator_confirmations"] += 1
+            else:
+                # Agent message — detect behavioral signals
+                if ("document_query" in low or
+                        ("code_execution" in low and
+                         any(kw in low for kw in ["cat ", "head ", "read ", "open(", "with open"]))):
+                    result["files_read_count"] += 1
+                if any(kw in low for kw in [
+                    "write_to_file", "with open(", "echo >", "cat >", "heredoc",
+                    "created file", "wrote file", "written to",
+                ]):
+                    result["code_written"] = True
+                if any(kw in low for kw in [
+                    "stuck in a loop", "breaking out", "i've been stuck",
+                    "i'm stuck", "different approach", "circular", "i realize i",
+                ]):
+                    result["agent_self_diagnosis"] = True
+                # Strategy hash — hash last response tool content for MACRO_CYCLE
+                tool_name = getattr(msg, "tool_name", None) or ""
+                if "response" in tool_name.lower():
+                    import hashlib
+                    result["last_proposal_hash"] = hashlib.md5(
+                        raw[:300].encode("utf-8", errors="replace")
+                    ).hexdigest()[:8]
+    except Exception:
+        pass
+    return result
+
+
+def _build_phase4_context(agent, ctx: dict, effective_domain: str, state: dict) -> str:
+    """
+    Assemble the compressed context string (~300-500 tokens) for the Phase 4 supervisor.
+    Contains only the signals needed to recognise strategic failure patterns.
+    """
+    hs = _scan_recent_history(agent)
+
+    # BST momentum
+    bst_momentum = 0
+    try:
+        store = getattr(agent, BST_STORE_KEY, {}) or {}
+        belief = store.get(BST_BELIEF_KEY, {})
+        bst_momentum = belief.get("momentum", 0) or 0
+    except Exception:
+        pass
+
+    # Total consecutive failures
+    failures_raw = ctx.get("tool_failures") or {}
+    consecutive_map = failures_raw.get("consecutive") or {}
+    total_failures = sum(consecutive_map.values()) if consecutive_map else 0
+
+    # Recent error sample (last 3 unique, 80 chars each)
+    error_sample: list = []
+    try:
+        history = ctx.get("failure_history", [])
+        seen: set = set()
+        for entry in reversed(history[-10:]):
+            err = entry.get("error", "") if isinstance(entry, dict) else str(entry)
+            short = err[:80]
+            if short and short not in seen:
+                error_sample.append(short)
+                seen.add(short)
+            if len(error_sample) >= 3:
+                break
+    except Exception:
+        pass
+
+    # Stagnation status
+    stagnating = False
+    try:
+        hashes = ctx.get("tool_output_hashes", [])
+        stag = _detect_output_stagnation(hashes)
+        stagnating = stag.get("stagnating", False)
+    except Exception:
+        pass
+
+    # MACRO_CYCLE detection: current hash seen before?
+    prev_hashes = state.get("_p4_strategy_hashes", [])
+    current_hash = hs["last_proposal_hash"]
+    macro_cycle_signal = bool(current_hash and current_hash in prev_hashes)
+
+    lines = [
+        "[PHASE 4 SUPERVISOR CONTEXT]",
+        f"BST: {ctx.get('bst_domain') or 'none'} | effective: {effective_domain or 'none'} | momentum: {bst_momentum}",
+        f"Failure count: {total_failures} | Loop tier: {state.get(LOOP_TIER_KEY, 'none')} | Stagnating: {stagnating}",
+        f"Operator confirmations (recent window): {hs['operator_confirmations']}",
+        f"Files read (recent): {hs['files_read_count']} | Code written: {hs['code_written']}",
+        f"Agent self-diagnosis present: {hs['agent_self_diagnosis']}",
+        f"Strategy hash: {current_hash or 'none'} | Previously seen (MACRO_CYCLE signal): {macro_cycle_signal}",
+    ]
+    if error_sample:
+        lines.append(f"Recent errors (sample): {' | '.join(error_sample)}")
+
+    return "\n".join(lines)
+
+
+def _should_trigger_phase4(ctx: dict, state: dict, agent) -> bool:
+    """
+    Gate — Phase 4 has latency cost (~2-4s). Fire only when a strategic
+    evaluation is warranted. Any one trigger is sufficient.
+    """
+    turn = state.get("turn", 0)
+
+    # Never fire in first 3 turns (let agent orient)
+    if turn < PHASE4_MIN_TURN:
+        return False
+
+    # Don't fire if Phases 1-3 have already escalated to Tier 2+
+    if state.get(LOOP_TIER_KEY, "none") in ("summarize", "reset"):
+        return False
+
+    # Trigger 1: failure accumulation without Phase 1-3 escalation
+    failures_raw = ctx.get("tool_failures") or {}
+    consecutive_map = failures_raw.get("consecutive") or {}
+    if max(consecutive_map.values(), default=0) >= PHASE4_MIN_FAILURES_TRIGGER:
+        return True
+
+    # Trigger 2: loop detector already fired this session
+    if state.get("_p4_loop_fired"):
+        return True
+
+    # Trigger 3: operator confirmed 2+ times (lightweight check from stored count)
+    if state.get("_p4_confirmations_seen", 0) >= PHASE4_CONFIRMATION_TRIGGER:
+        return True
+
+    # Trigger 4: extended BST momentum in one domain
+    try:
+        store = getattr(agent, BST_STORE_KEY, {}) or {}
+        belief = store.get(BST_BELIEF_KEY, {})
+        if (belief.get("momentum") or 0) >= PHASE4_BST_MOMENTUM_TRIGGER:
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+async def _call_phase4_supervisor(compressed_context: str) -> dict:
+    """
+    Fire the parallel LLM supervisor with compressed context only.
+    Returns structured recommendation dict. Never raises — HOLD on any failure.
+    """
+    import re as _re
+    import json as _json
+
+    try:
+        import aiohttp
+    except ImportError:
+        return {"action": "HOLD", "reason": "aiohttp_unavailable"}
+
+    payload = {
+        "model": PHASE4_MODEL,
+        "messages": [
+            {"role": "system", "content": PHASE4_SYSTEM_PROMPT},
+            {"role": "user", "content": compressed_context},
+        ],
+        "max_tokens": PHASE4_MAX_TOKENS,
+        "temperature": PHASE4_TEMPERATURE,
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                PHASE4_LM_ENDPOINT,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=PHASE4_TIMEOUT),
+            ) as resp:
+                if resp.status != 200:
+                    return {"action": "HOLD", "reason": f"lm_status_{resp.status}"}
+                data = await resp.json()
+                text = data["choices"][0]["message"]["content"]
+                # Strip thinking tokens (distill model)
+                text = _re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
+                # Extract first JSON object
+                m = _re.search(r"\{[\s\S]+?\}", text)
+                if m:
+                    return _json.loads(m.group())
+                return {"action": "HOLD", "reason": "no_json_in_response"}
+    except Exception as e:
+        return {"action": "HOLD", "reason": f"call_error:{str(e)[:60]}"}
+
+
+def _apply_phase4_recommendation(agent, recommendation: dict, state: dict):
+    """
+    Translate Phase 4 LLM recommendation into deterministic tier actions.
+    The LLM advises. This function enforces.
+    """
+    action = recommendation.get("action", "HOLD")
+    confidence = float(recommendation.get("confidence") or 0.0)
+
+    if action == "ESCALATE" and confidence >= PHASE4_ESCALATION_CONFIDENCE:
+        intervention = recommendation.get("intervention", "")
+        pattern = recommendation.get("pattern_matched") or ""
+        reason = recommendation.get("reason", "")
+        tag = f"[SUPERVISOR-P4{' ' + pattern if pattern else ''}]"
+        msg = f"{tag} {intervention or reason or 'Strategic pattern detected — reassess current approach.'}"
+        _emit(agent, msg, ANOMALY_PHASE4, state)
+
+    elif action == "DEESCALATE" and confidence >= PHASE4_DEESCALATION_CONFIDENCE:
+        # Clear Tier 1 loop warning cooldown so the next genuine detection can fire
+        state.get("cooldowns", {}).pop(ANOMALY_LOOP, None)
+        try:
+            agent.context.log.log(
+                type="info",
+                content=f"[SUPERVISOR-P4] DEESCALATE confidence={confidence:.2f}",
+                flush=True,
+            )
+        except Exception:
+            pass
+
+
+def _update_phase4_strategy_hashes(agent, state: dict):
+    """
+    Update rolling strategy hash list for MACRO_CYCLE detection.
+    Called after each Phase 4 evaluation.
+    """
+    try:
+        hs = _scan_recent_history(agent, window=5)
+        h = hs.get("last_proposal_hash")
+        if h:
+            prev = state.get("_p4_strategy_hashes", [])
+            if h not in prev:
+                prev.append(h)
+            state["_p4_strategy_hashes"] = prev[-10:]  # rolling window of 10
+    except Exception:
+        pass
+
+
+def _log_phase4_decision(agent, compressed_context: str, recommendation: dict):
+    """
+    Append Phase 4 decision to agent state for sleep consolidation review.
+    Retrospective fields (agent_behavior_next_turn, operator_correction) are
+    filled in by sleep consolidation after the session.
+    """
+    try:
+        from datetime import datetime
+        log = agent.get_data("_p4_decision_log") or []
+        log.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "context_snapshot": compressed_context,
+            "recommendation": recommendation,
+            "agent_behavior_next_turn": None,
+            "operator_correction_within_3_turns": None,
+        })
+        agent.set_data("_p4_decision_log", log[-20:])
     except Exception:
         pass
