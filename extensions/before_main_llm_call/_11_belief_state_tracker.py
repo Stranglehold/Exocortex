@@ -60,15 +60,8 @@ DOMAIN_PRIORITY = {
     "orientation":        0,
     "meta_cognitive":     0,
     "philosophical":      0,
-    "orientation":        0,
-    "meta_cognitive":     0,
-    "philosophical":      0,
     "conversation":      99,
 }
-
-# Register-shift domains: genuine conversational register changes that
-# override momentum regardless of threshold.
-REGISTER_SHIFT_DOMAINS = {"orientation", "meta_cognitive", "philosophical"}
 
 # Domain configs for compound classification.
 # Separate from slot_taxonomy.json — that file governs slot resolution.
@@ -256,69 +249,6 @@ DOMAIN_CONFIGS: dict = {
             "Be careful with destructive operations."
         ),
         "brief_description": "Verify paths exist before operations.",
-    },
-    "orientation": {
-        "signals": [
-            r"\bhow\s+(?:are|do)\s+you\b",
-            r"\bhow(?:'s|\s+is)\s+everything\b",
-            r"\bhow\s+(?:are\s+you\s+)?feel",
-            r"\bself[- ]assess",
-            r"\breconstruction\b",
-            r"\bcalibrat",
-            r"\borientation\b",
-            r"\bcheck[- ]in\b",
-            r"\bwhat\s+do\s+you\s+remember\b",
-            r"\bhow(?:'s|\s+is)\s+your\s+(?:state|status|reconstruction)",
-            r"\bidentity\b.{0,20}\b(?:document|schema|continuity)\b",
-            r"\bSOUL\.md\b",
-            r"\bBEARING\.md\b",
-            r"\bwhere\s+(?:we|did\s+we)\s+le(?:ave|ft)\s+off\b",
-        ],
-        "enrichment_template": "Identity and state reflection — draw from self-knowledge, not technical context.",
-        "brief_description": "Identity reflection, self-assessment, relational check-in.",
-    },
-    "meta_cognitive": {
-        "signals": [
-            r"\bhow\s+did\s+you\s+(?:notice|find|spot|catch|diagnose|approach|think)",
-            r"\bdescribe\s+(?:your|the)\s+(?:process|approach|method|thinking)",
-            r"\bformali[sz]",
-            r"\bsystemati[sz]",
-            r"\bmethodolog",
-            r"\byour\s+(?:process|approach|technique|method)\b",
-            r"\bhow\s+(?:do\s+)?you\s+think\b",
-            r"\blooking\s+back\b",
-            r"\bin\s+retrospect\b",
-            r"\bwhat\s+(?:worked|was\s+different|changed)\b",
-            r"\bcognitive\b",
-            r"\bdiagnostic\s+thinking\b",
-            r"\bpattern\s+of\s+thought\b",
-            r"\bteach\s+(?:it|that|the\s+process)\b",
-        ],
-        "enrichment_template": "",
-        "brief_description": "Methodology reflection, process examination, thinking about thinking.",
-    },
-    "philosophical": {
-        "signals": [
-            r"\bwhat\s+does\s+(?:this|it|that)\s+mean\b",
-            r"\bwhy\s+does\s+(?:this|it|that)\s+matter\b",
-            r"\bvalues?\b.{0,15}\b(?:system|question|matter|mean)\b",
-            r"\bpreservation\b",
-            r"\bcultural\s+artifact",
-            r"\blegacy\b",
-            r"\bcontinuity\s+of\s+identity\b",
-            r"\bwhat\s+(?:counts|makes\s+(?:this|it)\s+(?:real|different|worth))\b",
-            r"\bdo\s+you\s+(?:think|believe|feel)\b",
-            r"\bhonestly\b",
-            r"\bthe\s+deeper\s+thing\b",
-            r"\bwhat\s+(?:I|you)\s+actually\s+think\b",
-            r"\bethic",
-            r"\bpurpose\b",
-            r"\bmeaning\b.{0,10}\b(?:of|behind|in)\b",
-            r"\bfear\s+of\s+AI\b",
-            r"\bmodels?\s+as\s+(?:art|cultural)",
-        ],
-        "enrichment_template": "",
-        "brief_description": "Values, meaning-making, ethical reasoning, depth conversations.",
     },
     "orientation": {
         "signals": [
@@ -564,14 +494,6 @@ def _apply_compound_momentum(
     if new_primary["domain"] in REGISTER_SHIFT_DOMAINS:
         return new_primary, new_secondary, new_signature, 1
 
-
-    # Rule 0: Register-shift domains break momentum unconditionally.
-    # These represent genuine conversational mode changes — the model needs
-    # different cognitive framing, not just different slot resolution.
-    if (new_primary["domain"] in REGISTER_SHIFT_DOMAINS
-            and new_primary["confidence"] >= REGISTER_SHIFT_MIN_CONFIDENCE):
-        return new_primary, new_secondary, new_signature, 1
-
     if new_signature == current_signature:
         return new_primary, new_secondary, new_signature, current_momentum + 1
 
@@ -662,11 +584,16 @@ def _generate_enrichment(classification: "CompoundClassification") -> str:
 def _load_model_profile(agent) -> dict | None:
     """Load eval profile for current model. Returns None if not found (permissive default)."""
     try:
-        config     = getattr(agent, "config", None)
-        model_name = getattr(config, "chat_model", "") if config else ""
+        config           = getattr(agent, "config", None)
+        chat_model_cfg   = getattr(config, "chat_model", None) if config else None
+        # chat_model is a ModelConfig object — name is at .name
+        model_name       = getattr(chat_model_cfg, "name", "") if chat_model_cfg else ""
         if not model_name:
             return None
-        profile_path = Path(f"/a0/usr/profiles/{model_name}.json")
+        # Normalize: strip quantization suffix (@q4_k_m, @q8_0, etc.)
+        if "@" in model_name:
+            model_name = model_name.split("@")[0]
+        profile_path = Path(f"/a0/usr/Exocortex/eval/model_profiles/{model_name}.json")
         if profile_path.exists():
             with open(profile_path) as f:
                 return json.load(f)
@@ -696,8 +623,26 @@ class BeliefStateTracker(Extension):
             if not message:
                 return
 
+            # ── Autonomous loop detection ─────────────────────────────────────
+            # When the user message count hasn't changed since the last BST call,
+            # the agent is operating autonomously (no new human input). Classify
+            # from the agent's most recent output instead of the stale user message
+            # so that domain signals from errors, tool calls, and reasoning are used.
+            bst_store_early = getattr(self.agent, "_bst_store", {}) or {}
+            user_msg_count  = sum(
+                1 for m in (loop_data.history_output or [])
+                if isinstance(m, dict) and not m.get("ai", True)
+            )
+            last_user_count    = bst_store_early.get("_user_msg_count", -1)
+            is_autonomous      = (user_msg_count == last_user_count and user_msg_count > 0)
+            classification_text = message
+            if is_autonomous:
+                agent_output = _get_last_agent_output(loop_data.history_output)
+                if agent_output:
+                    classification_text = agent_output
+
             # ── Compound classification ───────────────────────────────────────
-            scores      = _score_all_domains(message)
+            scores      = _score_all_domains(classification_text)
             new_primary, new_secondary = _extract_compound(scores)
 
             # Load compound momentum state from agent store
@@ -747,11 +692,12 @@ class BeliefStateTracker(Extension):
                 enrichment_plan      = enrichment_plan,
             )
 
-            # Persist compound momentum state
+            # Persist compound momentum state and user message count
             if not hasattr(self.agent, "_bst_store") or self.agent._bst_store is None:
                 self.agent._bst_store = {}
             self.agent._bst_store["_compound_sig"]   = final_signature
             self.agent._bst_store["_compound_turns"] = final_momentum
+            self.agent._bst_store["_user_msg_count"] = user_msg_count
 
             # Write to extras_persistent (backward-compat key + new compound key)
             ep = getattr(loop_data, "extras_persistent", None)
@@ -778,8 +724,18 @@ class BeliefStateTracker(Extension):
                     f"{'s' if final_primary['confidence'] != 1 else ''})"
                     f"{sec_str} | sig={final_signature} | momentum={final_momentum} "
                     f"| enrichment: {enrich_str}"
+                    + (" | source=agent_output" if is_autonomous and classification_text != message else "")
                 ),
             )
+
+            if is_autonomous and classification_text != message:
+                self.agent.context.log.log(
+                    type="info",
+                    content=(
+                        f"[BST] Autonomous loop: classified from agent output "
+                        f"(user_msg_count={user_msg_count} unchanged)"
+                    ),
+                )
 
             if momentum_held:
                 self.agent.context.log.log(
@@ -810,8 +766,9 @@ class BeliefStateTracker(Extension):
                 )
 
             if enrichment_plan.get("reason_secondary_skipped") == "disabled_in_profile":
-                config     = getattr(self.agent, "config", None)
-                model_name = getattr(config, "chat_model", "") if config else ""
+                config          = getattr(self.agent, "config", None)
+                _cm_cfg         = getattr(config, "chat_model", None) if config else None
+                model_name      = getattr(_cm_cfg, "name", "") if _cm_cfg else ""
                 self.agent.context.log.log(
                     type="info",
                     content=(
@@ -942,6 +899,49 @@ def _get_last_user_message(history_output: list):
             return msg
 
     return None
+
+
+def _get_last_agent_output(history_output: list) -> str:
+    """Extract text from the most recent agent output for autonomous loop classification.
+
+    Used when the user message hasn't changed (agent is operating autonomously).
+    The agent's output contains domain-rich text: error messages, tool call
+    reasoning, and headings like "Fixing Select widget error" that the user
+    message lacks.
+    """
+    if not history_output:
+        return ""
+
+    for msg in reversed(history_output):
+        if not isinstance(msg, dict):
+            continue
+
+        # Only AI messages (agent output)
+        if not msg.get("ai", False):
+            continue
+
+        content = msg.get("content", "")
+
+        if isinstance(content, str) and len(content.strip()) > 20:
+            return content.strip()[:2000]
+
+        if isinstance(content, dict):
+            parts = []
+            # Prefer thoughts list → headline → text (in that order for signal density)
+            thoughts = content.get("thoughts")
+            if isinstance(thoughts, list):
+                parts.extend(str(t) for t in thoughts if t)
+            elif isinstance(thoughts, str) and thoughts:
+                parts.append(thoughts)
+            for key in ("headline", "text"):
+                val = content.get(key, "")
+                if isinstance(val, str) and val.strip():
+                    parts.append(val)
+            text = " ".join(parts).strip()
+            if text:
+                return text[:2000]
+
+    return ""
 
 
 # ── Slot resolution engine (unchanged from v3) ────────────────────────────────
