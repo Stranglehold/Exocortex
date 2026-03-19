@@ -1,0 +1,48 @@
+{
+  "_description": "Calibrated generator profile from dejanseo/mouse_movement_tracking",
+  "_dataset": "https://huggingface.co/datasets/dejanseo/mouse_movement_tracking",
+  "_n_sessions": 1991,
+  "_n_rows": 685529,
+  "speed_px_ms": {
+    "p5": 0.01818181818181818,
+    "p25": 0.11764705882352941,
+    "p50": 0.32777738867854445,
+    "p75": 0.9375,
+    "p95": 3.625,
+    "std": 1.3234652193331011
+  },
+  "distance_px": {
+    "p25": 1.4142135623730951,
+    "p50": 4.0,
+    "p75": 12.083045973594572,
+    "p95": 53.23532661682466
+  },
+  "time_delta_ms": {
+    "p25": 9.0,
+    "p50": 16.0,
+    "p75": 17.0,
+    "std": 149.9082498487526
+  },
+  "click_interval_ms": {
+    "p25": 239.0,
+    "p50": 732.0,
+    "p75": 2481.5,
+    "p95": 13427.5
+  },
+  "fitts_law": {
+    "base_ms": 9.0,
+    "scale_ms_per_px": 3.0508510792387606,
+    "min_ms": 100.0,
+    "max_ms": 800.0
+  },
+  "bezier_control": {
+    "offset_lo": 0.08,
+    "offset_hi": 0.28,
+    "jitter_sigma": 0.025
+  },
+  "inter_step_pause_s": {
+    "mean": 1.1,
+    "std": 0.28,
+    "min": 0.4
+  }
+}
