@@ -242,7 +242,7 @@ DOMAIN_CONFIGS: dict = {
             r"\bcp\b|\bcopy\s+(?:the\s+)?file\b",
             r"\bmv\b|\bmove\s+(?:the\s+)?file\b",
             r"\brm\b|\bdelete\s+(?:the\s+)?file\b",
-            r"\blist\s+(?:files|directory|dir)\b",
+            r"\blist\s+(?:the\s+)?(?:files|directory|dir)\b",
         ],
         "enrichment_template": (
             "File operations context: verify paths exist before operations. "
