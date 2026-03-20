@@ -14,7 +14,14 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
     if ext_json:
         try:
             data = DirtyJson.parse_string(ext_json)
-            if isinstance(data,dict): return data
+            if isinstance(data, dict):
+                # Valid JSON but empty tool_name — model emitted {"tool_name": "", ...}
+                # after reasoning tokens. Treat the original text as a plain response
+                # rather than routing to Unknown and dumping the full tool list.
+                if not data.get("tool_name", "").strip():
+                    text = json.strip()
+                    return {"tool_name": "response", "tool_args": {"text": text}}
+                return data
         except Exception:
             # If parsing fails, fall through to plain-text fallback
             pass
