@@ -63,7 +63,7 @@ class MemoryCatalog(Extension):
 
             parts = []
 
-            episodic = _build_episodic_catalog(self.agent)
+            episodic = await _build_episodic_catalog(self.agent)
             if episodic:
                 parts.append(episodic)
 
@@ -93,10 +93,10 @@ class MemoryCatalog(Extension):
 
 # ── Episodic Catalog (FAISS fragments) ─────────────────────────────────────────
 
-def _build_episodic_catalog(agent) -> str:
+async def _build_episodic_catalog(agent) -> str:
     """Read FAISS memory store and build compact domain summary."""
     try:
-        memory = Memory.get(agent)
+        memory = await Memory.get(agent)
         all_docs = memory.db.get_all_docs()
 
         frags = [
