@@ -1351,8 +1351,10 @@ def _should_trigger_phase4(ctx: dict, state: dict, agent) -> bool:
     if state.get("_p4_loop_fired"):
         return True
 
-    # Trigger 3: operator confirmed 2+ times (lightweight check from stored count)
-    if state.get("_p4_confirmations_seen", 0) >= PHASE4_CONFIRMATION_TRIGGER:
+    # Trigger 3: operator confirmed 2+ times (scan and update state on every evaluation)
+    hs_quick = _scan_recent_history(agent, window=10)
+    state["_p4_confirmations_seen"] = hs_quick["operator_confirmations"]
+    if state["_p4_confirmations_seen"] >= PHASE4_CONFIRMATION_TRIGGER:
         return True
 
     # Trigger 4: extended BST momentum in one domain
@@ -1439,6 +1441,12 @@ def _apply_phase4_recommendation(agent, recommendation: dict, state: dict):
             )
         except Exception:
             pass
+
+    else:
+        # HOLD — no intervention, but mark cooldown so Phase 4 doesn't fire every
+        # turn while trigger conditions persist. Without this, HOLD responses cause
+        # a Phase 4 LLM call on every single turn once momentum crosses the threshold.
+        _mark_cooldown(state, ANOMALY_PHASE4)
 
 
 def _update_phase4_strategy_hashes(agent, state: dict):
