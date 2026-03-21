@@ -50,6 +50,7 @@ EXT_DEST="$CONTAINER:$PROFILE_BASE/extensions"
 
 # before_main_llm_call
 docker cp "$EXT_SRC/before_main_llm_call/_11_belief_state_tracker.py" "$EXT_DEST/before_main_llm_call/"
+docker cp "$EXT_SRC/before_main_llm_call/slot_taxonomy.json"          "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_15_htn_plan_selector.py"    "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_16_tool_registry.py"        "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_18_memory_catalog.py"       "$EXT_DEST/before_main_llm_call/"
