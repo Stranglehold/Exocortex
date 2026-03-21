@@ -1,0 +1,157 @@
+<html>
+<head>
+  <script type="module">
+    import { store } from "/components/sidebar/artifacts/artifacts-store.js";
+  </script>
+</head>
+<body>
+  <div class="artifacts-list-root">
+    <template x-if="$store.artifacts">
+      <div x-data class="artifacts-list-inner">
+
+        <h3 class="section-header section-header-collapsible"
+            data-bs-toggle="collapse"
+            @click="$store.sidebar.toggleSection('artifacts')"
+            x-effect="!$store.sidebar.isSectionOpen('artifacts') ? $el.classList.add('collapsed') : $el.classList.remove('collapsed')">
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined" style="font-size:16px;opacity:0.7;">widgets</span>
+            Artifacts
+          </span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="btn-icon-action"
+                    @click.stop="$store.artifacts.refresh()"
+                    title="Refresh artifacts"
+                    style="opacity:0.6;">
+              <span class="material-symbols-outlined" style="font-size:14px;">refresh</span>
+            </button>
+            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M8 4l8 8-8 8" />
+            </svg>
+          </div>
+        </h3>
+
+        <div class="collapse" id="artifacts-collapse"
+             x-effect="(() => { const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false }); $store.sidebar.isSectionOpen('artifacts') ? c.show() : c.hide(); })()">
+          <div class="artifacts-list-body">
+
+            <!-- Empty state -->
+            <template x-if="!$store.artifacts.loading && $store.artifacts.artifacts.length === 0">
+              <div class="artifacts-empty">
+                <span class="material-symbols-outlined" style="font-size:28px;opacity:0.3;">folder_open</span>
+                <span style="font-size:0.8rem;opacity:0.5;margin-top:4px;">No artifacts yet</span>
+              </div>
+            </template>
+
+            <!-- Loading -->
+            <template x-if="$store.artifacts.loading && $store.artifacts.artifacts.length === 0">
+              <div class="artifacts-empty">
+                <span style="font-size:0.8rem;opacity:0.5;">Loading...</span>
+              </div>
+            </template>
+
+            <!-- Artifact list -->
+            <ul class="config-list artifacts-config-list no-scrollbar"
+                x-show="$store.artifacts.artifacts.length > 0">
+              <template x-for="artifact in $store.artifacts.artifacts" :key="artifact.name">
+                <li>
+                  <div class="task-container artifact-item">
+                    <div class="chat-list-button" @click="$store.artifacts.load(artifact.name)">
+                      <div class="task-container-vertical">
+                        <div class="task-title-line">
+                          <span class="material-symbols-outlined artifact-type-icon"
+                                x-text="artifact.type === 'svg' ? 'polyline' : (artifact.type === 'js' ? 'code' : 'web')"
+                                style="font-size:14px;opacity:0.6;flex-shrink:0;"></span>
+                          <span class="task-name" x-text="artifact.title"></span>
+                        </div>
+                        <div class="task-info-line" x-show="artifact.description || artifact.modified">
+                          <span class="artifact-meta"
+                                x-text="[artifact.description, $store.artifacts.formatDate(artifact.modified)].filter(Boolean).join(' · ')">
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              </template>
+            </ul>
+
+          </div>
+        </div>
+
+      </div>
+    </template>
+  </div>
+
+  <style>
+    #artifacts-section {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 0 0 auto;
+      max-height: 35%;
+      margin-top: 0;
+      padding-top: var(--spacing-md);
+      overflow: hidden;
+    }
+
+    #artifacts-section > x-component,
+    #artifacts-section > x-component > div[x-data],
+    #artifacts-section > x-component > div[x-data] > div[x-data] {
+      display: contents;
+    }
+
+    #artifacts-section .collapse {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #artifacts-section .collapsing {
+      flex: 0 0 auto !important;
+    }
+
+    .artifacts-list-body {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .artifacts-config-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .artifact-item {
+      cursor: pointer;
+    }
+
+    .artifact-item:hover {
+      background: var(--color-hover, rgba(255,255,255,0.05));
+    }
+
+    .artifact-type-icon {
+      margin-right: 4px;
+    }
+
+    .artifact-meta {
+      font-size: 0.75rem;
+      color: var(--color-text-muted, #888);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .artifacts-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 8px;
+      opacity: 0.6;
+    }
+  </style>
+</body>
+</html>
