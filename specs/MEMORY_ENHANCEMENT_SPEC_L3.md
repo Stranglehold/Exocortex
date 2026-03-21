@@ -147,6 +147,8 @@ final_score = (1 - decay_weight) * similarity_score + decay_weight * recency_sco
     "exempt_utilities": ["load_bearing"],
     "exempt_sources": ["user_asserted"],
     "exempt_validities": ["confirmed"],
+    "exempt_relational_salience": ["relationship_defining"],
+    "collaboration_history_half_life_multiplier": 2.0,
     "min_recency_score": 0.1
   }
 }
@@ -156,6 +158,8 @@ final_score = (1 - decay_weight) * similarity_score + decay_weight * recency_sco
 - `load_bearing` utility: always `recency_score = 1.0`
 - `user_asserted` source: always `recency_score = 1.0`
 - `confirmed` validity: always `recency_score = 1.0`
+- `relationship_defining` relational_salience: always `recency_score = 1.0` — relational context must not fade
+- `collaboration_history` relational_salience: half-life multiplied by 2.0 — collaborative context decays at half the normal rate
 
 ### Integration Point
 **Hook:** `message_loop_prompts_after`
@@ -465,6 +469,8 @@ All additions to `/a0/usr/memory/classification_config.json`:
     "exempt_utilities": ["load_bearing"],
     "exempt_sources": ["user_asserted"],
     "exempt_validities": ["confirmed"],
+    "exempt_relational_salience": ["relationship_defining"],
+    "collaboration_history_half_life_multiplier": 2.0,
     "min_recency_score": 0.1
   },
   "related_memories": {
@@ -495,12 +501,14 @@ All additions to `/a0/usr/memory/classification_config.json`:
 4. Domain prefix correctly applied from BST classification
 5. Merged pool is larger than any single query's results
 
-### Temporal Decay (6-10)
+### Temporal Decay (6-12)
 6. Memory with `last_accessed` 30 days ago scores lower than identical memory accessed today
 7. `load_bearing` memories maintain full score regardless of age
 8. `user_asserted` memories maintain full score regardless of age
 9. `confirmed` memories maintain full score regardless of age
 10. Decay curve follows exponential half-life (score ~ 0.5 at `half_life_hours`)
+11. `relationship_defining` relational_salience → `recency_score = 1.0` regardless of age; verify by creating old relational memory and checking score does not drop below 1.0
+12. `collaboration_history` relational_salience → effective half-life is 336h (2× 168h); a 168h-old collaboration_history memory scores ~0.71, not ~0.5
 
 ### Access Tracking (11-14)
 11. `access_count` increments by 1 on each injection

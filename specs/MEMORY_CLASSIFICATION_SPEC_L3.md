@@ -1,5 +1,5 @@
 # Memory Classification System — Level 3 Specification
-## Four-Axis Structured Memory with Deterministic Conflict Resolution
+## Five-Axis Structured Memory with Deterministic Conflict Resolution
 
 ---
 
@@ -23,7 +23,7 @@ The result: the model receives a grab-bag of memories with no signal about which
 
 ```
 Memory Write Path:
-  Agent generates memory → Classification Engine tags four axes → Tagged memory stored in FAISS
+  Agent generates memory → Classification Engine tags five axes → Tagged memory stored in FAISS
 
 Memory Read Path:
   Recall extension queries FAISS → Classification Filter applies role relevance + validity → 
@@ -43,7 +43,7 @@ Extension in `monologue_end` pipeline, the primary memory storage extension. Sto
 
 Suggested filename: `_55_memory_classifier.py`
 
-### Four Axes
+### Five Axes
 
 Every memory receives a metadata tag structure at write time. These are never inferred by the model at retrieval time.
 
@@ -79,6 +79,14 @@ Every memory receives a metadata tag structure at write time. These are never in
 | `bookshelf_document` | From reference library (future) | Reserved for Bookshelf integration. Not implemented v1. |
 | `external_retrieved` | From web search or API | Memory containing URL references or timestamped external data |
 
+**Axis 5: Relational Salience**
+
+| Value | Meaning | Assignment Rule |
+|-------|---------|-----------------|
+| `relationship_defining` | Describes the operator-agent relationship, trust, collaboration norms, or operator preferences | Keyword detection: "trust", "relationship", "partner", "you prefer", "you always", "important to you", "our work", "how you work", etc. Exempt from temporal decay — never down-ranked by recency. |
+| `collaboration_history` | References prior shared work or established context | Keyword detection: "last session", "we built", "we designed", "remember when", "continuing from", "as we established", etc. Half-life multiplier: 2× (decays at half the normal rate). |
+| `task_transient` | Standard task memory with no relational significance | Default for all memories not matching `relationship_defining` or `collaboration_history` signals. Normal decay applies. |
+
 ### Classification Logic
 
 Classification MUST be deterministic. No model inference calls for classification. Rules:
@@ -102,7 +110,8 @@ Read Agent-Zero's `/a0/python/helpers/memory.py` to understand how FAISS metadat
     "validity": "confirmed|inferred|deprecated",
     "relevance": "active|dormant",
     "utility": "load_bearing|tactical|archived",
-    "source": "user_asserted|agent_inferred|bookshelf_document|external_retrieved"
+    "source": "user_asserted|agent_inferred|bookshelf_document|external_retrieved",
+    "relational_salience": "relationship_defining|collaboration_history|task_transient"
   },
   "lineage": {
     "created_at": "ISO-8601",
@@ -283,7 +292,9 @@ Stored in a JSON file alongside the extension, consistent with other hardening l
 ### Classification Accuracy
 1. Send user message "My project uses Python 3.11" → memory stored → verify classification: `source: user_asserted`, `validity: confirmed`, `utility: load_bearing` (contains "must" equivalent — user stated as fact)
 2. Agent infers "the file is probably in /tmp" → memory stored → verify: `source: agent_inferred`, `validity: inferred`, `utility: tactical`
-3. Verify all four axes populated on every new memory (no nulls, no missing fields)
+3. Verify all five axes populated on every new memory (no nulls, no missing fields), including `relational_salience`
+3a. Send "I trust your judgment on architecture decisions" → verify `relational_salience: relationship_defining`; confirm this memory is exempt from recency decay
+3b. Send "continuing from the work we did last session on the BST" → verify `relational_salience: collaboration_history`; confirm 2× half-life applied in enhancement layer
 
 ### Conflict Resolution
 4. Store "project uses Python 3.9" (user_asserted) → then store "project uses Python 3.11" (user_asserted, newer) → verify first memory marked `deprecated` with `superseded_by` pointing to second
