@@ -197,6 +197,22 @@ class SelectiveMemorizer(Extension):
                 validity = "confirmed" if source == "user_asserted" else "inferred"
                 signal_type = mem.get("signal_type", "general")
 
+                # Route to the correct memory area based on signal type.
+                # solutions: procedural know-how, fixes, outcomes (how to do things)
+                # main: persistent facts, preferences, insights, corrections, entities
+                # fragments: everything else (ephemeral / hard to categorise)
+                _SOLUTIONS_SIGNALS = {"bug_finding", "task_outcome", "lesson_learned"}
+                _MAIN_SIGNALS = {
+                    "user_correction", "decision", "architectural_insight",
+                    "preference", "entity_info",
+                }
+                if signal_type in _SOLUTIONS_SIGNALS:
+                    area = Memory.Area.SOLUTIONS.value
+                elif signal_type in _MAIN_SIGNALS:
+                    area = Memory.Area.MAIN.value
+                else:
+                    area = Memory.Area.FRAGMENTS.value
+
                 bst_domain = ""
                 try:
                     store = getattr(self.agent, "_bst_store", {})
@@ -206,7 +222,7 @@ class SelectiveMemorizer(Extension):
                     pass
 
                 metadata = {
-                    "area": Memory.Area.FRAGMENTS.value,
+                    "area": area,
                     "signal_type": signal_type,
                     CLS_KEY: {
                         "validity": validity,
