@@ -53,8 +53,11 @@ install_file() {
 
 clear_pycache() {
     local pyc="$1"
-    docker exec "${CONTAINER_NAME}" rm -f "${pyc}" 2>/dev/null || rm -f "${pyc}" 2>/dev/null || true
+    _exec "${CONTAINER_NAME}" rm -f "${pyc}" 2>/dev/null || rm -f "${pyc}" 2>/dev/null || true
 }
+
+# Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
+_exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 
 CONTAINER_NAME="${CONTAINER_NAME:-flamboyant_bell}"
 
@@ -98,9 +101,9 @@ clear_pycache "${EXT_BEFORE_LLM}/__pycache__/_13_operator_profile.cpython-312.py
 
 # ── Runtime directories ───────────────────────────────────────────────────────
 
-docker exec "${CONTAINER_NAME}" mkdir -p "${EXOCORTEX_DEST}/sleep_reports" 2>/dev/null || \
+_exec "${CONTAINER_NAME}" mkdir -p "${EXOCORTEX_DEST}/sleep_reports" 2>/dev/null || \
     mkdir -p "${EXOCORTEX_DEST}/sleep_reports" 2>/dev/null || true
-docker exec "${CONTAINER_NAME}" mkdir -p "${EXOCORTEX_DEST}/operator_profile_versions" 2>/dev/null || \
+_exec "${CONTAINER_NAME}" mkdir -p "${EXOCORTEX_DEST}/operator_profile_versions" 2>/dev/null || \
     mkdir -p "${EXOCORTEX_DEST}/operator_profile_versions" 2>/dev/null || true
 
 echo "  OK    sleep_reports/ directory"

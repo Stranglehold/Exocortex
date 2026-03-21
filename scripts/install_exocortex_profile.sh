@@ -18,13 +18,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER="${CONTAINER:-flamboyant_bell}"
 PROFILE_BASE="/a0/usr/agents/agent0"
 
+# On Windows Git Bash, docker exec arguments with Unix paths get translated by MSYS.
+# Prefix docker exec commands with MSYS_NO_PATHCONV=1 to suppress this.
+# docker cp is exempt — its "container:/path" format is not affected.
+_exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
+
 echo "  Deploying Exocortex extensions to profile path ($CONTAINER)"
 echo "  Source: $SCRIPT_DIR"
 echo "  Target: $PROFILE_BASE"
 
 # ── Create directory structure ────────────────────────────────────────────────
 
-docker exec "$CONTAINER" mkdir -p \
+_exec "$CONTAINER" mkdir -p \
   "$PROFILE_BASE/extensions/before_main_llm_call" \
   "$PROFILE_BASE/extensions/error_format" \
   "$PROFILE_BASE/extensions/hist_add_before" \
@@ -101,5 +106,5 @@ docker cp "$PROMPT_SRC/agent.system.model_awareness.md"      "$PROMPT_DEST/"
 docker cp "$PROMPT_SRC/agent.system.capabilities.md"         "$PROMPT_DEST/"
 
 echo "  Profile deployment complete."
-echo "  Extensions: $(docker exec $CONTAINER find $PROFILE_BASE/extensions -name '*.py' | wc -l) files"
-echo "  Prompts:    $(docker exec $CONTAINER ls $PROFILE_BASE/prompts | wc -l) files"
+echo "  Extensions: $(_exec $CONTAINER find $PROFILE_BASE/extensions -name '*.py' | wc -l) files"
+echo "  Prompts:    $(_exec $CONTAINER ls $PROFILE_BASE/prompts | wc -l) files"

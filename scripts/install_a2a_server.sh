@@ -15,10 +15,11 @@ CONFIG_PATH="$ORG_DIR/a2a_config.json"
 echo "[A2A] Installing A2A compatibility server..."
 
 # ── Dependencies ────────────────────────────────────────────────
+PYTHON="${PYTHON:-/opt/venv-a0/bin/python3}"
 echo "[A2A] Checking dependencies..."
-if ! python3 -c "import aiohttp" 2>/dev/null; then
+if ! "$PYTHON" -c "import aiohttp" 2>/dev/null; then
     echo "[A2A] Installing aiohttp..."
-    pip install aiohttp --break-system-packages 2>/dev/null || pip install aiohttp
+    "$PYTHON" -m pip install aiohttp
 fi
 
 # ── Backup existing installation ────────────────────────────────

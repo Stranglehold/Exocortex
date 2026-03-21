@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
 
-CONTAINER="${1:-agent-zero}"
+CONTAINER="${1:-flamboyant_bell}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
+_exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 
 echo "=== Installing Error Comprehension Layer ==="
 
@@ -24,8 +27,8 @@ docker cp "$REPO_ROOT/extensions/tool_execute_before/_30_tool_fallback_advisor.p
 
 # Clear pycache
 echo "[4/4] Clearing pycache..."
-docker exec "$CONTAINER" rm -rf /a0/python/extensions/tool_execute_after/__pycache__/
-docker exec "$CONTAINER" rm -rf /a0/python/extensions/tool_execute_before/__pycache__/
+_exec "$CONTAINER" rm -rf /a0/python/extensions/tool_execute_after/__pycache__/
+_exec "$CONTAINER" rm -rf /a0/python/extensions/tool_execute_before/__pycache__/
 
 echo ""
 echo "=== Error Comprehension Layer Installed ==="
