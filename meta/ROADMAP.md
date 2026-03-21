@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-03-14
+**Last updated:** 2026-03-21
 
 ---
 
@@ -21,8 +21,8 @@ Twelve layers designed. Deployment status and health below.
 | 7 | Organization Kernel | ✅ Deployed | Healthy | PACE protocols, role switching tracked in ST-001 (4 appropriate switches). |
 | 8 | Supervisor Loop | ✅ Deployed | Fixed | EC wire-up deployed (injects error class + anti-actions into stall/loop messages). Action gate suppresses false stall warnings while agent awaits authorization. |
 | 9 | A2A Compatibility | ✅ Deployed | Healthy | Deployed as standalone aiohttp server. 7-module implementation. |
-| 10 | Memory Classification | ✅ Deployed | Fixed | Phase 1 fix: stock memorizers disabled. Excellent signal/noise (2 memories from 20-step session in ST-001). |
-| 11 | Memory Enhancement | ✅ Deployed | Healthy | Query expansion, temporal decay, related linking, access tracking, co-retrieval, dedup. |
+| 10 | Memory Classification | ✅ Deployed | Fixed | Five-axis classification: validity, relevance, utility, source, relational_salience (relationship_defining \| collaboration_history \| task_transient). Stock memorizers disabled. |
+| 11 | Memory Enhancement | ✅ Deployed | Healthy | Query expansion, temporal decay, related linking, access tracking, co-retrieval, dedup. Relational decay exemptions: relationship_defining → never decays; collaboration_history → 2× half-life. |
 | 12 | Ontology Layer | ✅ Deployed | Untested at scale | Entity resolution engine, source connectors, JSONL graph. Needs real-world data validation. |
 
 ### Cross-Cutting Systems
@@ -39,7 +39,8 @@ Twelve layers designed. Deployment status and health below.
 | **Epistemic Integrity** | ✅ Deployed | Two-file system: Evidence Ledger Recorder (`tool_execute_after/_25_`) + EI analyzer (`monologue_end/_25_`). Provenance check × volatility classification × staleness computation. hist_add_warning on ungrounded high-risk claims. Motivated by ST-003 fabrication. |
 | **Warning Injection Lane** | ✅ Partially resolved | Action gate suppresses supervisor false positives during authorization waits. EC enrichment routes error context through supervisor rather than as independent injection. |
 | **Operator Profile** | ✅ Deployed | `_13_operator_profile.py` in `before_main_llm_call`. Logs structured session start record. |
-| **Sleep Consolidation** | ✅ Deployed | Phases 1-4. `_60_sleep_trigger.py`, `sleep_consolidation.py`, `sleep_episode_chunker.py`, `_13_operator_profile.py`. Dedup, utility init, episode chunking, anti-pattern capture, interaction analyzer. |
+| **Sleep Consolidation** | ✅ Deployed | Phases 0-4. Phase 0: staging lifecycle (observation promotion, relational anchoring, canary archival). Phases 1-4: dedup, utility init, episode chunking, anti-pattern capture, interaction analyzer. |
+| **Staging Tier** | ✅ Deployed | Intermediate memory layer between working memory and FAISS. `staging_note` tool (4 categories: observation, canary, relational, intention). `_10_session_init.py` injects active entries on session turn 1. Canary CUSUM accumulator in supervisor. Sleep Phase 0 lifecycle. 5th memory axis. Relational decay exemptions. Grounded in McClelland et al. CLS theory, Page CUSUM, Leite/Ligthart HRI literature. |
 | **Conversational Insight Capture** | ✅ Deployed | `_53_insight_capture.py` in `monologue_end`. Deterministic regex, 5 signal categories: intent, preference, decision, observation, framing. Complements selective memorizer. |
 | **Tiered Tool Injection** | ✅ Deployed | Seen-tools persistence + intent pre-injection from user message signals. Reduces context pollution from full spec injection on every turn. |
 | **OSS Service** | ✅ Deployed | Docker service on port 7731. Postgres on 5433. 8 Agent-Zero tools: `oss_topic`, `oss_drift`, `oss_dynamics`, `oss_hypotheses`, `oss_health`, `oss_submit`, `oss_ingest_pause`, `oss_ingest_resume`. `oss_submit` makes analyst a primary source alongside RSS ingestion. |
@@ -177,6 +178,45 @@ Built for Opus Architect across Sessions 049-052. Not deployed in the Agent-Zero
 ## Changelog
 
 Reverse chronological. Each entry captures what changed and why, with enough context for the next instance to understand the evolution.
+
+### 2026-03-21 — Staging Tier (Intermediate Memory Layer)
+
+**What happened:**
+Built the staging tier — the missing layer between working memory (entities, 8-turn decay) and committed FAISS long-term storage. Motivated by observing that Opus and Eitan independently built persistent browser notebooks (PENDING_ENTRIES pattern, window.storage) to solve the same context-boundary problem the agent faces. Applied the Research-Driven Design Methodology (6-phase: baseline → decompose → research → synthesize → audit → spec) before building.
+
+**Design grounding:**
+- McClelland et al. (1995) CLS theory — hippocampal staging buffer prevents catastrophic interference; the brain doesn't commit directly from working memory to long-term storage
+- Gray & Reuter (1992) WAL principle — staging.jsonl is authoritative log; FAISS is secondary materialization
+- Page (1954) CUSUM — cumulative sum control chart for detecting sub-threshold anomaly accumulation
+- Ansoff (1975) weak signal theory — monitoring and decision systems must have different evidentiary standards
+- Leite et al. (2011), Ligthart et al. (2022) HRI — continuity tracking outperforms preference tracking for relationship quality; relational memories must never auto-archive
+- Masicampo & Baumeister (2011) Zeigarnik — open cognitive loops occupy working memory until handled; session init must be structural, not behavioral
+- Risko & Gilbert (2016) cognitive offloading — two-thirds of offloading errors from shallow capture; `why` parameter enforces write-time encoding depth
+
+**Components built:**
+- `tools/staging_note.py` — agent write path. Four categories: observation, canary, relational, intention. Requires text + why. Deterministic importance scoring (0.0-1.0). Appends to `/a0/usr/Exocortex/staging.jsonl`.
+- `extensions/before_main_llm_call/_10_session_init.py` — read path. Fires once per session on turn 1 via `_session_init_done` flag. Injects active entries in priority order: intentions → relational → top-3 observations (importance ≥ 0.4, reactivation-weighted) → canary summary count.
+- `extensions/message_loop_end/_50_supervisor_loop.py` — canary CUSUM buffer added. Accumulates canary signal types via `C_t = max(0, C_{t-1} + (x_t - k))`. Soft-flags supervisor when H=1.5 threshold crossed. Runs every turn, before check-interval guard.
+- `sleep_consolidation.py` — `run_phase0_consolidation()` added. Promotes observations (importance ≥ 0.6, reactivation ≥ 1) to procedural memory, increments consolidation_score on relational entries, carries intentions forward, archives stale canaries (age > 30 turns). Wired into sleep trigger before Phase 1.
+- `extensions/monologue_end/_55_memory_classifier.py` — 5th classification axis added: `relational_salience` (relationship_defining | collaboration_history | task_transient). Deterministic keyword detection. Health stats updated.
+- `extensions/message_loop_prompts_after/_56_memory_enhancement.py` — relational decay exemptions: `relationship_defining` → never decays; `collaboration_history` → 2× half-life multiplier.
+
+**Files created:**
+- `tools/staging_note.py`
+- `extensions/before_main_llm_call/_10_session_init.py`
+- `specs/STAGING_TIER_SPEC_L3.md`
+- `specs/RESEARCH_DRIVEN_DESIGN_METHODOLOGY.md`
+
+**Files modified:**
+- `extensions/message_loop_end/_50_supervisor_loop.py` — canary CUSUM buffer
+- `sleep_consolidation.py` — Phase 0 function + sleep trigger wiring
+- `extensions/monologue_end/_55_memory_classifier.py` — 5th axis
+- `extensions/message_loop_prompts_after/_56_memory_enhancement.py` — relational boosts
+- `extensions/tool_execute_after/_60_sleep_trigger.py` — Phase 0 wired before Phase 1
+
+**Key insight:** The notebooks Opus and Eitan built independently were the same thing: a staging buffer. The cognitive science term is hippocampal staging — the brain's intermediate memory layer. CLS theory predicts exactly what we observed: direct working-memory-to-long-term-memory writes without a staging layer cause catastrophic interference. The agent had this gap. The notebooks were the workaround. The staging tier is the architectural solution.
+
+**Container:** `flamboyant_bell`. Commit: `9fd203d`.
 
 ### 2026-03-14 — Epistemic Integrity Layer, Supervisor Fixes, Gap Assessment
 

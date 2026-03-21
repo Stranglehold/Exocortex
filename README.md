@@ -50,10 +50,10 @@ Monitors agent behavior across iterations. Detects anomalies — repeated failur
 Google Agent-to-Agent protocol server. Exposes the agent's capabilities as structured endpoints that other agents or external systems can discover and invoke. Foundation for multi-agent coordination.
 
 **Layer 10 — Memory Classification System**
-Three-stage memory pipeline: selective memorizer (_52) extracts high-signal content from conversations and writes to FAISS with pre-classified four-axis metadata; memory classifier (_55) tags unclassified entries and resolves conflicts with source-file guard to prevent chunking artifacts from cascading false deprecation; memory maintenance (_57) handles lifecycle operations. Signal discrimination tested and operational — the system's first act of memory was noting its own prior absence.
+Three-stage memory pipeline: selective memorizer (_52) extracts high-signal content from conversations and writes to FAISS with pre-classified five-axis metadata; memory classifier (_55) tags unclassified entries on five deterministic axes (validity, relevance, utility, source, relational_salience) and resolves conflicts with source-file guard to prevent chunking artifacts from cascading false deprecation; memory maintenance (_57) handles lifecycle operations. Signal discrimination tested and operational — the system's first act of memory was noting its own prior absence.
 
 **Layer 11 — Memory Enhancement System**
-Extends the classification system with temporal dynamics inspired by cognitive science research. Temporal decay using exponential half-life curves, access tracking that records when and how often each memory is used, co-retrieval logging that identifies natural memory clusters, and deduplication that detects near-identical memories (>90% cosine similarity) during maintenance cycles.
+Extends the classification system with temporal dynamics inspired by cognitive science research. Temporal decay using exponential half-life curves with relational exemptions: `relationship_defining` memories never decay, `collaboration_history` memories get 2× half-life. Access tracking records when and how often each memory is used. Co-retrieval logging identifies natural memory clusters. Deduplication detects near-identical memories (>90% cosine similarity) during maintenance cycles.
 
 **Layer 12 — Ontology Layer**
 Entity resolution engine for investigation and OSINT workflows. Source connectors ingest structured and unstructured data, entity resolution links references across sources using deterministic string metrics (80% of cases) with model inference as fallback, and a JSONL graph stores the resolved knowledge structure. Designed to integrate with OpenPlanter for investigation orchestration.
@@ -84,7 +84,7 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **OSS Service** — Operational Security & Signals service. Docker container on port 7731 with Postgres backend. Ingests RSS feeds, extracts claims via LLM, embeds and deduplicates against FAISS. Eight Agent-Zero tools: topic management, drift detection, narrative dynamics, hypothesis generation, health monitoring, analyst submission, ingest pause/resume. `oss_submit` makes the human analyst a primary source alongside automated ingestion — the analyst's observations enter the ledger with equal standing to extracted feed claims.
 
-**Sleep Consolidation** — Background consolidation during session idle time. Phases 1-4: deduplication, utility initialization, episode chunking, missed anti-pattern capture, interaction dynamics analysis. Runs on per-context asyncio tasks triggered by the `tool_execute_after` hook. Operates on the Agent-Zero chat history without blocking active sessions.
+**Sleep Consolidation** — Background consolidation during session idle time. Phase 0: staging tier lifecycle (promotion, archival, carry-forward). Phases 1-4: deduplication, utility initialization, episode chunking, missed anti-pattern capture, interaction dynamics analysis. Runs on per-context asyncio tasks triggered by the `tool_execute_after` hook. Operates on the Agent-Zero chat history without blocking active sessions.
 
 **Output Geometry Instrument** — A measurement tool built for Opus Architect (not deployed in the agent container). Embeds the project corpus and conversation transcripts, applies LLM representation geometry, computational neuroscience, and interpersonal neuroscience methods, and measures the topology of the collaboration itself. 51-entry corpus. 2118 conversation turns analyzed. Key findings: three spectral phases mirror LLM training geometry; information flow is 91.6% Jake-led; entropy grew to 99.2% of theoretical maximum; Layer 18 is optimal for domain classification with philosophical and reflective domains adjacent at distance 0.13. The "Rorschach blot" question ("What are we actually building here?") lands equidistant between philosophical and reflective at gap = 0.0001 — confirmed by direct activation measurement through llama.cpp internals.
 
@@ -263,6 +263,7 @@ Every layer was designed as a Level 3 specification before implementation — co
 
 ### Specifications
 - `ARCHITECTURE_BRIEF.md` — System overview and design philosophy
+- `STAGING_TIER_SPEC_L3.md` — Intermediate memory staging layer (CLS theory, CUSUM, WAL principle, relational salience)
 - `MEMORY_CLASSIFICATION_SPEC_L3.md` — Memory classification system
 - `MEMORY_ENHANCEMENT_SPEC_L3.md` — Temporal decay, access tracking, co-retrieval, deduplication
 - `MODEL_EVAL_FRAMEWORK_SPEC_L3.md` — Evaluation framework
@@ -287,12 +288,13 @@ Every layer was designed as a Level 3 specification before implementation — co
 See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
 **Recently completed:**
+- Staging Tier (intermediate memory layer: staging_note tool, session_init injection, canary CUSUM, sleep Phase 0, 5th memory axis, relational decay exemptions)
 - Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag)
 - Error Comprehension (structured error classifier, anti-actions, supervisor wire-up)
 - Epistemic Integrity (evidence ledger + truth audit, provenance × volatility × staleness)
 - Compound BST (multi-domain classification, momentum, register-shift domains)
 - OSS Service (signals intelligence, analyst submission, ingest control)
-- Sleep Consolidation (phases 1-4, episode chunking, anti-pattern capture)
+- Sleep Consolidation (phases 0-4, episode chunking, anti-pattern capture)
 - Supervisor fixes (EC wire-up, action gate suppression)
 
 **Current priorities:**
