@@ -63,10 +63,10 @@ DOMAIN_THRESHOLDS = {
     "codegen":        {"tier1": 6,  "tier2": 12, "tier3": 18},
     "debugging":      {"tier1": 6,  "tier2": 12, "tier3": 18},
     "system_admin":   {"tier1": 6,  "tier2": 12, "tier3": 18},
-    "research":       {"tier1": 3,  "tier2": 6,  "tier3": 12},
-    "analysis":       {"tier1": 3,  "tier2": 6,  "tier3": 12},
-    "investigation":  {"tier1": 3,  "tier2": 6,  "tier3": 12},
-    "agentic":        {"tier1": 4,  "tier2": 8,  "tier3": 15},
+    "research":       {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: multi-step research is legitimate iteration
+    "analysis":       {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: complex analysis requires sustained tool use
+    "investigation":  {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: OSS/OSINT tasks routinely need 15+ iterations
+    "agentic":        {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: matches structural domains
     "meta_cognitive": {"tier1": 4,  "tier2": 8,  "tier3": 15},
     "default":        {"tier1": 3,  "tier2": 6,  "tier3": 9},
 }
@@ -95,6 +95,23 @@ ANOMALY_CONTEXT = "context"
 ANOMALY_CASCADE = "cascade"
 ANOMALY_PACE = "pace"
 ANOMALY_STAGNATION = "stagnation"
+
+# ── Canary CUSUM buffer ───────────────────────────────────────────────────────
+# Sub-threshold signal accumulation (Ansoff 1975; Page 1954 CUSUM).
+# The monitoring system and the decision system have different evidentiary
+# standards — the canary notices at a lower threshold than the supervisor acts.
+ANOMALY_CANARY = "canary"
+CANARY_K = 0.25    # reference value: sensitivity to shift size (lower = more sensitive)
+CANARY_H = 1.5     # decision threshold: cumulative sum to trigger soft flag
+CANARY_DECAY = 0.1 # decay per turn when no new signals (avoids stale accumulation)
+
+CANARY_SIGNAL_TYPES = frozenset([
+    "bst_misclassification",
+    "tool_selection_drift",
+    "capability_boundary",
+    "relational_friction",
+    "confidence_drift",
+])
 
 # Stagnation detection: successful-execution-no-progress (Finding 2, Session 055).
 # Fires when N+ successful tool calls in a window produce identical output hashes.
@@ -219,6 +236,25 @@ class SupervisorLoop(Extension):
             # Get or initialize supervisor state
             state = _get_state(self.agent)
             state["turn"] = state.get("turn", 0) + 1
+
+            # ── Canary CUSUM check (runs every turn, before interval guard) ──────
+            # Sub-threshold signal accumulation via CUSUM (Page 1954).
+            # Fires a soft pre-tier-1 flag when accumulated signals cross CANARY_H.
+            # Monitoring system has different evidentiary standard than decision system
+            # (Ansoff 1975) — canary notices before any tier fires.
+            if _cooldown_ok(state, ANOMALY_CANARY):
+                canary_msg = _check_canary_staging(self.agent, state)
+                if canary_msg:
+                    try:
+                        self.agent.context.log.log(
+                            type="info",
+                            content=f"[SUPERVISOR-CANARY] {canary_msg}",
+                            flush=True,
+                        )
+                        loop_data.system.append({"role": "user", "content": canary_msg})
+                        _mark_cooldown(state, ANOMALY_CANARY)
+                    except Exception:
+                        pass
 
             # Check interval — run checks every N turns
             interval = DEFAULT_CHECK_INTERVAL
@@ -415,6 +451,95 @@ def _mark_cooldown(state: dict, anomaly_type: str):
     if "cooldowns" not in state:
         state["cooldowns"] = {}
     state["cooldowns"][anomaly_type] = state.get("turn", 0)
+
+
+# ── Canary CUSUM Buffer ───────────────────────────────────────────────────────
+
+def _classify_canary_signal(text: str, why: str) -> str:
+    """Deterministic keyword classification of a canary entry's signal type."""
+    combined = (text + " " + why).lower()
+    if any(kw in combined for kw in ["bst", "classified wrong", "misclassified", "domain wrong", "wrong domain"]):
+        return "bst_misclassification"
+    if any(kw in combined for kw in ["same tool", "keep using", "reaching for", "tool drift", "always use"]):
+        return "tool_selection_drift"
+    if any(kw in combined for kw in ["can't", "cannot", "outside", "capability", "don't know how", "beyond"]):
+        return "capability_boundary"
+    if any(kw in combined for kw in ["operator", "relationship", "friction", "tension", "misunderstood"]):
+        return "relational_friction"
+    return "confidence_drift"
+
+
+def _check_canary_staging(agent, state: dict) -> str | None:
+    """
+    CUSUM accumulator for sub-threshold canary signals.
+    Scans staging.jsonl for active canary entries written since the last check.
+    Decays existing accumulators when no new signals arrive.
+    Returns a soft-flag message if any signal type crosses CANARY_H, else None.
+
+    Runs every turn (before the check-interval guard) so signals accumulate
+    at the per-turn resolution the CUSUM mechanism requires.
+    """
+    import json as _json
+    import os as _os
+
+    _STAGING_PATH = "/a0/usr/Exocortex/staging.jsonl"
+    if not _os.path.exists(_STAGING_PATH):
+        return None
+
+    current_turn = state.get("turn", 0)
+    last_check = state.get("_canary_last_check", 0)
+    state["_canary_last_check"] = current_turn
+
+    cusum = state.setdefault("_canary_cusum", {})
+
+    new_canaries = []
+    try:
+        with open(_STAGING_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = _json.loads(line)
+                    if (
+                        entry.get("category") == "canary"
+                        and entry.get("status") == "active"
+                        and entry.get("session_age_at_write", 0) >= last_check
+                    ):
+                        new_canaries.append(entry)
+                except _json.JSONDecodeError:
+                    pass
+    except Exception:
+        return None
+
+    # Decay existing accumulators when no new signals (prevents stale firing)
+    if not new_canaries:
+        for k in list(cusum.keys()):
+            cusum[k] = max(0.0, cusum[k] - CANARY_DECAY)
+        return None
+
+    # CUSUM update: C_t = max(0, C_{t-1} + (x_t - k))
+    fired_signals = []
+    for entry in new_canaries:
+        importance = entry.get("importance", 0.3)
+        sig = _classify_canary_signal(entry.get("text", ""), entry.get("why", ""))
+        cusum[sig] = max(0.0, cusum.get(sig, 0.0) + (importance - CANARY_K))
+        if cusum[sig] >= CANARY_H:
+            fired_signals.append(sig)
+            cusum[sig] = 0.0  # reset after firing
+
+    if not fired_signals:
+        return None
+
+    _SIGNAL_DESCRIPTIONS = {
+        "bst_misclassification": "repeated BST domain misclassification",
+        "tool_selection_drift": "persistent tendency toward a specific tool",
+        "capability_boundary": "task may be near capability boundary",
+        "relational_friction": "possible friction in operator-agent collaboration",
+        "confidence_drift": "accumulating uncertainty signals",
+    }
+    msgs = [_SIGNAL_DESCRIPTIONS.get(s, s) for s in fired_signals]
+    return f"⚠ Canary signals: {'; '.join(msgs)}. Consider pausing to assess."
 
 
 # ── Context Gathering ───────────────────────────────────────────

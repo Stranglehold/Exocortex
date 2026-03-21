@@ -116,8 +116,9 @@ async def _idle_sleep(agent, idle_minutes: float, ctx: str) -> None:
 
 
 async def _run_phase1(agent, ctx: str) -> None:
-    """Run Phase 1, Phase 2, and Phase 3 consolidation."""
+    """Run Phase 0 through Phase 3 consolidation."""
     from sleep_consolidation import (
+        run_phase0_consolidation,
         run_phase1_consolidation,
         run_phase2_consolidation,
         run_phase3_consolidation,
@@ -125,6 +126,24 @@ async def _run_phase1(agent, ctx: str) -> None:
 
     # Prefer context ID as session identifier; fall back to env var
     session_id = ctx if ctx != "default" else os.environ.get("A0_CHAT_ID", "unknown")
+
+    # Phase 0: staging tier lifecycle (promotion, archival, carry-forward)
+    try:
+        r0 = run_phase0_consolidation(session_id)
+        summary0 = (
+            f"Phase 0 — promoted={r0['observations_promoted']}, "
+            f"intentions={r0['intentions_carried']}, "
+            f"relational={r0['relationals_anchored']}, "
+            f"canaries_archived={r0['canaries_archived']}, "
+            f"active={r0['total_active']}"
+        )
+        print(f"[SLEEP] {summary0}", flush=True)
+        try:
+            agent.context.log.log(type="info", content=f"[SLEEP] {summary0}")
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[SLEEP] Phase 0 error: {e}", flush=True)
 
     # Phase 1: dedup + utility init
     try:

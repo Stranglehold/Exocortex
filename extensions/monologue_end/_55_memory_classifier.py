@@ -4,11 +4,12 @@ Memory Classification Engine — Agent-Zero Hardening Layer
 Hook: monologue_end
 Priority: _55 (primary memory storage (stock _50/_51 memorizers disabled at install))
 
-Classifies every memory on four deterministic axes:
-  - Validity:  confirmed | inferred | deprecated
-  - Relevance: active | dormant
-  - Utility:   load_bearing | tactical | archived
-  - Source:    user_asserted | agent_inferred | external_retrieved
+Classifies every memory on five deterministic axes:
+  - Validity:           confirmed | inferred | deprecated
+  - Relevance:          active | dormant
+  - Utility:            load_bearing | tactical | archived
+  - Source:             user_asserted | agent_inferred | external_retrieved
+  - Relational Salience: relationship_defining | collaboration_history | task_transient
 
 After classification, runs deterministic conflict resolution:
   - Entity-value divergence detection
@@ -45,6 +46,19 @@ DEFAULT_CONFIG = {
     "load_bearing_keywords": [
         "must", "always", "never", "requirement", "constraint",
         "critical", "essential", "mandatory", "do not", "required",
+    ],
+    "relational_defining_keywords": [
+        "trust", "relationship", "partner", "collaboration", "together",
+        "our work", "you and i", "you said", "i told you", "we agreed",
+        "you prefer", "you like", "you dislike", "your style", "you always",
+        "you never", "you tend to", "how you work", "the way you",
+        "you feel", "you think", "you believe", "important to you",
+    ],
+    "collaboration_history_keywords": [
+        "last session", "last time", "previously", "in the past",
+        "we built", "we designed", "we deployed", "we discussed",
+        "remember when", "that thing we", "as we established",
+        "continuing from", "from our work on",
     ],
     "archival_threshold_cycles": 50,
     "deprecation_retention_cycles": 100,
@@ -235,10 +249,10 @@ def _extract_user_message(agent, loop_data) -> str:
     return ""
 
 
-# ── Four-Axis Classification ────────────────────────────────────────────────
+# ── Five-Axis Classification ────────────────────────────────────────────────
 
 def _classify(doc, user_msg: str, config: dict) -> dict:
-    """Deterministic classification on four axes."""
+    """Deterministic classification on five axes."""
     text = getattr(doc, "page_content", "")
     area = doc.metadata.get("area", "")
 
@@ -246,12 +260,14 @@ def _classify(doc, user_msg: str, config: dict) -> dict:
     validity = "confirmed" if source == "user_asserted" else "inferred"
     utility = _detect_utility(text, config)
     relevance = "active"
+    relational_salience = _detect_relational_salience(text, config)
 
     return {
         "validity": validity,
         "relevance": relevance,
         "utility": utility,
         "source": source,
+        "relational_salience": relational_salience,
     }
 
 
@@ -306,6 +322,36 @@ def _detect_utility(text: str, config: dict) -> str:
             return "load_bearing"
 
     return "tactical"
+
+
+def _detect_relational_salience(text: str, config: dict) -> str:
+    """
+    Classify relational salience of a memory (5th axis).
+
+    relationship_defining  — captures operator preferences, trust signals,
+                             and interaction patterns. Never auto-archived.
+    collaboration_history  — references to prior joint work, decisions made
+                             together. Long half-life in temporal decay.
+    task_transient         — default; purely task-scoped content with no
+                             relational dimension.
+
+    Grounded in HRI literature: Leite et al. (2011), Ligthart et al. (2022)
+    — continuity (event tracking) outperforms preference tracking for
+    long-term relationship quality.
+    """
+    text_lower = text.lower()
+
+    defining_keywords = config.get("relational_defining_keywords", [])
+    for kw in defining_keywords:
+        if kw.lower() in text_lower:
+            return "relationship_defining"
+
+    history_keywords = config.get("collaboration_history_keywords", [])
+    for kw in history_keywords:
+        if kw.lower() in text_lower:
+            return "collaboration_history"
+
+    return "task_transient"
 
 
 # ── Lineage ──────────────────────────────────────────────────────────────────
@@ -563,6 +609,11 @@ def _update_health_stats(agent, all_docs: dict, new_conflicts: int):
             "agent_inferred": 0,
             "external_retrieved": 0,
         },
+        "by_relational_salience": {
+            "relationship_defining": 0,
+            "collaboration_history": 0,
+            "task_transient": 0,
+        },
         "conflicts_resolved_this_session": 0,
         "last_classification_run": datetime.now(timezone.utc).isoformat(),
     }
@@ -596,6 +647,10 @@ def _update_health_stats(agent, all_docs: dict, new_conflicts: int):
         s = cls.get("source", "agent_inferred")
         if s in stats["by_source"]:
             stats["by_source"][s] += 1
+
+        rs = cls.get("relational_salience", "task_transient")
+        if rs in stats["by_relational_salience"]:
+            stats["by_relational_salience"][rs] += 1
 
     setattr(agent, HEALTH_KEY, stats)
 

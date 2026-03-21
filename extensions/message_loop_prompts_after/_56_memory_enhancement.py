@@ -71,6 +71,8 @@ DEFAULT_DECAY_CONFIG = {
     "exempt_utilities": ["load_bearing"],
     "exempt_sources": ["user_asserted"],
     "exempt_validities": ["confirmed"],
+    "exempt_relational_salience": ["relationship_defining"],
+    "collaboration_history_half_life_multiplier": 2.0,
     "min_recency_score": 0.1,
 }
 
@@ -438,6 +440,9 @@ def _calc_recency_score(doc_metadata: dict, decay_config: dict) -> float:
         return 1.0
     if cls.get("validity") in decay_config.get("exempt_validities", []):
         return 1.0
+    relational_salience = cls.get("relational_salience", "task_transient")
+    if relational_salience in decay_config.get("exempt_relational_salience", []):
+        return 1.0  # relationship_defining memories never decay
 
     # Age calculation: prefer last_accessed, fallback created_at, timestamp
     time_ref = (
@@ -460,6 +465,11 @@ def _calc_recency_score(doc_metadata: dict, decay_config: dict) -> float:
     half_life = decay_config.get("half_life_hours", 168)
     if half_life <= 0:
         return 1.0
+
+    # collaboration_history gets extended half-life (slower decay)
+    if relational_salience == "collaboration_history":
+        multiplier = decay_config.get("collaboration_history_half_life_multiplier", 2.0)
+        half_life = half_life * multiplier
 
     decay_rate = math.log(2) / half_life
     recency = math.exp(-decay_rate * age_hours)

@@ -33,6 +33,145 @@ if _EXOCORTEX_PATH not in sys.path:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+def run_phase0_consolidation(session_id: str = "unknown") -> dict:
+    """
+    Phase 0 — Staging Tier Lifecycle Management.
+
+    Reviews staging.jsonl and applies promotion, archival, or carry-forward
+    decisions to active entries. Runs before Phase 1 so promoted observations
+    are available as new procedural memory entries during Phase 1 dedup.
+
+    Promotion criteria (Tononi & Cirelli 2014 — selective consolidation):
+      1. Outcome valence / importance score (heuristic assigned at write time)
+      2. Reactivation count (was this observation referenced again?)
+      3. Category — relational entries never auto-archived
+      4. Age — canary entries older than MAX_CANARY_AGE_TURNS are archived
+
+    Destinations:
+      observation (importance >= 0.6, reactivation >= 1) → procedural memory
+      relational  (all active)                           → persist + score boost
+      intention   (all active)                           → carry forward
+      canary      (age > MAX_CANARY_AGE_TURNS, no CUSUM fire) → archive
+    """
+    STAGING_PATH = "/a0/usr/Exocortex/staging.jsonl"
+    PROMOTE_IMPORTANCE = 0.6
+    PROMOTE_REACTIVATION = 1
+    MAX_CANARY_AGE_TURNS = 30  # archive canaries that never fired within ~30 agent turns
+
+    result = {
+        "session_id": session_id,
+        "timestamp": datetime.now().isoformat(),
+        "phase": "Phase 0 - Staging Lifecycle",
+        "observations_promoted": 0,
+        "intentions_carried": 0,
+        "relationals_anchored": 0,
+        "canaries_archived": 0,
+        "total_active": 0,
+        "errors": 0,
+    }
+
+    if not os.path.exists(STAGING_PATH):
+        _write_sleep_report(result)
+        return result
+
+    # Load all entries
+    entries = []
+    try:
+        with open(STAGING_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        entries.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        result["errors"] += 1
+    except Exception as e:
+        print(f"[SLEEP] Phase 0 staging read failed: {e}", flush=True)
+        _write_sleep_report(result)
+        return result
+
+    active_count = sum(1 for e in entries if e.get("status") == "active")
+    result["total_active"] = active_count
+
+    if active_count == 0:
+        _write_sleep_report(result)
+        return result
+
+    promotions = []
+    updated_entries = []
+
+    for entry in entries:
+        if entry.get("status") != "active":
+            updated_entries.append(entry)
+            continue
+
+        category = entry.get("category", "observation")
+        importance = entry.get("importance", 0.2)
+        reactivations = entry.get("reactivation_count", 0)
+        age_turns = entry.get("session_age_at_write", 0)
+
+        if category == "observation":
+            if importance >= PROMOTE_IMPORTANCE and reactivations >= PROMOTE_REACTIVATION:
+                promotions.append({
+                    "text": entry.get("text", ""),
+                    "why": entry.get("why", ""),
+                    "source_id": entry.get("id", ""),
+                })
+                entry["status"] = "promoted"
+                entry["promoted_to"] = "procedural_memory"
+                result["observations_promoted"] += 1
+            # else: remain active, carry forward
+
+        elif category == "relational":
+            # Never auto-archive relational entries — increment consolidation score
+            entry["consolidation_score"] = round(
+                min(1.0, entry.get("consolidation_score", 0.0) + 0.1), 2
+            )
+            result["relationals_anchored"] += 1
+
+        elif category == "intention":
+            result["intentions_carried"] += 1
+            # Remain active — session_init will surface them
+
+        elif category == "canary":
+            if age_turns > MAX_CANARY_AGE_TURNS:
+                entry["status"] = "archived"
+                result["canaries_archived"] += 1
+            # else remain active
+
+        updated_entries.append(entry)
+
+    # Write back updated statuses
+    try:
+        with open(STAGING_PATH, "w", encoding="utf-8") as f:
+            for e in updated_entries:
+                f.write(json.dumps(e) + "\n")
+    except Exception as e:
+        print(f"[SLEEP] Phase 0 staging write-back failed: {e}", flush=True)
+        result["errors"] += 1
+
+    # Write promoted observations to procedural memory
+    if promotions:
+        try:
+            from procedural_memory_api import ProceduralMemory
+            pm = ProceduralMemory()
+            for p in promotions:
+                pm.create_anti_pattern(
+                    failing_tool="staging_observation",
+                    domain="agent_observation",
+                    consecutive=1,
+                    pre_action_check=f"{p['text']} (why: {p['why']})",
+                    session_id=session_id,
+                    tags=["staging", "agent_observation", "promoted"],
+                )
+        except Exception as e:
+            print(f"[SLEEP] Phase 0 procedural write failed: {e}", flush=True)
+            result["errors"] += 1
+
+    _write_sleep_report(result)
+    return result
+
+
 def run_phase1_consolidation(session_id: str = "unknown") -> dict:
     """
     Phase 1 consolidation — two deterministic operations:
