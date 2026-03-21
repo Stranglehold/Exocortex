@@ -215,7 +215,7 @@ class EpistemicIntegrity(Extension):
 
             if len(high_risk) >= MIN_HIGH_RISK_FOR_WARNING:
                 warning = _build_warning(ei_result, high_risk, verify_list)
-                await self.agent.hist_add_warning(warning)
+                self.agent.hist_add_warning(warning)  # sync — no await
 
         except Exception as e:
             try:

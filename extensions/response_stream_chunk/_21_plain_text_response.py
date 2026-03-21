@@ -13,9 +13,13 @@ This extension catches plain text in response_stream_chunk (which fires
 for every chunk regardless of format) and creates the browser log item
 directly, mirroring what live_response does for JSON responses.
 
-Gate: only activates when the accumulated text contains no "tool_name"
-key — i.e. it is not a structured JSON tool call. JSON responses are left
-entirely to live_response.
+Gate: only activates when the text is NOT a JSON tool call.
+Two checks: (1) if the text starts with '{' it's a forming JSON response —
+leave it to live_response. (2) if "tool_name" already appears anywhere in
+the accumulated text, it's definitely JSON — also leave it to live_response.
+The '{' check catches early chunks before "tool_name" arrives and prevents
+a spurious "response" log item from being created alongside the structured
+"agent" log item, which broke the collapsible step display.
 
 No LLM calls. Fully deterministic.
 """
@@ -37,9 +41,10 @@ class PlainTextResponse(Extension):
             if not full or len(full) < 10:
                 return
 
-            # Gate: if "tool_name" appears in the text it's a JSON tool call —
-            # leave it to live_response in the response_stream hook.
-            if "tool_name" in full:
+            # Gate: skip if this is a forming or complete JSON tool call.
+            # Check for '{' first — catches early chunks before "tool_name" arrives
+            # and prevents a spurious response log item that breaks the step tabs.
+            if full.lstrip().startswith("{") or "tool_name" in full:
                 return
 
             # Plain text response — create or update the browser log item.
