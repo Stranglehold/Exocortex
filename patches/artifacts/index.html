@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Zero Artifacts</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #7fadff, #a8d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        .artifact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .artifact-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .artifact-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(127, 173, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        .artifact-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .artifact-card p {
+            color: #999;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .artifact-card .meta {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+            color: #777;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 8px;
+            background: rgba(127, 173, 255, 0.2);
+            color: #7fadff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>&#x1F4E6; Agent Zero Artifacts</h1>
+        <p class="subtitle">Interactive visualizations, dashboards, and generated content</p>
+
+        <div class="artifact-grid">
+            <!-- Artifacts cannot navigate via href (no server path exists).
+                 Use postMessage so the parent panel loads via /artifacts_get. -->
+            <div class="artifact-card" onclick="loadArtifact('network_graph.html')">
+                <span class="badge">Graph</span>
+                <h3>OpenPlanter Network Graph</h3>
+                <p>Interactive D3.js visualization of 15 data sources and their relationships across campaign finance, lobbying, corporate registries, and more.</p>
+                <div class="meta">15 nodes &bull; 28 edges &bull; 10 categories</div>
+            </div>
+
+            <div class="artifact-card" onclick="loadArtifact('oss_control_panel.html')">
+                <span class="badge">Dashboard</span>
+                <h3>OSS Control Panel</h3>
+                <p>Open Source Signals ingestion control panel. Monitor claims, topics, pipeline health, and SWARMFISH consensus data.</p>
+                <div class="meta">OSS &bull; SWARMFISH</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadArtifact(name) {
+            parent.postMessage({ type: 'load-artifact', name: name }, '*');
+        }
+    </script>
+</body>
+</html>

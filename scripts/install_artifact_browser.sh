@@ -51,8 +51,16 @@ install_file "$REPO_DIR/patches/webui/components/sidebar/artifacts/artifacts-lis
 install_file "$REPO_DIR/patches/webui/left-sidebar.html" \
     /a0/webui/components/sidebar/left-sidebar.html
 
+# ── Patched sidebar-store (adds 'artifacts' section state) ──────────────────
+install_file "$REPO_DIR/patches/webui/components/sidebar/sidebar-store.js" \
+    /a0/webui/components/sidebar/sidebar-store.js
+
 # ── Ensure artifacts dir exists ─────────────────────────────────────────────
 docker exec "$CONTAINER" sh -c "mkdir -p /a0/usr/workdir/artifacts"
+
+# ── Artifact index (gallery page with postMessage navigation) ───────────────
+install_file "$REPO_DIR/patches/artifacts/index.html" \
+    /a0/usr/workdir/artifacts/index.html
 
 # ── Clear API pycache ───────────────────────────────────────────────────────
 docker exec "$CONTAINER" sh -c "
