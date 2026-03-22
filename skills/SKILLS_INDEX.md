@@ -21,6 +21,10 @@ Validated by SkillsBench (Li, Chen et al., 2026): curated procedural knowledge i
 | Design Notes | `DESIGN_NOTES_SKILL.md` | Pre-spec exploration of architectural concepts with motivating incidents |
 | Stress Test | `STRESS_TEST_SKILL.md` | Designing, running, and analyzing empirical stack validation |
 
+| API Caller | `api_caller.md` | Calling external APIs, making HTTP requests, fetching data from URLs, REST/GraphQL |
+| Artifact Saving | `artifact_saving.md` | Producing HTML dashboards, SVG diagrams, interactive charts, or any visual artifact to save or display |
+| Human CAPTCHA | `HUMAN_CAPTCHA.md` | Browser automation encounters a CAPTCHA challenge that cannot be solved programmatically |
+
 ### Architectural Pattern Skills
 
 These skills encode transferable architectural patterns that emerged from the Exocortex project but apply beyond it. They are frameworks for thinking, not just procedures for building.
@@ -31,6 +35,18 @@ These skills encode transferable architectural patterns that emerged from the Ex
 | Command Structure | `command-structure.md` | Multi-agent architecture design, subordinate agent spawning, task delegation, escalation protocol design, standing order management |
 | Structural Analysis | `structural-analysis.md` | Complex system analysis, macro-economic assessment, feedback loop identification, structural vs cyclical classification, hidden dependency mapping |
 | Cross-Instance Learning | `CROSS_INSTANCE_LEARNING.md` | Comparing parallel solutions to the same problem, carrying insights between collaboration contexts, extracting general vs. domain-specific patterns from independent approaches |
+
+### Context Engineering Skills
+
+Discovered by vigilant_keller (stock Agent Zero) during autonomous GEPA research, 2026-03-22. Source: context-engineering-collection v2.0. These encode empirical findings on how LLMs process context — directly actionable for extension design and agent architecture decisions.
+
+| Skill | File | Trigger |
+|-------|------|---------|
+| Context Degradation | `context-degradation.md` | Designing injection points, debugging why context isn't being read, lost-in-middle failures, context poisoning, agent loops caused by prior accumulation |
+| Multi-Agent Patterns | `multi-agent-patterns.md` | Designing orchestration/delegation, subordinate coordination, context isolation strategy, why sub-agents exist |
+| Context Compression | `context-compression.md` | Supervisor loop enhancements, memory consolidation design, long-session management, tokens-per-task optimization |
+| Tool Design | `tool-design.md` | Adding new agent tools, consolidation decisions, tool description writing, MCP integration, OSS/ontology tool architecture |
+| BDI Mental States | `bdi-mental-states.md` | BST enhancement, belief-desire-intention formal foundations, cognitive architecture research grounding |
 
 ## Usage
 
