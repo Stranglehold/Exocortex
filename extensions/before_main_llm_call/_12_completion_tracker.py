@@ -28,7 +28,7 @@ Log tag: [COMPLETION]
 
 import json
 import re
-from typing import Any
+from typing import Any, Optional
 
 from agent import LoopData
 from python.helpers.extension import Extension
@@ -64,7 +64,17 @@ class CompletionTracker(Extension):
 
             block = _build_block(recent)
             if block:
-                loop_data.extras_temporary[COMPLETION_KEY] = block
+                # Prepend to last user message (stronger than extras_temporary —
+                # user messages are processed before extras appendix, so this
+                # survives deep-loop history pressure that overwhelms extras)
+                user_msg = _get_last_user_message(loop_data.history_output)
+                if user_msg:
+                    existing = user_msg.get("content", "")
+                    user_msg["content"] = block + "\n\n" + str(existing)
+                else:
+                    # Fallback: extras_temporary if no user message found
+                    loop_data.extras_temporary[COMPLETION_KEY] = block
+
                 tool_names = ", ".join(p["tool"] for p in recent)
                 self.agent.context.log.log(
                     type="info",
@@ -291,3 +301,21 @@ def _build_block(completions: list[dict]) -> str:
         "Verify the results above and proceed to the NEXT step."
     )
     return "\n".join(lines)
+
+
+# ── Message Helper ─────────────────────────────────────────────────────────────
+
+def _get_last_user_message(history: list) -> Optional[dict]:
+    """Find the most recent operator message in loop history."""
+    if not history:
+        return None
+    for msg in reversed(history):
+        if not isinstance(msg, dict):
+            continue
+        if not msg.get("ai", True):
+            content = msg.get("content", "")
+            if isinstance(content, dict) and "user_message" in content:
+                return msg
+            if isinstance(content, str) and content:
+                return msg
+    return None
