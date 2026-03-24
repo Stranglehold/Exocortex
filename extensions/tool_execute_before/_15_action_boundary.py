@@ -82,6 +82,29 @@ TIER_4_TOOL_NAMES = [
     "send_message", "publish", "deploy", "upload",
 ]
 
+# ── Tier 4 — Python open() writes to system paths ─────────────────────────────
+#
+# Gap A fix: Python open(path, 'w'/'a') to agent system directories is NOT
+# caught by shell command patterns — the agent writes via Python, not via shell
+# redirect. These paths are higher-consequence than a workdir write because
+# modifications persist in the agent's own tool layer.
+#
+# The promotion workflow: agent builds in workdir → proposes promotion to operator
+# → operator authorizes → tool moves to persistent path. This gate enforces the
+# boundary before promotion.
+
+TIER_4_SYSTEM_WRITE_PATHS = {
+    "/a0/python/",
+    "/a0/agents/",
+    "/a0/usr/agents/",
+}
+
+# Matches: open('/path', 'w'), open("/path", "w"), open('/path', 'wb'), open('/path', 'a')
+_PY_OPEN_WRITE_RX = re.compile(
+    r"""open\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"](?:w|a|wb|ab)['"]""",
+    re.IGNORECASE,
+)
+
 # ── Tier 3 — S3/Ext-Write: notify and proceed ────────────────────────────────
 #
 # External writes that the agent is authorized to perform autonomously, with
@@ -298,9 +321,24 @@ def _classify(
         if t4_tool in tool_name.lower():
             return (4, "s3_external_write", [f"tool:{t4_tool}"], None)
 
+    # Tier 4 (Gap A): Python open() writes to system paths
+    # Agent writes its own tools via Python, not shell redirect — not caught by
+    # TIER_2/4_CMD_PATTERNS. System directory writes require operator authorization.
+    for m in _PY_OPEN_WRITE_RX.finditer(command):
+        path = m.group(1)
+        for sys_path in TIER_4_SYSTEM_WRITE_PATHS:
+            if path.startswith(sys_path):
+                return (4, "s4_system_write", [f"py_open_write:{path}"], path)
+
     # Tier 4: command patterns
+    # Gap B fix: skip matches that fall inside a quoted string literal —
+    # pattern may match descriptive text (e.g. "SSH-based execution pools")
+    # rather than an actual command invocation.
     for pattern in TIER_4_CMD_PATTERNS:
-        if re.search(pattern, cmd_lower, re.IGNORECASE):
+        m = re.search(pattern, cmd_lower, re.IGNORECASE)
+        if m:
+            if _in_quoted_context(cmd_lower, m.start()):
+                continue  # matched inside string literal — not a real command
             target = _extract_target(command)
             if target and _is_allowed(target, config):
                 continue
@@ -343,6 +381,34 @@ def _is_allowed(target: str, config: Dict) -> bool:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _in_quoted_context(text: str, pos: int) -> bool:
+    """
+    Return True if the character at `pos` appears inside a quoted string.
+
+    Scans from the start of text tracking open/close quote state. Handles
+    both single and double quotes. Ignores escaped quotes (backslash-escaped).
+    Heuristic — covers Python string literals, shell arguments, heredoc content.
+
+    Gap B fix: prevents shell command patterns (e.g. \\bssh\\b) from triggering
+    on descriptive text embedded in string literals like "SSH-based pools".
+    """
+    in_quote: Optional[str] = None
+    i = 0
+    while i < pos and i < len(text):
+        ch = text[i]
+        if in_quote is None:
+            if ch in ('"', "'"):
+                in_quote = ch
+        else:
+            if ch == '\\':
+                i += 2  # skip escaped character
+                continue
+            if ch == in_quote:
+                in_quote = None
+        i += 1
+    return in_quote is not None
+
 
 def _extract_target(command: str) -> Optional[str]:
     url = re.search(r"https?://[^\s'\"]+", command)
