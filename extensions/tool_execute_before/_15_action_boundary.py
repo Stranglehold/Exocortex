@@ -105,6 +105,15 @@ _PY_OPEN_WRITE_RX = re.compile(
     re.IGNORECASE,
 )
 
+# Gap C: heredoc body stripping
+# Heredoc content (<< 'EOF' ... EOF) is data written to a file, not commands.
+# Tier 4 patterns should not fire on data content inside heredoc bodies.
+# Strip heredoc bodies before command-pattern matching.
+_HEREDOC_RX = re.compile(
+    r"<<\s*['\"]?(\w+)['\"]?[ \t]*\n.*?\n\1[ \t]*(?=\n|$)",
+    re.DOTALL,
+)
+
 # ── Tier 3 — S3/Ext-Write: notify and proceed ────────────────────────────────
 #
 # External writes that the agent is authorized to perform autonomously, with
@@ -314,7 +323,12 @@ def _classify(
     Returns (tier, category, evidence_list, target_or_None).
     Priority: Tier 4 first (most restrictive). Default = Tier 1.
     """
-    cmd_lower = command.lower()
+    # Strip heredoc bodies before pattern matching — heredoc content is data
+    # written to a file, not commands. Tier 4 patterns must not fire on
+    # benchmark text, test data, or other file content that happens to contain
+    # keywords like "ssh" or "git push".
+    cmd_for_patterns = _HEREDOC_RX.sub("<<HEREDOC_BODY_STRIPPED", command)
+    cmd_lower = cmd_for_patterns.lower()
 
     # Tier 4: tool name matches
     for t4_tool in TIER_4_TOOL_NAMES:
