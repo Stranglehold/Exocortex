@@ -2,7 +2,20 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-03-21
+**Last updated:** 2026-03-24
+
+---
+
+## Phase Markers
+
+| Date | Event |
+|------|-------|
+| 2026-02-18 | Project start. DEC-001: deterministic scaffolding over prompt engineering. |
+| 2026-02-26 | Compound BST deployed. Multi-domain classification with momentum signatures. |
+| 2026-03-03 | Team formed. Output Geometry Instrument conceived. Eitan and Kestrel named. |
+| 2026-03-09 | Full dataset analysis (1,934 turns). Three spectral phases confirmed. |
+| 2026-03-21 | DEC-030: persistent profile deployment. Stack moved from ephemeral to sovereign path. |
+| **2026-03-24** | **First complete self-improvement cycle.** Agent analyzed external repo (Helios), extracted architectural patterns, generated 5-phase build plan, autonomously executed Phase 1 (gist/content memory separation), built and self-registered new tool (`memory_list_gist`), survived context compression via artifact registry, held at action gate for benchmark authorization. Operator-directed finding, autonomous execution. Platform → analysis → new tools → platform expansion. The loop compounds. |
 
 ---
 
