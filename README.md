@@ -95,9 +95,7 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 ### Cross-Cutting Systems
 
-**Evaluation Framework** — A standalone profiling tool that measures any model against the architecture and generates a configuration profile. Six evaluation modules test BST compliance, tool reliability, graph workflow adherence, PACE calibration, context sensitivity, and memory utilization. The profile is a JSON file that every layer reads at initialization.
-
-**Error Comprehension** — A structured error classifier that parses raw command output into diagnoses before the model reasons about it. Tells the agent not just what went wrong, but what *not* to do about it. Anti-actions ("do NOT retry this command — it will hang again") prevent loops more effectively than suggesting fixes.
+**Evaluation Framework** — A standalone profiling tool that measures any model against the architecture and generates a configuration profile. Six evaluation modules test BST compliance, tool reliability, graph workflow adherence, PACE calibration, context sensitivity, and memory utilization. The profile is a JSON file that every layer reads at initialization. BST eval harness (`eval/bst_eval.py`) achieves 0.98 accuracy across 54 labeled test cases and 14 domains using importlib + MagicMock to test without the Agent Zero framework.
 
 **Compound BST** — An evolution of the Belief State Tracker that scores all domains simultaneously instead of first-match classification. Recognizes that real tasks are compound ("debug the API query timeout" is both investigation and coding) and injects methodology for both.
 
@@ -111,13 +109,21 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **OpenPlanter Integration** — Configured to run investigation tasks through LM Studio's OpenAI-compatible API. Enables OSINT-style entity research, credit risk analysis, and due diligence workflows using local models.
 
-**Action Boundary** — Deterministic S2/S3 action classification at `tool_execute_before`. Every action is classified before execution as intelligence (internal, low risk) or operations (external, consequential). Four graduated tiers: autonomous, log-and-proceed, notify-and-proceed, require-authorization. The operator defines rules of engagement; the scaffolding enforces them. An `_action_gate_active` flag coordinates with the Supervisor Loop to suppress false stall warnings during authorization waits.
+**Action Boundary** — Deterministic action classification at `tool_execute_before`. Every action classified before execution across four graduated tiers: autonomous (Tier 1), log-and-proceed (Tier 2), notify-and-proceed (Tier 3), require-authorization (Tier 4). Two calibration fixes applied after the first self-improvement cycle: Gap A adds Python `open()` writes to system paths (`/a0/python/`, `/a0/usr/agents/`) as Tier 4 — the agent was writing its own tools via Python without triggering any gate tier; Gap B applies quoted-string context detection to prevent pattern matches inside string literals from falsely triggering command patterns. An `_action_gate_active` flag coordinates with the Supervisor Loop to suppress false stall warnings during authorization waits.
 
-**Error Comprehension** — Structured error classifier at `tool_execute_after`. Parses raw command output into diagnoses before the model reasons about it: error class, confidence, suggested actions, anti-actions. Anti-actions ("do NOT retry this command") prevent loops at the source. Wired into the Supervisor Loop — error class and anti-actions are injected into stall and loop intervention messages.
+**Error Comprehension** — Structured error classifier at `tool_execute_after`. Parses raw command output into diagnoses before the model reasons about it: error class, confidence, suggested actions, anti-actions. Anti-actions ("do NOT retry this command") prevent loops at the source. Wired into the Supervisor Loop — error class and anti-actions are injected into stall and loop intervention messages. `PRIORITY_ERROR_CLASSES` added for terminal early-exit/heredoc-never-executed failure mode — catches the silent failure pattern where a command exits 0 but the intended work never ran.
+
+**Completion Tracker** — Injects `[COMPLETION STATE]` before each LLM call with the last 5 tool call/result pairs: tool name, command hint, status, output preview. Eliminates the comprehension-without-absorption loop where the model re-derives "I should do X" without registering "X is done." Tested empirically: model reasoning explicitly cited the completion state block to avoid re-executing a finished task.
+
+**Tool Registry** — Scans `/a0/python/tools/` every turn and injects a compact `[CUSTOM TOOLS]` block listing all non-native tools with snake_case names and one-line descriptions extracted via AST (no import). Also reads `/a0/usr/Exocortex/tool_manifest.json` for manually-registered programs. New tools become callable by name the turn after they're written — zero manual registration. Motivated by the finding that without it, the model explores the filesystem or reimplements capabilities it already has.
+
+**Artifact Registry** — Tracks file writes across conversation turns and injects `[ARTIFACTS]` context in fresh sessions. `_49_reasoning_state_update.py` detects file writes from tool args (heredoc, echo redirect, tee, Python open) and writes entries to `staging.jsonl` on every detection. `_13_reasoning_state.py` bootstraps the artifact list from staging on first turn. Validated in ST-007: agent cited correct file path in one turn from a fresh context after `docker restart` — no search, no re-derivation.
 
 **Epistemic Integrity** — Two-component truth audit on model output at `monologue_end`. The Evidence Ledger Recorder tracks every tool output this session and extracts searchable key values (currencies, percentages, ratios, credit ratings, fiscal periods). The EI analyzer checks each factual claim in the model's response against the ledger for provenance, classifies ungrounded claims by temporal volatility (structural → institutional → cyclical → transactional → ephemeral), and computes staleness from the model's training cutoff. Ungrounded high-volatility claims trigger a `hist_add_warning`. Motivated by ST-003: the agent produced a complete Oracle credit risk report with zero source data, expressed as high confidence. The model doesn't choose to confabulate — it's architectural. The scaffolding catches it.
 
-**OSS Service** — Operational Security & Signals service. Docker container on port 7731 with Postgres backend. Ingests RSS feeds, extracts claims via LLM, embeds and deduplicates against FAISS. Eight Agent-Zero tools: topic management, drift detection, narrative dynamics, hypothesis generation, health monitoring, analyst submission, ingest pause/resume. `oss_submit` makes the human analyst a primary source alongside automated ingestion — the analyst's observations enter the ledger with equal standing to extracted feed claims.
+**OSS Service** — Operational Security & Signals service. Docker container on port 7731 with Postgres backend. Ingests RSS feeds, extracts claims via LLM, embeds and deduplicates against FAISS. Ten Agent-Zero tools: `oss_health`, `oss_topic`, `oss_drift`, `oss_dynamics`, `oss_hypotheses`, `oss_submit`, `oss_ingest_pause`, `oss_ingest_resume`, `oss_list_topics`, `oss_add_topic`. `oss_submit` makes the human analyst a primary source alongside automated ingestion — observations enter the ledger with equal standing to extracted feed claims, deduplicated against the same FAISS index. Thinking token stripping (`_strip_thinking()`) applied at all LLM call sites in the ingest pipeline.
+
+**SWARMFISH** — Geopolitical consensus engine. Docker container on port 7732. Bayesian evidence aggregation for strategic forecasting — collects analyst predictions, weights by calibration score, and outputs consensus probability with confidence interval. Two Agent-Zero tools: `swarmfish_predict` and `swarmfish_calibration`. OSS hypothesis promotion/falsification events fire `POST /acp/outcome` to SWARMFISH automatically, closing the OSS→SWARMFISH calibration loop.
 
 **Sleep Consolidation** — Background consolidation during session idle time. Phase 0: staging tier lifecycle (promotion, archival, carry-forward). Phases 1-4: deduplication, utility initialization, episode chunking, missed anti-pattern capture, interaction dynamics analysis. Runs on per-context asyncio tasks triggered by the `tool_execute_after` hook. Operates on the Agent-Zero chat history without blocking active sessions.
 
@@ -147,7 +153,7 @@ A further principle emerged from studying what persistent autonomous operation a
 
 **Deterministic over probabilistic.** Every decision the architecture makes is rule-based. No layer uses model inference for its own operation. Classification is heuristic. Conflict resolution follows priority hierarchies. Stall detection counts iterations. The prosthetics are reliable precisely because they don't depend on the thing they're compensating for.
 
-**Additive, not invasive.** No Agent-Zero core files are modified. Every layer is an extension that hooks into existing pipeline points. Remove any layer and the system degrades gracefully to baseline Agent-Zero behavior. The architecture is a companion, not a fork.
+**Additive, not invasive.** The extension layers hook into existing pipeline points without touching Agent-Zero core logic. A small set of targeted patches (`patches/`) replace specific Agent-Zero helpers and prompts — `json_parse_dirty()` for plain-text fallback, `browser_agent.py` for behavioral humanization, system prompt files for operator calibration. These are tracked and managed by `install_all.sh`. Remove any layer and the system degrades gracefully. The architecture is a companion, not a fork.
 
 **Model-agnostic with data.** The evaluation framework doesn't just claim compatibility with any model. It measures it. Each profile contains empirical metrics from standardized tests. When someone asks "will this work with my model?" the answer is a JSON file, not an opinion.
 
@@ -204,6 +210,15 @@ First full investigation workflow with GPT-OSS-20B via LM Studio. All tool calls
 **ST-004: Architect Inside**
 First stress test using a frontier model (Opus 4.6) to test infrastructure designed for local models. Revealed three findings invisible to local model testing: memory creation gap (no mechanism deciding whether to create memories), chunk-as-conflict (document chunking misread as contradiction by conflict resolver), and missing BST domains (no classification for introspective or philosophical work). Key principle: testing with a more capable model reveals a different class of bugs than testing with the target model.
 
+**ST-005: GEPA Multi-File Mutation (Pre-C5)**
+Genetic expression pathway analysis scenario with Qwen3.5-27B. Multi-phase build across context boundaries — writing, modifying, and referencing files across turns. The C5 gap was the primary failure: context compression lost all file path state, requiring full re-derivation. 10+ supervisor firings. 2 operator interventions. Revealed the artifact registry gap that C5 was designed to close.
+
+**ST-006: GEPA Multi-File Mutation (Post-C5)**
+Same scenario with C5 artifact registry deployed. Ran two full rounds. C5 validated: `[ARTIFACTS]` block bootstrapped correctly from `staging.jsonl` after context compression. 3 supervisor firings (vs 10+). 0 operator interventions (vs 2). Stretch goal achieved: real mutation logic with genetic expression calculations, not just file manipulation. Novel finding #4 surfaced: model confused web UI artifact writes with filesystem writes — fixed with `[FILE PERSISTENCE]` block in Tool Registry injection.
+
+**ST-007: Artifact Registry Validation**
+Dedicated validation of C5 cross-context file tracking. Multi-phase build in one context, `docker restart`, fresh context locating prior work. All 6 test cases pass. Bootstrap fires on first message of new context (`Bootstrapped N artifact(s) from staging`). Echo redirect detection (`echo '...' > /path`) confirmed. Ephemeral path filter (`/tmp/`) prevents `/tmp/` writes from appearing as persistent artifacts. Result: agent cites correct file path in 1 turn from cold start — no search.
+
 ---
 
 ## Hardware & Environment
@@ -239,12 +254,12 @@ The design/implementation split is deliberate. Architectural decisions are made 
 ### Deploy
 
 ```bash
-git clone https://github.com/Stranglehold/Agent-Zero-hardening.git exocortex
+git clone https://github.com/Stranglehold/Exocortex.git exocortex
 cd exocortex
 bash install_all.sh
 ```
 
-The install script copies extensions into the appropriate hook directories, deploys organization profiles, creates the model profiles directory, installs a conservative default profile, and bakes in all Phase 1 safety fixes (fallback SUCCESS_INDICATORS, history decay, compact messages, stock memorizer disable, extension renumbering). It does not modify any Agent-Zero core files.
+The install script deploys all extensions to the Agent-Zero persistent profile path (`/a0/usr/agents/agent0/extensions/`) rather than the ephemeral python path — surviving container image updates. It deploys 29 extensions across 9 hook directories, three static system prompt files, custom tools (`tools/`), patches to Agent-Zero core helpers and prompts, and the OSS + SWARMFISH services. No Agent-Zero core files are modified.
 
 ### Generate a Model Profile
 
@@ -273,21 +288,42 @@ Every extension reads its configuration section from the active profile at initi
 ```
 exocortex/
 ├── extensions/
-│   ├── before_main_llm_call/      # BST, meta-gate, dispatcher, tool chain,
-│   │                                # graph engine, personality, working memory
-│   ├── monologue_end/              # Memory classifier, maintenance
+│   ├── before_main_llm_call/      # BST, completion tracker, reasoning state,
+│   │                                # tool registry, graph engine, personality,
+│   │                                # working memory, memory catalog, context watchdog
+│   ├── tool_execute_before/       # Action boundary, meta-reasoning gate, fallback advisor
+│   ├── tool_execute_after/        # Tool fallback chain, epistemic integrity recorder,
+│   │                                # error comprehension, sleep trigger
+│   ├── monologue_end/             # Memory classifier, epistemic integrity analyzer,
+│   │                                # insight capture, ontology maintenance
 │   ├── message_loop_prompts_after/ # Memory enhancement (decay, access, co-retrieval)
-│   └── message_loop_end/          # Supervisor loop
-├── organizations/                  # Org kernel roles and profiles
-├── personalities/                  # Personality configurations
-├── eval_framework/                 # Model evaluation and profiling
+│   ├── message_loop_end/          # Supervisor loop, reasoning state update (C5)
+│   └── hist_add_before/           # Working memory (entity tracking, API sig extraction)
+├── tools/                         # Custom Agent Zero tools (stack_status, investigation,
+│                                    # ontology, OSS, SWARMFISH, memory_list_gist)
+├── services/
+│   ├── oss/                       # OSS intelligence service (Docker, Postgres, port 7731)
+│   └── swarmfish/                 # SWARMFISH geopolitical consensus (Docker, port 7732)
+├── patches/                       # Agent-Zero core patches (extract_tools.py,
+│                                    # browser_agent.py, system prompts, web UI)
+├── eval/                          # Stress tests and eval harnesses
+│   └── bst_eval.py                # BST classification eval (0.98 accuracy, 54 cases)
+├── eval_framework/                # Model evaluation and profiling
 │   ├── modules/                   # Six evaluation modules
 │   ├── fixtures/                  # Test cases per module
 │   └── profiles/                  # Generated model profiles
-├── a2a_server/                    # Agent-to-Agent protocol server
-├── prompts/                       # Modified system prompts
+├── instrument/                    # Output Geometry Instrument (corpus embedding,
+│                                    # trajectory analysis, activation reader, llama.cpp)
+├── specs/                         # Level 3 architecture specifications
+├── essays/                        # Eight philosophical essays
+├── observations/                  # Field notes from significant sessions
+├── team/                          # Per-member documents (Jake, Opus, Kestrel, Eitan, Auri)
+├── organizations/                 # Org kernel roles and profiles
+├── personalities/                 # Personality configurations (major_zero.json)
+├── skills/                        # 13 procedural skills for recurring workflows
 ├── scripts/                       # Deployment and utility scripts
-└── specs/                         # Level 3 architecture specifications
+├── a2a_server/                    # Agent-to-Agent protocol server (aiohttp)
+└── state/                         # Decision log, roadmap
 ```
 
 ---
@@ -324,26 +360,34 @@ See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
 **Recently completed:**
 - Staging Tier (intermediate memory layer: staging_note tool, session_init injection, canary CUSUM, sleep Phase 0, 5th memory axis, relational decay exemptions)
-- Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag)
-- Error Comprehension (structured error classifier, anti-actions, supervisor wire-up)
+- Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag) + calibration fixes (Gap A: Python open() system paths → Tier 4; Gap B: quoted-string context detection)
+- Error Comprehension (structured error classifier, anti-actions, supervisor wire-up, PRIORITY_ERROR_CLASSES for silent heredoc failure)
 - Epistemic Integrity (evidence ledger + truth audit, provenance × volatility × staleness)
-- Compound BST (multi-domain classification, momentum, register-shift domains)
-- OSS Service (signals intelligence, analyst submission, ingest control)
+- Compound BST (multi-domain classification, momentum, register-shift domains) — eval harness 0.98 accuracy / 54 cases
+- OSS Service (signals intelligence, analyst submission, ingest control, thinking token stripping, topic management)
+- SWARMFISH (geopolitical consensus, OSS→SWARMFISH calibration loop)
 - Sleep Consolidation (phases 0-4, episode chunking, anti-pattern capture)
-- Supervisor fixes (EC wire-up, action gate suppression)
+- Supervisor fixes (EC wire-up, action gate suppression, Phase 4 trigger + HOLD cooldown)
+- Completion Tracker — eliminates comprehension-without-absorption loop (4 documented loop failure modes in stock A0)
+- Tool Registry — custom tools callable by name every turn, grows automatically as tools are added
+- Artifact Registry (C5) — cross-context file tracking, bootstrap from staging.jsonl, ST-007 validated
+- Persistent profile deployment (DEC-030) — extensions at `/a0/usr/agents/agent0/extensions/`, survive image updates
+- Working memory API signature extraction — function/class/attr defs extracted from AI code blocks, prevents parameter confabulation
+- JSON plain-text fallback — `json_parse_dirty()` wraps plain text as response tool call instead of returning None, fixes reasoning-distilled model misformat loop
+- Self-improvement loop — first complete cycle: external repo → pattern extraction → autonomous build → tool self-registration (2026-03-24)
 
 **Current priorities:**
-1. Model routing — agent-invokable paradigm (agent calls from a specified list or LM Studio backend)
-2. OSS thinking token fix — strip reasoning wrapper before JSON parse
-3. OSS topic management — add topics through agent conversation
+1. Persistent tool path — `/a0/usr/agents/agent0/tools/` doesn't exist; agent-built tools at `/a0/python/tools/` don't survive image rebuilds. Create path, extend Tool Registry to scan it.
+2. Memory gist quality — `memory_save.py` gist auto-generation is first 100 chars (truncation, not summary). Needs intelligent heuristic (skip imports/blanks, take first substantive line) or utility-model summary at save time.
+3. Model routing — agent-invokable paradigm (agent calls from a specified list or LM Studio backend)
 
-**Backlog:** Layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard.
+**Backlog:** Curiosity queue (agent autonomously discovers external repos to analyze, rather than requiring operator to point at one), layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard.
 
 ---
 
 ## Essays
 
-The project has a philosophical substrate expressed through five essays. Each emerged from a specific engineering problem or architectural insight and articulates a principle that shapes design decisions.
+The project has a philosophical substrate expressed through eight essays. Each emerged from a specific engineering problem or architectural insight and articulates a principle that shapes design decisions.
 
 | Essay | Principle |
 |-------|-----------|
