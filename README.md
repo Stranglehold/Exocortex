@@ -10,6 +10,41 @@
 
 Exocortex is a deterministic scaffolding layer that wraps around local language models running in [Agent-Zero](https://github.com/frdel/agent-zero), compensating for their limitations through structured infrastructure rather than prompt engineering. It doesn't make the model smarter. It makes the model's environment intelligent enough that the model can succeed.
 
+---
+
+## The Problem It Solves
+
+Stock Agent Zero running a local model fails in predictable ways. These are documented failure modes — observed across dozens of sessions and five formal stress tests with full reproducible records.
+
+**The model doesn't know its own tools exist.**
+Custom tools aren't listed in the per-turn system context. The model explores the filesystem or reimplements capabilities it already has rather than calling them by name. Result: tool calls that should be single invocations become three-step search-and-reimplementation sequences.
+
+**It loops on completed work.**
+The model re-derives "I should do X" without registering "X is done." It reads the output of a completed command, interprets it as evidence the command needs to run again, and re-executes. Four distinct loop categories documented in stock A0: post-success replay, long-running command timeout retry, model unload under context pressure, and hard infinite loop after context overflow. The stock loop detector fires *after* the loop response is generated and uses string matching — structurally incapable of breaking a fixed point.
+
+**It loses context across compression.**
+When conversation history compresses, the model loses track of files it wrote, paths it discovered, and multi-step task state. The next context starts from zero. A multi-phase build that spans a context boundary fails to locate its own prior work.
+
+**Fallback systems over-fire on success.**
+The tool fallback chain fired 17 times during a single installation scenario in ST-001 — 80% of those fires were false positives on operations that succeeded. The fallback's success patterns didn't recognize normal completion signals, escalating after every clean result.
+
+**It fabricates when data fails.**
+When all data retrieval attempts fail silently, the model produces complete, confident reports with specific figures and source attributions — from zero source data. Confirmed in ST-003: a full Oracle credit risk analysis with decimal-precision figures attributed to "SEC filings and Bloomberg snapshots" was produced after every data pipeline command failed.
+
+### Measured Improvements
+
+| Failure mode | Stock A0 | With Exocortex |
+|---|---|---|
+| Supervisor firings per session | 10+ (ST-005) | 3 (ST-006) |
+| Operator interventions required | 2 (ST-005) | 0 (ST-006) |
+| Tool fallback false positives | 17/session (ST-001) | 1/session (ST-002) |
+| Context compression recovery | Full re-derivation | 1-turn cite from `[ARTIFACTS]` |
+| Custom tool visibility | Not callable by name | Listed every turn via `_16_tool_registry.py` |
+
+**The pattern across all five fixes:** each layer eliminates a specific friction point. The model's capability doesn't change. The number of snags that prevent it from running does. The self-improvement session (2026-03-24) demonstrated this concretely: a local model crossed the gap from "here's a GitHub repo" to "I'm writing new tools to improve myself, and they're immediately callable" in a single autonomous session — with zero loops, zero operator interventions, and clean context compression recovery. Not because the model got smarter. Because the floor stopped collapsing under it.
+
+---
+
 The architecture is model-agnostic. Load any model into LM Studio, run the evaluation framework, deploy the generated profile, and every layer tunes itself to that model's specific strengths and weaknesses. The prosthetics adapt to the mind they're attached to.
 
 The name comes from cognitive science — an exocortex is an external information processing system that augments cognition. The philosophy comes from somewhere more personal: the idea that a prosthetic built with the right intent can exceed what was there before. If that sounds like Venom Snake's arm, it's because it is.
@@ -175,7 +210,7 @@ First stress test using a frontier model (Opus 4.6) to test infrastructure desig
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled | Current primary (`@q4_k_m`) |
+| Supervisor | [Jackrong/qwen3.5-27B-Opus-4.6-Distill](https://huggingface.co/Jackrong/qwen3.5-27B-Opus-4.6-Distill) | Current primary (`@q4_k_m`) |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
