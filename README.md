@@ -225,7 +225,7 @@ Dedicated validation of C5 cross-context file tracking. Multi-phase build in one
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF| Current primary (`@q4_k_m`) |
+| Supervisor | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF)| Current primary (`@q4_k_m`) |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
