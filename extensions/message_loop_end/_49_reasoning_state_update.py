@@ -84,6 +84,9 @@ SUCCESS_SIGNALS = [
 # Compression detection: history shrinks by this fraction in one turn
 COMPRESSION_SHRINK_THRESHOLD = 0.35
 
+# Ephemeral path prefixes — writes here don't survive docker restart, skip them
+EPHEMERAL_PREFIXES = ("/tmp/", "/var/tmp/", "/dev/shm/")
+
 
 class ReasoningStateUpdate(Extension):
     """message_loop_end: update compressed reasoning state after each turn."""
@@ -400,6 +403,8 @@ def _detect_new_artifacts(
             path = path.strip()
             if not path.startswith("/"):
                 continue
+            if any(path.startswith(p) for p in EPHEMERAL_PREFIXES):
+                continue  # /tmp and similar don't survive docker restart
             if path in existing_paths or path in seen_this_scan:
                 continue
             seen_this_scan.add(path)
