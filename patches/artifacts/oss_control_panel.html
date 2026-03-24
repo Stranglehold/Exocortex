@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OSS Control Panel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111827; color: #e5e7eb; font-family: system-ui, sans-serif; font-size: 13px; line-height: 1.5; padding: 16px; }
+
+  h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; margin-bottom: 10px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .card {
+    background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 14px;
+  }
+  .card-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 4px; }
+  .card-value { font-size: 24px; font-weight: 700; color: #f9fafb; }
+  .card-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle;
+  }
+  .dot-green  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+  .dot-yellow { background: #f59e0b; box-shadow: 0 0 6px #f59e0b88; }
+  .dot-red    { background: #ef4444; box-shadow: 0 0 6px #ef444488; }
+  .dot-grey   { background: #6b7280; }
+
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .status-label { font-size: 12px; color: #9ca3af; }
+  .status-val { font-size: 12px; font-weight: 600; color: #f3f4f6; margin-left: auto; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  button {
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 600; transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-success { background: #22c55e; color: #fff; }
+  .btn-danger  { background: #ef4444; color: #fff; }
+  .btn-neutral { background: #374151; color: #e5e7eb; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; padding: 5px 8px; color: #6b7280; font-weight: 600; border-bottom: 1px solid #374151; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td { padding: 5px 8px; border-bottom: 1px solid #1f2937; color: #d1d5db; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1a2233; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .pill-green  { background: #14532d; color: #86efac; }
+  .pill-yellow { background: #451a03; color: #fcd34d; }
+  .pill-red    { background: #450a0a; color: #fca5a5; }
+  .pill-blue   { background: #1e3a5f; color: #93c5fd; }
+  .pill-grey   { background: #1f2937; color: #9ca3af; }
+
+  .section { margin-bottom: 16px; }
+
+  #error-bar { display: none; background: #450a0a; color: #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; }
+
+  .topic-tag { display: inline-block; background: #1e3a5f; color: #93c5fd; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 2px; }
+
+  input[type="text"] {
+    background: #111827; border: 1px solid #374151; color: #e5e7eb; border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; width: 200px;
+  }
+  input[type="text"]:focus { outline: none; border-color: #3b82f6; }
+
+  .refresh-time { font-size: 10px; color: #4b5563; text-align: right; margin-bottom: 8px; }
+  .loading { color: #4b5563; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div id="error-bar"></div>
+
+<!-- ── Top stats ──────────────────────────────────────────────── -->
+<div class="section">
+  <h2>OSS Intelligence Ledger</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="card-title">Claims</div>
+      <div class="card-value" id="stat-claims">—</div>
+      <div class="card-sub">in ledger</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sources</div>
+      <div class="card-value" id="stat-sources">—</div>
+      <div class="card-sub">active feeds</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Hypotheses</div>
+      <div class="card-value" id="stat-hypotheses">—</div>
+      <div class="card-sub">tracked</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Ingestion status + controls ───────────────────────────── -->
+<div class="section">
+  <h2>Ingestion Pipeline</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="status-row">
+        <span class="status-dot dot-grey" id="ingest-dot"></span>
+        <span class="status-label">Status</span>
+        <span class="status-val" id="ingest-status">checking…</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Active topics</span>
+        <span class="status-val" id="ingest-topics">—</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-success" id="btn-resume" onclick="ingestResume()">▶ Resume</button>
+        <button class="btn-danger"  id="btn-pause"  onclick="ingestPause()">⏸ Pause</button>
+        <button class="btn-neutral" onclick="loadAll()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">Add Topic</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="new-topic-tag" placeholder="tag (e.g. china-taiwan)" />
+        <button class="btn-primary" onclick="addTopic()">Add</button>
+      </div>
+      <div style="margin-top:10px" id="topic-tags">
+        <span class="loading">Loading topics…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SWARMFISH ──────────────────────────────────────────────── -->
+<div class="section">
+  <h2>SWARMFISH Monitor</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="status-row">
+        <span class="status-dot dot-grey" id="sf-dot"></span>
+        <span class="status-label">Status</span>
+        <span class="status-val" id="sf-status">checking…</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Analyst profiles</span>
+        <span class="status-val" id="sf-topics">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Recent sessions</span>
+        <span class="status-val" id="sf-hyp">—</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">Quick Links</div>
+      <div class="btn-row">
+        <button class="btn-neutral" onclick="window.open('http://localhost:7731','_blank')">↗ OSS Interface</button>
+        <button class="btn-neutral" onclick="window.open('http://localhost:7732','_blank')">↗ SWARMFISH UI</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Recent claims ─────────────────────────────────────────── -->
+<div class="section">
+  <h2>Recent Claims</h2>
+  <div class="refresh-time" id="refresh-time"></div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Technique</th>
+          <th>Topics</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody id="claims-tbody">
+        <tr><td colspan="4" class="loading" style="padding:12px">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const OSS = 'http://localhost:7731';
+const SF  = 'http://localhost:7732';
+const TOK = 'dev_analyst_token';
+
+function showError(msg) {
+  const bar = document.getElementById('error-bar');
+  bar.textContent = msg;
+  bar.style.display = 'block';
+  setTimeout(() => bar.style.display = 'none', 6000);
+}
+
+async function apiGet(base, path) {
+  const r = await fetch(base + path, { headers: { 'X-Analyst-Token': TOK } });
+  if (!r.ok) throw new Error(r.status + ' ' + path);
+  return r.json();
+}
+async function apiPost(base, path, body) {
+  const r = await fetch(base + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOK },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(r.status + ' ' + path);
+  return r.json();
+}
+
+// ── OSS health ──────────────────────────────────────────────────
+async function loadOssHealth() {
+  try {
+    const d = await apiGet(OSS, '/api/health');
+    document.getElementById('stat-claims').textContent     = d.claim_count      ?? '—';
+    document.getElementById('stat-sources').textContent    = d.source_count     ?? '—';
+    document.getElementById('stat-hypotheses').textContent = d.hypothesis_count ?? '—';
+
+    const paused = d.ingest_paused;
+    document.getElementById('ingest-status').textContent = paused ? 'Paused' : 'Running';
+    const dot = document.getElementById('ingest-dot');
+    dot.className = 'status-dot ' + (paused ? 'dot-yellow' : 'dot-green');
+    document.getElementById('btn-resume').disabled = !paused;
+    document.getElementById('btn-pause').disabled  = paused;
+
+    document.getElementById('ingest-topics').textContent = (d.active_topics || []).length;
+
+    // Topic tags
+    const tagsEl = document.getElementById('topic-tags');
+    tagsEl.innerHTML = (d.active_topics || []).map(t =>
+      `<span class="topic-tag">${t}</span>`
+    ).join('') || '<span style="color:#4b5563">No topics active</span>';
+  } catch(e) {
+    showError('OSS unreachable: ' + e.message);
+    document.getElementById('ingest-status').textContent = 'Unreachable';
+  }
+}
+
+// ── OSS recent claims ───────────────────────────────────────────
+async function loadRecentClaims() {
+  try {
+    const d = await apiPost(OSS, '/api/feed', { limit: 15 });
+    const claims = d.claims || [];
+    const tbody = document.getElementById('claims-tbody');
+    if (claims.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#4b5563;padding:12px">No claims yet</td></tr>';
+      return;
+    }
+    const techPill = t => ({
+      presuasion: 'pill-yellow', fracture: 'pill-red', emergent: 'pill-red',
+      direct: 'pill-green', none: 'pill-grey'
+    }[t] || 'pill-grey');
+
+    tbody.innerHTML = claims.map(c => `
+      <tr>
+        <td style="max-width:280px">${esc(c.claim_text)}</td>
+        <td><span class="pill ${techPill(c.technique_class)}">${c.technique_class || '—'}</span></td>
+        <td>${(c.topic_tags || []).map(t => `<span class="pill pill-blue">${esc(t)}</span>`).join(' ')}</td>
+        <td style="color:#6b7280">${esc(c.source_name || '—')}</td>
+      </tr>`).join('');
+
+    document.getElementById('refresh-time').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('claims-tbody').innerHTML =
+      `<tr><td colspan="4" style="color:#ef4444;padding:12px">${e.message}</td></tr>`;
+  }
+}
+
+// ── SWARMFISH health ────────────────────────────────────────────
+async function loadSwarmfishHealth() {
+  try {
+    // /health for basic status, /acp/status for session history
+    const h = await apiGet(SF, '/health');
+    document.getElementById('sf-status').textContent = h.status || 'ok';
+    document.getElementById('sf-dot').className = 'status-dot dot-green';
+    // /acp/status has session history and calibration data (requires auth)
+    try {
+      const s = await apiGet(SF, '/acp/status');
+      document.getElementById('sf-topics').textContent = h.profiles ?? '—';
+      document.getElementById('sf-hyp').textContent = (s.recent_sessions || []).length;
+    } catch(_) {
+      document.getElementById('sf-topics').textContent = h.profiles ?? '—';
+      document.getElementById('sf-hyp').textContent = '—';
+    }
+  } catch(e) {
+    document.getElementById('sf-status').textContent = 'Unreachable';
+    document.getElementById('sf-dot').className = 'status-dot dot-red';
+  }
+}
+
+// ── Controls ────────────────────────────────────────────────────
+async function ingestPause() {
+  try { await apiPost(OSS, '/admin/ingest/pause', {}); await loadOssHealth(); }
+  catch(e) { showError(e.message); }
+}
+async function ingestResume() {
+  try { await apiPost(OSS, '/admin/ingest/resume', {}); await loadOssHealth(); }
+  catch(e) { showError(e.message); }
+}
+async function addTopic() {
+  const tag = document.getElementById('new-topic-tag').value.trim();
+  if (!tag) return;
+  try {
+    await apiPost(OSS, '/admin/add_topic', { tag, description: tag, scrape_weight: 1.0 });
+    document.getElementById('new-topic-tag').value = '';
+    await loadOssHealth();
+  } catch(e) { showError(e.message); }
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadAll() {
+  await Promise.all([loadOssHealth(), loadRecentClaims(), loadSwarmfishHealth()]);
+}
+
+// Load on start, refresh every 30s
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

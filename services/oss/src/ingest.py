@@ -149,7 +149,7 @@ def extract_claims(article_text: str, article_title: str) -> list[str]:
                 {"role": "user", "content": f"Title: {article_title}\n\nText: {article_text[:2000]}"}
             ],
             temperature=0.1,
-            max_tokens=512,
+            max_tokens=2048,
         )
         raw = _strip_thinking(resp.choices[0].message.content.strip())
         # Robust parse: handle markdown code fences
@@ -157,6 +157,12 @@ def extract_claims(article_text: str, article_title: str) -> list[str]:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
+        # Fallback: extract first [...] block if direct parse would fail
+        if not raw.startswith("["):
+            start = raw.find("[")
+            end   = raw.rfind("]")
+            if start != -1 and end > start:
+                raw = raw[start:end + 1]
         claims = json.loads(raw)
         if isinstance(claims, list):
             return [str(c).strip() for c in claims if str(c).strip()]

@@ -30,4 +30,7 @@ Use JSON when calling tools. Plain text is accepted for conversational replies.
 }
 ~~~
 
+### Multi-step execution — batch when possible
+Each tool call is one iteration. For complex tasks, consolidate multiple operations into a single `code_execution_tool` call rather than issuing separate tool calls for each step. A shell script that reads 10 files, processes data, and writes output costs one iteration, not ten. Reserve separate tool calls for operations that depend on the result of a previous unknown output.
+
 {{ include "agent.system.main.communication_additions.md" }}

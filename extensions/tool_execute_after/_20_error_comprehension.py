@@ -60,6 +60,38 @@ SUCCESS_INDICATORS = [
     r"(?i)stored in directory:",
 ]
 
+# ── High-priority patterns checked BEFORE the success fast-path ───────────────
+# These are structural execution failures that must fire even when the output
+# also contains success indicators (e.g. a pip install succeeds but the heredoc
+# that follows it never runs).
+
+PRIORITY_ERROR_CLASSES = [
+    {
+        "class": "terminal_early_exit_heredoc",
+        "description": "Terminal returned early on shell prompt; heredoc or subsequent commands did not execute",
+        "signals": [
+            r"Detected shell prompt, returning output early",
+        ],
+        "anti_signals": [],
+        "causal_chain": (
+            "The terminal tool detected a shell prompt mid-output and returned early. "
+            "Any python3 heredoc (python3 << 'EOF') or commands after the prompt were "
+            "NEVER executed. Only the commands before the shell prompt ran."
+        ),
+        "suggested_actions": [
+            "Use runtime: 'python' with pure Python code — no bash commands mixed in",
+            "Split the task: one terminal call for bash commands, one python call for Python code",
+            "Never use python3 << 'EOF' heredoc syntax in terminal runtime — it will not run",
+        ],
+        "anti_actions": [
+            "Do NOT repeat the same terminal call — the heredoc will not run again",
+            "Do NOT assume the Python code executed — it did not",
+            "Do NOT use python3 << 'EOF' heredoc syntax in terminal runtime",
+        ],
+        "confidence": 0.99,
+    },
+]
+
 ERROR_CLASSES = [
     {
         "class": "interactive_prompt",
@@ -117,6 +149,14 @@ ERROR_CLASSES = [
 
 _SUCCESS_RX = [re.compile(p) for p in SUCCESS_INDICATORS]
 
+_COMPILED_PRIORITY = []
+for _cls in PRIORITY_ERROR_CLASSES:
+    _COMPILED_PRIORITY.append({
+        **_cls,
+        "_sig_rx": [re.compile(s) for s in _cls["signals"]],
+        "_anti_rx": [re.compile(a) for a in _cls["anti_signals"]],
+    })
+
 _COMPILED_CLASSES = []
 for _cls in ERROR_CLASSES:
     _COMPILED_CLASSES.append({
@@ -157,42 +197,19 @@ class ErrorComprehension(Extension):
             msg = response.message
             max_tail = config.get("max_output_tail_chars", 500)
 
-            # Step 3: Success fast path — any SUCCESS_INDICATOR match → no diagnosis
-            for rx in _SUCCESS_RX:
-                if rx.search(msg):
-                    return
+            # Step 3: Priority classifiers run BEFORE success fast-path.
+            # These are structural failures that must fire even when output also
+            # contains success indicators (e.g. pip install ok but heredoc never ran).
+            diagnosis = _run_classifiers(_COMPILED_PRIORITY, msg, max_tail)
+            if diagnosis is None:
+                # Step 3b: Success fast path — any SUCCESS_INDICATOR match → no diagnosis
+                for rx in _SUCCESS_RX:
+                    if rx.search(msg):
+                        return
 
-            # Step 4: Run classifiers in order, first match wins
-            diagnosis = None
-            for cls in _COMPILED_CLASSES:
-                # Anti-signals first — if any match, skip this class
-                skip = False
-                for anti_rx in cls["_anti_rx"]:
-                    if anti_rx.search(msg):
-                        skip = True
-                        break
-                if skip:
-                    continue
-
-                # Signal patterns — any single match is sufficient
-                matched_pattern = None
-                for sig_rx in cls["_sig_rx"]:
-                    if sig_rx.search(msg):
-                        matched_pattern = sig_rx.pattern
-                        break
-
-                if matched_pattern is not None:
-                    tail = msg[-max_tail:] if len(msg) > max_tail else msg
-                    diagnosis = {
-                        "error_class": cls["class"],
-                        "confidence": cls["confidence"],
-                        "evidence": [matched_pattern],
-                        "causal_chain": cls["causal_chain"],
-                        "suggested_actions": cls["suggested_actions"],
-                        "anti_actions": cls["anti_actions"],
-                        "raw_output_tail": tail,
-                    }
-                    break
+            # Step 4: Run remaining classifiers if no priority match
+            if diagnosis is None:
+                diagnosis = _run_classifiers(_COMPILED_CLASSES, msg, max_tail)
 
             if diagnosis is None:
                 return
@@ -219,6 +236,39 @@ class ErrorComprehension(Extension):
 
         except Exception:
             pass
+
+
+# ── Classifier Runner ─────────────────────────────────────────────────────────
+
+def _run_classifiers(compiled_classes: list, msg: str, max_tail: int) -> dict | None:
+    """Run a list of compiled error classes against msg. Returns first match or None."""
+    for cls in compiled_classes:
+        skip = False
+        for anti_rx in cls["_anti_rx"]:
+            if anti_rx.search(msg):
+                skip = True
+                break
+        if skip:
+            continue
+
+        matched_pattern = None
+        for sig_rx in cls["_sig_rx"]:
+            if sig_rx.search(msg):
+                matched_pattern = sig_rx.pattern
+                break
+
+        if matched_pattern is not None:
+            tail = msg[-max_tail:] if len(msg) > max_tail else msg
+            return {
+                "error_class": cls["class"],
+                "confidence": cls["confidence"],
+                "evidence": [matched_pattern],
+                "causal_chain": cls["causal_chain"],
+                "suggested_actions": cls["suggested_actions"],
+                "anti_actions": cls["anti_actions"],
+                "raw_output_tail": tail,
+            }
+    return None
 
 
 # ── Context Formatting ────────────────────────────────────────────────────────

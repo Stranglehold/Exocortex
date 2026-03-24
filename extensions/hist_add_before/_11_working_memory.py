@@ -11,9 +11,16 @@ Parameters:
   - content_data: the message content being added to history
   - ai: bool — True if AI message, False if user message
 
-Only extracts entities from user messages (ai=False). AI messages
-contain model-generated references that may be wrong — user messages
-are ground truth for what the user is actually talking about.
+Entity extraction (user messages, ai=False):
+  Extracts structured references from user messages — user messages are
+  ground truth for what the user is actually talking about.
+
+API signature extraction (AI messages, ai=True):
+  Extracts function/class/attribute definitions from code blocks in AI
+  responses. Stored in agent._wm_api_sigs and injected by _16_tool_registry.
+  Prevents parameter confabulation (e.g. confidence vs confidence_score).
+  Reads AI-generated code because signatures are only created by the agent
+  itself — the AI is the source of truth for what it just defined.
 
 Entity types extracted (regex-first, no model calls):
   - file paths (/foo/bar.py, ~/dir/file.txt)
@@ -53,6 +60,16 @@ DECAY_TURNS       = 8    # Prune entities not mentioned in this many turns
 PROMOTE_THRESHOLD = 3    # Mentions needed to promote to persistent memory
 MAX_ENTITIES      = 50   # Cap to prevent unbounded growth
 WM_KEY            = "_working_memory"
+
+# API signature extraction (from AI code blocks)
+WM_API_KEY        = "_wm_api_sigs"  # agent attribute: dict of name → sig string
+MAX_API_SIGS      = 25              # cap; newest definition wins on name collision
+
+# Patterns for API signature extraction from code blocks
+_RE_CODE_BLOCK = re.compile(r'```(?:python)?\s*\n(.*?)```', re.DOTALL)
+_RE_FUNC_SIG   = re.compile(r'^(?:    )*def\s+(\w+)\s*\(([^)]*)\)', re.MULTILINE)
+_RE_CLASS_SIG  = re.compile(r'^class\s+(\w+)', re.MULTILINE)
+_RE_SELF_ATTR  = re.compile(r'^\s+self\.(\w+)\s*=\s*\S', re.MULTILINE)
 
 # ── Regex patterns for entity extraction ──────────────────────────────────────
 
@@ -135,9 +152,25 @@ class WorkingMemoryBuffer(Extension):
             content_data = kwargs.get("content_data")
             ai = kwargs.get("ai", True)
 
-            # Only extract entities from user messages
+            # API signature extraction from AI code blocks
             if ai:
+                text = self._extract_text(content_data)
+                if text:
+                    new_sigs = _extract_api_signatures(text)
+                    if new_sigs:
+                        existing = getattr(self.agent, WM_API_KEY, {}) or {}
+                        existing.update(new_sigs)  # newest definition wins
+                        # Trim to cap: drop oldest entries (insertion order)
+                        if len(existing) > MAX_API_SIGS:
+                            excess = len(existing) - MAX_API_SIGS
+                            for k in list(existing.keys())[:excess]:
+                                del existing[k]
+                        setattr(self.agent, WM_API_KEY, existing)
+                        print(f"[WM] API sigs captured: {list(new_sigs.keys())}", flush=True)
+                        # Verify attribute was set
                 return
+
+            # Only extract structural entities from user messages (ground truth)
 
             if not content_data:
                 return
@@ -187,20 +220,43 @@ class WorkingMemoryBuffer(Extension):
             except Exception:
                 pass
 
-    def _extract_text(self, content_data) -> str:
-        """Extract plain text from content_data passed by hist_add_before."""
+    def _extract_text(self, content_data, _depth: int = 0) -> str:
+        """Extract plain text from content_data passed by hist_add_before.
+
+        hist_add_before wraps the actual content as {"content": <MessageContent>}.
+        MessageContent for AI responses is a raw JSON string like:
+          '{"tool_name": "response", "tool_args": {"text": "...markdown..."}}'
+        For user messages it's a dict with user_message key.
+        """
+        import json as _json
+        if _depth > 4:  # guard against infinite recursion
+            return str(content_data) if content_data else ""
         if isinstance(content_data, str):
+            stripped = content_data.strip()
+            if stripped.startswith("{"):
+                try:
+                    d = _json.loads(stripped)
+                    return self._extract_text(d, _depth + 1)
+                except Exception:
+                    pass
             return content_data
         if isinstance(content_data, dict):
+            # hist_add_before wrapper: {"content": <actual content>}
+            if "content" in content_data and len(content_data) == 1:
+                return self._extract_text(content_data["content"], _depth + 1)
             # User message with structured content
             if "user_message" in content_data:
                 return str(content_data["user_message"])
             if "message" in content_data:
                 return str(content_data["message"])
-            return str(content_data)
+            # AI response message via response tool: tool_args.text holds the body
+            tool_args = content_data.get("tool_args")
+            if isinstance(tool_args, dict) and "text" in tool_args:
+                return str(tool_args["text"])
+            return ""
         if isinstance(content_data, list):
             return " ".join(
-                p.get("text", "") if isinstance(p, dict) else str(p)
+                self._extract_text(p, _depth + 1) if isinstance(p, (str, dict)) else str(p)
                 for p in content_data
             )
         return str(content_data) if content_data else ""
@@ -359,3 +415,39 @@ def _extract_entities(text: str) -> list[tuple[str, str]]:
         _add("service", match.group(1))
 
     return entities
+
+
+def _extract_api_signatures(text: str) -> dict[str, str]:
+    """
+    Extract function/class/attribute signatures from code blocks in AI messages.
+    Returns dict mapping name → signature string.
+
+    Only processes content inside ```...``` fences to avoid false positives
+    from prose descriptions. Class and self.attr entries are only captured
+    when not already present (function defs take priority).
+    """
+    sigs: dict[str, str] = {}
+
+    for block_match in _RE_CODE_BLOCK.finditer(text):
+        block = block_match.group(1)
+
+        # Function signatures (highest priority — exact parameter names matter most)
+        for m in _RE_FUNC_SIG.finditer(block):
+            name   = m.group(1)
+            params = m.group(2).strip()
+            sigs[name] = f"def {name}({params})"
+
+        # Class definitions
+        for m in _RE_CLASS_SIG.finditer(block):
+            name = m.group(1)
+            if name not in sigs:
+                sigs[name] = f"class {name}"
+
+        # Instance attribute assignments (self.x = ...)
+        for m in _RE_SELF_ATTR.finditer(block):
+            attr = m.group(1)
+            key  = f"self.{attr}"
+            if key not in sigs:
+                sigs[key] = key
+
+    return sigs

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenPlanter Network Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 16px; background: #1a1a2e; color: #eee; overflow: hidden; }
+        h1 { text-align: center; color: #fff; margin: 0 0 4px; font-size: 1.6em; }
+        .subtitle { text-align: center; color: #888; margin: 0 0 12px; font-size: 0.9em; }
+        #graph-container {
+            width: 100%;
+            height: calc(100vh - 100px);
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: grab;
+        }
+        #graph-container:active { cursor: grabbing; }
+        .node circle { cursor: pointer; transition: stroke-width 0.2s ease; }
+        .node circle:hover { stroke-width: 5px !important; }
+        .link { stroke: #3a4a6a; stroke-opacity: 0.7; }
+        .node-label { font-size: 10px; fill: #ccc; pointer-events: none; text-anchor: middle; }
+        #tooltip {
+            position: fixed;
+            background: rgba(0,0,0,0.92);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            max-width: 280px;
+            z-index: 100;
+            border: 1px solid #333;
+        }
+        #tooltip strong { display: block; margin-bottom: 4px; font-size: 14px; }
+        #tooltip .cat { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .hint { text-align: center; font-size: 10px; color: #3a4a6a; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <!-- Signal to AZ_ZOOM_SCRIPT to skip generic page transform — D3 owns zoom here -->
+    <script>window._hasPanZoom = true;</script>
+
+    <h1>🌱 OpenPlanter Network Graph</h1>
+    <p class="subtitle">Interactive visualization of data source relationships • 15 nodes • 28 connections</p>
+    <div id="graph-container"></div>
+    <p class="hint">Scroll to zoom · Drag canvas to pan · Drag nodes to reposition</p>
+    <div id="tooltip"></div>
+
+    <script>
+    const graphData = {
+        nodes: [
+            {id:"US Census Bureau",    category:"demographics",           color:"#2ecc71"},
+            {id:"FDIC BankFind",       category:"financial",              color:"#f1c40f"},
+            {id:"FEC Campaign Finance",category:"campaign-finance",       color:"#2ecc71"},
+            {id:"SAM.gov",             category:"government-contracts",   color:"#00d2d3"},
+            {id:"SEC EDGAR",           category:"corporate",              color:"#e91e63"},
+            {id:"OpenCorporates",      category:"corporate",              color:"#e91e63"},
+            {id:"Senate Lobbying DB",  category:"lobbying",               color:"#e74c3c"},
+            {id:"ProPublica Nonprofits",category:"nonprofit",             color:"#3498db"},
+            {id:"OSHA API",            category:"regulatory-enforcement", color:"#ff6b6b"},
+            {id:"OFAC SDN List",       category:"sanctions",              color:"#d65db1"},
+            {id:"EU Sanctions Map",    category:"international",          color:"#0abde3"},
+            {id:"USASpending.gov",     category:"infrastructure",         color:"#7ed321"},
+            {id:"EPA ECHO",            category:"regulatory-enforcement", color:"#ff6b6b"},
+            {id:"ICIJ Offshore Leaks", category:"international",          color:"#0abde3"},
+            {id:"Bloomberg Philanthropies",category:"nonprofit",          color:"#3498db"},
+        ],
+        edges: [
+            {source:"US Census Bureau",     target:"FEC Campaign Finance"},
+            {source:"FDIC BankFind",        target:"SEC EDGAR"},
+            {source:"SAM.gov",             target:"USASpending.gov"},
+            {source:"SEC EDGAR",           target:"OpenCorporates"},
+            {source:"Senate Lobbying DB",  target:"FEC Campaign Finance"},
+            {source:"ProPublica Nonprofits",target:"Bloomberg Philanthropies"},
+            {source:"OSHA API",            target:"EPA ECHO"},
+            {source:"OFAC SDN List",       target:"EU Sanctions Map"},
+            {source:"ICIJ Offshore Leaks", target:"OpenCorporates"},
+            {source:"USASpending.gov",     target:"SAM.gov"},
+            // additional cross-connections
+            {source:"SEC EDGAR",           target:"ICIJ Offshore Leaks"},
+            {source:"FEC Campaign Finance",target:"Senate Lobbying DB"},
+            {source:"OFAC SDN List",       target:"ICIJ Offshore Leaks"},
+            {source:"SAM.gov",             target:"OSHA API"},
+            {source:"US Census Bureau",    target:"USASpending.gov"},
+            {source:"ProPublica Nonprofits",target:"FEC Campaign Finance"},
+            {source:"FDIC BankFind",       target:"OpenCorporates"},
+            {source:"EU Sanctions Map",    target:"OFAC SDN List"},
+        ]
+    };
+
+    const container = document.getElementById('graph-container');
+    const W = container.clientWidth;
+    const H = container.clientHeight;
+
+    // ── SVG setup ──────────────────────────────────────────────────────────
+    const svg = d3.select('#graph-container').append('svg')
+        .attr('width', W)
+        .attr('height', H);
+
+    // Viewport group — zoom/pan transform applied here, not to documentElement
+    const g = svg.append('g').attr('class', 'viewport');
+
+    // ── D3 zoom behaviour ──────────────────────────────────────────────────
+    const zoomBehavior = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+        });
+
+    svg.call(zoomBehavior)
+       .on('dblclick.zoom', null); // disable double-click zoom (confusing with node clicks)
+
+    // ── Force simulation ───────────────────────────────────────────────────
+    const simulation = d3.forceSimulation(graphData.nodes)
+        .force('link',    d3.forceLink(graphData.edges).id(d => d.id).distance(130))
+        .force('charge',  d3.forceManyBody().strength(-800))
+        .force('center',  d3.forceCenter(W / 2, H / 2))
+        .force('collide', d3.forceCollide(45));
+
+    // ── Links ──────────────────────────────────────────────────────────────
+    const link = g.append('g').selectAll('line')
+        .data(graphData.edges).enter().append('line')
+        .attr('class', 'link')
+        .attr('stroke-width', 1.5);
+
+    // ── Nodes ──────────────────────────────────────────────────────────────
+    const node = g.append('g').selectAll('.node')
+        .data(graphData.nodes).enter().append('g')
+        .attr('class', 'node')
+        .call(d3.drag()
+            .on('start', (event, d) => {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            })
+            .on('drag',  (event, d) => { d.fx = event.x; d.fy = event.y; })
+            .on('end',   (event, d) => {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }));
+
+    node.append('circle')
+        .attr('r', 20)
+        .attr('fill', d => d.color)
+        .attr('stroke', '#1a1a2e')
+        .attr('stroke-width', 3);
+
+    node.append('text')
+        .attr('class', 'node-label')
+        .attr('dy', 36)
+        .text(d => d.id.length > 18 ? d.id.slice(0, 16) + '…' : d.id);
+
+    // ── Tooltip ────────────────────────────────────────────────────────────
+    const tooltip = document.getElementById('tooltip');
+    node.on('mouseover', (event, d) => {
+        tooltip.innerHTML = `<strong>${d.id}</strong><span class="cat">${d.category.replace(/-/g,' ')}</span>`;
+        tooltip.style.opacity = 1;
+    }).on('mousemove', (event) => {
+        tooltip.style.left = (event.clientX + 14) + 'px';
+        tooltip.style.top  = (event.clientY - 8) + 'px';
+    }).on('mouseout', () => {
+        tooltip.style.opacity = 0;
+    });
+
+    // ── Tick ───────────────────────────────────────────────────────────────
+    simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    // ── postMessage zoom/pan API (responds to artifact panel controls) ─────
+    // window._hasPanZoom = true is set above — AZ_ZOOM_SCRIPT will skip.
+    let panMode = false;
+    window.addEventListener('message', function(e) {
+        const d = e.data;
+        if (!d || typeof d !== 'object') return;
+        const t = svg.transition().duration(300);
+        if (d.t === 'zi') svg.transition().duration(200).call(zoomBehavior.scaleBy, 1.25);
+        if (d.t === 'zo') svg.transition().duration(200).call(zoomBehavior.scaleBy, 0.8);
+        if (d.t === 'zr') svg.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity.translate(W/2, H/2).scale(1));
+        if (d.t === 'pon') { panMode = true;  container.style.cursor = 'grab'; }
+        if (d.t === 'poff'){ panMode = false; container.style.cursor = 'grab'; }
+    });
+
+    // Ctrl+wheel zoom (native in iframe, works via D3)
+    container.addEventListener('wheel', function(e) {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        svg.call(zoomBehavior.scaleBy, factor);
+    }, { passive: false });
+
+    // Fit to viewport after simulation settles
+    simulation.on('end', () => {
+        // Auto-fit all nodes into view
+        const padding = 60;
+        const xs = graphData.nodes.map(n => n.x);
+        const ys = graphData.nodes.map(n => n.y);
+        const x0 = Math.min(...xs) - padding, x1 = Math.max(...xs) + padding;
+        const y0 = Math.min(...ys) - padding, y1 = Math.max(...ys) + padding;
+        const scale = Math.min(W / (x1 - x0), H / (y1 - y0), 1.5);
+        const tx = (W - scale * (x0 + x1)) / 2;
+        const ty = (H - scale * (y0 + y1)) / 2;
+        svg.transition().duration(600)
+           .call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    });
+    </script>
+</body>
+</html>

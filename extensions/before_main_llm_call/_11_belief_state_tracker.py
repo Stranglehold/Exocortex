@@ -1,5 +1,5 @@
 """
-Belief State Tracker — Agent-Zero Translation Layer v3
+Belief State Tracker -- Agent-Zero Translation Layer v3
 ====================================================
 Hook: before_main_llm_call
 
@@ -7,7 +7,7 @@ Works with agent-zero's dict-based message format.
 Intercepts user messages before LLM call, classifies intent,
 resolves slots, and enriches with structured context.
 
-v3.1 — Compound Classification Layer
+v3.1 -- Compound Classification Layer
 --------------------------------------
 - Scores all domains (score-all replaces first-match-wins).
 - Emits primary + optional secondary domain.
@@ -51,6 +51,7 @@ DOMAIN_PRIORITY = {
     "analysis":           2,
     "bugfix":             3,
     "coding":             4,
+    "testing":            4,
     "planning":           5,
     "system_admin":       6,
     "config_edit":        7,
@@ -64,7 +65,7 @@ DOMAIN_PRIORITY = {
 }
 
 # Domain configs for compound classification.
-# Separate from slot_taxonomy.json — that file governs slot resolution.
+# Separate from slot_taxonomy.json -- that file governs slot resolution.
 # Each domain:
 #   signals:             regex patterns (each match scores +1)
 #   enrichment_template: full guidance text injected as primary enrichment
@@ -88,7 +89,7 @@ DOMAIN_CONFIGS: dict = {
             "cross-reference data across multiple independent sources, "
             "flag gaps and contradictions. Report confidence levels."
         ),
-        "brief_description": "Entity research methodology — verify sources, cross-reference data, flag gaps.",
+        "brief_description": "Entity research methodology -- verify sources, cross-reference data, flag gaps.",
     },
     "coding": {
         "signals": [
@@ -102,7 +103,7 @@ DOMAIN_CONFIGS: dict = {
         ],
         "enrichment_template": (
             "Code generation context: state the language and target file explicitly. "
-            "Produce complete, runnable code only — no placeholders or stubs."
+            "Produce complete, runnable code only -- no placeholders or stubs."
         ),
         "brief_description": "Tool syntax precision and parameter accuracy matter for this task.",
     },
@@ -143,10 +144,10 @@ DOMAIN_CONFIGS: dict = {
             r"\bbenchmark",
         ],
         "enrichment_template": (
-            "Analytical methodology: quantitative rigor required — cite specific "
+            "Analytical methodology: quantitative rigor required -- cite specific "
             "metrics and data, not impressions. Distinguish correlation from causation."
         ),
-        "brief_description": "Quantitative rigor required — cite specific metrics, not impressions.",
+        "brief_description": "Quantitative rigor required -- cite specific metrics, not impressions.",
     },
     "system_admin": {
         "signals": [
@@ -167,7 +168,7 @@ DOMAIN_CONFIGS: dict = {
             "System configuration context: check paths, permissions, and service "
             "status before making changes. Verify changes don't affect running services."
         ),
-        "brief_description": "System configuration context — check paths, permissions, and service status.",
+        "brief_description": "System configuration context -- check paths, permissions, and service status.",
     },
     "planning": {
         "signals": [
@@ -310,6 +311,31 @@ DOMAIN_CONFIGS: dict = {
         ],
         "enrichment_template": "",
         "brief_description": "Values, meaning-making, and philosophical exploration. Minimal context, maximum space.",
+    },
+    "testing": {
+        "signals": [
+            r"\bpytest\b",
+            r"\bunittest\b",
+            r"\btest\s+(?:the|this|a|your|my)\b",
+            r"\bwrite\s+(?:a\s+)?test\b",
+            r"\brun\s+(?:the\s+)?tests?\b",
+            r"\btest\s+case\b|\btest\s+suite\b",
+            r"\bfail(?:ing)?\s+test\b|\btest.*fail\b",
+            r"\bassert(?:Equal|In|Raises|True|False|Is(?:None)?|Not)\b",
+            r"\bpass(?:es?)?\s+(?:the\s+)?test\b",
+            r"\btest\s+(?:coverage|harness|fixture|mock)\b",
+        ],
+        "enrichment_template": (
+            "You are writing or executing tests. "
+            "Run the code -- never predict what will happen. "
+            "If a test fails, report the exact error message and traceback. "
+            "Use specific assertions (assertEqual, assertIn, assertRaises) not just assertTrue. "
+            "Verify the function or file under test exists before testing it. "
+            "Test edge cases: None inputs, empty collections, boundary values. "
+            "If you cannot execute a test (missing dependency, no runtime), say so explicitly. "
+            "Do not fabricate passing results."
+        ),
+        "brief_description": "Execute tests -- do not predict. Report failures with exact errors. Test edge cases.",
     },
     "conversation": {
         "signals": [
@@ -565,7 +591,7 @@ def _generate_enrichment(classification: "CompoundClassification") -> str:
             "brief_description",
             f"{classification.secondary_domain} context is also relevant.",
         )
-        parts.append(f"[BST] Secondary context: {classification.secondary_domain} — {brief}")
+        parts.append(f"[BST] Secondary context: {classification.secondary_domain} -- {brief}")
 
     if plan["reason_primary_skipped"]:
         parts.append(
@@ -586,7 +612,7 @@ def _load_model_profile(agent) -> dict | None:
     try:
         config           = getattr(agent, "config", None)
         chat_model_cfg   = getattr(config, "chat_model", None) if config else None
-        # chat_model is a ModelConfig object — name is at .name
+        # chat_model is a ModelConfig object -- name is at .name
         model_name       = getattr(chat_model_cfg, "name", "") if chat_model_cfg else ""
         if not model_name:
             return None
@@ -780,7 +806,7 @@ class BeliefStateTracker(Extension):
             # Generate compound enrichment text
             compound_enrichment = _generate_enrichment(compound_cls)
 
-            # Anti-pattern retrieval — higher priority than generic enrichment
+            # Anti-pattern retrieval -- higher priority than generic enrichment
             _anti_pattern_text = _retrieve_anti_patterns(self.agent, compound_cls.primary_domain)
             if _anti_pattern_text and compound_enrichment:
                 compound_enrichment = _anti_pattern_text + "\n\n" + compound_enrichment
@@ -833,19 +859,19 @@ def _retrieve_anti_patterns(agent, primary_domain: str) -> str:
     """
     Search procedural memory for anti-patterns matching the current domain.
     Returns injection text for BST enrichment, or empty string if none found.
-    Deterministic — no LLM calls. Uses tag-intersection search on index.
+    Deterministic -- no LLM calls. Uses tag-intersection search on index.
     Higher priority than generic enrichment templates.
     """
     try:
         from procedural_memory_api import ProceduralMemory
         pm = ProceduralMemory()
 
-        # Search by domain tag — finds all anti-patterns for this domain
+        # Search by domain tag -- finds all anti-patterns for this domain
         matches = pm.search_by_tags([primary_domain], type_filter="ANTI-PATTERN")
         if not matches:
             return ""
 
-        # Also check _layer_signals for the currently failing tool — narrow results
+        # Also check _layer_signals for the currently failing tool -- narrow results
         try:
             signals = agent.get_data("_layer_signals") or {}
             failing_tool = signals.get("loop_failing_tool")
@@ -856,7 +882,7 @@ def _retrieve_anti_patterns(agent, primary_domain: str) -> str:
         except Exception:
             pass
 
-        lines = ["[PROCEDURAL MEMORY — ANTI-PATTERNS]"]
+        lines = ["[PROCEDURAL MEMORY -- ANTI-PATTERNS]"]
         for entry in matches[:3]:  # cap at 3 to avoid bloating context
             check = entry.get("pre_action_check", "")
             tool = entry.get("failing_tool", "unknown")
@@ -955,7 +981,7 @@ class _BSTEngine:
         self.globs    = self.taxonomy.get("global", {})
 
     def process(self, message: str) -> dict:
-        """Main entry point — classify and resolve slots."""
+        """Main entry point -- classify and resolve slots."""
 
         # Check for underspecified follow-up
         if self._is_underspecified(message):
@@ -1013,7 +1039,7 @@ class _BSTEngine:
 
         threshold = domain.get("confidence_threshold", 0.7)
 
-        # Below threshold — ask for missing slot
+        # Below threshold -- ask for missing slot
         if belief["confidence"] < threshold and belief["missing_required"]:
             asked = belief.get("clarifications_asked", 0)
             max_q = self.globs.get("max_clarification_questions", 2)
@@ -1033,7 +1059,7 @@ class _BSTEngine:
                         "confidence":   belief["confidence"],
                     }
 
-        # Confidence sufficient — enrich
+        # Confidence sufficient -- enrich
         return {
             "action":           "enrich",
             "domain":           domain_name,
@@ -1159,7 +1185,7 @@ class _BSTEngine:
         preamble = domain.get("preamble", "")
         filled   = {k: v for k, v in belief.get("slots", {}).items() if v is not None}
 
-        lines = [f"[CONTINUING TASK — Domain: {domain_name}]"]
+        lines = [f"[CONTINUING TASK -- Domain: {domain_name}]"]
         if filled:
             lines.append("[PRIOR CONTEXT]\n" + "\n".join(f"  {k}: {v}" for k, v in filled.items()))
         if preamble:
@@ -1287,8 +1313,8 @@ class _BSTEngine:
         """Check working memory buffer for recently mentioned entities.
 
         Search order:
-        1. Promoted entities (3+ mentions, most valuable) — most recent first
-        2. Active entities — most recent first (sorted by turn descending)
+        1. Promoted entities (3+ mentions, most valuable) -- most recent first
+        2. Active entities -- most recent first (sorted by turn descending)
         """
         try:
             wm = getattr(self.agent, "_working_memory", None)

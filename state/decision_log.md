@@ -260,6 +260,18 @@
 
 ---
 
+## DEC-024: Research-Driven Design Methodology as Standard Process
+
+**Date:** 2026-03-21
+**Session:** 053+
+**Principle:** When a requirement is complex enough to span multiple domains, decompose first — establish a baseline, identify load-bearing dimensions, research each independently, synthesize into living briefs, audit current state, then consolidate into an actionable handoff spec. Do not build until the research is done.
+**Context:** Derived from the Exocortex UI redesign work (March 2026). The task "make better UI" was correctly identified as spanning four independent domains (functional safety, aesthetics, information environment design, data channel architecture). Each domain received a deep research pass, producing a 60–111KB synthesis and a living brief. The briefs were audited against every existing surface. The audit revealed one critical bug (CORS failure on srcdoc fetch), three design debt categories (no token system, wrong register, incomplete graph interaction), and one preserved-good component (artifact-panel.js architecture). All findings consolidated into a single handoff spec. The meta-pattern was recognized as a reusable methodology and documented separately. Opus reviewed the methodology and identified the missing Phase 0: "Before decomposing, measure what exists. Not audit — measure. Run the current system. Get quantitative data on the gap. The stock Agent Zero comparison was Phase 0 for the extension stack refactor, and it reframed every subsequent decision. Without that baseline, we would have been optimizing extensions that shouldn't exist in their current form." Phase 0 was added and integrated into the methodology document.
+**Alternatives rejected:** Build first, research later (produces systems right by accident, wrong in undiagnosable ways); research everything at once (shallow coverage, conflated concerns); delegate to precedent (copies patterns without understanding fit); research without baseline (optimizes the wrong things — the baseline reveals which dimensions are actually failing).
+**Revisit if:** The methodology proves too heavyweight for the project's current tempo, or a simpler process demonstrates equivalent output quality. Phase 0 should be revisited if the baseline measurement step proves insufficient to anchor decomposition decisions.
+**Instances:** UI redesign (worked example): `WEBUI_DESIGN_BRIEF.md`, `AESTHETICS_DESIGN_BRIEF.md`, `INFORMATION_ENVIRONMENTS_DESIGN_BRIEF.md`, `ARTIFACT_DATA_CHANNEL_SPEC.md` → `UI_SYSTEM_REDESIGN_SPEC_L3.md`. Methodology document: `specs/RESEARCH_DRIVEN_DESIGN_METHODOLOGY.md`. Relates to DEC-001 (deterministic scaffolding): the methodology applies the same principle — structured process beats improvisation at every layer where the output must be trustworthy and handoff-ready.
+
+---
+
 ## DEC-023: Paper Revision Scope — "The Space Between the Notes"
 
 **Date:** 2026-03-08
