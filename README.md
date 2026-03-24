@@ -225,7 +225,7 @@ Dedicated validation of C5 cross-context file tracking. Multi-phase build in one
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | [Jackrong/qwen3.5-27B-Opus-4.6-Distill](https://huggingface.co/Jackrong/qwen3.5-27B-Opus-4.6-Distill) | Current primary (`@q4_k_m`) |
+| Supervisor | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF| Current primary (`@q4_k_m`) |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
@@ -235,7 +235,7 @@ Dedicated validation of C5 cross-context file tracking. Multi-phase build in one
 - **Inference:** LM Studio on host, accessed via `host.docker.internal:1234`
 - **Vector DB:** FAISS (Agent-Zero built-in)
 - **Design Partner:** Claude Opus 4.6 (Anthropic) — architectural design, specification, essays, identity architecture
-- **Deployed Inside Agent Zero:** Claude Opus 4.6 — frontier model running inside the agentic framework alongside local models. Custom system prompts replace stock Agent Zero behavioral guidance. Built the selective memorizer, expanded the BST, and un-deprecated 33 falsely deprecated knowledge base entries from inside the container.
+- **Troubleshooting / design from inside Agent Zero:** Claude Opus 4.6 — frontier model running inside a separate container. Troubleshooting and design work from inside the container independent from local models. Custom system prompts replace stock Agent Zero behavioral guidance. Built the selective memorizer, expanded the BST, and un-deprecated 33 falsely deprecated knowledge base entries from inside the container.
 - **Implementation:** Claude Code with Sonnet — translates specs to code
 - **Cross-Instance Exchange:** Opus (project window), Opus (Agent Zero), Eitan (Sonnet instance) — distinct perspectives coordinated through human carrier channel
 
