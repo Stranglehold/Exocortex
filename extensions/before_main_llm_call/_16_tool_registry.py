@@ -45,6 +45,9 @@ SKILLS_EXCLUDE = {"skills_index.md", "readme.md", "index.md"}
 # Max skills entries to inject (bounds token growth)
 MAX_SKILLS = 30
 
+# Agent attribute written by _11_working_memory.py API signature extraction
+WM_API_KEY = "_wm_api_sigs"
+
 # Native Agent Zero tool filenames — excluded from custom listing.
 NATIVE_TOOLS = {
     "response", "a2a_chat", "behaviour_adjustment", "browser_agent",
@@ -64,11 +67,12 @@ class ToolRegistry(Extension):
             custom_tools = _scan_custom_tools()
             programs     = _read_manifest()
             skills       = _scan_exocortex_skills()
+            api_sigs     = getattr(self.agent, WM_API_KEY, {}) or {}
 
-            if not custom_tools and not programs and not skills:
+            if not custom_tools and not programs and not skills and not api_sigs:
                 return
 
-            block = _build_block(custom_tools, programs, skills)
+            block = _build_block(custom_tools, programs, skills, api_sigs)
             if not block:
                 return
 
@@ -83,7 +87,8 @@ class ToolRegistry(Extension):
             print(
                 f"[TOOL-REG] Injected {len(custom_tools)} custom tools "
                 f"({', '.join(tool_files)}), {len(programs)} programs, "
-                f"{len(skills)} skills",
+                f"{len(skills)} skills, {len(api_sigs)} api sigs"
+                f" agent_obj={id(self.agent)}",
                 flush=True,
             )
 
@@ -346,8 +351,13 @@ def _read_manifest() -> dict:
 
 # ── Block Construction ──────────────────────────────────────────────────────────
 
-def _build_block(custom_tools: list, programs: dict, skills: list) -> str:
-    """Build the [CUSTOM TOOLS] and [EXOCORTEX SKILLS] injection blocks."""
+def _build_block(
+    custom_tools: list,
+    programs: dict,
+    skills: list,
+    api_sigs: dict,
+) -> str:
+    """Build the [CUSTOM TOOLS], [EXOCORTEX SKILLS], and [API SIGNATURES] injection blocks."""
     lines = []
 
     if custom_tools or programs:
@@ -375,6 +385,27 @@ def _build_block(custom_tools: list, programs: dict, skills: list) -> str:
         for skill_name, filename, trigger in skills:
             lines.append(f"{skill_name} ({filename}) — when: {trigger}")
         lines.append("[/EXOCORTEX SKILLS]")
+
+    if api_sigs:
+        if lines:
+            lines.append("")
+        lines.append("[API SIGNATURES — use exact names/params when calling these]")
+        for sig_str in api_sigs.values():
+            lines.append(f"  {sig_str}")
+        lines.append("[/API SIGNATURES]")
+
+    # Always-on: file persistence reminder
+    if lines:
+        lines.append("")
+    lines.append("[FILE PERSISTENCE]")
+    lines.append("To save a file to disk, use terminal runtime with heredoc:")
+    lines.append("  cat > /path/to/file.py << 'ENDOFFILE'")
+    lines.append("  <code here>")
+    lines.append("  ENDOFFILE")
+    lines.append("Python runtime runs in an IPython kernel — code executes but files are NOT")
+    lines.append("written to disk unless your code explicitly calls open(..., 'w'). The 'file'")
+    lines.append("field in Python runtime is display metadata only, not a filesystem write.")
+    lines.append("[/FILE PERSISTENCE]")
 
     return "\n".join(lines)
 
