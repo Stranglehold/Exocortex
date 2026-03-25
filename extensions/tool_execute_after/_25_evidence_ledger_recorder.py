@@ -21,6 +21,7 @@ No LLM calls. Pure record-keeping.
 """
 
 import re
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -62,12 +63,20 @@ class EvidenceLedgerRecorder(Extension):
 
             key_values = list(_extract_key_values(content))
 
+            # Assign staging ID for rollback cross-reference
+            staging_id = str(uuid.uuid4())[:8]
+
             entry = {
                 "tool": tool_name,
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "summary": content[:300],
                 "kv": key_values,
+                "_staging_id": staging_id,
             }
+
+            # Tag if written during an active loop
+            if self.agent.get_data("_loop_active"):
+                entry["loop_period"] = True
 
             ledger["entries"].append(entry)
 
@@ -77,6 +86,20 @@ class EvidenceLedgerRecorder(Extension):
             ledger["key_values"] = list(existing)
 
             self.agent.set_data(LEDGER_KEY, ledger)
+
+            # Staging buffer: record this write for potential surgery rollback
+            try:
+                if self.agent.get_data("_loop_active"):
+                    staging = self.agent.get_data("_memory_staging_buffer") or []
+                    staging.append({
+                        "turn_idx": len(ledger["entries"]) - 1,
+                        "store": "evidence_ledger",
+                        "doc_id": staging_id,
+                        "written_at": entry["ts"],
+                    })
+                    self.agent.set_data("_memory_staging_buffer", staging)
+            except Exception:
+                pass
 
         except Exception:
             pass

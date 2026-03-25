@@ -21,6 +21,7 @@ Profile: /a0/usr/Exocortex/operator_profile.json (write)
 
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -383,6 +384,108 @@ def run_phase3_consolidation(session_id: str = "unknown") -> dict:
 
     update_operator_profile(aggregate, len(sessions))
     result["profile_updated"] = True
+
+    _write_sleep_report(result)
+    return result
+
+
+# ── Phase 4: Loop-Period Memory Adjudication ─────────────────────────────────
+
+_FACT_PATTERNS = [
+    re.compile(r"\b(exists?|found|not found|missing|present|absent)\b", re.IGNORECASE),
+    re.compile(r"\b(error|returns?|responded?|status)\s+\d{3}\b", re.IGNORECASE),
+    re.compile(r"\b(file|path|directory|endpoint)\b.{0,40}\b(exists?|not found|missing)\b", re.IGNORECASE),
+]
+_ATTEMPT_PATTERNS = [
+    re.compile(r"\b(tried?|attempt|retry|retried|trying)\b", re.IGNORECASE),
+    re.compile(r"\b(failed?|failing)\s+(again|repeatedly|multiple)\b", re.IGNORECASE),
+    re.compile(r"\bconsecutive\b", re.IGNORECASE),
+]
+
+
+async def run_phase4_consolidation(agent, session_id: str = "unknown") -> dict:
+    """
+    Phase 4 consolidation — loop-period memory adjudication.
+
+    Reviews all memories tagged with validity: loop_period and applies one of:
+    - Promote to validity: inferred  (contains verifiable fact assertion)
+    - Deprecate permanently          (describes agent attempt / retry pattern)
+    - Leave as loop_period           (ambiguous — suppressed at retrieval, reviewed next sleep)
+
+    Design: LOOP_RECOVERY_AND_MEMORY_SURGERY_SPEC_L3.md, File 5.
+    No LLM calls. Deterministic regex pattern matching.
+    """
+    result = {
+        "session_id": session_id,
+        "timestamp": datetime.now().isoformat(),
+        "phase": "Phase 4 - Loop-Period Memory Adjudication",
+        "loop_period_found": 0,
+        "promoted_to_inferred": 0,
+        "deprecated": 0,
+        "left_ambiguous": 0,
+        "errors": 0,
+    }
+
+    try:
+        from python.helpers.memory import Memory
+        db = await Memory.get(agent)
+        if not db or not db.db:
+            _write_sleep_report(result)
+            return result
+
+        all_docs = db.db.get_all_docs()
+        if not all_docs:
+            _write_sleep_report(result)
+            return result
+
+        changed = 0
+        for doc_id, doc in all_docs.items():
+            if not hasattr(doc, "metadata"):
+                continue
+            cls = doc.metadata.get("classification", {})
+            if cls.get("validity") != "loop_period":
+                continue
+
+            result["loop_period_found"] += 1
+            text = getattr(doc, "page_content", "")
+
+            is_attempt = any(p.search(text) for p in _ATTEMPT_PATTERNS)
+            is_fact    = any(p.search(text) for p in _FACT_PATTERNS)
+
+            if is_attempt and not is_fact:
+                cls["validity"] = "deprecated"
+                doc.metadata["classification"] = cls
+                result["deprecated"] += 1
+                changed += 1
+            elif is_fact and not is_attempt:
+                cls["validity"] = "inferred"
+                lin = doc.metadata.get("lineage", {})
+                lin["loop_period_promoted"] = True
+                doc.metadata["lineage"] = lin
+                doc.metadata["classification"] = cls
+                result["promoted_to_inferred"] += 1
+                changed += 1
+            else:
+                result["left_ambiguous"] += 1
+                # Leave as loop_period — retrieval still suppressed
+
+        if changed:
+            try:
+                db.db._save_db()
+            except Exception as e:
+                result["errors"] += 1
+                print(f"[SLEEP] Phase 4 save error: {e}", flush=True)
+
+        print(
+            f"[SLEEP] Loop-period adjudication: found={result['loop_period_found']}, "
+            f"promoted={result['promoted_to_inferred']}, deprecated={result['deprecated']}, "
+            f"ambiguous={result['left_ambiguous']}",
+            flush=True,
+        )
+
+    except Exception as e:
+        result["errors"] += 1
+        print(f"[SLEEP] Phase 4 error: {e}", flush=True)
 
     _write_sleep_report(result)
     return result

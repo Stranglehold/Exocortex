@@ -116,12 +116,13 @@ async def _idle_sleep(agent, idle_minutes: float, ctx: str) -> None:
 
 
 async def _run_phase1(agent, ctx: str) -> None:
-    """Run Phase 0 through Phase 3 consolidation."""
+    """Run Phase 0 through Phase 4 consolidation."""
     from sleep_consolidation import (
         run_phase0_consolidation,
         run_phase1_consolidation,
         run_phase2_consolidation,
         run_phase3_consolidation,
+        run_phase4_consolidation,
     )
 
     # Prefer context ID as session identifier; fall back to env var
@@ -196,6 +197,23 @@ async def _run_phase1(agent, ctx: str) -> None:
             pass
     except Exception as e:
         print(f"[SLEEP] Phase 3 error: {e}", flush=True)
+
+    # Phase 4: loop-period memory adjudication
+    try:
+        r4 = await run_phase4_consolidation(agent, session_id)
+        summary4 = (
+            f"Phase 4 — found={r4['loop_period_found']}, "
+            f"promoted={r4['promoted_to_inferred']}, "
+            f"deprecated={r4['deprecated']}, "
+            f"ambiguous={r4['left_ambiguous']}"
+        )
+        print(f"[SLEEP] {summary4}", flush=True)
+        try:
+            agent.context.log.log(type="info", content=f"[SLEEP] {summary4}")
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[SLEEP] Phase 4 error: {e}", flush=True)
 
 
 # ── Config Loader ────────────────────────────────────────────────────────────

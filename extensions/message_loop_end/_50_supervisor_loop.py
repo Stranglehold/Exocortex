@@ -890,11 +890,24 @@ def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
     if consecutive < thresholds["tier1"]:
         # Loop resolved -- clear episode state
         if old_tier != "none":
+            # False recovery tracking: record the surgery tool before clearing state
+            if old_tier in ("summarize", "reset"):
+                try:
+                    agent.set_data("_post_surgery_tool", state.get(LOOP_TOOL_KEY))
+                    agent.set_data("_post_surgery_turn", 0)
+                except Exception:
+                    pass
             state[LOOP_TIER_KEY] = "none"
             state[LOOP_TOOL_KEY] = None
             state.pop(LOOP_START_IDX_KEY, None)
             state.pop(LOOP_SURGERY_DONE_KEY, None)
             state.pop(LOOP_RESET_DONE_KEY, None)
+            # Clear loop state for downstream hooks
+            try:
+                agent.set_data("_loop_active", False)
+                agent.set_data("_loop_start_cycle", None)
+            except Exception:
+                pass
         return "none", old_tier
 
     # Direction B: check error diversity before escalating past Tier 1
@@ -937,6 +950,122 @@ def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
     return new_tier, old_tier
 
 
+def _extract_session_intent(agent) -> str:
+    """Extract the original task from the first non-system user message."""
+    try:
+        msgs = agent.history.current.messages
+        for msg in msgs:
+            if getattr(msg, "ai", True):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if content and not content.startswith("[SUPERVISOR"):
+                return content[:200].replace("\n", " ")
+    except Exception:
+        pass
+    return "task not recoverable"
+
+
+def _extract_pre_loop_progress(agent, incision_idx: int) -> str:
+    """Summarize successful tool calls before the incision point."""
+    try:
+        msgs = agent.history.current.messages
+        pre_loop = msgs[:incision_idx]
+        successes = []
+        for msg in reversed(pre_loop[-10:]):  # last 10 pre-loop messages
+            if not getattr(msg, "ai", False):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            # Include AI messages that aren't supervisor warnings
+            if content and not content.startswith("[SUPERVISOR"):
+                successes.append(content[:150].replace("\n", " "))
+                if len(successes) >= 3:
+                    break
+        if successes:
+            return "; ".join(reversed(successes))
+    except Exception:
+        pass
+    return "no progress record available"
+
+
+def _extract_current_state(agent) -> str:
+    """Extract working memory state if available, else return brief placeholder."""
+    try:
+        wm = agent.get_data("_wm_state")
+        if wm and isinstance(wm, dict):
+            parts = []
+            if wm.get("objective"):
+                parts.append(f"objective: {str(wm['objective'])[:100]}")
+            if wm.get("entities"):
+                ents = list(wm["entities"])[:3]
+                parts.append(f"entities: {', '.join(str(e) for e in ents)}")
+            if parts:
+                return "; ".join(parts)
+    except Exception:
+        pass
+    return "working memory not available"
+
+
+def _drain_staging_buffer(agent):
+    """
+    Mark all staging-buffer entries from the loop period as loop_period validity.
+    Called by Tier 2 and Tier 3 surgery. Operates on FAISS and evidence ledger.
+    WAL approximation: writes are immediate but the buffer records them for rollback.
+    """
+    staging = agent.get_data("_memory_staging_buffer") or []
+    loop_start_cycle = agent.get_data("_loop_start_cycle") or 0
+    if not staging or not loop_start_cycle:
+        return
+
+    import asyncio
+    from python.helpers.memory import Memory
+
+    affected = [e for e in staging if e.get("turn_idx", 0) >= loop_start_cycle]
+    if not affected:
+        return
+
+    async def _mark():
+        try:
+            db = await Memory.get(agent)
+            all_docs = db.db.get_all_docs() if hasattr(db, "db") else {}
+            changed = False
+            for entry in affected:
+                if entry.get("store") == "faiss":
+                    doc = all_docs.get(entry["doc_id"])
+                    if doc and hasattr(doc, "metadata"):
+                        cls = doc.metadata.get("classification", {})
+                        if cls.get("validity") not in ("deprecated",):
+                            cls["validity"] = "loop_period"
+                            doc.metadata["classification"] = cls
+                            changed = True
+                elif entry.get("store") == "evidence_ledger":
+                    ledger = agent.get_data("_evidence_ledger") or {}
+                    for e in ledger.get("entries", []):
+                        if e.get("_staging_id") == entry["doc_id"]:
+                            e["loop_period"] = True
+            if changed:
+                db.db._save_db()
+        except Exception as e:
+            print(f"[SUPERVISOR] _drain_staging_buffer inner error: {e}", flush=True)
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(_mark())
+        else:
+            loop.run_until_complete(_mark())
+    except Exception as e:
+        print(f"[SUPERVISOR] _drain_staging_buffer dispatch error: {e}", flush=True)
+
+    try:
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Staging buffer drain: {len(affected)} entries tagged loop_period",
+            flush=True,
+        )
+    except Exception:
+        pass
+
+
 def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
     """
     Tier 2: Context surgery. Remove loop messages from the current history topic,
@@ -945,44 +1074,67 @@ def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
     """
     try:
         current_topic = agent.history.current
-        loop_start_idx = state.get(
+        loop_start_raw = state.get(
             LOOP_START_IDX_KEY,
             max(0, len(current_topic.messages) - consecutive * 2)
         )
-        removed_count = max(0, len(current_topic.messages) - loop_start_idx)
+        incision_idx = max(0, loop_start_raw - 2)  # -2 lookback: drift precedes detection
+        removed_count = max(0, len(current_topic.messages) - incision_idx)
         if removed_count > 0:
-            del current_topic.messages[loop_start_idx:]
+            del current_topic.messages[incision_idx:]
 
-        summary = (
-            f"[SUPERVISOR TIER 2 - LOOP SURGERY] {consecutive} consecutive tool failures "
-            f"removed from context to break the feedback loop. "
-        )
-        if failing_tool:
-            alternatives = LOOP_ALTERNATIVES.get(failing_tool, DEFAULT_ALTERNATIVES)
-            alt_text = "; ".join(alternatives[:2])
-            summary += f"Failing tool: '{failing_tool}'. Alternatives: {alt_text}. "
-        summary += (
-            "Do NOT retry the same approach. "
-            "If no alternative is available, use the response tool to report your progress."
-        )
+        # ── Build recovery summary (omit failure description — prevents re-priming) ──
+        session_intent = _extract_session_intent(agent)
+        progress       = _extract_pre_loop_progress(agent, incision_idx)
+        current_state  = _extract_current_state(agent)
+
+        summary_lines = [
+            "[SUPERVISOR: CONTEXT SURGERY]",
+            f"Session intent: {session_intent}",
+            f"Progress before interruption: {progress}",
+            f"Current state: {current_state}",
+            "Note: A repetitive failure sequence has been removed from context. "
+            "If the current approach is blocked, use the response tool to report "
+            "the obstacle and request guidance.",
+        ]
+
+        # Add error class from EC if available (no tool name, no count)
         try:
             ec = agent.get_data("_error_diagnosis") or {}
-            if ec.get("confidence", 0) > 0.6:
-                error_class = ec.get("error_class", "")
+            if ec.get("confidence", 0) > 0.6 and ec.get("error_class"):
+                summary_lines.append(f"Error class detected: {ec['error_class']}.")
                 anti = ec.get("anti_actions", [])
-                if error_class:
-                    summary += f" Error class: {error_class}."
                 if anti:
-                    summary += f" Do NOT: {anti[0]}."
+                    summary_lines.append(f"Do NOT: {anti[0]}.")
         except Exception:
             pass
 
-        agent.hist_add_warning(summary)
+        summary = "\n".join(summary_lines)
+
+        # ── Insert at incision point (primacy position) rather than appending ─────
+        try:
+            from python.helpers.history import HistoryMessage
+            summary_msg = HistoryMessage(content=summary, ai=False)
+            current_topic.messages.insert(incision_idx, summary_msg)
+        except Exception:
+            # Fallback: append if insertion fails
+            agent.hist_add_warning(summary)
+
         agent.context.log.log(
             type="info",
-            content=f"[SUPERVISOR] Tier 2 surgery: removed {removed_count} messages, tool={failing_tool}, consecutive={consecutive}",
+            content=f"[SUPERVISOR] Tier 2 surgery: removed {removed_count} messages, incision={incision_idx}, consecutive={consecutive}",
             flush=True
         )
+
+        # ── Multi-store rollback via staging buffer ───────────────────────────────
+        try:
+            _drain_staging_buffer(agent)
+        except Exception as e:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Staging buffer drain failed (history surgery still applied): {e}",
+                flush=True,
+            )
     except Exception as e:
         agent.context.log.log(
             type="warning",
@@ -998,21 +1150,22 @@ def _execute_tier3(agent, failing_tool, consecutive: int, state: dict):
     """
     try:
         current_topic = agent.history.current
-        loop_start_idx = state.get(
+        loop_start_raw = state.get(
             LOOP_START_IDX_KEY,
             max(0, len(current_topic.messages) - consecutive * 2)
         )
-        removed_count = max(0, len(current_topic.messages) - loop_start_idx)
+        incision_idx = max(0, loop_start_raw - 2)  # -2 lookback: drift precedes detection
+        removed_count = max(0, len(current_topic.messages) - incision_idx)
         if removed_count > 0:
-            del current_topic.messages[loop_start_idx:]
+            del current_topic.messages[incision_idx:]
 
         tool_name = failing_tool or "unknown"
         msg = (
-            f"[SUPERVISOR TIER 3 - CIRCUIT BREAKER] {consecutive} consecutive failures on "
-            f"'{tool_name}'. Loop context has been cleared.\n"
+            f"[SUPERVISOR TIER 3 - CIRCUIT BREAKER] {consecutive} consecutive failures. "
+            f"Loop context has been cleared.\n"
             f"YOU MUST USE THE RESPONSE TOOL NOW. No other tool call is acceptable.\n"
             f"Your next action must be:\n"
-            f'{{"thoughts": "Task interrupted by supervisor circuit breaker after {consecutive} failures.", '
+            f'{{"thoughts": "Task interrupted by supervisor circuit breaker.", '
             f'"tool_name": "response", '
             f'"tool_args": {{"text": "Describe what was completed before the loop started and what is blocking progress."}}}}'
         )
@@ -1029,9 +1182,19 @@ def _execute_tier3(agent, failing_tool, consecutive: int, state: dict):
         agent.hist_add_warning(msg)
         agent.context.log.log(
             type="warning",
-            content=f"[SUPERVISOR] Tier 3 circuit breaker: {consecutive} failures on {tool_name}",
+            content=f"[SUPERVISOR] Tier 3 circuit breaker: {consecutive} failures, incision={incision_idx}",
             flush=True
         )
+
+        # ── Multi-store rollback via staging buffer ───────────────────────────────
+        try:
+            _drain_staging_buffer(agent)
+        except Exception as e:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Staging buffer drain failed (history surgery still applied): {e}",
+                flush=True,
+            )
     except Exception as e:
         agent.context.log.log(
             type="warning",
@@ -1045,6 +1208,8 @@ def _write_loop_signals(agent, state: dict, consecutive: int, failing_tool):
     Write loop state to _layer_signals for BST and memorizer coordination.
     BST reads loop_active to break momentum lock.
     Memorizer reads loop_active to suppress writes during active loops.
+    Also exports _loop_active / _loop_start_cycle to agent data for memory
+    classifier and evidence ledger recorder.
     """
     try:
         signals = agent.get_data("_layer_signals") or {}
@@ -1053,6 +1218,39 @@ def _write_loop_signals(agent, state: dict, consecutive: int, failing_tool):
         signals["loop_consecutive"]  = consecutive
         signals["loop_failing_tool"] = failing_tool
         agent.set_data("_layer_signals", signals)
+    except Exception:
+        pass
+
+    # Export loop state for downstream hooks (memory classifier, evidence ledger)
+    try:
+        is_active = consecutive >= WARN_THRESHOLD
+        agent.set_data("_loop_active", is_active)
+        if is_active and agent.get_data("_loop_start_cycle") is None:
+            agent.set_data("_loop_start_cycle", state.get(LOOP_START_IDX_KEY, 0))
+    except Exception:
+        pass
+
+    # False recovery: increment post-surgery turn counter and check re-failure
+    try:
+        post_tool = agent.get_data("_post_surgery_tool")
+        if post_tool:
+            turn = (agent.get_data("_post_surgery_turn") or 0) + 1
+            agent.set_data("_post_surgery_turn", turn)
+            if turn <= 3 and failing_tool == post_tool and consecutive >= 1:
+                agent.context.log.log(
+                    type="warning",
+                    content=(
+                        f"[SUPERVISOR] False recovery detected: '{post_tool}' failed again "
+                        f"within {turn} turn(s) of surgery. Escalating directly to Tier 3."
+                    ),
+                    flush=True,
+                )
+                # Force Tier 3 threshold: skip directly to reset
+                state[LOOP_TIER_KEY] = "reset"
+                state.pop(LOOP_SURGERY_DONE_KEY, None)
+            elif turn > 3:
+                agent.set_data("_post_surgery_tool", None)
+                agent.set_data("_post_surgery_turn", None)
     except Exception:
         pass
 
@@ -1203,6 +1401,32 @@ def _inject_stall(agent, ctx: dict, role: dict, state: dict):
     _emit(agent, msg, ANOMALY_STALL, state)
 
 
+def _get_last_tool_output(agent) -> str:
+    """
+    Extract the last non-response tool output from agent message history.
+    Trimmed to 600 chars so the injection stays bounded.
+    Used by _inject_loop to give the model concrete diagnostic context,
+    not just a meta-instruction. A model with new information breaks the
+    fixed point; a model with only a warning repeats itself.
+    """
+    try:
+        msgs = agent.history.current.messages
+        for msg in reversed(msgs):
+            if not getattr(msg, "ai", False):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            # Skip final response tool messages — they're user-facing summaries, not errors
+            if '"tool_name": "response"' in content or "'tool_name': 'response'" in content:
+                continue
+            trimmed = content.strip()
+            if len(trimmed) > 600:
+                trimmed = trimmed[:600] + "\n...(trimmed)"
+            return trimmed
+    except Exception:
+        pass
+    return ""
+
+
 def _inject_loop(agent, ctx: dict, state: dict):
     """Inject loop detection — names the closed strategy and the opposing approach."""
     history = ctx.get("failure_history", [])
@@ -1224,6 +1448,11 @@ def _inject_loop(agent, ctx: dict, state: dict):
             "[SUPERVISOR] You are repeating the same failing action. "
             "Stop and try a fundamentally different approach — different tool, different path, or different strategy."
         )
+
+    # Prepend last tool output so the model has concrete diagnostic content.
+    last_output = _get_last_tool_output(agent)
+    if last_output:
+        msg = f"[LAST TOOL OUTPUT]\n{last_output}\n[/LAST TOOL OUTPUT]\n\n" + msg
 
     ec = ctx.get("error_diagnosis", {})
     if ec.get("confidence", 0) > 0.6:

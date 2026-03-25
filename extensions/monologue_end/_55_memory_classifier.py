@@ -5,7 +5,7 @@ Hook: monologue_end
 Priority: _55 (primary memory storage (stock _50/_51 memorizers disabled at install))
 
 Classifies every memory on five deterministic axes:
-  - Validity:           confirmed | inferred | deprecated
+  - Validity:           confirmed | inferred | deprecated | loop_period
   - Relevance:          active | dormant
   - Utility:            load_bearing | tactical | archived
   - Source:             user_asserted | agent_inferred | external_retrieved
@@ -149,6 +149,9 @@ class MemoryClassifier(Extension):
             maint_cycle = getattr(self.agent, MAINTENANCE_COUNTER_KEY, 0)
 
             # ── Phase 1: Classify untagged memories ──────────────────────
+            # Read loop state once; passed to _classify for loop_period tagging
+            agent_is_looping = bool(self.agent.get_data("_loop_active"))
+
             newly_classified = []
             for doc_id, doc in all_docs.items():
                 if not hasattr(doc, "metadata"):
@@ -156,11 +159,27 @@ class MemoryClassifier(Extension):
                 if CLS_KEY in doc.metadata:
                     continue  # Already classified
 
-                doc.metadata[CLS_KEY] = _classify(doc, user_msg, config)
+                doc.metadata[CLS_KEY] = _classify(
+                    doc, user_msg, config, agent_is_looping
+                )
                 doc.metadata[LIN_KEY] = _new_lineage(
                     role_id, bst_domain, maint_cycle,
                 )
                 newly_classified.append((doc_id, doc))
+
+                # Staging buffer: record write for potential surgery rollback
+                try:
+                    staging = self.agent.get_data("_memory_staging_buffer") or []
+                    staging.append({
+                        "turn_idx": maint_cycle,
+                        "store": "faiss",
+                        "doc_id": doc_id,
+                        "area": doc.metadata.get("area", ""),
+                        "written_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    self.agent.set_data("_memory_staging_buffer", staging)
+                except Exception:
+                    pass
 
             # ── Phase 2: Conflict resolution ─────────────────────────────
             conflict_count = 0
@@ -251,7 +270,8 @@ def _extract_user_message(agent, loop_data) -> str:
 
 # ── Five-Axis Classification ────────────────────────────────────────────────
 
-def _classify(doc, user_msg: str, config: dict) -> dict:
+def _classify(doc, user_msg: str, config: dict,
+              agent_is_looping: bool = False) -> dict:
     """Deterministic classification on five axes."""
     text = getattr(doc, "page_content", "")
     area = doc.metadata.get("area", "")
@@ -261,6 +281,18 @@ def _classify(doc, user_msg: str, config: dict) -> dict:
     utility = _detect_utility(text, config)
     relevance = "active"
     relational_salience = _detect_relational_salience(text, config)
+
+    # ── Loop-period gate ─────────────────────────────────────────────────────
+    # Tag tactical agent-inferred memories written during a loop as loop_period.
+    # Suppressed at retrieval (prevents Einstellung re-injection) but preserved
+    # for audit and sleep-consolidation adjudication.
+    # load_bearing and relational anchors survive regardless.
+    if (agent_is_looping
+            and source not in ("user_asserted", "external_retrieved")
+            and utility != "load_bearing"
+            and relational_salience not in ("relationship_defining",
+                                            "collaboration_history")):
+        validity = "loop_period"
 
     return {
         "validity": validity,

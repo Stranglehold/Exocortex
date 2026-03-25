@@ -5,7 +5,7 @@ Hook: message_loop_prompts_after
 Priority: _55 (runs AFTER _50_recall_memories)
 
 Post-processes recalled memories by applying classification-based filters:
-  1. Validity filter: Exclude deprecated memories entirely
+  1. Validity filter: Exclude deprecated and loop_period memories
   2. Role-relevance filter: Suppress memories from non-overlapping BST
      domains (unless load_bearing)
   3. Utility ranking: load_bearing > tactical > archived, then by
@@ -206,8 +206,8 @@ def _filter_and_rank(
         cls = doc.metadata.get(CLS_KEY, {}) if hasattr(doc, "metadata") else {}
         lin = doc.metadata.get(LIN_KEY, {}) if hasattr(doc, "metadata") else {}
 
-        # ── Validity filter: exclude deprecated ──────────────────────
-        if cls.get("validity") == "deprecated":
+        # ── Validity filter: exclude deprecated and loop_period memories ──
+        if cls.get("validity") in ("deprecated", "loop_period"):
             continue
 
         # ── Role-relevance filter ────────────────────────────────────
