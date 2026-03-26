@@ -91,9 +91,7 @@ class ArtifactsList(ApiHandler):
                     "modified": datetime.utcfromtimestamp(stat.st_mtime).isoformat(),
                 })
 
-            PrintStyle(background_color="#2ECC71", font_color="white", bold=True, padding=True).print(
-                f"[ARTIFACTS] Listed {len(artifacts)} artifacts"
-            )
+
             return {"artifacts": artifacts}
 
         except Exception as e:

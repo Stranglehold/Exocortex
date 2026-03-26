@@ -134,4 +134,22 @@ else
   echo "[PATCH] WARNING: $CAT_SRC not found — skipped."
 fi
 
+# ── 5. API: artifacts_list.py (remove polling noise) ─────────────────────────
+# Removes the PrintStyle.print() success log that fires on every 30s poll
+# from every open browser tab, flooding docker logs and obscuring responses.
+
+ARTIFACTS_SRC="$PATCH_DIR/api/artifacts_list.py"
+ARTIFACTS_DST="/a0/python/api/artifacts_list.py"
+ARTIFACTS_PYCACHE="/a0/python/api/__pycache__"
+
+if [ -f "$ARTIFACTS_SRC" ]; then
+  _exec "$CONTAINER" mkdir -p /a0/python/api
+  docker cp "$ARTIFACTS_SRC" "$CONTAINER:$ARTIFACTS_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$ARTIFACTS_PYCACHE'" 2>/dev/null || true
+  _exec "$CONTAINER" bash -c "python3 -m py_compile '$ARTIFACTS_DST' && echo '[PATCH] artifacts_list.py OK'"
+  echo "[PATCH] api/artifacts_list.py deployed (polling noise removed)."
+else
+  echo "[PATCH] WARNING: $ARTIFACTS_SRC not found — skipped."
+fi
+
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
