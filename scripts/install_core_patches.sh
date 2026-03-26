@@ -122,27 +122,27 @@ else
   echo "[PATCH] WARNING: $EXT_SRC not found — skipped."
 fi
 
-# ── 3b. Extension: _22_response_finalizer.py ─────────────────────────────────
-# Clears the raw JSON content from log_item_generating (the agent activity item)
-# after the response tool fires. Without this fix, the webUI renders the
-# streaming JSON alongside the clean response bubble.
+# ── 3b. Extension: _20_clear_generating_content.py ───────────────────────────
+# Clears log_item_generating.content at response_stream_end so the webUI
+# doesn't render the raw streaming JSON for every tool call turn. The
+# structured display comes from kvps; content is redundant and noisy.
 
-FIN_SRC="$REPO_ROOT/extensions/tool_execute_after/_22_response_finalizer.py"
-FIN_DST="/a0/python/extensions/tool_execute_after/_22_response_finalizer.py"
-FIN_PROFILE_DST="/a0/usr/agents/agent0/extensions/tool_execute_after/_22_response_finalizer.py"
-FIN_PYCACHE="/a0/python/extensions/tool_execute_after/__pycache__"
-FIN_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/tool_execute_after/__pycache__"
+CLR_SRC="$REPO_ROOT/extensions/response_stream_end/_20_clear_generating_content.py"
+CLR_DST="/a0/python/extensions/response_stream_end/_20_clear_generating_content.py"
+CLR_PROFILE_DST="/a0/usr/agents/agent0/extensions/response_stream_end/_20_clear_generating_content.py"
+CLR_PYCACHE="/a0/python/extensions/response_stream_end/__pycache__"
+CLR_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/response_stream_end/__pycache__"
 
-if [ -f "$FIN_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/python/extensions/tool_execute_after
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/tool_execute_after
-  docker cp "$FIN_SRC" "$CONTAINER:$FIN_DST"
-  docker cp "$FIN_SRC" "$CONTAINER:$FIN_PROFILE_DST"
-  _exec "$CONTAINER" bash -c "rm -rf '$FIN_PYCACHE' '$FIN_PROFILE_PYCACHE'" 2>/dev/null || true
-  _exec "$CONTAINER" bash -c "python3 -m py_compile '$FIN_DST' && echo '[PATCH] _22_response_finalizer.py OK'"
-  echo "[PATCH] extensions/tool_execute_after/_22_response_finalizer.py deployed (python + profile paths)."
+if [ -f "$CLR_SRC" ]; then
+  _exec "$CONTAINER" mkdir -p /a0/python/extensions/response_stream_end
+  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/response_stream_end
+  docker cp "$CLR_SRC" "$CONTAINER:$CLR_DST"
+  docker cp "$CLR_SRC" "$CONTAINER:$CLR_PROFILE_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$CLR_PYCACHE' '$CLR_PROFILE_PYCACHE'" 2>/dev/null || true
+  _exec "$CONTAINER" bash -c "python3 -m py_compile '$CLR_DST' && echo '[PATCH] _20_clear_generating_content.py OK'"
+  echo "[PATCH] extensions/response_stream_end/_20_clear_generating_content.py deployed (python + profile paths)."
 else
-  echo "[PATCH] WARNING: $FIN_SRC not found — skipped."
+  echo "[PATCH] WARNING: $CLR_SRC not found — skipped."
 fi
 
 # ── 4. Extension: _18_memory_catalog.py ──────────────────────────────────────
