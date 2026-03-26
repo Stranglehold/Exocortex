@@ -328,10 +328,23 @@ class SupervisorLoop(Extension):
             injected = False
 
             # Tier 3 — circuit breaker (highest priority, no cooldown)
-            if new_loop_tier == "reset" and not state.get(LOOP_RESET_DONE_KEY):
+            # Repeats up to T3_MAX_FIRES times with T3_REPEAT_COOLDOWN turns between
+            # fires, so a generation-locked model receives repeated forced-response
+            # instructions rather than the supervisor going silent after the first fire.
+            T3_MAX_FIRES = 4
+            T3_REPEAT_COOLDOWN = 5  # supervisor turns (not agent iterations)
+            t3_count = state.get("_t3_count", 0)
+            t3_last = state.get("_t3_last_turn", -999)
+            t3_ready = (
+                t3_count == 0
+                or (t3_count < T3_MAX_FIRES and state["turn"] - t3_last >= T3_REPEAT_COOLDOWN)
+            )
+            if new_loop_tier == "reset" and t3_ready:
                 _execute_tier3(self.agent, failing_tool, consecutive, state)
                 state[LOOP_RESET_DONE_KEY] = True
                 state[LOOP_SURGERY_DONE_KEY] = True  # Tier 3 subsumes Tier 2
+                state["_t3_count"] = t3_count + 1
+                state["_t3_last_turn"] = state["turn"]
                 injected = True
 
             # Tier 2 — context surgery (second priority, no cooldown)
@@ -364,13 +377,27 @@ class SupervisorLoop(Extension):
 
             # 3.5. Output stagnation detection (Finding 2, Session 055).
             # Fires when successful tool calls produce identical output — the agent is
-            # working but not advancing. No failure count, no tier escalation. Different
-            # signal, different message, different intervention from loop detection.
+            # working but not advancing. First fire: soft warning. Second fire without
+            # progress: escalate to Tier 2 surgery (stagnation-specific note).
             if not injected and _cooldown_ok(state, ANOMALY_STAGNATION):
-                stagnation = _detect_output_stagnation(ctx.get("tool_output_hashes", []))
-                if stagnation.get("stagnating"):
-                    _inject_stagnation(self.agent, stagnation, state)
+                stag_result = _detect_output_stagnation(ctx.get("tool_output_hashes", []))
+                if stag_result.get("stagnating"):
+                    stag_fires = state.get("_stagnation_fires", 0) + 1
+                    state["_stagnation_fires"] = stag_fires
+                    if stag_fires >= 2 and not state.get(LOOP_SURGERY_DONE_KEY):
+                        _execute_tier2(
+                            self.agent,
+                            stag_result.get("tool", "code_execution_tool"),
+                            stag_result.get("identical_count", STAGNATION_WINDOW),
+                            state,
+                            stagnation=True,
+                        )
+                        state[LOOP_SURGERY_DONE_KEY] = True
+                    else:
+                        _inject_stagnation(self.agent, stag_result, state)
                     injected = True
+                else:
+                    state["_stagnation_fires"] = 0  # reset on recovery
 
             # 3.6. Phase 4: parallel LLM supervisor — strategic pattern detection.
             # Fires only when trigger conditions are met and Phases 1-3 have not
@@ -1066,7 +1093,7 @@ def _drain_staging_buffer(agent):
         pass
 
 
-def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
+def _execute_tier2(agent, failing_tool, consecutive: int, state: dict, stagnation: bool = False):
     """
     Tier 2: Context surgery. Remove loop messages from the current history topic,
     inject a diagnostic summary. Breaks the history feedback loop that sustains
@@ -1088,14 +1115,25 @@ def _execute_tier2(agent, failing_tool, consecutive: int, state: dict):
         progress       = _extract_pre_loop_progress(agent, incision_idx)
         current_state  = _extract_current_state(agent)
 
+        if stagnation:
+            surgery_note = (
+                "Note: The same approach has been producing identical output without "
+                "advancing the task. That history has been cleared. Consider whether "
+                "the task is already complete, or use the response tool to request "
+                "guidance on a different approach."
+            )
+        else:
+            surgery_note = (
+                "Note: A repetitive failure sequence has been removed from context. "
+                "If the current approach is blocked, use the response tool to report "
+                "the obstacle and request guidance."
+            )
         summary_lines = [
             "[SUPERVISOR: CONTEXT SURGERY]",
             f"Session intent: {session_intent}",
             f"Progress before interruption: {progress}",
             f"Current state: {current_state}",
-            "Note: A repetitive failure sequence has been removed from context. "
-            "If the current approach is blocked, use the response tool to report "
-            "the obstacle and request guidance.",
+            surgery_note,
         ]
 
         # Add error class from EC if available (no tool name, no count)

@@ -21,11 +21,19 @@ The '{' check catches early chunks before "tool_name" arrives and prevents
 a spurious "response" log item from being created alongside the structured
 "agent" log item, which broke the collapsible step display.
 
+Late-detection cleanup: when a model outputs plain text THEN a JSON tool call,
+earlier chunks create a "response" log item before "tool_name" appears. Once
+"tool_name" is detected, that partial entry is demoted to "util" so it doesn't
+show as a truncated response message in the chat.
+
 No LLM calls. Fully deterministic.
 """
 
 from python.helpers.extension import Extension
 from agent import LoopData
+
+# Marker key to track whether this extension created the current log item
+_OWN_LOG_KEY = "_plain_text_log_item"
 
 
 class PlainTextResponse(Extension):
@@ -45,6 +53,17 @@ class PlainTextResponse(Extension):
             # Check for '{' first — catches early chunks before "tool_name" arrives
             # and prevents a spurious response log item that breaks the step tabs.
             if full.lstrip().startswith("{") or "tool_name" in full:
+                # Late-detection cleanup: if we already created a response log item
+                # from earlier plain-text chunks, demote it to "util" so it doesn't
+                # show as a truncated response bubble in the chat.
+                if loop_data.params_temporary.get(_OWN_LOG_KEY):
+                    try:
+                        log_item = loop_data.params_temporary.get("log_item_response")
+                        if log_item:
+                            log_item.update(type="util", heading="icon://code Agent output (tool call)")
+                    except Exception:
+                        pass
+                    loop_data.params_temporary[_OWN_LOG_KEY] = False
                 return
 
             # Plain text response — create or update the browser log item.
@@ -55,6 +74,7 @@ class PlainTextResponse(Extension):
                         heading=f"icon://chat {self.agent.agent_name}: Responding",
                     )
                 )
+                loop_data.params_temporary[_OWN_LOG_KEY] = True
 
             log_item = loop_data.params_temporary["log_item_response"]
             log_item.update(content=full)
