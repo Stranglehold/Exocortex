@@ -14,17 +14,21 @@ for every chunk regardless of format) and creates the browser log item
 directly, mirroring what live_response does for JSON responses.
 
 Gate: only activates when the text is NOT a JSON tool call.
-Two checks: (1) if the text starts with '{' it's a forming JSON response —
-leave it to live_response. (2) if "tool_name" already appears anywhere in
-the accumulated text, it's definitely JSON — also leave it to live_response.
-The '{' check catches early chunks before "tool_name" arrives and prevents
-a spurious "response" log item from being created alongside the structured
-"agent" log item, which broke the collapsible step display.
+Three checks:
+  (1) if the text starts with '{' it's a forming JSON response — skip.
+  (2) if "tool_name" appears anywhere in the accumulated text — skip.
+  (3) if the text starts with '<think>' (reasoning model thinking block)
+      and the block hasn't closed yet — skip. Reasoning models stream
+      <think>...</think> before the JSON tool call; without this check the
+      extension treats the thinking content as plain text and creates a
+      response log item that shows raw JSON in the chat once the tool call
+      starts appending. After </think> closes, check what follows: if it
+      starts with '{', it's a JSON tool call — skip.
 
 Late-detection cleanup: when a model outputs plain text THEN a JSON tool call,
 earlier chunks create a "response" log item before "tool_name" appears. Once
 "tool_name" is detected, that partial entry is demoted to "util" so it doesn't
-show as a truncated response message in the chat.
+show as a truncated response bubble in the chat.
 
 No LLM calls. Fully deterministic.
 """
@@ -49,24 +53,34 @@ class PlainTextResponse(Extension):
             if not full or len(full) < 10:
                 return
 
-            # Gate: skip if this is a forming or complete JSON tool call.
-            # Check for '{' first — catches early chunks before "tool_name" arrives
-            # and prevents a spurious response log item that breaks the step tabs.
+            # ── Thinking-block gate ───────────────────────────────────────────
+            # Reasoning-distilled models stream <think>...</think> before the
+            # JSON tool call. stream_data["full"] is raw (pre-strip), so the
+            # accumulated text starts with <think> rather than {.
+            # While inside the thinking block, hold off entirely.
+            # After </think> closes, inspect what follows — if it's { or already
+            # contains tool_name, treat the whole response as a JSON tool call.
+            if "<think>" in full:
+                if "</think>" not in full:
+                    # Still accumulating thinking content — don't create anything yet
+                    return
+                # Thinking block closed — check what follows
+                after_think = full.split("</think>", 1)[1].lstrip()
+                if after_think.startswith("{") or "tool_name" in full:
+                    _demote_if_owned(loop_data)
+                    return
+                # After </think> and it's plain text — fall through to create log item.
+                # Rewrite full to only the visible text after the thinking block.
+                full = after_think
+
+            # ── Standard JSON gate ────────────────────────────────────────────
+            # Catches non-thinking models: bare { at stream start, or tool_name
+            # appearing before we've created a log item.
             if full.lstrip().startswith("{") or "tool_name" in full:
-                # Late-detection cleanup: if we already created a response log item
-                # from earlier plain-text chunks, demote it to "util" so it doesn't
-                # show as a truncated response bubble in the chat.
-                if loop_data.params_temporary.get(_OWN_LOG_KEY):
-                    try:
-                        log_item = loop_data.params_temporary.get("log_item_response")
-                        if log_item:
-                            log_item.update(type="util", heading="icon://code Agent output (tool call)")
-                    except Exception:
-                        pass
-                    loop_data.params_temporary[_OWN_LOG_KEY] = False
+                _demote_if_owned(loop_data)
                 return
 
-            # Plain text response — create or update the browser log item.
+            # ── Plain text response — create or update the browser log item ───
             if "log_item_response" not in loop_data.params_temporary:
                 loop_data.params_temporary["log_item_response"] = (
                     self.agent.context.log.log(
@@ -81,3 +95,15 @@ class PlainTextResponse(Extension):
 
         except Exception:
             pass
+
+
+def _demote_if_owned(loop_data: LoopData) -> None:
+    """Demote an extension-owned response log item to util (hides it from chat)."""
+    if loop_data.params_temporary.get(_OWN_LOG_KEY):
+        try:
+            log_item = loop_data.params_temporary.get("log_item_response")
+            if log_item:
+                log_item.update(type="util", heading="icon://code Agent output (tool call)")
+        except Exception:
+            pass
+        loop_data.params_temporary[_OWN_LOG_KEY] = False
