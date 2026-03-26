@@ -106,16 +106,43 @@ fi
 
 EXT_SRC="$REPO_ROOT/extensions/response_stream_chunk/_21_plain_text_response.py"
 EXT_DST="/a0/python/extensions/response_stream_chunk/_21_plain_text_response.py"
+EXT_PROFILE_DST="/a0/usr/agents/agent0/extensions/response_stream_chunk/_21_plain_text_response.py"
 EXT_PYCACHE="/a0/python/extensions/response_stream_chunk/__pycache__"
+EXT_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/response_stream_chunk/__pycache__"
 
 if [ -f "$EXT_SRC" ]; then
   _exec "$CONTAINER" mkdir -p /a0/python/extensions/response_stream_chunk
+  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/response_stream_chunk
   docker cp "$EXT_SRC" "$CONTAINER:$EXT_DST"
-  _exec "$CONTAINER" bash -c "rm -rf '$EXT_PYCACHE'" 2>/dev/null || true
+  docker cp "$EXT_SRC" "$CONTAINER:$EXT_PROFILE_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$EXT_PYCACHE' '$EXT_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "python3 -m py_compile '$EXT_DST' && echo '[PATCH] _21_plain_text_response.py OK'"
-  echo "[PATCH] extensions/response_stream_chunk/_21_plain_text_response.py deployed."
+  echo "[PATCH] extensions/response_stream_chunk/_21_plain_text_response.py deployed (python + profile paths)."
 else
   echo "[PATCH] WARNING: $EXT_SRC not found — skipped."
+fi
+
+# ── 3b. Extension: _22_response_finalizer.py ─────────────────────────────────
+# Clears the raw JSON content from log_item_generating (the agent activity item)
+# after the response tool fires. Without this fix, the webUI renders the
+# streaming JSON alongside the clean response bubble.
+
+FIN_SRC="$REPO_ROOT/extensions/tool_execute_after/_22_response_finalizer.py"
+FIN_DST="/a0/python/extensions/tool_execute_after/_22_response_finalizer.py"
+FIN_PROFILE_DST="/a0/usr/agents/agent0/extensions/tool_execute_after/_22_response_finalizer.py"
+FIN_PYCACHE="/a0/python/extensions/tool_execute_after/__pycache__"
+FIN_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/tool_execute_after/__pycache__"
+
+if [ -f "$FIN_SRC" ]; then
+  _exec "$CONTAINER" mkdir -p /a0/python/extensions/tool_execute_after
+  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/tool_execute_after
+  docker cp "$FIN_SRC" "$CONTAINER:$FIN_DST"
+  docker cp "$FIN_SRC" "$CONTAINER:$FIN_PROFILE_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$FIN_PYCACHE' '$FIN_PROFILE_PYCACHE'" 2>/dev/null || true
+  _exec "$CONTAINER" bash -c "python3 -m py_compile '$FIN_DST' && echo '[PATCH] _22_response_finalizer.py OK'"
+  echo "[PATCH] extensions/tool_execute_after/_22_response_finalizer.py deployed (python + profile paths)."
+else
+  echo "[PATCH] WARNING: $FIN_SRC not found — skipped."
 fi
 
 # ── 4. Extension: _18_memory_catalog.py ──────────────────────────────────────
