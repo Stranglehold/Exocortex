@@ -72,6 +72,8 @@ class PlainTextResponse(Extension):
                 # After </think> and it's plain text — fall through to create log item.
                 # Rewrite full to only the visible text after the thinking block.
                 full = after_think
+                if not full or len(full) < 10:
+                    return  # Nothing visible yet after think block closed
 
             # ── Standard JSON gate ────────────────────────────────────────────
             # Catches non-thinking models: bare { at stream start, or tool_name
