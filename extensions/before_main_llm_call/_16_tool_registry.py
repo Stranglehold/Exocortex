@@ -50,10 +50,18 @@ WM_API_KEY = "_wm_api_sigs"
 
 # Native Agent Zero tool filenames — excluded from custom listing.
 NATIVE_TOOLS = {
+    # Core A0 tools
     "response", "a2a_chat", "behaviour_adjustment", "browser_agent",
     "call_subordinate", "code_execution_tool", "document_query", "input",
     "memory_load", "memory_save", "memory_delete", "memory_forget",
-    "notify_user", "search_engine", "skills_tool",
+    "memory_integrate", "memory_list_gist",
+    "notify_user", "search_engine", "skills_tool", "skill_list",
+    # A0 background / scheduler / utility tools
+    "background_list", "background_start", "background_stop",
+    "provider_chat", "scheduler", "staging_note", "tool_validate",
+    "unknown", "vision_load", "wait",
+    # Our browser helper (not a standalone agent tool)
+    "captcha_solver",
 }
 
 

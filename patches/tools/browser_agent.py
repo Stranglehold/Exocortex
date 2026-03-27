@@ -143,7 +143,16 @@ class State:
                 screen={"width": 1024, "height": 2048},
                 viewport={"width": 1024, "height": 2048},
                 no_viewport=False,
-                args=["--headless=new"],
+                args=[
+                    "--headless=new",
+                    # Docker DNS fix: keep network service in-process so it
+                    # inherits the container's /etc/resolv.conf. Without these,
+                    # Chromium spawns a sandboxed network service via the zygote
+                    # that cannot reach the Docker-provided nameserver.
+                    "--disable-features=NetworkServiceInProcess2",
+                    "--no-zygote",
+                    "--disable-dev-shm-usage",
+                ],
                 # Use a unique user data directory to avoid conflicts
                 user_data_dir=self.get_user_data_dir(),
                 extra_http_headers=self.agent.config.browser_http_headers or {},

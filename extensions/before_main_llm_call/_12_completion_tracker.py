@@ -77,7 +77,7 @@ class CompletionTracker(Extension):
 
                 tool_names = ", ".join(p["tool"] for p in recent)
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=f"[COMPLETION] Injected {len(recent)} completed action(s): {tool_names}",
                 )
 

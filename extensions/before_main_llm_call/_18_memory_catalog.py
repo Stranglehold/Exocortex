@@ -83,7 +83,7 @@ class MemoryCatalog(Extension):
 
             print("[MEM-CAT] Memory catalog injected.", flush=True)
             try:
-                self.agent.context.log.log(type="info", content="[MEM-CAT] Memory catalog injected.")
+                self.agent.context.log.log(type="util", content="[MEM-CAT] Memory catalog injected.")
             except Exception:
                 pass
 

@@ -94,7 +94,7 @@ class OperatorProfile(Extension):
             )
             print(log_msg, flush=True)
             try:
-                self.agent.context.log.log(type="info", content=log_msg)
+                self.agent.context.log.log(type="util", content=log_msg)
             except Exception:
                 pass
 

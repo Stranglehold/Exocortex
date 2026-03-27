@@ -139,7 +139,7 @@ class SessionInit(Extension):
                 user_msg["content"] = block + "\n\n" + str(existing)
 
             self.agent.context.log.log(
-                type="info",
+                type="util",
                 content=(
                     f"[SESSION-INIT] Injected staging: "
                     f"{len(intentions)} intentions, "

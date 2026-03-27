@@ -184,11 +184,13 @@ LOOP_ALTERNATIVES = {
     "document_query": [
         "Use code_execution_tool to read the file directly (cat, head, less)",
         "Use search_engine with different query terms or broader scope",
+        "Delegate the research task to a subagent via call_subordinate",
         "Ask the user for the correct file path or location",
     ],
     "search_engine": [
         "Use document_query to search specific files by path",
         "Navigate directly to the file via code_execution_tool",
+        "Delegate the search to a subagent via call_subordinate with a focused query",
         "Reduce query scope or try different terminology",
     ],
     "code_execution_tool": [
@@ -196,6 +198,7 @@ LOOP_ALTERNATIVES = {
         "Break the command into smaller steps and test each",
         "Check syntax and imports in isolation before running full code",
         "Test with a minimal example to isolate the failure",
+        "Delegate the implementation to a subagent via call_subordinate",
         "Verify dependencies are installed (pip list, import check)",
         "Check permissions or environment state first",
     ],
@@ -213,6 +216,7 @@ LOOP_ALTERNATIVES = {
 DEFAULT_ALTERNATIVES = [
     "try a fundamentally different tool for this task",
     "simplify the task into smaller verifiable steps",
+    "delegate to a subagent via call_subordinate with a fresh context and clear objective",
     "report current progress and ask the user for guidance",
 ]
 

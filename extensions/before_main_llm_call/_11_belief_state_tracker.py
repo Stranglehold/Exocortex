@@ -744,7 +744,7 @@ class BeliefStateTracker(Extension):
                 f"secondary={'ON' if enrichment_plan['secondary_enrichment'] else 'OFF'}"
             )
             self.agent.context.log.log(
-                type="info",
+                type="util",
                 content=(
                     f"[BST] {final_primary['domain']} ({final_primary['confidence']} signal"
                     f"{'s' if final_primary['confidence'] != 1 else ''})"
@@ -756,7 +756,7 @@ class BeliefStateTracker(Extension):
 
             if is_autonomous and classification_text != message:
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=(
                         f"[BST] Autonomous loop: classified from agent output "
                         f"(user_msg_count={user_msg_count} unchanged)"
@@ -765,7 +765,7 @@ class BeliefStateTracker(Extension):
 
             if momentum_held:
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=(
                         f"[BST] Momentum held: {current_signature} ({current_momentum} turns) "
                         f"resisted {raw_signature} ({new_primary['confidence']} signal"
@@ -774,7 +774,7 @@ class BeliefStateTracker(Extension):
                 )
             elif momentum_broke:
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=(
                         f"[BST] Momentum break: {current_signature} ({current_momentum} turns) "
                         f"→ {final_signature} ({final_primary['confidence']} signal"
@@ -784,7 +784,7 @@ class BeliefStateTracker(Extension):
 
             if register_shifted:
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=(
                         f"[BST] Register shift: {current_signature} → {final_signature} "
                         f"(mode change, momentum override)"
@@ -796,7 +796,7 @@ class BeliefStateTracker(Extension):
                 _cm_cfg         = getattr(config, "chat_model", None) if config else None
                 model_name      = getattr(_cm_cfg, "name", "") if _cm_cfg else ""
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=(
                         f"[BST] Secondary enrichment skipped for "
                         f"{compound_cls.secondary_domain}: disabled_in_profile ({model_name})"
@@ -825,7 +825,7 @@ class BeliefStateTracker(Extension):
                     if compound_enrichment else slot_message
                 )
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=f"[BST] Slots: {result['filled_slots']}",
                 )
 
@@ -837,7 +837,7 @@ class BeliefStateTracker(Extension):
                     f"Wait for answer before proceeding."
                 )
                 self.agent.context.log.log(
-                    type="info",
+                    type="util",
                     content=f"[BST] Clarifying - Domain: {result['domain']} | Missing: {result['missing_slot']}",
                 )
 

@@ -179,4 +179,20 @@ else
   echo "[PATCH] WARNING: $ARTIFACTS_SRC not found — skipped."
 fi
 
+# ── 6. WebUI CSS: process-group.css (hide util process steps) ────────────────
+# Uncomments .process-step.message-util { display: none; } so that "util"-type
+# log items created by Exocortex extensions are hidden from the chat UI.
+# Prevents [SESSION-INIT], [BST], [COMPLETION], [PROFILE], [MEM-CAT] steps
+# from cluttering the process-group view.
+
+CSS_SRC="$PATCH_DIR/webui/components/messages/process-group/process-group.css"
+CSS_DST="/a0/webui/components/messages/process-group/process-group.css"
+
+if [ -f "$CSS_SRC" ]; then
+  docker cp "$CSS_SRC" "$CONTAINER:$CSS_DST"
+  echo "[PATCH] webui/components/messages/process-group/process-group.css deployed."
+else
+  echo "[PATCH] WARNING: $CSS_SRC not found — skipped."
+fi
+
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
