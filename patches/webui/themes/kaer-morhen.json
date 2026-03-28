@@ -35,7 +35,7 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/kaer-morhen-bg.svg",
-    "opacity": 0.09,
+    "opacity": 0.40,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",

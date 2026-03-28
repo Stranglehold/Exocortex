@@ -65,7 +65,7 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/mgs3-bg.svg",
-    "opacity": 0.12,
+    "opacity": 0.50,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",

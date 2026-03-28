@@ -35,7 +35,7 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/yorha-bg.svg",
-    "opacity": 0.10,
+    "opacity": 0.45,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",

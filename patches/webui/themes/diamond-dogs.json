@@ -35,7 +35,7 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/diamond-dogs-bg.svg",
-    "opacity": 0.13,
+    "opacity": 0.50,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",
