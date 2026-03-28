@@ -84,7 +84,9 @@ const ThemeManager = {
             this._animationId = null;
         }
 
-        // Remove background layer
+        // Remove background layers
+        const bgColor = document.getElementById('theme-background-color');
+        if (bgColor) bgColor.remove();
         const bg = document.getElementById('theme-background');
         if (bg) {
             // Remove attached resize handler if any
@@ -117,28 +119,45 @@ const ThemeManager = {
         this._clearWidgets();
     },
 
-    // Inject #theme-background div for background image
+    // Inject background layers for background image themes.
+    // Two-div approach: base color div (z:-2) + SVG image div (z:-1).
+    // html/body are made transparent via CSS so these divs are visible.
     _injectBackground(themeData) {
         const bg = themeData.background || {};
         const type = bg.type || 'none';
         if (type === 'none' || !bg.src) return;
 
+        const colors = themeData.colors || {};
+        const baseColor = colors.background || '#131313';
+
+        // Layer 1: solid background color (stays fixed, no parallax)
+        const base = document.createElement('div');
+        base.id = 'theme-background-color';
+        base.style.cssText = [
+            'position: fixed',
+            'inset: 0',
+            'z-index: -2',
+            'pointer-events: none',
+            `background-color: ${baseColor}`
+        ].join('; ') + ';';
+        document.body.prepend(base);
+
+        // Layer 2: SVG image at configured opacity (participates in parallax)
         const div = document.createElement('div');
         div.id = 'theme-background';
         div.style.cssText = [
             'position: fixed',
             'inset: 0',
-            'z-index: -10',
+            'z-index: -1',
             'pointer-events: none',
             `background-image: url(${bg.src})`,
             `background-size: ${bg.size || 'cover'}`,
             `background-position: ${bg.position || 'center'}`,
             `background-repeat: no-repeat`,
             `opacity: ${bg.opacity != null ? bg.opacity : 0.15}`,
-            `filter: blur(${bg.blur || 0}px)`,
+            bg.blur ? `filter: blur(${bg.blur}px)` : '',
             bg.blend_mode && bg.blend_mode !== 'normal' ? `mix-blend-mode: ${bg.blend_mode}` : ''
         ].filter(Boolean).join('; ') + ';';
-
         document.body.prepend(div);
     },
 
@@ -388,6 +407,14 @@ const ThemeManager = {
         const borderColor = colors.border || '#444444a8';
         css += `  --color-background-hover: color-mix(in srgb, ${borderColor} 50%, transparent);\n`;
         css += `}\n`;
+
+        // When a background image is used, html/body must be transparent so the
+        // fixed background divs (z:-2 color, z:-1 SVG) are visible behind content.
+        const hasBgImage = (themeData.background || {}).type === 'image' && (themeData.background || {}).src;
+        if (hasBgImage) {
+            css += `\n/* Background image: make html/body transparent so fixed bg divs show through */\n`;
+            css += `html, body { background-color: transparent !important; }\n`;
+        }
 
         // Panel translucency CSS override when opacity < 1 or blur > 0
         if (panelOpacity < 1.0 || backdropBlur > 0) {
