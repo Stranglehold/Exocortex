@@ -33,9 +33,9 @@
     "accent": "#8b1a1a"
   },
   "background": {
-    "type": "none",
-    "src": null,
-    "opacity": 0.10,
+    "type": "image",
+    "src": "/themes/assets/kaer-morhen-bg.svg",
+    "opacity": 0.09,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",

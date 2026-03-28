@@ -33,9 +33,9 @@
     "accent": "#6aabcc"
   },
   "background": {
-    "type": "none",
-    "src": null,
-    "opacity": 0.15,
+    "type": "image",
+    "src": "/themes/assets/big-shell-bg.svg",
+    "opacity": 0.13,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",

@@ -32,6 +32,24 @@
     "text": "#e8e4dc",
     "accent": "#52c57a"
   },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/yorha-bg.svg",
+    "opacity": 0.10,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.90,
+    "backdrop_blur": 0
+  },
+  "overlay": {
+    "scanlines": { "enabled": false, "opacity": 0.03, "spacing": 2 },
+    "noise": { "enabled": false, "opacity": 0.02 },
+    "vignette": { "enabled": true, "opacity": 0.35 }
+  },
   "cursor_trail": {
     "type": "matrix-dots",
     "color": "#52c57a",

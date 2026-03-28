@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <g fill="none" stroke="#4a7c3f">
+    <!-- Peak cluster A: dominant, upper-left -->
+    <g transform="translate(260,280) rotate(-12)">
+      <ellipse cx="0" cy="0" rx="230" ry="145" stroke-width="0.7" opacity="0.28"/>
+      <ellipse cx="0" cy="0" rx="185" ry="112" stroke-width="0.7" opacity="0.32"/>
+      <ellipse cx="2" cy="-4" rx="140" ry="82" stroke-width="0.8" opacity="0.36"/>
+      <ellipse cx="4" cy="-7" rx="98" ry="56" stroke-width="0.8" opacity="0.40"/>
+      <ellipse cx="6" cy="-10" rx="60" ry="32" stroke-width="0.9" opacity="0.44"/>
+      <ellipse cx="8" cy="-12" rx="30" ry="15" stroke-width="0.9" opacity="0.50"/>
+      <ellipse cx="9" cy="-14" rx="12" ry="6" stroke-width="1.0" opacity="0.55"/>
+    </g>
+    <!-- Peak cluster B: right mid-height -->
+    <g transform="translate(880,230) rotate(15)">
+      <ellipse cx="0" cy="0" rx="175" ry="105" stroke-width="0.7" opacity="0.24"/>
+      <ellipse cx="0" cy="0" rx="130" ry="76" stroke-width="0.7" opacity="0.28"/>
+      <ellipse cx="2" cy="-3" rx="88" ry="50" stroke-width="0.8" opacity="0.32"/>
+      <ellipse cx="4" cy="-6" rx="52" ry="28" stroke-width="0.8" opacity="0.38"/>
+      <ellipse cx="5" cy="-8" rx="24" ry="12" stroke-width="0.9" opacity="0.44"/>
+    </g>
+    <!-- Ridge C: lower center, elongated -->
+    <g transform="translate(600,595) rotate(3)">
+      <ellipse cx="0" cy="0" rx="310" ry="88" stroke-width="0.6" opacity="0.22"/>
+      <ellipse cx="0" cy="0" rx="248" ry="62" stroke-width="0.6" opacity="0.26"/>
+      <ellipse cx="0" cy="0" rx="182" ry="40" stroke-width="0.7" opacity="0.30"/>
+      <ellipse cx="0" cy="0" rx="118" ry="22" stroke-width="0.7" opacity="0.34"/>
+    </g>
+    <!-- Secondary peak: upper right -->
+    <g transform="translate(1000,440) rotate(-18)">
+      <ellipse cx="0" cy="0" rx="120" ry="78" stroke-width="0.6" opacity="0.20"/>
+      <ellipse cx="0" cy="0" rx="82" ry="52" stroke-width="0.6" opacity="0.24"/>
+      <ellipse cx="1" cy="-3" rx="46" ry="28" stroke-width="0.7" opacity="0.28"/>
+      <ellipse cx="2" cy="-5" rx="20" ry="12" stroke-width="0.7" opacity="0.32"/>
+    </g>
+    <!-- Far peak: left edge -->
+    <g transform="translate(60,180) rotate(-5)">
+      <ellipse cx="0" cy="0" rx="140" ry="90" stroke-width="0.6" opacity="0.18"/>
+      <ellipse cx="0" cy="0" rx="95" ry="58" stroke-width="0.6" opacity="0.22"/>
+      <ellipse cx="1" cy="-3" rx="52" ry="30" stroke-width="0.7" opacity="0.26"/>
+    </g>
+    <!-- River path: threading through valleys -->
+    <path d="M0,555 C160,508 310,572 475,532 S720,452 900,482 S1090,518 1200,490"
+          stroke-width="1.2" opacity="0.18"/>
+    <!-- Tributary -->
+    <path d="M255,280 C295,358 370,442 475,532"
+          stroke-width="0.6" opacity="0.13"/>
+    <!-- Contour hatching: depression indicator -->
+    <g stroke-width="0.6" opacity="0.14">
+      <line x1="836" y1="240" x2="844" y2="248"/>
+      <line x1="852" y1="240" x2="860" y2="248"/>
+      <line x1="868" y1="240" x2="876" y2="248"/>
+    </g>
+  </g>
+</svg>

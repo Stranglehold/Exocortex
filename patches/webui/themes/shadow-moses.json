@@ -41,6 +41,15 @@
     "noise": { "enabled": false },
     "vignette": { "enabled": true, "opacity": 0.3 }
   },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/shadow-moses-bg.svg",
+    "opacity": 0.11,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
   "animation": {
     "type": "snow",
     "intensity": 0.4,
