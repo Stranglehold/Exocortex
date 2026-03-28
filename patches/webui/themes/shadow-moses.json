@@ -33,8 +33,8 @@
     "accent": "#6ab4d4"
   },
   "panel": {
-    "opacity": 0.90,
-    "backdrop_blur": 0
+    "opacity": 0.88,
+    "backdrop_blur": 4
   },
   "overlay": {
     "scanlines": { "enabled": true, "opacity": 0.025, "spacing": 2 },

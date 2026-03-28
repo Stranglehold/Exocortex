@@ -42,8 +42,8 @@
     "size": "cover"
   },
   "panel": {
-    "opacity": 1.0,
-    "backdrop_blur": 0
+    "opacity": 0.88,
+    "backdrop_blur": 4
   },
   "overlay": {
     "scanlines": { "enabled": false, "opacity": 0.04, "spacing": 2 },

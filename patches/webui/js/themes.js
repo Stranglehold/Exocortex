@@ -416,14 +416,22 @@ const ThemeManager = {
             css += `html, body { background-color: transparent !important; }\n`;
         }
 
-        // Panel translucency CSS override when opacity < 1 or blur > 0
+        // Panel + chat area translucency CSS override when opacity < 1 or blur > 0.
+        // #chat-history must be included — it has its own background-color that
+        // covers the SVG background layer unless made semi-transparent too.
         if (panelOpacity < 1.0 || backdropBlur > 0) {
             const panelColor = colors.panel || '#1a1a1a';
+            const chatBgColor = colors['chat-background'] || '#212121';
             const pct = Math.round(panelOpacity * 100);
             css += `\n`;
-            css += `/* Panel translucency for atmospheric/immersive themes */\n`;
+            css += `/* Panel + chat translucency for atmospheric/immersive themes */\n`;
             css += `#left-panel, .right-panel, .panel {\n`;
             css += `  background-color: color-mix(in srgb, ${panelColor} ${pct}%, transparent) !important;\n`;
+            css += `  backdrop-filter: blur(${backdropBlur}px) !important;\n`;
+            css += `  -webkit-backdrop-filter: blur(${backdropBlur}px) !important;\n`;
+            css += `}\n`;
+            css += `#chat-history {\n`;
+            css += `  background-color: color-mix(in srgb, ${chatBgColor} ${pct}%, transparent) !important;\n`;
             css += `  backdrop-filter: blur(${backdropBlur}px) !important;\n`;
             css += `  -webkit-backdrop-filter: blur(${backdropBlur}px) !important;\n`;
             css += `}\n`;

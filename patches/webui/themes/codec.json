@@ -43,7 +43,7 @@
   },
   "panel": {
     "opacity": 0.88,
-    "backdrop_blur": 0
+    "backdrop_blur": 4
   },
   "overlay": {
     "scanlines": {
