@@ -11,6 +11,16 @@ const ThemeManager = {
     _stateTimer: null,
     _agentObserver: null,
     _widgetElements: [],
+    _parallaxHandler: null,
+    _cursorCanvas: null,
+    _cursorParticles: [],
+    _cursorRafId: null,
+    _cursorMouseHandler: null,
+    _idleTimer: null,
+    _idleEscalated: false,
+    _idleResetHandler: null,
+    _msgRevealObserver: null,
+    _msgRevealType: null,
 
     // Initialize theme system
     async init() {
@@ -96,6 +106,12 @@ const ThemeManager = {
             }
             cv.remove();
         }
+
+        // Remove phase 3 effects
+        this._clearParallax();
+        this._clearCursorTrail();
+        this._clearIdleEscalation();
+        this._clearMessageReveal();
 
         // Remove widget layer
         this._clearWidgets();
@@ -315,6 +331,10 @@ const ThemeManager = {
             this._injectOverlay(themeData);
             this._injectCanvas(themeData);
             this._injectWidgets(themeData);
+            this._setupParallax(themeData);
+            this._setupCursorTrail(themeData);
+            this._setupIdleEscalation(themeData);
+            this._setupMessageReveal(themeData);
 
             this.currentTheme = themeName;
             localStorage.setItem('agent-zero-theme', themeName);
@@ -461,6 +481,11 @@ const ThemeManager = {
             '@keyframes theme-blink { 0%,100%{opacity:0.85} 50%{opacity:0.15} }',
             '@keyframes theme-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }',
             '@keyframes theme-shake { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-2.5deg)} 75%{transform:rotate(2.5deg)} }',
+            '@keyframes theme-widget-enter { 0%{opacity:0;transform:scale(0.72)} 65%{opacity:1;transform:scale(1.05)} 82%{transform:scale(0.97)} 100%{opacity:1;transform:scale(1)} }',
+            '@keyframes theme-ca { 0%,100%{text-shadow:none} 20%{text-shadow:-2px 0 2px rgba(255,0,0,0.75),2px 0 2px rgba(0,100,255,0.75)} 45%{text-shadow:2px 0 3px rgba(255,0,0,0.5),-2px 0 3px rgba(0,200,255,0.5)} 70%{text-shadow:-1px 0 1px rgba(255,50,50,0.35),1px 0 1px rgba(50,50,255,0.35)} }',
+            '@keyframes theme-scan-left { from{clip-path:inset(0 100% 0 0)} to{clip-path:inset(0 0% 0 0)} }',
+            '@keyframes theme-scan-top  { from{clip-path:inset(100% 0 0 0)} to{clip-path:inset(0 0 0 0)} }',
+            '@keyframes theme-fade-in-msg { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }',
         ].join('\n');
         document.head.appendChild(kf);
     },
@@ -482,6 +507,9 @@ const ThemeManager = {
                 const el = this._createWidget(def, themeData);
                 if (el) {
                     container.appendChild(el);
+                    if (!this._reducedMotion) {
+                        el.style.animation = 'theme-widget-enter 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
+                    }
                     if (el._onStateChange) this._widgetElements.push(el);
                 }
             } catch(e) {
@@ -557,14 +585,17 @@ const ThemeManager = {
         let value = 1.0;
         let lastTime = Date.now();
         let active = false;
+        let escalated = false;
 
         const tick = () => {
             if (!document.getElementById('theme-widgets')) return;
             const now = Date.now();
             const dt = (now - lastTime) / 1000;
             lastTime = now;
-            if (active) value = Math.max(0, value - depleteRate * dt);
-            else value = Math.min(1.0, value + depleteRate * 1.5 * dt);
+            if (active) {
+                const mult = escalated ? 3.0 : 1.0;
+                value = Math.max(0, value - depleteRate * dt * mult);
+            } else value = Math.min(1.0, value + depleteRate * 1.5 * dt);
             fill.style.width = (value * 100) + '%';
             const c = value < lowThreshold ? lowColor : color;
             fill.style.background = c;
@@ -573,7 +604,10 @@ const ThemeManager = {
         };
         requestAnimationFrame(tick);
 
-        wrapper._onStateChange = (state) => { active = (state !== 'idle'); };
+        wrapper._onStateChange = (state) => {
+            active = (state !== 'idle');
+            escalated = (state === 'escalated');
+        };
         return wrapper;
     },
 
@@ -699,10 +733,14 @@ const ThemeManager = {
             transition: opacity 0.08s;`;
         el.textContent = '!';
         el._onStateChange = (state) => {
-            if (state === 'active') {
+            if (state === 'active' || state === 'escalated') {
                 el.style.opacity = '1';
+                el.style.animation = 'theme-ca 0.35s ease-out';
                 clearTimeout(el._timer);
-                el._timer = setTimeout(() => { el.style.opacity = '0'; }, 700);
+                el._timer = setTimeout(() => {
+                    el.style.opacity = '0';
+                    el.style.animation = 'none';
+                }, 700);
             }
         };
         return el;
@@ -839,6 +877,244 @@ const ThemeManager = {
             overlay.style.opacity = '0';
             setTimeout(() => overlay.remove(), 500);
         }, duration);
+    },
+
+    // ─── Phase 3: Parallax, Cursor Trails, Idle Escalation, Message Reveal ──
+
+    _setupParallax(themeData) {
+        const cfg = themeData.parallax;
+        if (!cfg || !cfg.enabled || this._reducedMotion) return;
+        const strength = cfg.strength != null ? cfg.strength : 1.0;
+        const layers = [
+            { id: 'theme-background', coeff: 0.025 * strength },
+            { id: 'theme-overlay',    coeff: 0.012 * strength },
+            { id: 'theme-canvas',     coeff: 0.006 * strength },
+            { id: 'theme-widgets',    coeff: 0.003 * strength },
+        ];
+        let targetX = 0, targetY = 0, curX = 0, curY = 0;
+        const mousemoveHandler = (e) => {
+            targetX = e.clientX - window.innerWidth  / 2;
+            targetY = e.clientY - window.innerHeight / 2;
+        };
+        document.addEventListener('mousemove', mousemoveHandler, { passive: true });
+        this._parallaxHandler = mousemoveHandler;
+        const tick = () => {
+            if (!this._parallaxHandler) return;
+            curX += (targetX - curX) * 0.08;
+            curY += (targetY - curY) * 0.08;
+            for (const { id, coeff } of layers) {
+                const el = document.getElementById(id);
+                if (el) el.style.transform = `translate(${(curX * coeff).toFixed(2)}px,${(curY * coeff).toFixed(2)}px)`;
+            }
+            requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    },
+
+    _clearParallax() {
+        if (this._parallaxHandler) {
+            document.removeEventListener('mousemove', this._parallaxHandler);
+            this._parallaxHandler = null;
+        }
+        for (const id of ['theme-background','theme-overlay','theme-canvas','theme-widgets']) {
+            const el = document.getElementById(id);
+            if (el) el.style.transform = '';
+        }
+    },
+
+    _setupCursorTrail(themeData) {
+        const cfg = themeData.cursor_trail;
+        if (!cfg || this._reducedMotion) return;
+        const type = cfg.type || 'dots';
+        const color = cfg.color || '#ffffff';
+        const intensity = cfg.intensity != null ? cfg.intensity : 0.6;
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'theme-cursor-trail';
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.cssText = 'position:fixed;inset:0;z-index:99997;pointer-events:none;width:100%;height:100%;';
+        document.body.appendChild(canvas);
+        this._cursorCanvas = canvas;
+        this._cursorParticles = [];
+        const ctx = canvas.getContext('2d');
+
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }, { passive: true });
+
+        const spawnParticles = (mx, my) => {
+            const count = Math.ceil(3 * intensity);
+            for (let i = 0; i < count; i++) {
+                const p = { x: mx, y: my, life: 1.0, radius: 1.5 + Math.random() * 1.5 };
+                if (type === 'snow') {
+                    p.vx = (Math.random() - 0.5) * 1.2;
+                    p.vy = 0.6 + Math.random() * 1.5;
+                    p.decay = 0.025 + Math.random() * 0.02;
+                } else if (type === 'sparks') {
+                    const a = Math.random() * Math.PI * 2;
+                    const s = 1.5 + Math.random() * 3;
+                    p.vx = Math.cos(a) * s; p.vy = Math.sin(a) * s;
+                    p.radius = 1 + Math.random() * 1.5;
+                    p.decay = 0.05 + Math.random() * 0.04;
+                } else if (type === 'dust') {
+                    p.vx = (Math.random() - 0.5) * 0.9;
+                    p.vy = -(0.4 + Math.random() * 1.2);
+                    p.radius = 1 + Math.random() * 2.5;
+                    p.decay = 0.018 + Math.random() * 0.015;
+                } else { // dots / matrix-dots
+                    p.vx = (Math.random() - 0.5) * 0.4;
+                    p.vy = (Math.random() - 0.5) * 0.4;
+                    p.decay = 0.022 + Math.random() * 0.015;
+                }
+                this._cursorParticles.push(p);
+            }
+        };
+
+        const mouseHandler = (e) => spawnParticles(e.clientX, e.clientY);
+        document.addEventListener('mousemove', mouseHandler, { passive: true });
+        this._cursorMouseHandler = mouseHandler;
+
+        const draw = () => {
+            if (!this._cursorRafId) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = this._cursorParticles.length - 1; i >= 0; i--) {
+                const p = this._cursorParticles[i];
+                p.life -= p.decay; p.x += p.vx; p.y += p.vy;
+                if (p.life <= 0) { this._cursorParticles.splice(i, 1); continue; }
+                ctx.globalAlpha = p.life * 0.75;
+                ctx.fillStyle = color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            this._cursorRafId = requestAnimationFrame(draw);
+        };
+        this._cursorRafId = requestAnimationFrame(draw);
+    },
+
+    _clearCursorTrail() {
+        if (this._cursorRafId) { cancelAnimationFrame(this._cursorRafId); this._cursorRafId = null; }
+        if (this._cursorMouseHandler) {
+            document.removeEventListener('mousemove', this._cursorMouseHandler);
+            this._cursorMouseHandler = null;
+        }
+        if (this._cursorCanvas) { this._cursorCanvas.remove(); this._cursorCanvas = null; }
+        this._cursorParticles = [];
+    },
+
+    _setupIdleEscalation(themeData) {
+        const cfg = themeData.idle_escalation;
+        if (!cfg || !cfg.enabled) return;
+        const thresholdMs = (cfg.threshold_minutes || 5) * 60 * 1000;
+        const color = cfg.color || '#ff8800';
+
+        const badge = document.createElement('div');
+        badge.id = 'theme-idle-badge';
+        badge.style.cssText = `position:fixed;${this._positionStyle(cfg.position || 'bottom-left')}
+            z-index:10001;font-family:monospace;font-size:11px;font-weight:bold;
+            letter-spacing:1.5px;padding:4px 10px;border-radius:3px;
+            border:1px solid ${color}88;color:${color};background:${color}18;
+            opacity:0;transition:opacity 0.4s;pointer-events:none;
+            animation:theme-blink 1.3s step-end infinite;`;
+        badge.textContent = cfg.message || 'IDLE';
+        document.body.appendChild(badge);
+
+        const arm = () => {
+            this._idleTimer = setTimeout(() => {
+                this._idleEscalated = true;
+                badge.style.opacity = '1';
+                this.notifyState('escalated');
+            }, thresholdMs);
+        };
+
+        const reset = () => {
+            if (this._idleEscalated) {
+                this._idleEscalated = false;
+                badge.style.opacity = '0';
+                this.notifyState('idle');
+            }
+            clearTimeout(this._idleTimer);
+            arm();
+        };
+
+        this._idleResetHandler = reset;
+        document.addEventListener('mousemove', reset, { passive: true });
+        document.addEventListener('keydown',   reset, { passive: true });
+        arm();
+    },
+
+    _clearIdleEscalation() {
+        clearTimeout(this._idleTimer); this._idleTimer = null;
+        if (this._idleResetHandler) {
+            document.removeEventListener('mousemove', this._idleResetHandler);
+            document.removeEventListener('keydown',   this._idleResetHandler);
+            this._idleResetHandler = null;
+        }
+        this._idleEscalated = false;
+        const badge = document.getElementById('theme-idle-badge');
+        if (badge) badge.remove();
+    },
+
+    _setupMessageReveal(themeData) {
+        const cfg = themeData.message_reveal;
+        if (!cfg) return;
+        const type = cfg.type || 'fade';
+        const speed = cfg.speed != null ? cfg.speed : 1.0;
+        this._msgRevealType = type;
+
+        const applyReveal = (el) => {
+            if (type === 'typewriter') {
+                // Only typewriter if message contains plain <p> elements (no complex HTML)
+                const paras = Array.from(el.querySelectorAll('p')).filter(p => !p.closest('pre') && !p.closest('code'));
+                if (!paras.length) {
+                    // Fallback to fade for complex content
+                    el.style.animation = `theme-fade-in-msg ${(0.5/speed).toFixed(2)}s ease-out both`;
+                    return;
+                }
+                let delay = 0;
+                const charMs = Math.max(8, Math.round(22 / speed));
+                for (const p of paras) {
+                    const text = p.textContent;
+                    if (!text.trim()) continue;
+                    p.textContent = '';
+                    for (let i = 0; i < Math.min(text.length, 400); i++) {
+                        setTimeout((ch) => { p.textContent += ch; }, delay, text[i]);
+                        delay += charMs;
+                    }
+                    if (text.length > 400) {
+                        setTimeout(() => { p.textContent = text; }, delay);
+                    }
+                }
+            } else if (type === 'scan') {
+                el.style.clipPath = 'inset(0 100% 0 0)';
+                el.style.animation = `theme-scan-left ${(0.55/speed).toFixed(2)}s ease-out both`;
+            } else {
+                el.style.opacity = '0';
+                el.style.animation = `theme-fade-in-msg ${(0.45/speed).toFixed(2)}s ease-out both`;
+            }
+        };
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== 1 || node.dataset?.themeRevealed) continue;
+                    const cls = node.className || '';
+                    const inner = (node.innerHTML || '');
+                    if (inner.length < 80) continue;
+                    if (cls.includes('agent') || cls.includes('assistant') || cls.includes('ai-') ||
+                        node.querySelector?.('[class*="agent-message"]') ||
+                        node.querySelector?.('[class*="ai-message"]')) {
+                        node.dataset.themeRevealed = 'true';
+                        try { applyReveal(node); } catch(e) {}
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        this._msgRevealObserver = observer;
+    },
+
+    _clearMessageReveal() {
+        if (this._msgRevealObserver) { this._msgRevealObserver.disconnect(); this._msgRevealObserver = null; }
+        this._msgRevealType = null;
     },
 
     // ────────────────────────────────────────────────────────────────────────

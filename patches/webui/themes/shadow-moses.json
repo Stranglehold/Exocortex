@@ -46,6 +46,22 @@
     "intensity": 0.4,
     "color": "#c8d8e8"
   },
+  "parallax": {
+    "enabled": true,
+    "strength": 1.0
+  },
+  "cursor_trail": {
+    "type": "snow",
+    "color": "#c8d8e8",
+    "intensity": 0.5
+  },
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 5,
+    "message": "CODEC SIGNAL LOST",
+    "position": "bottom-left",
+    "color": "#6ab4d4"
+  },
   "widgets": [
     {
       "type": "cctv-badge",

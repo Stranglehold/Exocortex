@@ -48,10 +48,22 @@
       "type": "status-badge",
       "position": "top-right",
       "states": {
-        "idle":     { "text": "CAUTION",  "color": "#e8a020", "blink": false },
-        "thinking": { "text": "ALERT !",  "color": "#cc3322", "blink": true  },
-        "active":   { "text": "EVASION",  "color": "#e8a020", "blink": false }
+        "idle":      { "text": "CAUTION",      "color": "#e8a020", "blink": false },
+        "thinking":  { "text": "ALERT !",      "color": "#cc3322", "blink": true  },
+        "active":    { "text": "EVASION",      "color": "#e8a020", "blink": false },
+        "escalated": { "text": "COMPROMISED",  "color": "#cc2200", "blink": true  }
       }
     }
-  ]
+  ],
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 5,
+    "message": "ALERT: STALEMATE",
+    "position": "bottom-left",
+    "color": "#cc3322"
+  },
+  "message_reveal": {
+    "type": "fade",
+    "speed": 1.0
+  }
 }

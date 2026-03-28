@@ -72,6 +72,15 @@
     "intensity": 0.5,
     "color": null
   },
+  "cursor_trail": {
+    "type": "sparks",
+    "color": "#c9922e",
+    "intensity": 0.45
+  },
+  "message_reveal": {
+    "type": "scan",
+    "speed": 0.9
+  },
   "widgets": [
     {
       "type": "corner-label",

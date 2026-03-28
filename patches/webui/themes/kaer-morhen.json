@@ -73,10 +73,23 @@
       "type": "status-badge",
       "position": "bottom-right",
       "states": {
-        "idle":     { "text": "MEDALLION: STILL",     "color": "#7a6848", "blink": false },
-        "thinking": { "text": "MEDALLION: VIBRATING", "color": "#c8a840", "blink": true  },
-        "active":   { "text": "MONSTER NEARBY",       "color": "#8b1a1a", "blink": true  }
+        "idle":      { "text": "MEDALLION: STILL",     "color": "#7a6848", "blink": false },
+        "thinking":  { "text": "MEDALLION: VIBRATING", "color": "#c8a840", "blink": true  },
+        "active":    { "text": "MONSTER NEARBY",       "color": "#8b1a1a", "blink": true  },
+        "escalated": { "text": "WRAITH WALKING",       "color": "#8b1a1a", "blink": true  }
       }
     }
-  ]
+  ],
+  "cursor_trail": {
+    "type": "dust",
+    "color": "#8b4040",
+    "intensity": 0.45
+  },
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 6,
+    "message": "THE KEEP IS SILENT",
+    "position": "bottom-left",
+    "color": "#8b1a1a"
+  }
 }
