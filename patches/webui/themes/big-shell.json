@@ -1,0 +1,65 @@
+{
+  "name": "Big Shell",
+  "author": "Exocortex",
+  "description": "MGS2 Sons of Liberty. The rain never stops. Blue-gray with falling water.",
+  "version": "1.0.0",
+  "tier": "immersive",
+  "colors": {
+    "background": "#0a0e14",
+    "text": "#c4ccd8",
+    "text-muted": "#7a8898c7",
+    "primary": "#5a7890",
+    "secondary": "#1a2430",
+    "accent": "#6aabcc",
+    "message-bg": "#0e1420",
+    "highlight": "#2a5878",
+    "message-text": "#c0ccd8",
+    "panel": "#0d1520",
+    "border": "#2a4460a8",
+    "input": "#0a0e14",
+    "input-focus": "#0e1420",
+    "chat-background": "#080c12",
+    "error-text": "#cc4444",
+    "warning-text": "#ccaa44",
+    "table-row": "#101820"
+  },
+  "fonts": {
+    "main": "'Helvetica Neue', Arial, sans-serif",
+    "code": "'Courier New', monospace"
+  },
+  "preview": {
+    "background": "#0a0e14",
+    "text": "#c4ccd8",
+    "accent": "#6aabcc"
+  },
+  "background": {
+    "type": "none",
+    "src": null,
+    "opacity": 0.15,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.85,
+    "backdrop_blur": 6
+  },
+  "overlay": {
+    "scanlines": { "enabled": false, "opacity": 0.04, "spacing": 2 },
+    "noise": { "enabled": false, "opacity": 0.02 },
+    "vignette": { "enabled": true, "opacity": 0.2 },
+    "watermark": {
+      "enabled": false,
+      "src": null,
+      "opacity": 0.05,
+      "position": "center",
+      "size": "40%"
+    }
+  },
+  "animation": {
+    "type": "rain",
+    "intensity": 0.5,
+    "color": "#8aafc0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "YoRHa",
+  "author": "Exocortex",
+  "description": "NieR: Automata system terminal. Typography as complete aesthetic. NO ERROR.",
+  "version": "1.0.0",
+  "tier": "palette",
+  "colors": {
+    "background": "#080808",
+    "text": "#e8e4dc",
+    "text-muted": "#b0aca4c7",
+    "primary": "#9a9690",
+    "secondary": "#4a4640",
+    "accent": "#52c57a",
+    "message-bg": "#111111",
+    "highlight": "#2a7a48",
+    "message-text": "#e0dcd4",
+    "panel": "#0d0d0d",
+    "border": "#2a2825a8",
+    "input": "#080808",
+    "input-focus": "#0f0f0f",
+    "chat-background": "#080808",
+    "error-text": "#cc3333",
+    "warning-text": "#c9922e",
+    "table-row": "#131312"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#080808",
+    "text": "#e8e4dc",
+    "accent": "#52c57a"
+  }
+}

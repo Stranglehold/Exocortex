@@ -1,0 +1,34 @@
+{
+  "name": "Metal Gear Solid 3",
+  "author": "Agent Zero",
+  "description": "Survival-themed tactical interface inspired by Metal Gear Solid 3: Snake Eater. Jungle camouflage aesthetics with military-grade utilitarian design.",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#1a1f16",
+    "text": "#e8e4d9",
+    "text-muted": "#b8b4a8c7",
+    "primary": "#5a6f4a",
+    "secondary": "#3d4a35",
+    "accent": "#c97d2e",
+    "message-bg": "#252b20",
+    "highlight": "#8b4513",
+    "message-text": "#f5f1e8",
+    "panel": "#1f261c",
+    "border": "#4a5740a8",
+    "input": "#1a1f16",
+    "input-focus": "#252b20",
+    "chat-background": "#20261d",
+    "error-text": "#cc3333",
+    "warning-text": "#ff9933",
+    "table-row": "#2a3024"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#1a1f16",
+    "text": "#e8e4d9",
+    "accent": "#c97d2e"
+  }
+}

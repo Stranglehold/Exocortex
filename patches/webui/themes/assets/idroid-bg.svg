@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <!-- iDroid background: topographic/holographic map pattern -->
+  <!-- Navy deep background -->
+  <rect width="800" height="600" fill="#020a14"/>
+
+  <!-- Horizontal scan lines across full width -->
+  <line x1="0" y1="60"  x2="800" y2="60"  stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="120" x2="800" y2="120" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="180" x2="800" y2="180" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="240" x2="800" y2="240" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="300" x2="800" y2="300" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="360" x2="800" y2="360" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="420" x2="800" y2="420" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="480" x2="800" y2="480" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+  <line x1="0" y1="540" x2="800" y2="540" stroke="#00a0a0" stroke-width="0.5" opacity="0.08"/>
+
+  <!-- Concentric ellipses centered at 400,300 — terrain contour rings -->
+  <ellipse cx="400" cy="300" rx="40"  ry="30"  fill="none" stroke="#00c8c8" stroke-width="0.8" opacity="0.40"/>
+  <ellipse cx="400" cy="300" rx="80"  ry="60"  fill="none" stroke="#00c8c8" stroke-width="0.8" opacity="0.36"/>
+  <ellipse cx="400" cy="300" rx="120" ry="90"  fill="none" stroke="#00c8c8" stroke-width="0.7" opacity="0.33"/>
+  <ellipse cx="400" cy="300" rx="160" ry="120" fill="none" stroke="#00c8c8" stroke-width="0.7" opacity="0.29"/>
+  <ellipse cx="400" cy="300" rx="200" ry="150" fill="none" stroke="#00c8c8" stroke-width="0.6" opacity="0.26"/>
+  <ellipse cx="400" cy="300" rx="240" ry="180" fill="none" stroke="#00c8c8" stroke-width="0.6" opacity="0.23"/>
+  <ellipse cx="400" cy="300" rx="280" ry="210" fill="none" stroke="#00c8c8" stroke-width="0.5" opacity="0.20"/>
+  <ellipse cx="400" cy="300" rx="320" ry="240" fill="none" stroke="#00c8c8" stroke-width="0.5" opacity="0.18"/>
+  <ellipse cx="400" cy="300" rx="360" ry="270" fill="none" stroke="#00c8c8" stroke-width="0.5" opacity="0.15"/>
+  <ellipse cx="400" cy="300" rx="400" ry="300" fill="none" stroke="#00c8c8" stroke-width="0.4" opacity="0.12"/>
+
+  <!-- Off-center secondary ring cluster — upper right, suggesting multi-feature terrain -->
+  <ellipse cx="580" cy="160" rx="40"  ry="30"  fill="none" stroke="#00b0b0" stroke-width="0.6" opacity="0.18"/>
+  <ellipse cx="580" cy="160" rx="75"  ry="55"  fill="none" stroke="#00b0b0" stroke-width="0.5" opacity="0.13"/>
+  <ellipse cx="580" cy="160" rx="110" ry="80"  fill="none" stroke="#00b0b0" stroke-width="0.4" opacity="0.10"/>
+
+  <!-- Off-center secondary ring cluster — lower left -->
+  <ellipse cx="180" cy="460" rx="35"  ry="28"  fill="none" stroke="#00b0b0" stroke-width="0.6" opacity="0.16"/>
+  <ellipse cx="180" cy="460" rx="65"  ry="50"  fill="none" stroke="#00b0b0" stroke-width="0.5" opacity="0.11"/>
+  <ellipse cx="180" cy="460" rx="95"  ry="72"  fill="none" stroke="#00b0b0" stroke-width="0.4" opacity="0.08"/>
+
+  <!-- Crosshair at center: 400,300 -->
+  <line x1="390" y1="300" x2="410" y2="300" stroke="#00e5e5" stroke-width="1.0" opacity="0.5"/>
+  <line x1="400" y1="290" x2="400" y2="310" stroke="#00e5e5" stroke-width="1.0" opacity="0.5"/>
+  <!-- Crosshair tick marks (short outer ticks) -->
+  <line x1="384" y1="300" x2="388" y2="300" stroke="#00e5e5" stroke-width="0.7" opacity="0.35"/>
+  <line x1="412" y1="300" x2="416" y2="300" stroke="#00e5e5" stroke-width="0.7" opacity="0.35"/>
+  <line x1="400" y1="284" x2="400" y2="288" stroke="#00e5e5" stroke-width="0.7" opacity="0.35"/>
+  <line x1="400" y1="312" x2="400" y2="316" stroke="#00e5e5" stroke-width="0.7" opacity="0.35"/>
+</svg>

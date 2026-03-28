@@ -1,0 +1,188 @@
+<html>
+<head>
+  <script type="module">
+    import { store as themeStore } from "/components/sidebar/themes/theme-store.js";
+  </script>
+</head>
+<body>
+  <div class="themes-list-root">
+    <template x-if="$store.theme">
+      <div x-data class="themes-list-inner">
+        <h3 class="section-header section-header-collapsible"
+            data-bs-toggle="collapse"
+            @click="$store.sidebar.toggleSection('themes')"
+            x-effect="!$store.sidebar.isSectionOpen('themes') ? $el.classList.add('collapsed') : $el.classList.remove('collapsed')">
+          Themes
+          <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M8 4l8 8-8 8" />
+          </svg>
+        </h3>
+        <div class="collapse" id="themes-collapse"
+             x-effect="(() => { const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false }); $store.sidebar.isSectionOpen('themes') ? c.show() : c.hide(); })()">
+          <div class="themes-list-body">
+            <div class="themes-list-container" x-data>
+              <ul class="config-list themes-config-list">
+                <template x-for="theme in $store.theme.themes" :key="theme.name">
+                  <li>
+                    <div class="theme-container" :class="{'theme-selected': theme._key === $store.theme.current}">
+                      <div class="chat-list-button" @click="$store.theme.switchTheme(theme._key)">
+                        <div class="theme-container-vertical">
+                          <div class="theme-title-line">
+                            <span class="theme-preview-ball" :style="{ backgroundColor: theme.preview?.background || '#333' }"></span>
+                            <span class="theme-name"
+                              x-text="theme.name"
+                              :data-theme-name="theme.name"></span>
+                          </div>
+                          <div class="theme-info-line">
+                            <span class="theme-description" x-text="(theme.description || '').substring(0, 50) + (theme.description?.length > 50 ? '...' : '')"></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="empty-list-message" x-show="$store.theme.themes.length === 0">
+                <p><i>Loading themes...</i></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <style>
+    .themes-list-root,
+    .themes-list-inner {
+      display: contents;
+    }
+
+    .themes-list-body {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .themes-list-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: visible;
+      position: relative;
+    }
+
+    .themes-config-list {
+      max-height: 28vh;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      overscroll-behavior: contain;
+      /* Firefox scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+    }
+
+    .theme-title-line {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+
+    .theme-preview-ball {
+      width: 0.7em;
+      height: 0.7em;
+      border-radius: 50%;
+      display: inline-block;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      border: 1px solid var(--color-border);
+    }
+
+    .theme-name { 
+      display: block; 
+      width: 100%; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      white-space: nowrap; 
+      padding: 3px 0; 
+      cursor: pointer; 
+      border-radius: 4px; 
+      transition: background-color 0.2s; 
+      font-size: var(--font-size-small); 
+      margin-bottom: 2px;
+    }
+
+    .theme-info-line { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      width: 100%; 
+      margin-top: 2px;
+    }
+
+    .theme-description {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .theme-container {
+      width: 100%;
+      display: flex;
+      align-items: stretch;
+      position: relative;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .theme-container:hover {
+      background-color: var(--color-background-hover);
+    }
+
+    .theme-container-vertical { 
+      display: flex; 
+      flex-direction: column; 
+      width: 100%; 
+      gap: 6px; 
+    }
+
+    .theme-selected {
+      background-color: var(--color-background-hover);
+    }
+
+    .theme-selected .theme-name {
+      font-weight: bold;
+    }
+
+
+    .themes-config-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .themes-config-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .themes-config-list::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: 2px;
+    }
+    .themes-config-list::-webkit-scrollbar-thumb:hover {
+      background: var(--color-primary);
+    }
+    .empty-list-message { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      height: 100px; 
+      color: var(--color-secondary); 
+      text-align: center; 
+      opacity: 0.7; 
+      font-style: italic; 
+    }
+  </style>
+</body>
+</html>

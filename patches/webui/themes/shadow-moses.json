@@ -1,0 +1,49 @@
+{
+  "name": "Shadow Moses",
+  "author": "Exocortex",
+  "description": "MGS1 Shadow Moses nuclear warhead storage facility. Cold industrial steel, fluorescent blue-white, falling snow. Isolated. Classified.",
+  "version": "1.0.0",
+  "tier": "immersive",
+  "colors": {
+    "background": "#0a0c0e",
+    "text": "#c8d0d8",
+    "text-muted": "#7a8490c7",
+    "primary": "#8a9aa8",
+    "secondary": "#1e262e",
+    "accent": "#6ab4d4",
+    "message-bg": "#0e1216",
+    "highlight": "#2a5878",
+    "message-text": "#c0c8d0",
+    "panel": "#0c1014",
+    "border": "#2a3840a8",
+    "input": "#0a0c0e",
+    "input-focus": "#0e1216",
+    "chat-background": "#080a0c",
+    "error-text": "#cc3333",
+    "warning-text": "#cc9922",
+    "table-row": "#101418"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#0a0c0e",
+    "text": "#c8d0d8",
+    "accent": "#6ab4d4"
+  },
+  "panel": {
+    "opacity": 0.90,
+    "backdrop_blur": 0
+  },
+  "overlay": {
+    "scanlines": { "enabled": true, "opacity": 0.025, "spacing": 2 },
+    "noise": { "enabled": false },
+    "vignette": { "enabled": true, "opacity": 0.3 }
+  },
+  "animation": {
+    "type": "snow",
+    "intensity": 0.4,
+    "color": "#c8d8e8"
+  }
+}

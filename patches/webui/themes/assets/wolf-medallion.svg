@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Wolf School medallion: circular ring with stylized wolf head -->
+
+  <!-- Outer medallion ring -->
+  <circle cx="50" cy="50" r="46" stroke="#ffffff" stroke-width="3" fill="none"/>
+  <circle cx="50" cy="50" r="40" stroke="#ffffff" stroke-width="1" fill="none"/>
+
+  <!-- Decorative notches on ring -->
+  <rect x="48" y="2" width="4" height="7" rx="1" fill="#ffffff"/>
+  <rect x="48" y="91" width="4" height="7" rx="1" fill="#ffffff"/>
+  <rect x="2" y="48" width="7" height="4" rx="1" fill="#ffffff"/>
+  <rect x="91" y="48" width="7" height="4" rx="1" fill="#ffffff"/>
+
+  <!-- Wolf head silhouette -->
+  <!-- Skull top / cranium -->
+  <path d="M35 55 Q33 42 50 36 Q67 42 65 55 Z" fill="#ffffff"/>
+
+  <!-- Snout / muzzle -->
+  <path d="M40 55 L38 64 Q42 70 50 68 Q58 70 62 64 L60 55 Z" fill="#ffffff"/>
+
+  <!-- Pointed ears -->
+  <path d="M35 55 L30 35 L42 47 Z" fill="#ffffff"/>
+  <path d="M65 55 L70 35 L58 47 Z" fill="#ffffff"/>
+
+  <!-- Inner ear detail -->
+  <path d="M34 52 L31 39 L40 48 Z" fill="#000000"/>
+  <path d="M66 52 L69 39 L60 48 Z" fill="#000000"/>
+
+  <!-- Eye sockets -->
+  <ellipse cx="42" cy="49" rx="4.5" ry="4" fill="#000000"/>
+  <ellipse cx="58" cy="49" rx="4.5" ry="4" fill="#000000"/>
+
+  <!-- Eye glints (highlight) -->
+  <circle cx="43" cy="48" r="1.2" fill="#ffffff"/>
+  <circle cx="59" cy="48" r="1.2" fill="#ffffff"/>
+
+  <!-- Nose bridge -->
+  <path d="M46 55 L50 53 L54 55 L53 58 L50 59 L47 58 Z" fill="#000000"/>
+
+  <!-- Jaw / lower teeth -->
+  <path d="M41 64 Q44 72 50 73 Q56 72 59 64 Z" fill="#ffffff"/>
+  <rect x="44" y="65" width="3" height="4" rx="1" fill="#000000"/>
+  <rect x="48.5" y="65" width="3" height="4" rx="1" fill="#000000"/>
+  <rect x="53" y="65" width="3" height="4" rx="1" fill="#000000"/>
+
+  <!-- Neck / ruff -->
+  <path d="M38 64 Q34 74 38 80 L50 77 L62 80 Q66 74 62 64 Q58 70 50 68 Q42 70 38 64 Z" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,75 @@
+{
+  "name": "iDroid",
+  "author": "Exocortex",
+  "description": "MGS V field intelligence terminal. Holographic teal on deep navy. The world bleeds through.",
+  "version": "1.0.0",
+  "tier": "atmospheric",
+  "colors": {
+    "background": "#02080f",
+    "text": "#b8e8e8",
+    "text-muted": "#6aaaaacc",
+    "primary": "#00b4b4",
+    "secondary": "#0a2030",
+    "accent": "#00e5e5",
+    "message-bg": "#04101a",
+    "highlight": "#006a6a",
+    "message-text": "#c8ecec",
+    "panel": "#03121e",
+    "border": "#00808070",
+    "input": "#02080f",
+    "input-focus": "#04101a",
+    "chat-background": "#020a12",
+    "error-text": "#ff4444",
+    "warning-text": "#ffaa00",
+    "table-row": "#04121e"
+  },
+  "fonts": {
+    "main": "'Helvetica Neue', Arial, sans-serif",
+    "code": "'Courier New', monospace"
+  },
+  "preview": {
+    "background": "#02080f",
+    "text": "#b8e8e8",
+    "accent": "#00e5e5"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/idroid-bg.svg",
+    "opacity": 0.25,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.82,
+    "backdrop_blur": 12
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": true,
+      "opacity": 0.03,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.3
+    },
+    "watermark": {
+      "enabled": false,
+      "src": null,
+      "opacity": 0.05,
+      "position": "center",
+      "size": "40%"
+    }
+  },
+  "animation": {
+    "type": "none",
+    "intensity": 0.5,
+    "color": null
+  }
+}

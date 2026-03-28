@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Diamond Dogs emblem: stylized dog skull silhouette -->
+  <!-- Outer ring -->
+  <circle cx="50" cy="50" r="46" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+  <circle cx="50" cy="50" r="42" stroke="#ffffff" stroke-width="0.8" fill="none"/>
+
+  <!-- Skull dome -->
+  <path d="M32 52 Q30 36 50 32 Q70 36 68 52 Z" fill="#ffffff"/>
+
+  <!-- Cheekbones / jaw structure -->
+  <path d="M32 52 L30 62 Q34 68 40 66 L42 58 L50 60 L58 58 L60 66 Q66 68 70 62 L68 52 Z" fill="#ffffff"/>
+
+  <!-- Nasal bridge / snout -->
+  <path d="M42 52 Q44 56 50 57 Q56 56 58 52 L56 50 L50 53 L44 50 Z" fill="#ffffff"/>
+
+  <!-- Eye sockets (negative space — cut into skull) -->
+  <ellipse cx="40" cy="46" rx="5" ry="4.5" fill="#000000"/>
+  <ellipse cx="60" cy="46" rx="5" ry="4.5" fill="#000000"/>
+
+  <!-- Nose cavity -->
+  <path d="M47 51 L50 49 L53 51 L52 54 L50 55 L48 54 Z" fill="#000000"/>
+
+  <!-- Teeth row -->
+  <rect x="40" y="62" width="4" height="5" rx="1" fill="#ffffff"/>
+  <rect x="46" y="63" width="3" height="4" rx="1" fill="#ffffff"/>
+  <rect x="51" y="63" width="3" height="4" rx="1" fill="#ffffff"/>
+  <rect x="56" y="62" width="4" height="5" rx="1" fill="#ffffff"/>
+
+  <!-- Ear shapes -->
+  <path d="M32 52 L26 38 L36 44 Z" fill="#ffffff"/>
+  <path d="M68 52 L74 38 L64 44 Z" fill="#ffffff"/>
+
+  <!-- Diamond Dogs text arc suggestion (dots) -->
+  <circle cx="50" cy="20" r="1.2" fill="#ffffff"/>
+  <circle cx="58" cy="21" r="1.2" fill="#ffffff"/>
+  <circle cx="65" cy="25" r="1.2" fill="#ffffff"/>
+  <circle cx="70" cy="31" r="1.2" fill="#ffffff"/>
+  <circle cx="42" cy="21" r="1.2" fill="#ffffff"/>
+  <circle cx="35" cy="25" r="1.2" fill="#ffffff"/>
+  <circle cx="30" cy="31" r="1.2" fill="#ffffff"/>
+</svg>
