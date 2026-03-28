@@ -71,5 +71,21 @@
     "type": "none",
     "intensity": 0.5,
     "color": null
-  }
+  },
+  "widgets": [
+    {
+      "type": "ping-radar",
+      "position": "bottom-right",
+      "color": "#00d4cc",
+      "interval": 16000,
+      "size": 56
+    },
+    {
+      "type": "compass",
+      "position": "top-right",
+      "color": "#00d4cc",
+      "size": 44,
+      "rotation_speed": 1.5
+    }
+  ]
 }

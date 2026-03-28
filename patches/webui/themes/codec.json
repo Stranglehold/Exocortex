@@ -71,5 +71,21 @@
     "type": "none",
     "intensity": 0.5,
     "color": null
-  }
+  },
+  "widgets": [
+    {
+      "type": "corner-label",
+      "position": "bottom-right",
+      "text": "FREQ: 140.85",
+      "cycle": ["FREQ: 140.85", "FREQ: 141.52", "FREQ: 149.53", "FREQ: 140.96", "FREQ: 141.80"],
+      "cycle_trigger": "agent-response",
+      "color": "#a08860",
+      "font_size": "11px"
+    },
+    {
+      "type": "exclamation",
+      "color": "#e8a030",
+      "trigger": "agent-message"
+    }
+  ]
 }

@@ -7,6 +7,10 @@ const ThemeManager = {
     _animationId: null,
     _animationInstance: null,
     _reducedMotion: false,
+    _widgetState: 'idle',
+    _stateTimer: null,
+    _agentObserver: null,
+    _widgetElements: [],
 
     // Initialize theme system
     async init() {
@@ -92,6 +96,9 @@ const ThemeManager = {
             }
             cv.remove();
         }
+
+        // Remove widget layer
+        this._clearWidgets();
     },
 
     // Inject #theme-background div for background image
@@ -307,6 +314,7 @@ const ThemeManager = {
             this._injectBackground(themeData);
             this._injectOverlay(themeData);
             this._injectCanvas(themeData);
+            this._injectWidgets(themeData);
 
             this.currentTheme = themeName;
             localStorage.setItem('agent-zero-theme', themeName);
@@ -376,6 +384,464 @@ const ThemeManager = {
 
         return css;
     },
+
+    // ─── Widget System ──────────────────────────────────────────────────────
+
+    _clearWidgets() {
+        const container = document.getElementById('theme-widgets');
+        if (container) container.remove();
+        this._widgetElements = [];
+        if (this._agentObserver) {
+            this._agentObserver.disconnect();
+            this._agentObserver = null;
+        }
+        if (this._stateTimer) {
+            clearTimeout(this._stateTimer);
+            this._stateTimer = null;
+        }
+    },
+
+    notifyState(state) {
+        this._widgetState = state;
+        for (const widget of this._widgetElements) {
+            if (widget._onStateChange) {
+                try { widget._onStateChange(state); } catch(e) {}
+            }
+        }
+    },
+
+    _setupAgentObserver() {
+        // MutationObserver: detect new AI message blocks
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== 1) continue;
+                    const cls = (node.className || '') + (node.getAttribute?.('data-role') || '');
+                    const hasContent = node.children?.length > 0 && (node.innerHTML?.length || 0) > 80;
+                    if (hasContent && (cls.includes('agent') || cls.includes('assistant') ||
+                        node.querySelector?.('[class*="agent-message"]') ||
+                        node.querySelector?.('[class*="ai-message"]'))) {
+                        this.notifyState('active');
+                        clearTimeout(this._stateTimer);
+                        this._stateTimer = setTimeout(() => this.notifyState('idle'), 3000);
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        this._agentObserver = observer;
+
+        // Input → thinking state
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && e.target.tagName === 'TEXTAREA') {
+                this.notifyState('thinking');
+            }
+        }, true);
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#send-message-button, [data-send], button[type="submit"]')) {
+                this.notifyState('thinking');
+            }
+        }, true);
+    },
+
+    _positionStyle(position) {
+        return {
+            'top-left':     'top: 14px; left: 14px;',
+            'top-right':    'top: 14px; right: 14px;',
+            'bottom-left':  'bottom: 14px; left: 14px;',
+            'bottom-right': 'bottom: 14px; right: 14px;',
+        }[position] || 'bottom: 14px; right: 14px;';
+    },
+
+    _ensureKeyframes() {
+        if (document.getElementById('theme-widget-keyframes')) return;
+        const kf = document.createElement('style');
+        kf.id = 'theme-widget-keyframes';
+        kf.textContent = [
+            '@keyframes theme-blink { 0%,100%{opacity:0.85} 50%{opacity:0.15} }',
+            '@keyframes theme-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }',
+            '@keyframes theme-shake { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-2.5deg)} 75%{transform:rotate(2.5deg)} }',
+        ].join('\n');
+        document.head.appendChild(kf);
+    },
+
+    _injectWidgets(themeData) {
+        const widgets = themeData.widgets;
+        if (!widgets || !widgets.length) return;
+        this._ensureKeyframes();
+
+        const container = document.createElement('div');
+        container.id = 'theme-widgets';
+        container.style.cssText = 'position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: hidden;';
+
+        const bootDef = widgets.find(w => w.type === 'boot-sequence');
+
+        for (const def of widgets) {
+            if (def.type === 'boot-sequence') continue;
+            try {
+                const el = this._createWidget(def, themeData);
+                if (el) {
+                    container.appendChild(el);
+                    if (el._onStateChange) this._widgetElements.push(el);
+                }
+            } catch(e) {
+                console.warn('[ThemeManager] Widget error:', def.type, e);
+            }
+        }
+
+        document.body.appendChild(container);
+        this._setupAgentObserver();
+
+        if (bootDef) this._runBootSequence(bootDef);
+    },
+
+    _createWidget(def, themeData) {
+        const map = {
+            'status-badge':  () => this._widgetStatusBadge(def),
+            'gauge':         () => this._widgetGauge(def),
+            'corner-label':  () => this._widgetCornerLabel(def),
+            'ping-radar':    () => this._widgetPingRadar(def),
+            'cassette':      () => this._widgetCassette(def),
+            'moon-phase':    () => this._widgetMoonPhase(def),
+            'exclamation':   () => this._widgetExclamation(def),
+            'compass':       () => this._widgetCompass(def),
+            'water-gauge':   () => this._widgetWaterGauge(def),
+            'cctv-badge':    () => this._widgetCCTV(def),
+            'pod-badge':     () => this._widgetPodBadge(def),
+        };
+        return map[def.type] ? map[def.type]() : null;
+    },
+
+    _widgetStatusBadge(def) {
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${this._positionStyle(def.position)}
+            font-family: monospace; font-size: 11px; font-weight: bold;
+            padding: 4px 10px; border-radius: 3px; letter-spacing: 1.5px;
+            border: 1px solid currentColor; transition: color 0.3s, background-color 0.3s;`;
+        const states = def.states || {};
+        const update = (state) => {
+            const s = states[state] || states['idle'] || { text: state.toUpperCase(), color: '#888' };
+            el.textContent = s.text;
+            el.style.color = s.color;
+            el.style.backgroundColor = s.color + '18';
+            el.style.borderColor = s.color + '88';
+            el.style.animation = s.blink ? 'theme-blink 0.9s step-end infinite' : 'none';
+        };
+        update('idle');
+        el._onStateChange = update;
+        return el;
+    },
+
+    _widgetGauge(def) {
+        const color = def.color || '#4a7c3f';
+        const lowColor = def.low_color || '#c0392b';
+        const lowThreshold = def.low_threshold || 0.2;
+        const depleteRate = (def.deplete_rate || 0.6) / 60;
+
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `position: absolute; ${this._positionStyle(def.position)} font-family: monospace; font-size: 10px; letter-spacing: 1px;`;
+
+        const label = document.createElement('div');
+        label.textContent = def.label || 'GAUGE';
+        label.style.cssText = `color: ${color}; margin-bottom: 3px;`;
+
+        const track = document.createElement('div');
+        track.style.cssText = `width: ${def.width || 110}px; height: 5px; background: rgba(255,255,255,0.08); border: 1px solid ${color}44; border-radius: 2px; overflow: hidden;`;
+
+        const fill = document.createElement('div');
+        fill.style.cssText = `height: 100%; width: 100%; background: ${color}; border-radius: 2px; transition: width 0.5s linear, background 0.5s;`;
+        track.appendChild(fill);
+        wrapper.appendChild(label);
+        wrapper.appendChild(track);
+
+        let value = 1.0;
+        let lastTime = Date.now();
+        let active = false;
+
+        const tick = () => {
+            if (!document.getElementById('theme-widgets')) return;
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if (active) value = Math.max(0, value - depleteRate * dt);
+            else value = Math.min(1.0, value + depleteRate * 1.5 * dt);
+            fill.style.width = (value * 100) + '%';
+            const c = value < lowThreshold ? lowColor : color;
+            fill.style.background = c;
+            label.style.color = c;
+            requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+
+        wrapper._onStateChange = (state) => { active = (state !== 'idle'); };
+        return wrapper;
+    },
+
+    _widgetCornerLabel(def) {
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${this._positionStyle(def.position)}
+            font-family: monospace; font-size: ${def.font_size || '10px'};
+            color: ${def.color || '#888'}; letter-spacing: 1px; opacity: 0.75;`;
+        const texts = def.cycle || [def.text || ''];
+        let idx = 0;
+        el.textContent = texts[0];
+        if (def.cycle_trigger === 'agent-response') {
+            el._onStateChange = (state) => {
+                if (state === 'active') { idx = (idx + 1) % texts.length; el.textContent = texts[idx]; }
+            };
+        } else if (def.cycle_interval) {
+            setInterval(() => { idx = (idx + 1) % texts.length; el.textContent = texts[idx]; }, def.cycle_interval * 1000);
+        }
+        return el;
+    },
+
+    _widgetPingRadar(def) {
+        const size = def.size || 56;
+        const color = def.color || '#00ccaa';
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.style.cssText = `position: absolute; ${this._positionStyle(def.position)} opacity: 0.55;`;
+        const ctx = canvas.getContext('2d');
+        const cx = size / 2, cy = size / 2, maxR = size / 2 - 2;
+        const rings = [];
+
+        const addRing = () => rings.push({ r: 3, alpha: 0.9 });
+        addRing();
+        setInterval(addRing, def.interval || 18000);
+
+        const draw = () => {
+            if (!document.getElementById('theme-widgets')) return;
+            ctx.clearRect(0, 0, size, size);
+            ctx.strokeStyle = color; ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.35;
+            ctx.beginPath(); ctx.arc(cx, cy, maxR * 0.5, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7); ctx.stroke();
+            ctx.fillStyle = color; ctx.globalAlpha = 0.6;
+            ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+            for (let i = rings.length - 1; i >= 0; i--) {
+                const p = rings[i];
+                p.r += 0.6; p.alpha = (1 - p.r / maxR) * 0.85;
+                if (p.alpha <= 0) { rings.splice(i, 1); continue; }
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath(); ctx.arc(cx, cy, p.r, 0, Math.PI * 2); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(draw);
+        };
+        draw();
+        return canvas;
+    },
+
+    _widgetCassette(def) {
+        const color = def.color || '#c8a96e';
+        const size = def.size || 52;
+        const h = Math.round(size * 0.65);
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = h;
+        canvas.style.cssText = `position: absolute; ${this._positionStyle(def.position)} opacity: 0.7;`;
+        const ctx = canvas.getContext('2d');
+        let angle = 0; let spinning = false;
+
+        const draw = () => {
+            if (!document.getElementById('theme-widgets')) return;
+            ctx.clearRect(0, 0, size, h);
+            ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.85;
+            // Body
+            ctx.strokeRect(2, 2, size - 4, h - 4);
+            // Reels
+            const r = h * 0.27;
+            for (const rx of [size * 0.3, size * 0.7]) {
+                const ry = h * 0.5;
+                ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(rx, ry, r * 0.28, 0, Math.PI * 2); ctx.stroke();
+                for (let i = 0; i < 3; i++) {
+                    const a = angle + (i * Math.PI * 2) / 3;
+                    ctx.beginPath();
+                    ctx.moveTo(rx + Math.cos(a) * r * 0.28, ry + Math.sin(a) * r * 0.28);
+                    ctx.lineTo(rx + Math.cos(a) * r * 0.83, ry + Math.sin(a) * r * 0.83);
+                    ctx.stroke();
+                }
+            }
+            // Tape window arc
+            ctx.beginPath(); ctx.arc(size * 0.5, h * 1.12, h * 0.72, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+            if (spinning) angle += 0.05;
+            requestAnimationFrame(draw);
+        };
+        draw();
+        canvas._onStateChange = (state) => { spinning = (state === 'thinking'); };
+        return canvas;
+    },
+
+    _widgetMoonPhase(def) {
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${this._positionStyle(def.position)}
+            font-size: ${def.font_size || '20px'}; color: ${def.color || '#c8b88a'};
+            opacity: 0.65; font-family: serif; line-height: 1; cursor: default;`;
+        const known = new Date(2000, 0, 6);
+        const diff = (Date.now() - known) / 86400000;
+        const cycle = 29.530588853;
+        const phase = ((diff % cycle) + cycle) % cycle;
+        const glyphs = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+        el.textContent = glyphs[Math.floor(phase / (cycle / 8))];
+        el.title = `Moon phase — day ${Math.round(phase)} of ${Math.round(cycle)}`;
+        return el;
+    },
+
+    _widgetExclamation(def) {
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -180px);
+            font-family: 'Arial Black', Arial, sans-serif; font-size: 48px; font-weight: 900;
+            color: ${def.color || '#ffcc00'}; opacity: 0; pointer-events: none;
+            text-shadow: 0 0 12px ${def.color || '#ffcc00'}, 2px 2px 0 #000;
+            transition: opacity 0.08s;`;
+        el.textContent = '!';
+        el._onStateChange = (state) => {
+            if (state === 'active') {
+                el.style.opacity = '1';
+                clearTimeout(el._timer);
+                el._timer = setTimeout(() => { el.style.opacity = '0'; }, 700);
+            }
+        };
+        return el;
+    },
+
+    _widgetCompass(def) {
+        const size = def.size || 44;
+        const color = def.color || '#4a9eff';
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.style.cssText = `position: absolute; ${this._positionStyle(def.position)} opacity: 0.5;`;
+        const ctx = canvas.getContext('2d');
+        const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+        const speed = (def.rotation_speed || 1.5) * Math.PI / 180 / 60;
+        let angle = 0;
+
+        const draw = () => {
+            if (!document.getElementById('theme-widgets')) return;
+            ctx.clearRect(0, 0, size, size);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+            ctx.strokeStyle = color; ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+            ctx.font = `bold ${Math.round(size * 0.18)}px monospace`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = color;
+            for (const [lbl, a] of [['N',0],['E',Math.PI/2],['S',Math.PI],['W',-Math.PI/2]]) {
+                ctx.save(); ctx.rotate(a); ctx.globalAlpha = lbl === 'N' ? 0.9 : 0.4;
+                ctx.fillText(lbl, 0, -(r * 0.62)); ctx.restore();
+            }
+            ctx.globalAlpha = 1;
+            ctx.beginPath(); ctx.moveTo(0,-(r*0.5)); ctx.lineTo(3,0); ctx.lineTo(0,r*0.28); ctx.lineTo(-3,0); ctx.closePath();
+            ctx.fillStyle = color; ctx.fill();
+            ctx.restore();
+            angle += speed;
+            requestAnimationFrame(draw);
+        };
+        draw();
+        return canvas;
+    },
+
+    _widgetWaterGauge(def) {
+        const color = def.color || 'rgba(0,120,200,0.5)';
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${def.position === 'right' ? 'top: 20%; right: 0;' : 'top: 20%; left: 0;'}
+            width: 4px; height: 60%; background: rgba(255,255,255,0.06);
+            border-${def.position === 'right' ? 'left' : 'right'}: 1px solid ${color};`;
+        const fill = document.createElement('div');
+        fill.style.cssText = `position: absolute; bottom: 0; left: 0; right: 0; background: ${color}; height: 0%; transition: height 5s linear;`;
+        el.appendChild(fill);
+        const duration = (def.fill_duration || 3600) * 1000;
+        const start = performance.now();
+        const update = () => {
+            if (!document.getElementById('theme-widgets')) return;
+            const pct = Math.min(100, ((performance.now() - start) / duration) * 100);
+            fill.style.height = pct + '%';
+            if (pct < 100) setTimeout(update, 10000);
+        };
+        setTimeout(update, 100);
+        return el;
+    },
+
+    _widgetCCTV(def) {
+        const color = def.color || '#ff4444';
+        const cameras = def.cameras || ['CAM 01','CAM 02','CAM 03','CAM 04'];
+        let camIdx = 0;
+
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${this._positionStyle(def.position)} font-family: monospace; font-size: 10px; letter-spacing: 1px; opacity: 0.8;`;
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; align-items: center; gap: 6px;';
+
+        const dot = document.createElement('span');
+        dot.style.cssText = `width: 6px; height: 6px; background: ${color}; border-radius: 50%; display: inline-block; flex-shrink: 0; animation: theme-blink 1.4s step-end infinite;`;
+
+        const text = document.createElement('span');
+        text.style.color = color;
+        text.textContent = `${cameras[0]} MONITORING`;
+
+        row.appendChild(dot); row.appendChild(text);
+        el.appendChild(row);
+
+        setInterval(() => {
+            camIdx = (camIdx + 1) % cameras.length;
+            if (this._widgetState === 'idle') text.textContent = `${cameras[camIdx]} MONITORING`;
+        }, (def.switch_interval || 8) * 1000);
+
+        el._onStateChange = (state) => {
+            if (state === 'thinking') { text.textContent = 'ALERT — SCANNING'; text.style.color = '#ff8800'; dot.style.background = '#ff8800'; }
+            else if (state === 'active') { text.textContent = 'SIGNAL DETECTED'; text.style.color = '#ffcc00'; dot.style.background = '#ffcc00'; }
+            else { text.textContent = `${cameras[camIdx]} MONITORING`; text.style.color = color; dot.style.background = color; }
+        };
+        return el;
+    },
+
+    _widgetPodBadge(def) {
+        const baseColor = def.color || '#dddddd';
+        const el = document.createElement('div');
+        el.style.cssText = `position: absolute; ${this._positionStyle(def.position)}
+            font-family: monospace; font-size: 10px; letter-spacing: 1.5px;
+            color: ${baseColor}; border: 1px solid ${baseColor}33; padding: 4px 10px; border-radius: 2px;`;
+        const pod = def.pod || 'POD 042';
+        const states = {
+            idle:     { text: `${pod}: STANDBY`,            color: baseColor },
+            thinking: { text: `${pod}: ANALYZING`,          color: '#88ccff' },
+            active:   { text: `${pod}: DIRECTIVE COMPLETE`, color: '#88ffaa' },
+        };
+        const update = (state) => {
+            const s = states[state] || states.idle;
+            el.textContent = s.text; el.style.color = s.color; el.style.borderColor = s.color + '33';
+        };
+        update('idle');
+        el._onStateChange = update;
+        return el;
+    },
+
+    _runBootSequence(def) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `position: fixed; inset: 0; z-index: 99999;
+            background: ${def.background || 'rgba(0,0,0,0.97)'};
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-family: monospace; font-size: 14px; letter-spacing: 2px;
+            color: ${def.color || '#ffffff'}; gap: 10px; transition: opacity 0.5s;`;
+        const lines = def.lines || [];
+        const lineEls = lines.map(text => {
+            const div = document.createElement('div');
+            div.textContent = text; div.style.opacity = '0'; div.style.transition = 'opacity 0.35s';
+            overlay.appendChild(div); return div;
+        });
+        document.body.appendChild(overlay);
+        const duration = def.duration || 2600;
+        const delay = duration / (lines.length + 2);
+        lineEls.forEach((el, i) => setTimeout(() => { el.style.opacity = '1'; }, i * delay + 200));
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 500);
+        }, duration);
+    },
+
+    // ────────────────────────────────────────────────────────────────────────
 
     getCurrentTheme() {
         return this.currentTheme;

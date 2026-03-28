@@ -31,5 +31,26 @@
     "background": "#080808",
     "text": "#e8e4dc",
     "accent": "#52c57a"
-  }
+  },
+  "widgets": [
+    {
+      "type": "boot-sequence",
+      "lines": [
+        "YoRHa No.2 Type B",
+        "— — — — — — — — — — —",
+        "Connecting to Bunker Server...",
+        "▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%",
+        "TACTICAL UNIT DEPLOYED"
+      ],
+      "duration": 2800,
+      "color": "#e8e4dc",
+      "background": "rgba(0,0,0,0.97)"
+    },
+    {
+      "type": "pod-badge",
+      "position": "bottom-right",
+      "pod": "POD 042",
+      "color": "#c8c4bc"
+    }
+  ]
 }

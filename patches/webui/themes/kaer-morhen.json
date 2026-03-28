@@ -61,5 +61,22 @@
     "type": "none",
     "intensity": 0.5,
     "color": null
-  }
+  },
+  "widgets": [
+    {
+      "type": "moon-phase",
+      "position": "top-right",
+      "color": "#c8b88a",
+      "font_size": "22px"
+    },
+    {
+      "type": "status-badge",
+      "position": "bottom-right",
+      "states": {
+        "idle":     { "text": "MEDALLION: STILL",     "color": "#7a6848", "blink": false },
+        "thinking": { "text": "MEDALLION: VIBRATING", "color": "#c8a840", "blink": true  },
+        "active":   { "text": "MONSTER NEARBY",       "color": "#8b1a1a", "blink": true  }
+      }
+    }
+  ]
 }

@@ -61,5 +61,21 @@
     "type": "none",
     "intensity": 0.5,
     "color": null
-  }
+  },
+  "widgets": [
+    {
+      "type": "cassette",
+      "position": "bottom-right",
+      "color": "#c8a86e",
+      "size": 52,
+      "spin_when": "thinking"
+    },
+    {
+      "type": "corner-label",
+      "position": "bottom-left",
+      "text": "MOTHER BASE — 84°N 141°W",
+      "color": "#a09070",
+      "font_size": "10px"
+    }
+  ]
 }

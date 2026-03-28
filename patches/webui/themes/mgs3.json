@@ -30,5 +30,28 @@
     "background": "#1a1f16",
     "text": "#e8e4d9",
     "accent": "#c97d2e"
-  }
+  },
+  "widgets": [
+    {
+      "type": "gauge",
+      "position": "bottom-left",
+      "label": "STAMINA",
+      "color": "#5a8c3a",
+      "width": 110,
+      "behavior": "deplete",
+      "deplete_rate": 0.7,
+      "restore_on_idle": true,
+      "low_color": "#c0392b",
+      "low_threshold": 0.2
+    },
+    {
+      "type": "status-badge",
+      "position": "top-right",
+      "states": {
+        "idle":     { "text": "CAUTION",  "color": "#e8a020", "blink": false },
+        "thinking": { "text": "ALERT !",  "color": "#cc3322", "blink": true  },
+        "active":   { "text": "EVASION",  "color": "#e8a020", "blink": false }
+      }
+    }
+  ]
 }

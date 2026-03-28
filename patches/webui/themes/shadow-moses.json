@@ -45,5 +45,23 @@
     "type": "snow",
     "intensity": 0.4,
     "color": "#c8d8e8"
-  }
+  },
+  "widgets": [
+    {
+      "type": "cctv-badge",
+      "position": "top-right",
+      "color": "#cc4444",
+      "cameras": ["CAM 01", "CAM 02", "CAM 03", "CAM 04", "CAM 05"],
+      "switch_interval": 7
+    },
+    {
+      "type": "corner-label",
+      "position": "bottom-right",
+      "text": "WARHEAD STATUS: DISARMED",
+      "cycle": ["WARHEAD STATUS: DISARMED", "WARHEAD STATUS: UNKNOWN", "WARHEAD STATUS: DISARMED"],
+      "cycle_trigger": "agent-response",
+      "color": "#6ab4d4",
+      "font_size": "10px"
+    }
+  ]
 }
