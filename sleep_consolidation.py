@@ -196,6 +196,7 @@ def run_phase1_consolidation(session_id: str = "unknown") -> dict:
         "phase": "Phase 1 - Self-Consolidation",
         "utility_fields_initialized": 0,
         "duplicates_removed": 0,
+        "fuzzy_duplicates_removed": 0,
         "groups_processed": 0,
         "total_entries_before": len(pm.index["skills"]),
         "total_entries_after": 0,
@@ -245,6 +246,64 @@ def run_phase1_consolidation(session_id: str = "unknown") -> dict:
             try:
                 pm.index["skills"].remove(entry)
                 result["duplicates_removed"] += 1
+                changed = True
+            except ValueError:
+                pass
+
+    # --- Operation 2b: Fuzzy dedup near-duplicate anti-patterns ---
+    # Catches naming variations not caught by exact hash:
+    #   e.g. "system_admin" ≈ "system_administration", "code_execution" ≈ "code_execution_tool"
+    # Requires rapidfuzz; skips gracefully if not installed.
+    try:
+        from rapidfuzz import fuzz as _fuzz
+        _fuzzy_available = True
+    except ImportError:
+        _fuzzy_available = False
+
+    if _fuzzy_available:
+        survivors = [
+            s for s in pm.index["skills"]
+            if s.get("type") == "ANTI-PATTERN"
+        ]
+
+        def _ap_sig(entry):
+            return f"{entry.get('failing_tool', '')}:{entry.get('domain', '')}"
+
+        FUZZY_THRESHOLD = 85
+        merged_indices: set = set()
+
+        for i, a in enumerate(survivors):
+            if i in merged_indices:
+                continue
+            sig_a = _ap_sig(a)
+            for j in range(i + 1, len(survivors)):
+                if j in merged_indices:
+                    continue
+                b = survivors[j]
+                sig_b = _ap_sig(b)
+                if sig_a == sig_b:
+                    continue  # already handled by exact-hash pass
+                if _fuzz.ratio(sig_a, sig_b) >= FUZZY_THRESHOLD:
+                    # Merge b into a: keep highest consecutive, union tags
+                    if b.get("consecutive", 0) > a.get("consecutive", 0):
+                        a["consecutive"] = b["consecutive"]
+                        a["pre_action_check"] = b.get("pre_action_check", a.get("pre_action_check", ""))
+                    a["tags"] = list(dict.fromkeys(
+                        (a.get("tags") or []) + (b.get("tags") or [])
+                    ))
+                    merged_indices.add(j)
+
+        for idx in sorted(merged_indices, reverse=True):
+            entry = survivors[idx]
+            filepath = entry.get("filepath", "")
+            if filepath and os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except OSError:
+                    pass
+            try:
+                pm.index["skills"].remove(entry)
+                result["fuzzy_duplicates_removed"] += 1
                 changed = True
             except ValueError:
                 pass

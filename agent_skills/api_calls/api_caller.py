@@ -75,6 +75,65 @@ def make_api_call(
             "error_message": f"Unexpected error: {str(e)}"
         }
 
+class APICaller:
+    """
+    Class-based HTTP client wrapping make_api_call().
+    Matches the interface described in the api_calls SKILL.md.
+    """
+
+    def __init__(self, timeout: int = 30, max_retries: int = 3):
+        self.timeout = timeout
+        self.max_retries = max_retries
+
+    def _call(self, method: str, url: str, **kwargs) -> "APICaller.Response":
+        headers = kwargs.get("headers")
+        params = kwargs.get("params")
+        json_data = kwargs.get("json")
+        last_result = None
+        for attempt in range(self.max_retries):
+            last_result = make_api_call(url, method, headers, params, json_data, self.timeout)
+            if last_result["success"]:
+                break
+        return APICaller.Response(last_result)
+
+    def get(self, url: str, **kwargs) -> "APICaller.Response":
+        return self._call("GET", url, **kwargs)
+
+    def post(self, url: str, **kwargs) -> "APICaller.Response":
+        return self._call("POST", url, **kwargs)
+
+    def put(self, url: str, **kwargs) -> "APICaller.Response":
+        return self._call("PUT", url, **kwargs)
+
+    def delete(self, url: str, **kwargs) -> "APICaller.Response":
+        return self._call("DELETE", url, **kwargs)
+
+    class Response:
+        """Thin wrapper around make_api_call() result dict."""
+        def __init__(self, result: dict):
+            self._result = result
+            self.status_code = result["status_code"]
+            self.ok = result["success"]
+
+        def json(self):
+            body = self._result["response_body"]
+            if isinstance(body, (dict, list)):
+                return body
+            import json as _json
+            return _json.loads(body)
+
+        def raise_for_status(self):
+            if not self.ok:
+                raise requests.exceptions.HTTPError(
+                    self._result.get("error_message", f"HTTP {self.status_code}")
+                )
+
+        @property
+        def text(self):
+            body = self._result["response_body"]
+            return body if isinstance(body, str) else str(body)
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: api_caller.py URL [METHOD] [headers_json] [params_json] [json_data]")

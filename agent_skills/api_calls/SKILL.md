@@ -27,6 +27,8 @@ Enables the agent to make HTTP requests (GET, POST, PUT, DELETE) to external API
 
 ### Step 1: Import the API Caller Module
 ```python
+import sys
+sys.path.insert(0, '/a0/usr/skills/api_calls')
 from api_caller import APICaller
 client = APICaller(timeout=30, max_retries=3)
 ```

@@ -11,12 +11,18 @@ Insulating layer between raw web content and agent context. Protects against pro
 
 ## Usage
 ```python
-from skills.content_sanitizer.sanitizer import ContentSanitizer
+import sys
+sys.path.insert(0, '/a0/usr/skills/content-sanitizer')
+from content_sanitizer.sanitizer import ContentSanitizer
 
 # Sanitize HTML/text
 result = ContentSanitizer.clean(raw_html_or_text)
 print(f"Safe: {result.is_safe()}")
 print(result.clean_text)  # Only safe text content
+
+# Fetch and sanitize a URL directly
+result = ContentSanitizer.fetch_safe("https://example.com")
+print(result.clean_text)
 ```
 
 ## Architecture
