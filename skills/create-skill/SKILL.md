@@ -1,7 +1,7 @@
 ---
 name: "create-skill"
 description: "Wizard for creating new Agent Zero skills. Guides users through creating well-structured SKILL.md files. Use when users want to create custom skills."
-version: "2.1.0"
+version: "2.2.0"
 author: "Agent Zero Team"
 tags: ["meta", "wizard", "creation", "tutorial", "skills"]
 trigger_patterns:
@@ -90,7 +90,7 @@ Use code_execution_tool with runtime=python and code argument. Both fields are r
   "tool_name": "code_execution_tool",
   "tool_args": {
     "runtime": "python",
-    "code": "import os\nskill_name = '{skill-name}'\nskill_dir = f'/a0/skills/{skill_name}'\nos.makedirs(skill_dir, exist_ok=True)\ncontent = '''{full SKILL.md content}'''\nwith open(f'{skill_dir}/SKILL.md', 'w') as f:\n    f.write(content)\nprint(f'Created: {skill_dir}/SKILL.md')"
+    "code": "import os\nskill_name = '{skill-name}'\nskill_dir = f'/a0/usr/skills/{skill_name}'\nos.makedirs(skill_dir, exist_ok=True)\ncontent = '''{full SKILL.md content}'''\nwith open(f'{skill_dir}/SKILL.md', 'w') as f:\n    f.write(content)\nprint(f'Created: {skill_dir}/SKILL.md')"
   }
 }
 ```
@@ -104,7 +104,7 @@ CRITICAL: tool_args must contain exactly "runtime" and "code". Never use "script
   "tool_name": "code_execution_tool",
   "tool_args": {
     "runtime": "terminal",
-    "code": "cat /a0/skills/{skill-name}/SKILL.md | head -20"
+    "code": "cat /a0/usr/skills/{skill-name}/SKILL.md | head -20"
   }
 }
 ```
@@ -148,7 +148,7 @@ trigger_patterns:           # optional but recommended
 - `description`: when and why to use this skill (max 1024 chars)
 
 ## Skill Directory Rules
-- All skills go in `/a0/skills/{skill-name}/`
-- The SKILL.md file must be at `/a0/skills/{skill-name}/SKILL.md`
+- All skills go in `/a0/usr/skills/{skill-name}/`
+- The SKILL.md file must be at `/a0/usr/skills/{skill-name}/SKILL.md`
 - Supporting scripts go in the same directory
 - Never touch `/a0/requirements.txt` — add skill-specific pip installs inside skill scripts only

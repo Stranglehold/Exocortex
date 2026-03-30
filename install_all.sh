@@ -215,7 +215,7 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 2  supervisor loop   → /a0/usr/agents/agent0/extensions/message_loop_end/"
   echo "    Layer 3  prompt-patches    → /a0/prompts/"
   echo "    Layer 3  personalities     → /a0/prompts/ + /a0/usr/personalities/"
-  echo "    Layer 4  skills            → /a0/skills/"
+  echo "    Layer 4  skills            → /a0/usr/skills/ (persistent; migrates /a0/skills/)"
   echo "    Layer 5  translation-layer → /a0/usr/agents/agent0/extensions/before_main_llm_call/"
   echo "    Layer 5  graph engine      → /a0/usr/agents/agent0/extensions/before_main_llm_call/"
   echo "    Layer 6  A2A server        → /a0/python/a2a_server/"
