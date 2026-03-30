@@ -78,6 +78,20 @@ else
   echo "[PATCH] WARNING: $HELPER_SRC not found — skipped."
 fi
 
+# ── 1b. Python helper: provider_interface.py (max_tokens 4096→16384) ──────────
+
+PROVIDER_SRC="$PATCH_DIR/helpers/provider_interface.py"
+PROVIDER_DST="/a0/python/helpers/provider_interface.py"
+
+if [ -f "$PROVIDER_SRC" ]; then
+  docker cp "$PROVIDER_SRC" "$CONTAINER:$PROVIDER_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$HELPER_PYCACHE'" 2>/dev/null || true
+  _exec "$CONTAINER" bash -c "python3 -m py_compile '$PROVIDER_DST' && echo '[PATCH] provider_interface.py OK'"
+  echo "[PATCH] helpers/provider_interface.py deployed."
+else
+  echo "[PATCH] WARNING: $PROVIDER_SRC not found — skipped."
+fi
+
 # ── 2. Prompt: agent.system.main.communication.md ────────────────────────────
 
 PROMPT_SRC="$PATCH_DIR/prompts/agent.system.main.communication.md"
