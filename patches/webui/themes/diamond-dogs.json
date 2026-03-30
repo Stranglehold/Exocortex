@@ -35,20 +35,30 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/diamond-dogs-bg.svg",
-    "opacity": 0.50,
+    "opacity": 0.5,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",
     "size": "cover"
   },
   "panel": {
-    "opacity": 0.88,
-    "backdrop_blur": 4
+    "opacity": 0.6,
+    "backdrop_blur": 2
   },
   "overlay": {
-    "scanlines": { "enabled": false, "opacity": 0.04, "spacing": 2 },
-    "noise": { "enabled": false, "opacity": 0.02 },
-    "vignette": { "enabled": true, "opacity": 0.25 },
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.25
+    },
     "watermark": {
       "enabled": true,
       "src": "/themes/assets/diamond-dogs.svg",
@@ -84,7 +94,7 @@
     {
       "type": "corner-label",
       "position": "bottom-left",
-      "text": "MOTHER BASE — 84°N 141°W",
+      "text": "MOTHER BASE \u00e2\u20ac\u201d 84\u00c2\u00b0N 141\u00c2\u00b0W",
       "color": "#a09070",
       "font_size": "10px"
     }

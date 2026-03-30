@@ -35,20 +35,30 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/kaer-morhen-bg.svg",
-    "opacity": 0.40,
+    "opacity": 0.4,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",
     "size": "cover"
   },
   "panel": {
-    "opacity": 0.90,
-    "backdrop_blur": 3
+    "opacity": 0.6,
+    "backdrop_blur": 2
   },
   "overlay": {
-    "scanlines": { "enabled": false, "opacity": 0.04, "spacing": 2 },
-    "noise": { "enabled": false, "opacity": 0.02 },
-    "vignette": { "enabled": true, "opacity": 0.4 },
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.4
+    },
     "watermark": {
       "enabled": true,
       "src": "/themes/assets/wolf-medallion.svg",
@@ -73,10 +83,26 @@
       "type": "status-badge",
       "position": "bottom-right",
       "states": {
-        "idle":      { "text": "MEDALLION: STILL",     "color": "#7a6848", "blink": false },
-        "thinking":  { "text": "MEDALLION: VIBRATING", "color": "#c8a840", "blink": true  },
-        "active":    { "text": "MONSTER NEARBY",       "color": "#8b1a1a", "blink": true  },
-        "escalated": { "text": "WRAITH WALKING",       "color": "#8b1a1a", "blink": true  }
+        "idle": {
+          "text": "MEDALLION: STILL",
+          "color": "#7a6848",
+          "blink": false
+        },
+        "thinking": {
+          "text": "MEDALLION: VIBRATING",
+          "color": "#c8a840",
+          "blink": true
+        },
+        "active": {
+          "text": "MONSTER NEARBY",
+          "color": "#8b1a1a",
+          "blink": true
+        },
+        "escalated": {
+          "text": "WRAITH WALKING",
+          "color": "#8b1a1a",
+          "blink": true
+        }
       }
     }
   ],

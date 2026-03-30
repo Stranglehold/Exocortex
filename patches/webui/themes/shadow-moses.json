@@ -33,18 +33,27 @@
     "accent": "#6ab4d4"
   },
   "panel": {
-    "opacity": 0.88,
-    "backdrop_blur": 4
+    "opacity": 0.6,
+    "backdrop_blur": 2
   },
   "overlay": {
-    "scanlines": { "enabled": true, "opacity": 0.025, "spacing": 2 },
-    "noise": { "enabled": false },
-    "vignette": { "enabled": true, "opacity": 0.3 }
+    "scanlines": {
+      "enabled": true,
+      "opacity": 0.025,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.3
+    }
   },
   "background": {
     "type": "image",
     "src": "/themes/assets/shadow-moses-bg.svg",
-    "opacity": 0.50,
+    "opacity": 0.5,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",
@@ -76,14 +85,24 @@
       "type": "cctv-badge",
       "position": "top-right",
       "color": "#cc4444",
-      "cameras": ["CAM 01", "CAM 02", "CAM 03", "CAM 04", "CAM 05"],
+      "cameras": [
+        "CAM 01",
+        "CAM 02",
+        "CAM 03",
+        "CAM 04",
+        "CAM 05"
+      ],
       "switch_interval": 7
     },
     {
       "type": "corner-label",
       "position": "bottom-right",
       "text": "WARHEAD STATUS: DISARMED",
-      "cycle": ["WARHEAD STATUS: DISARMED", "WARHEAD STATUS: UNKNOWN", "WARHEAD STATUS: DISARMED"],
+      "cycle": [
+        "WARHEAD STATUS: DISARMED",
+        "WARHEAD STATUS: UNKNOWN",
+        "WARHEAD STATUS: DISARMED"
+      ],
       "cycle_trigger": "agent-response",
       "color": "#6ab4d4",
       "font_size": "10px"

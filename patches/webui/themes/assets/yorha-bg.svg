@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
   <g fill="none" stroke="#e8e4dc">
     <!-- Musical staves: five-line groups spaced vertically -->
-    <g stroke-width="0.5" opacity="0.18">
+    <g stroke-width="0.5" opacity="0.40">
       <!-- Staff 1 -->
       <line x1="0" y1="80"  x2="1200" y2="80"/>
       <line x1="0" y1="92"  x2="1200" y2="92"/>
@@ -34,7 +34,7 @@
       <line x1="0" y1="688" x2="1200" y2="688"/>
     </g>
     <!-- Bar lines: vertical marks across staves -->
-    <g stroke-width="0.6" opacity="0.14">
+    <g stroke-width="0.6" opacity="0.30">
       <line x1="160"  y1="80"  x2="160"  y2="128"/>
       <line x1="340"  y1="80"  x2="340"  y2="128"/>
       <line x1="520"  y1="80"  x2="520"  y2="128"/>
@@ -64,7 +64,7 @@
       <line x1="980"  y1="640" x2="980"  y2="688"/>
     </g>
     <!-- Note heads: filled ellipses on staff lines -->
-    <g fill="#e8e4dc" stroke="none" opacity="0.16">
+    <g fill="#e8e4dc" stroke="none" opacity="0.35">
       <!-- Staff 1 notes -->
       <ellipse cx="80"   cy="104" rx="5" ry="4"/>
       <ellipse cx="108"  cy="92"  rx="5" ry="4"/>
@@ -104,7 +104,7 @@
       <ellipse cx="1150" cy="372" rx="5" ry="4"/>
     </g>
     <!-- Note stems -->
-    <g stroke-width="0.7" opacity="0.14">
+    <g stroke-width="0.7" opacity="0.30">
       <line x1="85"  y1="104" x2="85"  y2="78"/>
       <line x1="113" y1="92"  x2="113" y2="66"/>
       <line x1="141" y1="116" x2="141" y2="90"/>
@@ -117,10 +117,10 @@
       <line x1="465" y1="110" x2="465" y2="84"/>
     </g>
     <!-- Treble clef suggestion: simplified S-curve left of first staff -->
-    <path d="M22,136 C22,104 30,88 22,72 C14,56 28,48 32,60 C36,72 28,80 22,92" stroke-width="1.2" opacity="0.13"/>
-    <path d="M22,92 C28,78 36,74 32,88 C28,102 18,108 20,120 C22,132 30,128 28,116" stroke-width="1.2" opacity="0.13"/>
+    <path d="M22,136 C22,104 30,88 22,72 C14,56 28,48 32,60 C36,72 28,80 22,92" stroke-width="1.2" opacity="0.28"/>
+    <path d="M22,92 C28,78 36,74 32,88 C28,102 18,108 20,120 C22,132 30,128 28,116" stroke-width="1.2" opacity="0.28"/>
     <!-- Time signature-like marks -->
-    <g font-family="serif" font-size="28" fill="#e8e4dc" opacity="0.10">
+    <g font-family="serif" font-size="28" fill="#e8e4dc" opacity="0.22">
       <text x="44" y="108">4</text>
       <text x="44" y="130">4</text>
     </g>

@@ -42,13 +42,23 @@
     "size": "cover"
   },
   "panel": {
-    "opacity": 0.88,
-    "backdrop_blur": 4
+    "opacity": 0.6,
+    "backdrop_blur": 2
   },
   "overlay": {
-    "scanlines": { "enabled": false, "opacity": 0.03, "spacing": 2 },
-    "noise": { "enabled": false, "opacity": 0.02 },
-    "vignette": { "enabled": true, "opacity": 0.35 }
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.03,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.35
+    }
   },
   "cursor_trail": {
     "type": "matrix-dots",
@@ -71,7 +81,7 @@
       "type": "boot-sequence",
       "lines": [
         "YoRHa No.2 Type B",
-        "— — — — — — — — — — —",
+        "─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─",
         "Connecting to Bunker Server...",
         "▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%",
         "TACTICAL UNIT DEPLOYED"

@@ -21,6 +21,13 @@ const ThemeManager = {
     _idleResetHandler: null,
     _msgRevealObserver: null,
     _msgRevealType: null,
+    _audioCtx: null,
+    _soundEnabled: false,
+    _soundVolume: 0.3,
+    _audioUnlocked: false,
+    _soundUnlockHandler: null,
+    _soundBuffers: null,   // Map<src, AudioBuffer> — cached decoded files
+    _soundSrcs: null,      // { codec_connect, alert_ping, caution } → src path from theme JSON
 
     // Initialize theme system
     async init() {
@@ -100,6 +107,14 @@ const ThemeManager = {
         const ov = document.getElementById('theme-overlay');
         if (ov) ov.remove();
 
+        // Remove watermark layer (now outside overlay)
+        const wm = document.getElementById('theme-watermark');
+        if (wm) wm.remove();
+
+        // Remove tint layer
+        const tn = document.getElementById('theme-tint');
+        if (tn) tn.remove();
+
         // Remove canvas layer
         const cv = document.getElementById('theme-canvas');
         if (cv) {
@@ -114,51 +129,17 @@ const ThemeManager = {
         this._clearCursorTrail();
         this._clearIdleEscalation();
         this._clearMessageReveal();
+        this._clearSounds();
 
         // Remove widget layer
         this._clearWidgets();
     },
 
-    // Inject background layers for background image themes.
-    // Two-div approach: base color div (z:-2) + SVG image div (z:-1).
-    // html/body are made transparent via CSS so these divs are visible.
+    // Background image themes are handled entirely via CSS on the html element
+    // (see generateThemeCSS). No div injection needed — it avoids all z-index
+    // stacking-context issues that arise when body/html are position:fixed.
     _injectBackground(themeData) {
-        const bg = themeData.background || {};
-        const type = bg.type || 'none';
-        if (type === 'none' || !bg.src) return;
-
-        const colors = themeData.colors || {};
-        const baseColor = colors.background || '#131313';
-
-        // Layer 1: solid background color (stays fixed, no parallax)
-        const base = document.createElement('div');
-        base.id = 'theme-background-color';
-        base.style.cssText = [
-            'position: fixed',
-            'inset: 0',
-            'z-index: -2',
-            'pointer-events: none',
-            `background-color: ${baseColor}`
-        ].join('; ') + ';';
-        document.body.prepend(base);
-
-        // Layer 2: SVG image at configured opacity (participates in parallax)
-        const div = document.createElement('div');
-        div.id = 'theme-background';
-        div.style.cssText = [
-            'position: fixed',
-            'inset: 0',
-            'z-index: -1',
-            'pointer-events: none',
-            `background-image: url(${bg.src})`,
-            `background-size: ${bg.size || 'cover'}`,
-            `background-position: ${bg.position || 'center'}`,
-            `background-repeat: no-repeat`,
-            `opacity: ${bg.opacity != null ? bg.opacity : 0.15}`,
-            bg.blur ? `filter: blur(${bg.blur}px)` : '',
-            bg.blend_mode && bg.blend_mode !== 'normal' ? `mix-blend-mode: ${bg.blend_mode}` : ''
-        ].filter(Boolean).join('; ') + ';';
-        document.body.prepend(div);
+        // no-op: background is set on html via generateThemeCSS
     },
 
     // Inject #theme-overlay div with scanlines/vignette/noise/watermark children
@@ -169,7 +150,7 @@ const ThemeManager = {
         const noise = overlay.noise || {};
         const watermark = overlay.watermark || {};
 
-        const hasAny = scanlines.enabled || vignette.enabled || noise.enabled || watermark.enabled;
+        const hasAny = scanlines.enabled || vignette.enabled || noise.enabled;
         if (!hasAny) return;
 
         const div = document.createElement('div');
@@ -253,23 +234,50 @@ const ThemeManager = {
             div.appendChild(noisediv);
         }
 
-        // Watermark child
-        if (watermark.enabled && watermark.src) {
-            const op = watermark.opacity != null ? watermark.opacity : 0.05;
-            const position = watermark.position || 'center';
-            const size = watermark.size || '40%';
+        document.body.appendChild(div);
+    },
 
-            const wm = document.createElement('div');
-            wm.style.position = 'absolute';
-            wm.style.inset = '0';
-            wm.style.backgroundImage = `url(${watermark.src})`;
-            wm.style.backgroundSize = size;
-            wm.style.backgroundRepeat = 'no-repeat';
-            wm.style.backgroundPosition = position;
-            wm.style.opacity = String(op);
-            div.appendChild(wm);
-        }
+    // Inject #theme-watermark as a direct child of body — outside any isolation
+    // container so future tint blend modes cannot color-shift it.
+    _injectWatermark(themeData) {
+        const watermark = (themeData.overlay || {}).watermark || {};
+        if (!watermark.enabled || !watermark.src) return;
 
+        const op = watermark.opacity != null ? watermark.opacity : 0.05;
+        const position = watermark.position || 'center';
+        const size = watermark.size || '40%';
+
+        const wm = document.createElement('div');
+        wm.id = 'theme-watermark';
+        wm.style.position = 'fixed';
+        wm.style.inset = '0';
+        wm.style.zIndex = '9997';
+        wm.style.pointerEvents = 'none';
+        wm.style.backgroundImage = `url(${watermark.src})`;
+        wm.style.backgroundSize = size;
+        wm.style.backgroundRepeat = 'no-repeat';
+        wm.style.backgroundPosition = position;
+        wm.style.opacity = String(op);
+        document.body.appendChild(wm);
+    },
+
+    // Inject #theme-tint — a fixed color overlay using mix-blend-mode.
+    // Sits above the background but below canvas/overlay/widgets.
+    // With mode "color" it shifts the hue of everything beneath it (bg image
+    // AND UI chrome) toward the theme's accent palette, making the UI feel
+    // like it exists inside the world rather than on top of it.
+    _injectTint(themeData) {
+        const tint = (themeData.overlay || {}).tint || {};
+        if (!tint.enabled || !tint.color) return;
+        const div = document.createElement('div');
+        div.id = 'theme-tint';
+        div.style.position = 'fixed';
+        div.style.inset = '0';
+        div.style.zIndex = '9996';
+        div.style.pointerEvents = 'none';
+        div.style.background = tint.color;
+        div.style.opacity = String(tint.opacity ?? 0.08);
+        div.style.mixBlendMode = tint.mode || 'color';
         document.body.appendChild(div);
     },
 
@@ -317,6 +325,36 @@ const ThemeManager = {
     },
 
     // Apply a theme by name
+    // Apply a raw config object directly — used by theme editor for live preview
+    // Does not update currentTheme or localStorage
+    async applyConfig(config) {
+        try {
+            this._clearEffectLayers();
+            const existing = document.getElementById('dynamic-theme-style');
+            if (existing) existing.remove();
+            const style = document.createElement('style');
+            style.id = 'dynamic-theme-style';
+            style.textContent = this.generateThemeCSS(config);
+            document.head.appendChild(style);
+            document.body.classList.remove('light-mode');
+            this._injectBackground(config);
+            this._injectOverlay(config);
+            this._injectWatermark(config);
+            this._injectTint(config);
+            this._injectCanvas(config);
+            this._injectWidgets(config);
+            this._setupParallax(config);
+            this._setupCursorTrail(config);
+            this._setupIdleEscalation(config);
+            this._setupMessageReveal(config);
+            this._setupSounds(config);
+            return true;
+        } catch (e) {
+            console.error('[ThemeManager] applyConfig error:', e);
+            return false;
+        }
+    },
+
     async applyTheme(themeName) {
         try {
             const themeData = await this.loadTheme(themeName);
@@ -348,12 +386,15 @@ const ThemeManager = {
             // Step 5: Inject effect layers
             this._injectBackground(themeData);
             this._injectOverlay(themeData);
+            this._injectWatermark(themeData);
+            this._injectTint(themeData);
             this._injectCanvas(themeData);
             this._injectWidgets(themeData);
             this._setupParallax(themeData);
             this._setupCursorTrail(themeData);
             this._setupIdleEscalation(themeData);
             this._setupMessageReveal(themeData);
+            this._setupSounds(themeData);
 
             this.currentTheme = themeName;
             localStorage.setItem('agent-zero-theme', themeName);
@@ -372,8 +413,24 @@ const ThemeManager = {
         const panelOpacity = panel.opacity != null ? panel.opacity : 1.0;
         const backdropBlur = panel.backdrop_blur != null ? panel.backdrop_blur : 0;
 
-        let css = `:root {\n`;
+        // @property — register key color vars as typed <color> so the browser
+        // can interpolate them when :root transitions fire on theme switch.
+        // Gracefully ignored by browsers that don't support @property.
+        const colorDefaults = {
+            '--color-background': '#131313', '--color-text': '#ffffff',
+            '--color-accent':     '#cf6679', '--color-primary': '#737a81',
+            '--color-secondary':  '#656565', '--color-message-bg': '#2d2d2d',
+        };
+        let css = '';
+        for (const [prop, init] of Object.entries(colorDefaults)) {
+            css += `@property ${prop} { syntax: '<color>'; inherits: true; initial-value: ${init}; }\n`;
+        }
+        css += `:root {\n`;
         css += `  /* Theme: ${themeData.name} by ${themeData.author} */\n`;
+        // Animate color custom properties on theme switch (works only for @property-registered vars)
+        css += `  transition: --color-background 0.35s ease, --color-text 0.35s ease,\n`;
+        css += `    --color-accent 0.35s ease, --color-primary 0.35s ease,\n`;
+        css += `    --color-secondary 0.35s ease, --color-message-bg 0.35s ease;\n`;
         css += `  --color-background: ${colors.background || '#131313'};\n`;
         css += `  --color-text: ${colors.text || '#ffffff'};\n`;
         css += `  --color-text-muted: ${colors['text-muted'] || '#d4d4d4e4'};\n`;
@@ -408,12 +465,43 @@ const ThemeManager = {
         css += `  --color-background-hover: color-mix(in srgb, ${borderColor} 50%, transparent);\n`;
         css += `}\n`;
 
-        // When a background image is used, html/body must be transparent so the
-        // fixed background divs (z:-2 color, z:-1 SVG) are visible behind content.
+        // Background image via html::before pseudo-element.
+        // Using ::before instead of html { background-image } lets us apply
+        // filter: blur() to the image alone without blurring page content.
+        // html::before is a child of the root stacking context and paints
+        // before body, so it always appears behind all UI elements.
+        // html retains only the fallback background-color.
         const hasBgImage = (themeData.background || {}).type === 'image' && (themeData.background || {}).src;
         if (hasBgImage) {
-            css += `\n/* Background image: make html/body transparent so fixed bg divs show through */\n`;
-            css += `html, body { background-color: transparent !important; }\n`;
+            const bg = themeData.background;
+            const baseColor = colors.background || '#131313';
+            const src     = bg.src;
+            const size    = bg.size || 'cover';
+            const pos     = bg.position || 'center';
+            const blur     = bg.blur     != null ? Number(bg.blur)    : 0;
+            const opacity  = bg.opacity  != null ? Number(bg.opacity) : 1;
+            const parallax = bg.parallax ?? false;
+            // Expand beyond viewport: 2× blur-radius to hide feathered edges,
+            // plus 30px extra when parallax drift is active to hide drift edges.
+            const blurInset = blur > 0 ? blur * 2 : 0;
+            const inset = (blurInset > 0 || parallax)
+                ? `${-(blurInset + (parallax ? 30 : 0))}px`
+                : '0';
+            css += `\n/* Background image on html::before — blur-safe, never affects UI */\n`;
+            css += `html { background-color: ${baseColor} !important; }\n`;
+            css += `html::before {\n`;
+            css += `  content: '' !important;\n`;
+            css += `  position: fixed !important;\n`;
+            css += `  inset: ${inset} !important;\n`;
+            css += `  background-image: url(${src}) !important;\n`;
+            css += `  background-size: ${size} !important;\n`;
+            css += `  background-position: ${pos} !important;\n`;
+            css += `  background-repeat: no-repeat !important;\n`;
+            css += `  pointer-events: none !important;\n`;
+            if (opacity < 1) css += `  opacity: ${opacity} !important;\n`;
+            if (blur > 0)    css += `  filter: blur(${blur}px) !important;\n`;
+            css += `}\n`;
+            css += `body { background-color: transparent !important; }\n`;
         }
 
         // Panel + chat area translucency CSS override when opacity < 1 or blur > 0.
@@ -425,7 +513,7 @@ const ThemeManager = {
             const pct = Math.round(panelOpacity * 100);
             css += `\n`;
             css += `/* Panel + chat translucency for atmospheric/immersive themes */\n`;
-            css += `#left-panel, .right-panel, .panel {\n`;
+            css += `#left-panel, .right-panel, .panel, #input-section {\n`;
             css += `  background-color: color-mix(in srgb, ${panelColor} ${pct}%, transparent) !important;\n`;
             css += `  backdrop-filter: blur(${backdropBlur}px) !important;\n`;
             css += `  -webkit-backdrop-filter: blur(${backdropBlur}px) !important;\n`;
@@ -435,6 +523,27 @@ const ThemeManager = {
             css += `  backdrop-filter: blur(${backdropBlur}px) !important;\n`;
             css += `  -webkit-backdrop-filter: blur(${backdropBlur}px) !important;\n`;
             css += `}\n`;
+        }
+
+        // Scrollbar theming — themed thumb using primary/accent colors.
+        // ::-webkit-scrollbar targets Chrome/Edge/Safari; scrollbar-* targets Firefox.
+        const sc  = colors.primary  || '#737a81';
+        const sca = colors.accent   || '#cf6679';
+        const scb = colors.background || '#131313';
+        css += `\n/* Scrollbar theming */\n`;
+        css += `::-webkit-scrollbar { width: 5px; height: 5px; }\n`;
+        css += `::-webkit-scrollbar-track { background: transparent; }\n`;
+        css += `::-webkit-scrollbar-thumb { background: ${sc}88; border-radius: 3px; }\n`;
+        css += `::-webkit-scrollbar-thumb:hover { background: ${sca}; }\n`;
+        css += `html { scrollbar-width: thin; scrollbar-color: ${sc}88 transparent; }\n`;
+
+        // Parallax drift animation on the background pseudo-element.
+        // Uses transform (Composite path only — no Layout/Paint cost).
+        // Requires extra inset to prevent edge peep when element drifts.
+        const bgParallax = (themeData.background || {}).parallax;
+        if (bgParallax) {
+            css += `\n/* Background parallax drift */\n`;
+            css += `html::before { animation: theme-bg-drift 50s ease-in-out infinite !important; }\n`;
         }
 
         return css;
@@ -457,7 +566,20 @@ const ThemeManager = {
     },
 
     notifyState(state) {
+        const prev = this._widgetState;
         this._widgetState = state;
+
+        // Sound triggers — play on state transitions only (not on repeated same state)
+        if (this._soundEnabled && this._audioUnlocked && state !== prev) {
+            if (state === 'active') {
+                this._playSound('codec_connect');
+            } else if (state === 'thinking' && prev === 'idle') {
+                this._playSound('alert_ping');
+            } else if (state === 'escalated') {
+                this._playSound('caution');
+            }
+        }
+
         for (const widget of this._widgetElements) {
             if (widget._onStateChange) {
                 try { widget._onStateChange(state); } catch(e) {}
@@ -466,8 +588,13 @@ const ThemeManager = {
     },
 
     _setupAgentObserver() {
-        // MutationObserver: detect new AI message blocks
+        // MutationObserver: detect new AI message blocks.
+        // Grace period: ignore mutations for the first 1500ms — that's history
+        // replay on page load (all existing messages flood the DOM at once and
+        // would otherwise spam the exclamation widget / state machine).
+        const observerStart = Date.now();
         const observer = new MutationObserver((mutations) => {
+            if (Date.now() - observerStart < 1500) return;
             for (const mutation of mutations) {
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType !== 1) continue;
@@ -500,12 +627,24 @@ const ThemeManager = {
     },
 
     _positionStyle(position) {
-        return {
+        // Named slots with sensible defaults
+        const named = {
             'top-left':     'top: 14px; left: 14px;',
             'top-right':    'top: 14px; right: 14px;',
-            'bottom-left':  'bottom: 14px; left: 14px;',
-            'bottom-right': 'bottom: 14px; right: 14px;',
-        }[position] || 'bottom: 14px; right: 14px;';
+            'bottom-left':  'bottom: 70px; left: 14px;',
+            'bottom-right': 'bottom: 70px; right: 14px;',
+        };
+        if (typeof position === 'string') return named[position] || named['bottom-right'];
+
+        // Object format: { top, right, bottom, left } with arbitrary CSS values.
+        // Allows game-accurate placement that clears Agent Zero chrome exactly.
+        // Example: { "top": "68px", "right": "14px" }
+        if (typeof position === 'object' && position !== null) {
+            return Object.entries(position)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join('; ') + ';';
+        }
+        return named['bottom-right'];
     },
 
     _ensureKeyframes() {
@@ -521,6 +660,12 @@ const ThemeManager = {
             '@keyframes theme-scan-left { from{clip-path:inset(0 100% 0 0)} to{clip-path:inset(0 0% 0 0)} }',
             '@keyframes theme-scan-top  { from{clip-path:inset(100% 0 0 0)} to{clip-path:inset(0 0 0 0)} }',
             '@keyframes theme-fade-in-msg { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }',
+            '@keyframes theme-bg-drift { 0%{transform:translate(0,0)} 25%{transform:translate(10px,-10px)} 50%{transform:translate(0,-16px)} 75%{transform:translate(-10px,-10px)} 100%{transform:translate(0,0)} }',
+            // View Transitions — asymmetric fade: quick out, slower in
+            '::view-transition-old(root) { animation: 180ms ease-in both theme-vt-out; }',
+            '::view-transition-new(root) { animation: 320ms ease-out both theme-vt-in; }',
+            '@keyframes theme-vt-out { from{opacity:1} to{opacity:0} }',
+            '@keyframes theme-vt-in  { from{opacity:0} to{opacity:1} }',
         ].join('\n');
         document.head.appendChild(kf);
     },
@@ -612,7 +757,7 @@ const ThemeManager = {
         track.style.cssText = `width: ${def.width || 110}px; height: 5px; background: rgba(255,255,255,0.08); border: 1px solid ${color}44; border-radius: 2px; overflow: hidden;`;
 
         const fill = document.createElement('div');
-        fill.style.cssText = `height: 100%; width: 100%; background: ${color}; border-radius: 2px; transition: width 0.5s linear, background 0.5s;`;
+        fill.style.cssText = `height: 100%; width: 100%; background: ${color}; border-radius: 2px; transform: scaleX(1); transform-origin: left center; transition: background 0.5s;`;
         track.appendChild(fill);
         wrapper.appendChild(label);
         wrapper.appendChild(track);
@@ -631,7 +776,7 @@ const ThemeManager = {
                 const mult = escalated ? 3.0 : 1.0;
                 value = Math.max(0, value - depleteRate * dt * mult);
             } else value = Math.min(1.0, value + depleteRate * 1.5 * dt);
-            fill.style.width = (value * 100) + '%';
+            fill.style.transform = `scaleX(${value})`;
             const c = value < lowThreshold ? lowColor : color;
             fill.style.background = c;
             label.style.color = c;
@@ -822,15 +967,15 @@ const ThemeManager = {
             width: 4px; height: 60%; background: rgba(255,255,255,0.06);
             border-${def.position === 'right' ? 'left' : 'right'}: 1px solid ${color};`;
         const fill = document.createElement('div');
-        fill.style.cssText = `position: absolute; bottom: 0; left: 0; right: 0; background: ${color}; height: 0%; transition: height 5s linear;`;
+        fill.style.cssText = `position: absolute; bottom: 0; left: 0; right: 0; height: 100%; background: ${color}; transform: scaleY(0); transform-origin: bottom center;`;
         el.appendChild(fill);
         const duration = (def.fill_duration || 3600) * 1000;
         const start = performance.now();
         const update = () => {
             if (!document.getElementById('theme-widgets')) return;
-            const pct = Math.min(100, ((performance.now() - start) / duration) * 100);
-            fill.style.height = pct + '%';
-            if (pct < 100) setTimeout(update, 10000);
+            const pct = Math.min(1, (performance.now() - start) / duration);
+            fill.style.transform = `scaleY(${pct})`;
+            if (pct < 1) setTimeout(update, 10000);
         };
         setTimeout(update, 100);
         return el;
@@ -920,11 +1065,13 @@ const ThemeManager = {
         const cfg = themeData.parallax;
         if (!cfg || !cfg.enabled || this._reducedMotion) return;
         const strength = cfg.strength != null ? cfg.strength : 1.0;
-        const layers = [
-            { id: 'theme-background', coeff: 0.025 * strength },
-            { id: 'theme-overlay',    coeff: 0.012 * strength },
-            { id: 'theme-canvas',     coeff: 0.006 * strength },
-            { id: 'theme-widgets',    coeff: 0.003 * strength },
+        // Background is now on html via CSS background-image, not a translate-able div.
+        // Parallax for the background layer is achieved by animating backgroundPosition.
+        const bgCoeff    = 0.025 * strength;
+        const divLayers  = [
+            { id: 'theme-overlay',  coeff: 0.012 * strength },
+            { id: 'theme-canvas',   coeff: 0.006 * strength },
+            { id: 'theme-widgets',  coeff: 0.003 * strength },
         ];
         let targetX = 0, targetY = 0, curX = 0, curY = 0;
         const mousemoveHandler = (e) => {
@@ -937,7 +1084,13 @@ const ThemeManager = {
             if (!this._parallaxHandler) return;
             curX += (targetX - curX) * 0.08;
             curY += (targetY - curY) * 0.08;
-            for (const { id, coeff } of layers) {
+            // Slide the html background-image to create depth
+            const xOff = (curX * bgCoeff).toFixed(2);
+            const yOff = (curY * bgCoeff).toFixed(2);
+            document.documentElement.style.backgroundPosition =
+                `calc(50% + ${xOff}px) calc(50% + ${yOff}px)`;
+            // Translate overlay / canvas / widget divs
+            for (const { id, coeff } of divLayers) {
                 const el = document.getElementById(id);
                 if (el) el.style.transform = `translate(${(curX * coeff).toFixed(2)}px,${(curY * coeff).toFixed(2)}px)`;
             }
@@ -951,7 +1104,10 @@ const ThemeManager = {
             document.removeEventListener('mousemove', this._parallaxHandler);
             this._parallaxHandler = null;
         }
-        for (const id of ['theme-background','theme-overlay','theme-canvas','theme-widgets']) {
+        // Reset html background-position
+        document.documentElement.style.backgroundPosition = '';
+        // Reset overlay/canvas/widget transforms
+        for (const id of ['theme-overlay','theme-canvas','theme-widgets']) {
             const el = document.getElementById(id);
             if (el) el.style.transform = '';
         }
@@ -1152,6 +1308,175 @@ const ThemeManager = {
         this._msgRevealType = null;
     },
 
+    // ─── Sound Design ────────────────────────────────────────────────────────
+    // Supports both file-based audio (WAV/MP3/OGG via fetch+decodeAudioData)
+    // and built-in synthesis fallbacks when no file is configured.
+    // AudioContext is lazy-initialized on first user gesture (browser policy).
+    //
+    // Theme JSON:
+    //   "sounds": {
+    //     "enabled": true,
+    //     "volume": 0.25,
+    //     "codec_connect": "/themes/assets/sounds/codec.wav",
+    //     "alert_ping":    "/themes/assets/sounds/alert.wav",
+    //     "caution":       null
+    //   }
+    //
+    // Event types: codec_connect, alert_ping, caution
+    // If a src string is provided for an event, that file is used.
+    // If null/absent, the built-in synthesized sound plays instead.
+
+    _setupSounds(themeData) {
+        const cfg = themeData.sounds || {};
+        this._soundEnabled = cfg.enabled === true;
+        this._soundVolume = cfg.volume != null ? Math.max(0, Math.min(1, cfg.volume)) : 0.3;
+
+        // Collect per-event src paths from the theme config
+        this._soundSrcs = {
+            codec_connect: typeof cfg.codec_connect === 'string' ? cfg.codec_connect : null,
+            alert_ping:    typeof cfg.alert_ping    === 'string' ? cfg.alert_ping    : null,
+            caution:       typeof cfg.caution       === 'string' ? cfg.caution       : null,
+        };
+
+        if (!this._soundEnabled) return;
+
+        // Initialise buffer cache for this theme (clears buffers from previous theme)
+        this._soundBuffers = new Map();
+
+        // AudioContext requires a user gesture. Register unlock on first interaction.
+        // Once unlocked the handler removes itself and we pre-load any declared files.
+        if (!this._audioUnlocked && !this._soundUnlockHandler) {
+            const unlock = () => {
+                if (!this._audioCtx) {
+                    try {
+                        this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch(e) {
+                        console.warn('[ThemeManager] Web Audio API unavailable');
+                        this._soundEnabled = false;
+                        return;
+                    }
+                }
+                if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
+                this._audioUnlocked = true;
+                document.removeEventListener('click',   unlock);
+                document.removeEventListener('keydown', unlock);
+                this._soundUnlockHandler = null;
+                // Pre-load files now that the AudioContext is live
+                this._preloadSoundFiles();
+            };
+            document.addEventListener('click',   unlock, { passive: true });
+            document.addEventListener('keydown', unlock, { passive: true });
+            this._soundUnlockHandler = unlock;
+        } else if (this._audioUnlocked) {
+            // AudioContext already live from a previous theme — pre-load immediately
+            this._preloadSoundFiles();
+        }
+    },
+
+    // Fetch and decode each src declared in _soundSrcs.
+    // Runs async in the background; _playSound falls back to synthesis until
+    // the buffer is ready. Errors are silent — synthesis takes over.
+    _preloadSoundFiles() {
+        if (!this._soundSrcs || !this._audioCtx) return;
+        const seen = new Set();
+        for (const [, src] of Object.entries(this._soundSrcs)) {
+            if (!src || seen.has(src)) continue;
+            seen.add(src);
+            if (this._soundBuffers.has(src)) continue; // already loaded
+            fetch(src)
+                .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+                .then(ab => this._audioCtx.decodeAudioData(ab))
+                .then(buf => {
+                    this._soundBuffers.set(src, buf);
+                    console.log(`[ThemeManager] Sound loaded: ${src}`);
+                })
+                .catch(e => console.warn(`[ThemeManager] Sound load failed (${src}): ${e.message}`));
+        }
+    },
+
+    _clearSounds() {
+        this._soundEnabled = false;
+        this._soundSrcs = null;
+        this._soundBuffers = null;
+        if (this._soundUnlockHandler) {
+            document.removeEventListener('click',   this._soundUnlockHandler);
+            document.removeEventListener('keydown', this._soundUnlockHandler);
+            this._soundUnlockHandler = null;
+        }
+        // AudioContext is kept alive — cheap to resume, expensive to recreate.
+    },
+
+    // Play a sound by event type.
+    // If the theme provides a loaded AudioBuffer for this event, use it.
+    // Otherwise fall back to the built-in synthesized sound.
+    //
+    //   codec_connect  — MGS codec squelch: two ascending square-wave chirps
+    //   alert_ping     — Radar ping: single sine tone, fast decay
+    //   caution        — Double beep: two low square pulses (CAUTION state)
+    _playSound(type) {
+        if (!this._soundEnabled || !this._audioCtx) return;
+        if (this._audioCtx.state === 'suspended') { this._audioCtx.resume().catch(() => {}); return; }
+
+        const ac  = this._audioCtx;
+        const vol = this._soundVolume;
+        const now = ac.currentTime;
+
+        // File-based playback — if a decoded buffer is available, use it
+        const src = this._soundSrcs?.[type];
+        if (src && this._soundBuffers?.has(src)) {
+            const source = ac.createBufferSource();
+            const gain   = ac.createGain();
+            source.buffer = this._soundBuffers.get(src);
+            source.connect(gain); gain.connect(ac.destination);
+            gain.gain.setValueAtTime(vol, now);
+            source.start(now);
+            return;
+        }
+
+        // Synthesis fallback — used when no file is configured or file not yet loaded
+        if (type === 'codec_connect') {
+            // Two-chirp codec squelch: 880 Hz → 1108 Hz, square wave, 80ms each
+            for (const [freq, offset] of [[880, 0], [1108, 0.1]]) {
+                const osc  = ac.createOscillator();
+                const gain = ac.createGain();
+                osc.connect(gain); gain.connect(ac.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + offset);
+                gain.gain.setValueAtTime(0, now + offset);
+                gain.gain.linearRampToValueAtTime(vol * 0.35, now + offset + 0.008);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.08);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.09);
+            }
+        } else if (type === 'alert_ping') {
+            // Single sine ping, 660 Hz, 180ms decay — soft radar pulse
+            const osc  = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.connect(gain); gain.connect(ac.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(660, now);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol * 0.28, now + 0.006);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'caution') {
+            // Double beep at 440 Hz — CAUTION/STALEMATE state
+            for (const offset of [0, 0.14]) {
+                const osc  = ac.createOscillator();
+                const gain = ac.createGain();
+                osc.connect(gain); gain.connect(ac.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, now + offset);
+                gain.gain.setValueAtTime(0, now + offset);
+                gain.gain.linearRampToValueAtTime(vol * 0.22, now + offset + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.06);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.07);
+            }
+        }
+    },
+
     // ────────────────────────────────────────────────────────────────────────
 
     getCurrentTheme() {
@@ -1160,7 +1485,9 @@ const ThemeManager = {
 
     async switchTheme(themeName) {
         if (this.currentTheme === themeName) return true;
-        return await this.applyTheme(themeName);
+        if (!document.startViewTransition) return this.applyTheme(themeName);
+        const t = document.startViewTransition(() => this.applyTheme(themeName));
+        return t.finished.then(() => true).catch(() => this.applyTheme(themeName));
     }
 };
 

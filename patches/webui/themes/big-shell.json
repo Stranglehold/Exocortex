@@ -35,20 +35,30 @@
   "background": {
     "type": "image",
     "src": "/themes/assets/big-shell-bg.svg",
-    "opacity": 0.50,
+    "opacity": 0.5,
     "blur": 0,
     "blend_mode": "normal",
     "position": "center",
     "size": "cover"
   },
   "panel": {
-    "opacity": 0.85,
-    "backdrop_blur": 6
+    "opacity": 0.6,
+    "backdrop_blur": 2
   },
   "overlay": {
-    "scanlines": { "enabled": false, "opacity": 0.04, "spacing": 2 },
-    "noise": { "enabled": false, "opacity": 0.02 },
-    "vignette": { "enabled": true, "opacity": 0.2 },
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.2
+    },
     "watermark": {
       "enabled": false,
       "src": null,

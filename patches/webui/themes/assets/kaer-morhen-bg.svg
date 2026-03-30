@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
   <g fill="none" stroke="#8a7060">
     <!-- Stone masonry: irregular horizontal courses -->
     <!-- Course 1: y=0-48 -->
-    <g stroke-width="0.5" opacity="0.18">
+    <g stroke-width="0.5" opacity="0.38">
       <rect x="0"   y="4"   width="148" height="42"/>
       <rect x="152" y="4"   width="120" height="42"/>
       <rect x="276" y="4"   width="156" height="42"/>
@@ -64,7 +64,7 @@
       <rect x="1104" y="238" width="96"  height="44"/>
       <!-- Courses 7-12: lower half, slightly less opaque -->
     </g>
-    <g stroke-width="0.4" opacity="0.13">
+    <g stroke-width="0.4" opacity="0.28">
       <rect x="0"   y="286" width="136" height="42"/>
       <rect x="140" y="286" width="152" height="42"/>
       <rect x="296" y="286" width="128" height="42"/>
@@ -102,7 +102,7 @@
       <rect x="956" y="426" width="150" height="44"/>
       <rect x="1110" y="426" width="90" height="44"/>
     </g>
-    <g stroke-width="0.3" opacity="0.09">
+    <g stroke-width="0.3" opacity="0.20">
       <rect x="0"   y="474" width="134" height="42"/>
       <rect x="138" y="474" width="150" height="42"/>
       <rect x="292" y="474" width="132" height="42"/>
