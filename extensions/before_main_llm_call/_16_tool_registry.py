@@ -56,14 +56,19 @@ NATIVE_TOOLS = {
     "memory_load", "memory_save", "memory_delete", "memory_forget",
     "memory_integrate", "memory_list_gist",
     "notify_user", "search_engine", "skills_tool", "skill_list",
-    # A0 background / scheduler / utility tools
+    # A0 background / utility tools (background_* are CLI scripts, handled via manifest)
     "background_list", "background_start", "background_stop",
-    "provider_chat", "scheduler", "staging_note", "tool_validate",
+    "provider_chat", "tool_validate",
     "unknown", "vision_load", "wait",
     # Our browser helper (not a standalone agent tool)
     "captcha_solver",
 }
 
+
+# Description overrides for tool files that lack a module docstring
+_DESC_OVERRIDES = {
+    "scheduler": "Schedule tasks by name, date/time, or recurrence. Methods: list_tasks, create_task, find_task_by_name, show_task, update_task, delete_task.",
+}
 
 # ── Extension ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +129,9 @@ def _scan_custom_tools() -> list:
 
         path = os.path.join(TOOLS_DIR, fname)
         names, desc = _extract_tool_info(path)
+        # Override description for tools with no module docstring
+        if not desc and stem in _DESC_OVERRIDES:
+            desc = _DESC_OVERRIDES[stem]
         if names:
             results.append((stem, names, desc))
 
@@ -401,6 +409,22 @@ def _build_block(
         for sig_str in api_sigs.values():
             lines.append(f"  {sig_str}")
         lines.append("[/API SIGNATURES]")
+
+    # Always-on: artifact rendering capability
+    if lines:
+        lines.append("")
+    lines.append("[ARTIFACT RENDERING — output interactive content in the chat panel]")
+    lines.append("Use artifact fences to render HTML, SVG, or JavaScript directly in the UI:")
+    lines.append("  ```artifact:html Title Here")
+    lines.append("  <html content or full page>")
+    lines.append("  ```")
+    lines.append("  ```artifact:svg Diagram Name")
+    lines.append("  <svg>...</svg>")
+    lines.append("  ```")
+    lines.append("Use for: architecture diagrams (Mermaid.js via CDN), dashboards, data")
+    lines.append("visualizations, interactive reports, ER diagrams, sequence diagrams.")
+    lines.append("Mermaid: load from https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js")
+    lines.append("[/ARTIFACT RENDERING]")
 
     # Always-on: file persistence reminder
     if lines:

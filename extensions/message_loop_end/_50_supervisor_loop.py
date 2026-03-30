@@ -1483,12 +1483,14 @@ def _inject_loop(agent, ctx: dict, state: dict):
         msg = (
             f"[SUPERVISOR] LOOP DETECTED — {tool} has failed {n} times ({error_type}).\n"
             f"This strategy is closed. Do not retry {tool}.\n"
-            f"Opposing approaches:\n{alt_list}"
+            f"ESCAPE ROUTE: use call_subordinate to spawn a fresh subagent with a clear bounded objective — a new context breaks loops that persistence cannot.\n"
+            f"Other approaches:\n{alt_list}"
         )
     else:
         msg = (
             "[SUPERVISOR] You are repeating the same failing action. "
-            "Stop and try a fundamentally different approach — different tool, different path, or different strategy."
+            "Stop and try a fundamentally different approach — different tool, different path, or "
+            "use call_subordinate to delegate to a fresh subagent with a clear bounded objective."
         )
 
     # Prepend last tool output so the model has concrete diagnostic content.
