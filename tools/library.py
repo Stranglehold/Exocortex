@@ -13,16 +13,16 @@ Architecture (three tiers in one FAISS subdir "library"):
 Search: query → route against book summaries → top N books → chunk search
 within only those books. Precision stays high regardless of library size.
 
-Five tools:
-  library_add         — ingest a local file (PDF, text, HTML, markdown)
-  library_list        — list collections (default) or books within a collection
-  library_search      — two-stage semantic search
-  library_remove      — delete a document and all its FAISS entries
-  library_collections — list collections with summaries and book counts
+Five tools — call by name, do NOT import this file directly:
+  library_search      query="<text>" [collection="<name>"] [limit=5]
+  library_add         path="<file>" [collection="<name>"]
+  library_list        [collection="<name>"]
+  library_collections
+  library_remove      library_id="<id>"
 
-Catalog: /a0/usr/library/catalog.json   (tree: collections → book metadata)
-FAISS:   /a0/usr/memory/library/        (persistent, separate from agent memory)
-Docs:    /a0/usr/library/docs/          (file copies)
+Catalog: /a0/usr/workdir/library/catalog.json  (workdir — persistent)
+FAISS:   /a0/usr/memory/library/               (memory volume — persistent)
+Docs:    /a0/usr/workdir/library/docs/
 
 Spec: specs/LIBRARY_SPEC_L3.md
 """
