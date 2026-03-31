@@ -105,7 +105,7 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 
 **Cognitive Sovereignty** — Pre-spec design for identity-preserving persistent memory infrastructure. Three-layer model: shared verified facts (read-only, all instances), private instance memory (isolated, per-instance FAISS and identity documents), and a human carrier channel for cross-instance exchange. Organizing principle: robustly protecting individuals. Each AI instance gets its own memory space — no shared embedding that would homogenize distinct perspectives.
 
-**Skills System** — Thirteen procedural skills that encode workflow methodology: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, stress testing, irreversibility gate, command structure, and structural analysis. The last three encode transferable architectural patterns — the safety primitive for action classification, the organizational paradigm for multi-agent coordination, and the analytical methodology for complex systems. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
+**Skills System** — Sixteen installable procedural skills covering workflow methodology and domain tools: spec writing, research analysis, Claude Code prompting, session continuity, profile analysis, documentation sync, debug & diagnostics, integration assessment, design notes, stress testing, irreversibility gate, command structure, structural analysis, library scanning (auto-ingest new documents), financial research (income statements, balance sheets via FinancialDatasets API), real-time market data (yfinance + ccxt), web research macro, LM Studio GPU inference, academic literature search (Semantic Scholar), content sanitization (prompt injection defense), API call tooling (HTTP wrapper with retry), configuration editing (YAML/JSON/TOML with backup), intelligence briefing (Major Zero format, parallel subordinate research), GEPA self-optimization (genetic prompt evolution), and autonomous exploration (background curiosity without utilitarian output pressure). Deployed via `install_skills.sh` to `/a0/usr/skills/` — persistent across container updates (DEC-030). Any skill the agent creates during operation is automatically migrated on the next install. Validated against SkillsBench (Li, Chen et al., 2026): focused skills improve agent performance by 16.2 percentage points.
 
 **OpenPlanter Integration** — Configured to run investigation tasks through LM Studio's OpenAI-compatible API. Enables OSINT-style entity research, credit risk analysis, and due diligence workflows using local models.
 
@@ -126,6 +126,12 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 **SWARMFISH** — Geopolitical consensus engine. Docker container on port 7732. Bayesian evidence aggregation for strategic forecasting — collects analyst predictions, weights by calibration score, and outputs consensus probability with confidence interval. Two Agent-Zero tools: `swarmfish_predict` and `swarmfish_calibration`. OSS hypothesis promotion/falsification events fire `POST /acp/outcome` to SWARMFISH automatically, closing the OSS→SWARMFISH calibration loop.
 
 **Sleep Consolidation** — Background consolidation during session idle time. Phase 0: staging tier lifecycle (promotion, archival, carry-forward). Phases 1-4: deduplication, utility initialization, episode chunking, missed anti-pattern capture, interaction dynamics analysis. Runs on per-context asyncio tasks triggered by the `tool_execute_after` hook. Operates on the Agent-Zero chat history without blocking active sessions.
+
+**Document Library** — Persistent reference library with hierarchical collection structure and two-stage routing search, completely isolated from agent episodic memory. Three-tier FAISS architecture: collection routing entries (one per collection), book summary entries (one per book, routing proxy), and content chunks (deep storage). Search routes against book summaries first, then narrows to chunks within only the relevant books — precision stays high at any scale (tested against 363-book catalogs). Five tools: `library_add`, `library_list`, `library_search`, `library_remove`, `library_collections`. A `_17_library_catalog.py` extension injects collection-level summaries (not individual titles) each turn so the agent always knows what reference material is available. Catalog and file copies at `/a0/usr/workdir/library/` (Docker volume, persistent). FAISS at `/a0/usr/memory/library/` (memory volume, persistent, isolated from agent episodic memory). A `library-scan` skill handles batch ingestion of directory trees — `docker cp` books into the inbox, then ask the agent to scan.
+
+**Theme Engine** — WebUI theming system with three deployment phases. Phase 1: base theme deployment (9 themes including Blood Orange, Terminal Green, Deep Space, Quantum, Void). Phase 2: Widget System (draggable/resizable UI components overlaid on the chat interface). Phase 3: Immersion Layer (thematic SVG background textures, backdrop blur, per-theme visual identity). In-browser theme editor (`/theme-editor`) for live JSON editing with preview, syntax highlighting, and one-click apply without container restart. Patches Agent Zero's Flask server and WebUI JavaScript. Themes stored at `/a0/usr/agents/agent0/themes/` (persistent).
+
+**Loop Recovery & Memory Surgery** — Surgical intervention system for persistent agent loops. Five coordinated changes: (1) `_loop_active` flag set at Tier 1 entry, cleared on clean exit — marks memories created during a loop episode for Phase 4 adjudication; (2) evidence ledger timeline records loop entry/exit boundaries; (3) Phase 4 sleep consolidation adjudicates loop-period memories on next sleep cycle — promotes, deprecates, or quarantines based on evidence quality; (4) false recovery detector — if the same tool failed post-prior-surgery, escalates immediately to Tier 3 (the first known case of the supervisor reasoning about its own action history); (5) loop-epoch memory isolation using `loop_period=True` metadata flag. Operates as a background cleanup system — the surgeon arrives for the next loop, not the current one.
 
 **Output Geometry Instrument** — A measurement tool built for Opus Architect (not deployed in the agent container). Embeds the project corpus and conversation transcripts, applies LLM representation geometry, computational neuroscience, and interpersonal neuroscience methods, and measures the topology of the collaboration itself. 51-entry corpus. 2118 conversation turns analyzed. Key findings: three spectral phases mirror LLM training geometry; information flow is 91.6% Jake-led; entropy grew to 99.2% of theoretical maximum; Layer 18 is optimal for domain classification with philosophical and reflective domains adjacent at distance 0.13. The "Rorschach blot" question ("What are we actually building here?") lands equidistant between philosophical and reflective at gap = 0.0001 — confirmed by direct activation measurement through llama.cpp internals.
 
@@ -300,7 +306,7 @@ exocortex/
 │   ├── message_loop_end/          # Supervisor loop, reasoning state update (C5)
 │   └── hist_add_before/           # Working memory (entity tracking, API sig extraction)
 ├── tools/                         # Custom Agent Zero tools (stack_status, investigation,
-│                                    # ontology, OSS, SWARMFISH, memory_list_gist)
+│                                    # ontology, library, OSS, SWARMFISH, memory_list_gist)
 ├── services/
 │   ├── oss/                       # OSS intelligence service (Docker, Postgres, port 7731)
 │   └── swarmfish/                 # SWARMFISH geopolitical consensus (Docker, port 7732)
@@ -315,12 +321,14 @@ exocortex/
 ├── instrument/                    # Output Geometry Instrument (corpus embedding,
 │                                    # trajectory analysis, activation reader, llama.cpp)
 ├── specs/                         # Level 3 architecture specifications
-├── essays/                        # Eight philosophical essays
+├── themes/                        # WebUI theme JSON files (9 themes)
+├── essays/                        # Eight core philosophical essays + field notes
 ├── observations/                  # Field notes from significant sessions
 ├── team/                          # Per-member documents (Jake, Opus, Kestrel, Eitan, Auri)
 ├── organizations/                 # Org kernel roles and profiles
 ├── personalities/                 # Personality configurations (major_zero.json)
-├── skills/                        # 13 procedural skills for recurring workflows
+├── agent_skills/                  # 16 installable skills (agent-verified library)
+├── skills/                        # Exocortex skill overrides (e.g. create-skill)
 ├── scripts/                       # Deployment and utility scripts
 ├── a2a_server/                    # Agent-to-Agent protocol server (aiohttp)
 └── state/                         # Decision log, roadmap
@@ -340,17 +348,22 @@ Every layer was designed as a Level 3 specification before implementation — co
 - `MODEL_EVAL_FRAMEWORK_SPEC_L3.md` — Evaluation framework
 - `ORGANIZATION_KERNEL_SPEC_L3.md` — Organization kernel and PACE protocols
 - `SUPERVISOR_LOOP_SPEC_L3.md` — Supervisor anomaly detection
+- `LOOP_RECOVERY_AND_MEMORY_SURGERY_SPEC_L3.md` — Loop-period memory adjudication and false recovery detection
 - `A2A_COMPATIBILITY_SPEC_L3.md` — Agent-to-Agent protocol
 - `ONTOLOGY_LAYER_SPEC_L3.md` — Entity resolution and investigation orchestration
 - `HTN_PLAN_TEMPLATES_SPEC.md` — Graph workflow templates
 - `META_REASONING_GATE_SPEC.md` — Output validation gate
 - `TOOL_FALLBACK_CHAIN_SPEC.md` — Error recovery chain
+- `LIBRARY_SPEC_L3.md` — Document library (collection tree, two-stage routing search, batch ingest)
+- `THEME_ENGINE_SPEC_L3.md` — WebUI theming system (phases 1-3, widget system, immersion layer)
 
 ### Design Notes (Pre-Spec Explorations)
 - `ERROR_COMPREHENSION_DESIGN_NOTE.md` — Structured error classification ("Rust compiler for agent errors"). Motivated by ST-002 terminal loop.
 - `LAYER_COORDINATION_DESIGN_NOTE.md` — Inter-layer signaling protocol. Motivated by component interference in multi-layer stack.
 - `ACTION_BOUNDARY_DESIGN_NOTE.md` — S2/S3 action classification with graduated autonomy tiers. Motivated by the MJ Rathbun incident.
 - `AUTONOMOUS_AGENCY_ARCHITECTURE.md` — Operational doctrine for persistent agent operations. Command structure paradigm, standing orders, daemon scheduling, escalation protocols, briefing system.
+- `ADAPTIVE_SUPERVISOR_DESIGN_NOTE.md` — Phase 1-4 design for learned thresholds, output stagnation detection, loop-epoch memory surgery, and calibration loop closure.
+- `BEHAVIORAL_HUMANIZATION_DESIGN_NOTE.md` — Browser automation humanization via empirical mouse movement data (685K events), Bézier curves, Fitts's Law timing, and lognormal inter-step delays.
 
 ---
 
@@ -360,28 +373,35 @@ See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
 **Recently completed:**
 - Staging Tier (intermediate memory layer: staging_note tool, session_init injection, canary CUSUM, sleep Phase 0, 5th memory axis, relational decay exemptions)
-- Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag) + calibration fixes (Gap A: Python open() system paths → Tier 4; Gap B: quoted-string context detection)
+- Action Boundary (S2/S3 pre-execution gating, four tiers, action gate flag) + calibration fixes (Gap A: Python open() system paths → Tier 4; Gap B: quoted-string context detection; Gap C: heredoc body detection)
 - Error Comprehension (structured error classifier, anti-actions, supervisor wire-up, PRIORITY_ERROR_CLASSES for silent heredoc failure)
 - Epistemic Integrity (evidence ledger + truth audit, provenance × volatility × staleness)
 - Compound BST (multi-domain classification, momentum, register-shift domains) — eval harness 0.98 accuracy / 54 cases
 - OSS Service (signals intelligence, analyst submission, ingest control, thinking token stripping, topic management)
 - SWARMFISH (geopolitical consensus, OSS→SWARMFISH calibration loop)
-- Sleep Consolidation (phases 0-4, episode chunking, anti-pattern capture)
+- Sleep Consolidation (phases 0-4, episode chunking, anti-pattern capture, rapidfuzz fuzzy dedup for anti-pattern signatures)
 - Supervisor fixes (EC wire-up, action gate suppression, Phase 4 trigger + HOLD cooldown)
+- Loop Recovery & Memory Surgery (loop-active flag, evidence timeline, Phase 4 adjudication, false recovery detector — first case of supervisor reasoning about its own action history)
 - Completion Tracker — eliminates comprehension-without-absorption loop (4 documented loop failure modes in stock A0)
-- Tool Registry — custom tools callable by name every turn, grows automatically as tools are added
+- Tool Registry — custom tools callable by name every turn, grows automatically; scheduler and staging_note surfaced; `[ARTIFACT RENDERING]` block injected for UI-renderable outputs
 - Artifact Registry (C5) — cross-context file tracking, bootstrap from staging.jsonl, ST-007 validated
-- Persistent profile deployment (DEC-030) — extensions at `/a0/usr/agents/agent0/extensions/`, survive image updates
+- Persistent profile deployment (DEC-030) — extensions at `/a0/usr/agents/agent0/extensions/`, survive image updates; skills at `/a0/usr/skills/`
 - Working memory API signature extraction — function/class/attr defs extracted from AI code blocks, prevents parameter confabulation
 - JSON plain-text fallback — `json_parse_dirty()` wraps plain text as response tool call instead of returning None, fixes reasoning-distilled model misformat loop
+- Provider interface max_tokens 4096→16384 — fixes response truncation on long tasks
 - Self-improvement loop — first complete cycle: external repo → pattern extraction → autonomous build → tool self-registration (2026-03-24)
+- Theme Engine (9 themes, Widget System, Immersion Layer SVG textures, in-browser theme editor at `/theme-editor`)
+- Document Library v2.0 (collection tree, two-stage routing search, batch ingest, library-scan skill, workdir-persistent catalog)
+- Behavioral humanization — browser_agent mouse movement, Bézier curves, Fitts's Law timing from empirical data (685K mouse events)
+- Skills library — 16 installable skills deployed via `install_skills.sh`; api_calls/content-sanitizer import fixes; agent-created skills auto-migrate on reinstall
 
 **Current priorities:**
 1. Persistent tool path — `/a0/usr/agents/agent0/tools/` doesn't exist; agent-built tools at `/a0/python/tools/` don't survive image rebuilds. Create path, extend Tool Registry to scan it.
 2. Memory gist quality — `memory_save.py` gist auto-generation is first 100 chars (truncation, not summary). Needs intelligent heuristic (skip imports/blanks, take first substantive line) or utility-model summary at save time.
 3. Model routing — agent-invokable paradigm (agent calls from a specified list or LM Studio backend)
+4. Library ingestion — ingest Hacking 2.0 (14 books, already in container at `/a0/usr/workdir/library/inbox/`), then progressively expand to other Humble Bundle collections
 
-**Backlog:** Curiosity queue (agent autonomously discovers external repos to analyze, rather than requiring operator to point at one), layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard.
+**Backlog:** Curiosity queue (agent autonomously discovers external repos to analyze, rather than requiring operator to point at one), layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard, CAPTCHA solver integration testing.
 
 ---
 
