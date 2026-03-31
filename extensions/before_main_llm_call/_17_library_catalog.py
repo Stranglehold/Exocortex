@@ -1,19 +1,28 @@
 """
-_17_library_catalog.py — Exocortex Library Catalog Injection
-=============================================================
+_17_library_catalog.py — Exocortex Library Catalog Injection  v2.0
+===================================================================
 
 Injects a compact [LIBRARY] block into the agent's context before each LLM
-call so the agent always knows what reference documents are available.
+call so the agent always knows what reference collections are available.
+
+v2.0 change: injects COLLECTION-level summaries rather than individual book
+titles. With 300+ books across 20+ collections, per-book injection is noise;
+per-collection injection is signal.
+
+Format:
+  [LIBRARY — 363 books in 22 collections; use library_search or library_list]
+  col_a1b2c3d4 | Hacking 2.0 (35 books) | Offensive security, exploitation, malware...
+  col_e5f6g7h8 | System Design (12 books) | Distributed systems, architecture...
+  ...
+  [/LIBRARY]
 
 Fires silently when the library is empty.
-Fires with a compact list when documents are present (max 10 shown inline;
-overflow directed to library_list tool).
+Shows up to MAX_INLINE_COLLECTIONS collections inline; overflow directed to
+library_collections tool.
 
 Slot: 17 (after _16_tool_registry, before _18_memory_catalog)
 Hook: before_main_llm_call
-
 Pattern: prepend to last user message in loop_data.history_output
-         (same as _13_reasoning_state.py, _16_tool_registry.py)
 
 Spec: specs/LIBRARY_SPEC_L3.md
 """
@@ -24,8 +33,8 @@ import os
 from python.helpers.extension import Extension
 from agent import LoopData
 
-CATALOG_PATH    = "/a0/usr/library/catalog.json"
-MAX_INLINE_DOCS = 10
+CATALOG_PATH           = "/a0/usr/library/catalog.json"
+MAX_INLINE_COLLECTIONS = 15
 
 
 class LibraryCatalog(Extension):
@@ -42,7 +51,6 @@ class LibraryCatalog(Extension):
 
             existing = user_msg.get("content", "")
             if isinstance(existing, list):
-                # multi-part message — prepend to first text part
                 for part in existing:
                     if isinstance(part, dict) and part.get("type") == "text":
                         part["text"] = block + "\n\n" + part.get("text", "")
@@ -56,37 +64,49 @@ class LibraryCatalog(Extension):
 
 def _load_catalog() -> dict:
     if not os.path.exists(CATALOG_PATH):
-        return {"documents": []}
+        return {"collections": {}, "documents": []}
     try:
         with open(CATALOG_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {"documents": []}
+        return {"collections": {}, "documents": []}
 
 
 def _build_block() -> str:
-    catalog = _load_catalog()
-    docs = catalog.get("documents", [])
-    if not docs:
+    catalog     = _load_catalog()
+    collections = catalog.get("collections", {})
+    documents   = catalog.get("documents", [])
+
+    if not documents:
         return ""
 
-    total = len(docs)
-    shown = docs[:MAX_INLINE_DOCS]
+    total_books = len(documents)
+    total_cols  = len(collections)
 
-    lines = [f"[LIBRARY — {total} document(s) available; use library_search or library_list]"]
-    for d in shown:
-        lid    = d.get("library_id", "")
-        title  = d.get("title", "")[:45]
-        topics = ", ".join(d.get("topics", []))[:40]
-        lines.append(f"  {lid} | {title} | {topics}")
+    sorted_cols = sorted(collections.values(), key=lambda c: c.get("name", ""))
+    shown       = sorted_cols[:MAX_INLINE_COLLECTIONS]
 
-    if total > MAX_INLINE_DOCS:
-        lines.append(f"  (+{total - MAX_INLINE_DOCS} more — use library_list for full catalog)")
+    header = (
+        f"[LIBRARY — {total_books} book(s) in {total_cols} collection(s); "
+        f"use library_search, library_list, or library_collections]"
+    )
+    lines = [header]
+
+    for col in shown:
+        col_id  = col.get("collection_id", "")
+        name    = col.get("name", "")[:35]
+        count   = col.get("book_count", len(col.get("book_ids", [])))
+        summary = col.get("summary", "")[:80]
+        lines.append(f"  {col_id} | {name} ({count} books) | {summary}")
+
+    if total_cols > MAX_INLINE_COLLECTIONS:
+        hidden = total_cols - MAX_INLINE_COLLECTIONS
+        lines.append(f"  (+{hidden} more collections — use library_collections for full list)")
 
     lines.append("[/LIBRARY]")
 
-    n = min(total, MAX_INLINE_DOCS)
-    print(f"[LIB-CAT] Injected {n}/{total} library document(s) into context", flush=True)
+    n = min(total_cols, MAX_INLINE_COLLECTIONS)
+    print(f"[LIB-CAT] Injected {n}/{total_cols} collections ({total_books} books) into context", flush=True)
     return "\n".join(lines)
 
 
