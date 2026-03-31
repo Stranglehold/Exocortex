@@ -31,6 +31,16 @@ _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 
 echo "[LIBRARY] Deploying v2.0 to container: $CONTAINER"
 
+# ── Python dependencies ───────────────────────────────────────────────────────
+
+PYTHON="/opt/venv-a0/bin/python3"
+
+echo "[LIBRARY] Installing Python dependencies..."
+_exec "$CONTAINER" "$PYTHON" -m pip install --quiet \
+  langchain-text-splitters \
+  simpleeval
+echo "[LIBRARY] Dependencies installed."
+
 # ── Tool ──────────────────────────────────────────────────────────────────────
 
 TOOL_SRC="$REPO_ROOT/tools/library.py"

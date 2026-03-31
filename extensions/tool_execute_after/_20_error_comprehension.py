@@ -123,6 +123,39 @@ ERROR_CLASSES = [
         "confidence": 0.95,
     },
     {
+        "class": "import_error",
+        "description": "Python module not found — missing package or wrong import path",
+        "signals": [
+            r"ModuleNotFoundError: No module named",
+            r"ImportError: cannot import name",
+            r"ImportError: No module named",
+        ],
+        "anti_signals": [
+            r"(?i)successfully installed",
+        ],
+        "causal_chain": (
+            "A required Python package is not installed in the active virtual environment. "
+            "The correct pip binary is /opt/venv-a0/bin/pip — bare 'pip' may install into "
+            "a different environment and have no effect. "
+            "CRITICAL: even after a successful pip install, the module will NOT be available "
+            "in the current Python process. Agent Zero must be restarted for new packages "
+            "to load. Do not loop attempting imports after installing."
+        ),
+        "suggested_actions": [
+            "Install the missing package: /opt/venv-a0/bin/pip install <package-name>",
+            "Verify installation: /opt/venv-a0/bin/pip show <package-name>",
+            "After installing, report to the operator that a container restart is required",
+            "Do NOT attempt to use the new package in the same session without restarting",
+        ],
+        "anti_actions": [
+            "Do NOT use bare 'pip install' — always use /opt/venv-a0/bin/pip",
+            "Do NOT loop trying the import again after installing — it will fail until restart",
+            "Do NOT attempt more than one install per missing package",
+            "Do NOT try to importlib.reload() or sys.modules tricks — restart is the only fix",
+        ],
+        "confidence": 0.97,
+    },
+    {
         "class": "terminal_session_hung",
         "description": "Previous command still occupying the terminal session",
         "signals": [
