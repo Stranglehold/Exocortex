@@ -141,7 +141,7 @@ def run_direct(args):
     from tools.library import _safe_filename, _infer_format, _parse_topics, _make_id
     from tools.library import LIBRARY_DOCS_DIR, CATALOG_PATH, MEM_SUBDIR  # workdir paths
     from tools.library import AREA_CHUNK, AREA_BOOK, CHUNK_SIZE, CHUNK_OVERLAP
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
     from langchain_core.documents import Document
     from python.helpers.memory import Memory
     from python.helpers.document_query import DocumentQueryHelper
