@@ -886,7 +886,7 @@ def _get_format_failure_count(agent) -> int:
     so the graduated cascade wouldn't otherwise detect them.
     """
     MISFORMAT_SIGNAL = "Your last response was not valid JSON"
-    REPEAT_SIGNAL = "LOOP DETECTED. Your last response was identical"
+    REPEAT_SIGNAL = "LOOP DETECTED."
     try:
         msgs = agent.history.current.messages
         count = 0
