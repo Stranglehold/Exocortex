@@ -8,6 +8,10 @@
 #     → reasoning-distilled models no longer trigger the misformat loop
 #       when they respond in natural language instead of JSON
 #
+#   patches/prompts/fw.msg_repeat.md
+#     → replaces verbose 3-option loop message with: "call a subagent"
+#     → eliminates the option menu that lets the agent keep spinning
+#
 #   patches/prompts/agent.system.main.communication.md
 #     → clarifies that plain text is accepted for conversational replies
 #
@@ -92,7 +96,19 @@ else
   echo "[PATCH] WARNING: $PROVIDER_SRC not found — skipped."
 fi
 
-# ── 2. Prompt: agent.system.main.communication.md ────────────────────────────
+# ── 2. Prompt: fw.msg_repeat.md (loop detected → call subagent) ──────────────
+
+REPEAT_SRC="$PATCH_DIR/prompts/fw.msg_repeat.md"
+REPEAT_DST="/a0/prompts/fw.msg_repeat.md"
+
+if [ -f "$REPEAT_SRC" ]; then
+  docker cp "$REPEAT_SRC" "$CONTAINER:$REPEAT_DST"
+  echo "[PATCH] prompts/fw.msg_repeat.md deployed."
+else
+  echo "[PATCH] WARNING: $REPEAT_SRC not found — skipped."
+fi
+
+# ── 2b. Prompt: agent.system.main.communication.md ───────────────────────────
 
 PROMPT_SRC="$PATCH_DIR/prompts/agent.system.main.communication.md"
 PROMPT_DST="/a0/prompts/agent.system.main.communication.md"
