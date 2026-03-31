@@ -118,6 +118,7 @@ LAYERS=(
   "7|Memory classification system       |scripts/install_memory_classification.sh"
   "8|Ontology layer                     |scripts/install_ontology.sh"
   "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
+  "10|Document library (tools + catalog) |scripts/install_library.sh"
 )
 
 CHECK_SCRIPTS=(
@@ -221,8 +222,9 @@ if [ "$failed" -eq 0 ]; then
   echo "    Layer 6  A2A server        → /a0/python/a2a_server/"
   echo "    Layer 7  memory classify   → /a0/usr/agents/agent0/extensions/monologue_end/ + /a0/usr/memory/"
   echo "    Layer 8  ontology layer    → /a0/usr/ontology/ + /a0/python/tools/"
-  echo "    Layer 9  sleep consolidation → /a0/usr/Exocortex/ + profile tool_execute_after/
-    Note: Phase 2 will retire legacy /a0/python/extensions/ install scripts."
+  echo "    Layer 9  sleep consolidation → /a0/usr/Exocortex/ + profile tool_execute_after/"
+  echo "    Layer 10 document library   → /a0/usr/library/ + /a0/python/tools/ + profile ext/"
+  echo "    Note: Phase 2 will retire legacy /a0/python/extensions/ install scripts."
   echo ""
   echo "  Restart agent-zero or start a fresh chat to load all changes."
   echo "  A2A server: python -m a2a_server.run (port 8200)"
