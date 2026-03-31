@@ -1,15 +1,7 @@
 ---
 name: "config-edit"
 description: "Safely edit configuration files (YAML, JSON, TOML, INI) with validation and backup. Use when users need to modify settings, add new configurations, or update existing config values in their projects."
-version: "1.0.0"
 author: "agent"
-tags: ["configuration", "editing", "yaml", "json", "toml", "ini", "settings"]
-trigger_patterns:
-  - "edit config"
-  - "update configuration"
-  - "modify settings"
-  - "change config value"
-  - "add to config"
 ---
 # Config Edit Skill
 

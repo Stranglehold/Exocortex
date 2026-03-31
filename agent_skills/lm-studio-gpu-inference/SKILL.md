@@ -1,15 +1,7 @@
 ---
 name: "lm-studio-gpu-inference"
 description: "Core skill for leveraging local GPU processing via LM Studio. Enables chat completions, model listing, and embedding generation through the OpenAI-compatible API at http://host.docker.internal:1234/v1. Use when projects need GPU-accelerated LLM inference or to run programs like OpenPlanter inside the container."
-version: "1.0.0"
 author: "agent"
-tags: ["gpu", "llm", "inference", "lm-studio", "local"]
-trigger_patterns:
-  - "use lm studio"
-  - "local gpu inference"
-  - "call local llm"
-  - "run on host gpu"
-  - "openplanter mode"
 ---
 # LM Studio GPU Inference Skill
 

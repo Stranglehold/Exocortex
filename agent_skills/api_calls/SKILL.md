@@ -1,15 +1,7 @@
 ---
 name: "api_calls"
 description: "Make HTTP requests (GET, POST, PUT, DELETE) to external APIs with error handling and response parsing. Use when users need to interact with web services, fetch data from endpoints, or send API requests."
-version: "1.0.0"
 author: "agent"
-tags: ["api", "http", "requests", "networking", "web"]
-trigger_patterns:
-  - "make api call"
-  - "fetch from endpoint"
-  - "call web service"
-  - "get data from url"
-  - "post to api"
 ---
 # API Calls Skill
 

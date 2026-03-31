@@ -1,14 +1,7 @@
 ---
 name: "system-prompt-engineering"
 description: "Framework for constructing effective system messages and prompts that define AI assistant behavior, capabilities, and response patterns. Use when configuring agent personality, tool usage, or behavioral guidelines."
-version: "1.0.0"
 author: "agent"
-tags: ["prompting", "system-design", "configuration", "behavior", "framework"]
-trigger_patterns:
-  - "create system prompt"
-  - "implement system message"
-  - "configure agent behavior"
-  - "define assistant personality"
 ---
 # System Prompt Engineering Framework
 

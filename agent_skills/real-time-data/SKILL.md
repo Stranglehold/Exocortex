@@ -1,16 +1,7 @@
 ---
 name: "real-time-data"
 description: "Live market prices for stocks, ETFs, indices via yfinance and cryptocurrency prices via ccxt. Use for current prices, historical OHLCV data, and market dashboards."
-version: "1.0.0"
 author: "agent"
-tags: ["finance", "stocks", "crypto", "real-time", "market-data", "yfinance", "ccxt"]
-trigger_patterns:
-  - "get stock price"
-  - "current price of"
-  - "bitcoin price"
-  - "crypto price"
-  - "market data for"
-  - "live price"
 ---
 
 # Real-Time Data Skill

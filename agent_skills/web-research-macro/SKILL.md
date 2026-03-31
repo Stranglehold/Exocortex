@@ -1,14 +1,7 @@
 ---
 name: "web-research-macro"
 description: "Workflow methodology for extracting clean text from websites. Sequences browser_agent, inline sanitization, and document_query into a repeatable pipeline. Not an importable module — a pattern for calling tools that already exist."
-version: "1.1.0"
 author: "agent"
-tags: ["web", "research", "scraping", "extraction", "pipeline"]
-trigger_patterns:
-  - "extract content from website"
-  - "scrape webpage text"
-  - "get clean text from url"
-  - "research website content"
 ---
 
 # Web Research Macro Skill

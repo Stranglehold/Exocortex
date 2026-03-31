@@ -1,14 +1,7 @@
 ---
 name: "architecture-investigation"
 description: "Systematic methodology for investigating agent framework architectures, identifying key components, and comparing design patterns across systems. Use when analyzing new frameworks or conducting architectural assessments."
-version: "1.0.0"
 author: "agent"
-tags: ["investigation", "architecture", "analysis", "frameworks", "methodology"]
-trigger_patterns:
-  - "investigate architecture"
-  - "analyze framework"
-  - "architectural assessment"
-  - "compare frameworks"
 ---
 # Architecture Investigation Methodology
 

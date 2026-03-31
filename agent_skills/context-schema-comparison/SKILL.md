@@ -1,14 +1,7 @@
 ---
 name: "context-schema-comparison"
 description: "Framework for comparing context management approaches across different agent systems. Analyzes schema complexity, memory architecture, and design tradeoffs to inform architectural decisions."
-version: "1.0.0"
 author: "agent"
-tags: ["comparison", "context", "architecture", "analysis", "frameworks"]
-trigger_patterns:
-  - "compare context schemas"
-  - "analyze context management"
-  - "compare memory architectures"
-  - "evaluate context approaches"
 ---
 # Context Schema Comparison Framework
 

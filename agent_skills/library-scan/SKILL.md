@@ -1,15 +1,6 @@
 ---
 name: "library-scan"
 description: "Scans a directory for new books or documents not yet in the Exocortex library, then ingests them using library_add. Run this whenever new files have been added to a watched folder. Works per-collection (one folder at a time) or across all watched paths."
-version: "1.0.0"
-tags: ["library", "ingestion", "documents", "books", "catalog"]
-trigger_patterns:
-  - "scan the library for new books"
-  - "add new books to the library"
-  - "ingest new documents"
-  - "check for new files in"
-  - "update the library"
-  - "what new books can you find"
 ---
 
 # LIBRARY SCAN SKILL
@@ -53,7 +44,7 @@ import json
 import os
 from pathlib import Path
 
-CATALOG_PATH = "/a0/usr/library/catalog.json"
+CATALOG_PATH = "/a0/usr/workdir/library/catalog.json"
 SUPPORTED_EXT = {".pdf", ".txt", ".md", ".html", ".htm", ".epub"}
 MAX_FILE_MB = 200
 

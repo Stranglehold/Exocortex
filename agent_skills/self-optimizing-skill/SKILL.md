@@ -1,6 +1,5 @@
 ---
 skill_name: self-optimizing-skill
-version: 1.0.0
 description: A skill that monitors its own execution patterns, logs token usage vs. success rate, and gradually optimizes its approach using RL-inspired feedback loops
 categories:
   - meta-learning

@@ -42,9 +42,9 @@ from python.helpers.tool import Tool, Response
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-LIBRARY_DIR      = "/a0/usr/library"
-LIBRARY_DOCS_DIR = "/a0/usr/library/docs"
-CATALOG_PATH     = "/a0/usr/library/catalog.json"
+LIBRARY_DIR      = "/a0/usr/workdir/library"
+LIBRARY_DOCS_DIR = "/a0/usr/workdir/library/docs"
+CATALOG_PATH     = "/a0/usr/workdir/library/catalog.json"
 MEM_SUBDIR       = "library"
 
 AREA_CHUNK      = "library"

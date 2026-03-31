@@ -33,7 +33,7 @@ import os
 from python.helpers.extension import Extension
 from agent import LoopData
 
-CATALOG_PATH           = "/a0/usr/library/catalog.json"
+CATALOG_PATH           = "/a0/usr/workdir/library/catalog.json"
 MAX_INLINE_COLLECTIONS = 15
 
 

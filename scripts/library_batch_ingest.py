@@ -111,7 +111,7 @@ def discover_files(root: Path):
             yield filepath, collection
 
 
-def load_existing_catalog(catalog_path="/a0/usr/library/catalog.json"):
+def load_existing_catalog(catalog_path="/a0/usr/workdir/library/catalog.json"):
     """Return set of original_path values already in the catalog."""
     if not os.path.exists(catalog_path):
         return set()
@@ -139,7 +139,7 @@ def run_direct(args):
     # Lazy import after path setup
     from tools.library import _load_catalog, _save_catalog, _get_or_create_collection
     from tools.library import _safe_filename, _infer_format, _parse_topics, _make_id
-    from tools.library import LIBRARY_DOCS_DIR, CATALOG_PATH, MEM_SUBDIR
+    from tools.library import LIBRARY_DOCS_DIR, CATALOG_PATH, MEM_SUBDIR  # workdir paths
     from tools.library import AREA_CHUNK, AREA_BOOK, CHUNK_SIZE, CHUNK_OVERLAP
     from langchain.text_splitter import RecursiveCharacterTextSplitter
     from langchain_core.documents import Document

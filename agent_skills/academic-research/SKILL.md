@@ -1,15 +1,7 @@
 ---
 name: "academic-research"
 description: "Structured access to academic literature via Semantic Scholar API. Search papers, get citation counts, retrieve abstracts, find authors. Free, no API key required for basic use."
-version: "1.0.0"
 author: "agent"
-tags: ["research", "academic", "papers", "citations", "semantic-scholar"]
-trigger_patterns:
-  - "search academic papers"
-  - "find research papers on"
-  - "look up citations for"
-  - "find papers by author"
-  - "academic literature on"
 ---
 
 # Academic Research Skill

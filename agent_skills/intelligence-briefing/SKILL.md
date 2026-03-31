@@ -1,17 +1,7 @@
 ---
 name: "intelligence-briefing"
 description: "Comprehensive intelligence gathering and analysis modeled after Major Zero from Metal Gear Solid. Uses subordinate agents for parallel research, then synthesizes findings into structured phased briefings with BLUF, transmission mechanism maps, probability assessments, and confirm/invalidate indicators."
-version: "1.3.0"
 author: "Agent Zero Framework"
-tags: ["intelligence", "research", "briefing", "analysis", "situational-awareness", "geopolitical", "financial-analysis"]
-trigger_patterns:
-  - "give me an intelligence briefing on"
-  - "research this organization/company"
-  - "what do you know about [place/person]"
-  - "situation report on"
-  - "intelligence analysis of"
-  - "what is the likelihood that"
-  - "assess the risk of"
 ---
 
 # INTELLIGENCE BRIEFING SKILL

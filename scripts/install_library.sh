@@ -83,12 +83,14 @@ else
 fi
 
 # ── Persistent storage directories ───────────────────────────────────────────
+# catalog + docs live under workdir (Docker volume, survives container updates)
+# FAISS lives under /a0/usr/memory/library/ (Agent Zero memory volume)
 
-_exec "$CONTAINER" mkdir -p /a0/usr/library/docs
+_exec "$CONTAINER" mkdir -p /a0/usr/workdir/library/docs
 # Initialize v2 catalog if none exists; migrate v1 on first library_add
 _exec "$CONTAINER" bash -c \
-  "[ -f /a0/usr/library/catalog.json ] || printf '{\"version\":\"2.0\",\"collections\":{},\"documents\":[]}' > /a0/usr/library/catalog.json"
-echo "[LIBRARY] Storage directories ready (/a0/usr/library/, /a0/usr/library/docs/)."
+  "[ -f /a0/usr/workdir/library/catalog.json ] || printf '{\"version\":\"2.0\",\"collections\":{},\"documents\":[]}' > /a0/usr/workdir/library/catalog.json"
+echo "[LIBRARY] Storage directories ready (/a0/usr/workdir/library/, /a0/usr/workdir/library/docs/)."
 
 # ── Verify tool classes import ───────────────────────────────────────────────
 
@@ -102,9 +104,9 @@ print('[LIBRARY] All 5 tool classes import OK')
 echo ""
 echo "[LIBRARY] Deploy complete."
 echo "  Tools   : library_add, library_list, library_search, library_remove, library_collections"
-echo "  Catalog : /a0/usr/library/catalog.json  (collections + documents)"
-echo "  FAISS   : /a0/usr/memory/library/        (isolated from agent memory)"
-echo "  Docs    : /a0/usr/library/docs/"
+echo "  Catalog : /a0/usr/workdir/library/catalog.json  (workdir — persistent)"
+echo "  FAISS   : /a0/usr/memory/library/               (memory volume — persistent)"
+echo "  Docs    : /a0/usr/workdir/library/docs/"
 echo "  Batch   : /opt/venv-a0/bin/python3 /a0/usr/Exocortex/library_batch_ingest.py <dir> --direct"
 echo ""
 echo "  Send a message in Agent Zero to load, then:"
