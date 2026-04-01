@@ -281,3 +281,17 @@
 **Specific changes:** Drop directional targeting claim; reframe Wallas as phase detection; remove n=1 p-value; soften "geometric indistinguishability"; add base rate context to all synthesis probability claims; add UMAP parameter sensitivity note; correct citations (Rudolph removed, Karkada full author list); add explicit measurement/interpretation separation throughout.
 **Informed by:** Kestrel's computations, adversarial critic (two rounds), sequencing principle "compute first, revise second."
 **Status:** Revision pending. Computations complete.
+
+---
+
+## DEC-025: Pre-Dispatch Action Boundary Gate (Future Redesign Candidate)
+
+**Date:** 2026-03-31
+**Session:** 061
+**Principle:** For permission gates that must prevent agent token commitment, the gate should fire at routing time (pre-dispatch), not at execution time (pre-execution). "Pre-dispatch prevents token commitment; pre-execution prevents execution only."
+**Context:** Analysis of claw-code (instructkr/claw-code) — a clean-room architectural study of Claude Code's harness — identified that permission checks run at routing time before tool dispatch. Exocortex's `_15_action_boundary` runs at `tool_execute_before`, meaning the tool call has been parsed and dispatched before the gate fires. For most use cases the difference is immaterial — the gate holds either way. The concrete case where it matters: **subordinate depth enforcement** (blocking `call_subordinate` from within a subordinate context). Under the current hook timing, the agent has already committed tokens to generating the subordinate call (with full arguments) before the gate can reject it. A pre-dispatch gate would prevent the routing before the agent's token generation reaches the tool arguments — less wasted compute, cleaner rejection semantics, earlier signal to the supervisor.
+**Alternatives rejected (at the current design pass):** Redesigning the action boundary is a deep infrastructure change that requires modifying Agent Zero's core dispatch path, not just adding an extension. Not worth the scope until subordinate depth enforcement becomes a measured production need.
+**Revisit if:** (1) Subordinate depth enforcement is implemented and tested in production — the current hook timing becomes a verified problem, not a theoretical one; (2) Agent Zero's architecture adds a pre-dispatch hook point that can be used without modifying core.
+**Informed by:** Kestrel's claw-code analysis (2026-03-31) + Opus architectural review (same day). Routing-time permission semantics pattern extracted from claw-code. Subordinate depth enforcement as the concrete motivating use case identified by Opus.
+**What NOT to do:** Don't redesign the action boundary for this reason alone. The current pre-execution gate works. Build the subordinate depth enforcement feature first, confirm the timing is a real problem under load, then revisit.
+**Instances:** `extensions/tool_execute_before/_15_action_boundary.py` (current pre-execution implementation).

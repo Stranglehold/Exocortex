@@ -428,6 +428,14 @@ class SupervisorLoop(Extension):
             except Exception:
                 pass
 
+            # Read proactive supervisor flag — Tier 1 defers when proactive already intervened
+            # this turn. Tier 2/3 still fire as failsafes regardless.
+            proactive_fired = False
+            try:
+                proactive_fired = bool(self.agent.get_data("_ps_fired"))
+            except Exception:
+                pass
+
             # 4. Stall detection (org-dependent — requires HTN state)
             if not injected and org_active and not action_gate and _cooldown_ok(state, ANOMALY_STALL):
                 if _detect_stall(ctx, role):
@@ -435,9 +443,19 @@ class SupervisorLoop(Extension):
                     injected = True
 
             # 5. Loop detection — Tier 1 (warn, respects cooldown)
-            if not injected and not action_gate and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
+            # Deferred when proactive supervisor has already intervened this turn.
+            # Tier 2 (summarize) and Tier 3 (reset) are unaffected — they are failsafes.
+            if not injected and not action_gate and not proactive_fired and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
                 _inject_loop(self.agent, ctx, state)
                 injected = True
+            elif proactive_fired and new_loop_tier == "warn":
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content="[SUPERVISOR] Tier 1 deferred — proactive supervisor intervened this turn",
+                    )
+                except Exception:
+                    pass
 
             _set_state(self.agent, state)
 
