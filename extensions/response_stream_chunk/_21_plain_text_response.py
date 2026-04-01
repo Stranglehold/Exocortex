@@ -37,7 +37,7 @@ No LLM calls. Fully deterministic.
 """
 
 import asyncio
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from agent import LoopData
 
 # Marker key to track whether this extension created the current log item

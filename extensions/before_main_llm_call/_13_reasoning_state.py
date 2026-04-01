@@ -30,7 +30,7 @@ import os
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 REASONING_KEY = "_reasoning_state"
 STAGING_PATH  = "/a0/usr/Exocortex/staging.jsonl"

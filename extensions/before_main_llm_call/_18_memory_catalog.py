@@ -37,8 +37,8 @@ from datetime import datetime
 from typing import Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
-from python.helpers.memory import Memory
+from helpers.extension import Extension
+from plugins._memory.helpers.memory import Memory
 
 # Per-agent flag — set after first injection
 _CATALOG_ATTR = "_memory_catalog_built"

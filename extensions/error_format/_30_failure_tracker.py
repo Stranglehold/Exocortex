@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # Number of consecutive failures on the same tool before reflection fires
 REFLECTION_THRESHOLD = 2

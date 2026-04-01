@@ -2,15 +2,14 @@
 # install_exocortex_profile.sh
 # Deploys Exocortex extensions to the persistent agent profile path.
 #
-# Target: /a0/usr/agents/agent0/extensions/{hook}/
+# Target: /a0/usr/agents/agent0/extensions/python/{hook}/
 #         /a0/usr/agents/agent0/prompts/
 #
-# This is the Phase 1 migration target from DEC-030. Extensions deployed
-# here survive A0 updates (the /a0/usr/ boundary is persistent).
-# Profile path has higher priority than /a0/python/extensions/ in get_paths().
+# v1.6: Agent Zero uses extensions/python/ subdirectory under profile path.
+# get_paths() now looks under extensions/python/<hook>/ rather than extensions/<hook>/.
 #
-# Phase 2 will retire the individual hook deploy scripts that target
-# /a0/python/extensions/.
+# This path is persistent — survives A0 container image updates.
+# Profile path has higher priority than any ephemeral /a0/ path.
 
 set -e
 
@@ -30,15 +29,17 @@ echo "  Target: $PROFILE_BASE"
 # ── Create directory structure ────────────────────────────────────────────────
 
 _exec "$CONTAINER" mkdir -p \
-  "$PROFILE_BASE/extensions/before_main_llm_call" \
-  "$PROFILE_BASE/extensions/error_format" \
-  "$PROFILE_BASE/extensions/hist_add_before" \
-  "$PROFILE_BASE/extensions/message_loop_end" \
-  "$PROFILE_BASE/extensions/message_loop_prompts_after" \
-  "$PROFILE_BASE/extensions/monologue_end" \
-  "$PROFILE_BASE/extensions/response_stream_chunk" \
-  "$PROFILE_BASE/extensions/tool_execute_after" \
-  "$PROFILE_BASE/extensions/tool_execute_before" \
+  "$PROFILE_BASE/extensions/python/before_main_llm_call" \
+  "$PROFILE_BASE/extensions/python/error_format" \
+  "$PROFILE_BASE/extensions/python/hist_add_before" \
+  "$PROFILE_BASE/extensions/python/message_loop_end" \
+  "$PROFILE_BASE/extensions/python/message_loop_prompts_after" \
+  "$PROFILE_BASE/extensions/python/monologue_end" \
+  "$PROFILE_BASE/extensions/python/reasoning_stream" \
+  "$PROFILE_BASE/extensions/python/reasoning_stream_end" \
+  "$PROFILE_BASE/extensions/python/response_stream_chunk" \
+  "$PROFILE_BASE/extensions/python/tool_execute_after" \
+  "$PROFILE_BASE/extensions/python/tool_execute_before" \
   "$PROFILE_BASE/prompts"
 
 # ── Deploy extensions ─────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ _exec "$CONTAINER" mkdir -p \
 # are intentionally excluded — replaced by prompt files below.
 
 EXT_SRC="$SCRIPT_DIR/extensions"
-EXT_DEST="$CONTAINER:$PROFILE_BASE/extensions"
+EXT_DEST="$CONTAINER:$PROFILE_BASE/extensions/python"
 
 # before_main_llm_call
 docker cp "$EXT_SRC/before_main_llm_call/_11_belief_state_tracker.py" "$EXT_DEST/before_main_llm_call/"
@@ -55,6 +56,8 @@ docker cp "$EXT_SRC/before_main_llm_call/_15_htn_plan_selector.py"    "$EXT_DEST
 docker cp "$EXT_SRC/before_main_llm_call/_16_tool_registry.py"        "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_18_memory_catalog.py"       "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_20_context_watchdog.py"     "$EXT_DEST/before_main_llm_call/"
+# Proactive Reasoning Supervisor — injection hook (v1.6 source path)
+docker cp "$EXT_SRC/python/before_main_llm_call/_12_proactive_supervisor.py" "$EXT_DEST/before_main_llm_call/"
 
 # error_format
 docker cp "$EXT_SRC/error_format/_20_structured_retry.py"  "$EXT_DEST/error_format/"
@@ -79,6 +82,12 @@ docker cp "$EXT_SRC/monologue_end/_53_insight_capture.py"      "$EXT_DEST/monolo
 docker cp "$EXT_SRC/monologue_end/_55_memory_classifier.py"    "$EXT_DEST/monologue_end/"
 docker cp "$EXT_SRC/monologue_end/_57_memory_maintenance.py"   "$EXT_DEST/monologue_end/"
 docker cp "$EXT_SRC/monologue_end/_59_ontology_maintenance.py" "$EXT_DEST/monologue_end/"
+
+# reasoning_stream — Proactive Reasoning Supervisor buffer hook
+docker cp "$EXT_SRC/python/reasoning_stream/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream/"
+
+# reasoning_stream_end — Proactive Reasoning Supervisor analysis hook
+docker cp "$EXT_SRC/python/reasoning_stream_end/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream_end/"
 
 # response_stream_chunk
 docker cp "$EXT_SRC/response_stream_chunk/_21_plain_text_response.py" "$EXT_DEST/response_stream_chunk/"

@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from typing import Any
 
 # Static schema: tool_name -> {required_args, arg_aliases, runtime_aliases}

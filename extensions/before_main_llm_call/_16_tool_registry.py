@@ -30,11 +30,11 @@ import textwrap
 from typing import Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 
-TOOLS_DIR              = "/a0/python/tools"
+TOOLS_DIR              = "/a0/tools"
 MANIFEST_PATH          = "/a0/usr/Exocortex/tool_manifest.json"
 EXOCORTEX_SKILLS_DIR   = "/a0/usr/Exocortex/skills"
 A0_SKILLS_DIR          = "/a0/usr/skills"

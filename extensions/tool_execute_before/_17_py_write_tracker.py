@@ -13,7 +13,7 @@ Runs after action boundary (_15_) and before meta-reasoning gate (_20_).
 import re
 from typing import Any, Dict
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # Patterns that write a .py file via shell — group 1 captures the file path
 _PY_WRITE_PATTERNS = [

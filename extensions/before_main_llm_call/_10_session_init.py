@@ -27,7 +27,7 @@ import json
 import os
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 STAGING_PATH = "/a0/usr/Exocortex/staging.jsonl"
 SESSION_INIT_FLAG = "_session_init_done"

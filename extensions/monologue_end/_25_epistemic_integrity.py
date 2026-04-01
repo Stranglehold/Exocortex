@@ -45,7 +45,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

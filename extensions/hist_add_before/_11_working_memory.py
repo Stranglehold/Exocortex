@@ -52,7 +52,7 @@ Promotion: Entities with >= PROMOTE_THRESHOLD mentions move to
 import re
 from typing import Any
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -146,7 +146,7 @@ _RE_SERVICE = re.compile(
 class WorkingMemoryBuffer(Extension):
     """Agent-Zero extension: hist_add_before"""
 
-    async def execute(self, **kwargs) -> Any:
+    def execute(self, **kwargs) -> Any:
         try:
             # hist_add_before passes content_data and ai flag
             content_data = kwargs.get("content_data")

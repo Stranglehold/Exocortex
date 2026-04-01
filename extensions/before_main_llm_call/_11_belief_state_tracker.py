@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 TAXONOMY_PATH          = Path(__file__).parent / "slot_taxonomy.json"
 BELIEF_KEY             = "__bst_belief_state__"

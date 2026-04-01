@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from typing import Any
 
 FAILURES_KEY = "_tool_failures"

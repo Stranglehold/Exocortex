@@ -22,8 +22,8 @@ No LLM calls. Read-only on response.message. One log item write.
 """
 
 from agent import LoopData
-from python.helpers.extension import Extension
-from python.helpers.tool import Response
+from helpers.extension import Extension
+from helpers.tool import Response
 
 
 class ResponseFinalizer(Extension):

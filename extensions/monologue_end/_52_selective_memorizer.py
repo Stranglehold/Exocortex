@@ -29,12 +29,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agent import LoopData
-from python.helpers import settings, errors
-from python.helpers.extension import Extension
-from python.helpers.memory import Memory
-from python.helpers.dirty_json import DirtyJson
-from python.helpers.log import LogItem
-from python.helpers.defer import DeferredTask, THREAD_BACKGROUND
+from helpers import settings, errors
+from helpers.extension import Extension
+from plugins._memory.helpers.memory import Memory
+from helpers.dirty_json import DirtyJson
+from helpers.log import LogItem
+from helpers.defer import DeferredTask, THREAD_BACKGROUND
 
 # ── Metadata keys (must match _55_memory_classifier.py) ─────────────────────
 

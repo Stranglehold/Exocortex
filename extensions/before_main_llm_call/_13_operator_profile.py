@@ -37,7 +37,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 APPROVED_PATH = "/a0/usr/Exocortex/operator_profile_approved.json"
 VERSIONS_DIR  = "/a0/usr/Exocortex/operator_profile_versions"

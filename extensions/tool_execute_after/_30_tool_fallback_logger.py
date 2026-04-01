@@ -1,6 +1,6 @@
 import re
-from python.helpers.extension import Extension
-from python.helpers.tool import Response
+from helpers.extension import Extension
+from helpers.tool import Response
 
 FAILURES_KEY = "_tool_failures"
 FORMAT_TRACKER_KEY = "_failure_tracker"  # Owned by error_format/_30_failure_tracker.py

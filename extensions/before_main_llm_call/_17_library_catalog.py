@@ -30,7 +30,7 @@ Spec: specs/LIBRARY_SPEC_L3.md
 import json
 import os
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from agent import LoopData
 
 CATALOG_PATH           = "/a0/usr/workdir/library/catalog.json"

@@ -486,7 +486,7 @@ async def run_phase4_consolidation(agent, session_id: str = "unknown") -> dict:
     }
 
     try:
-        from python.helpers.memory import Memory
+        from plugins._memory.helpers.memory import Memory
         db = await Memory.get(agent)
         if not db or not db.db:
             _write_sleep_report(result)

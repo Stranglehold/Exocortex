@@ -33,7 +33,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 CONFIG_PATH = "/a0/usr/Exocortex/action_boundary_config.json"
 
@@ -94,7 +94,9 @@ TIER_4_TOOL_NAMES = [
 # boundary before promotion.
 
 TIER_4_SYSTEM_WRITE_PATHS = {
-    "/a0/python/",
+    "/a0/python/",   # v1.5 path — kept for backwards compatibility during migration
+    "/a0/tools/",    # v1.6 tools path
+    "/a0/helpers/",  # v1.6 helpers path
     "/a0/agents/",
     "/a0/usr/agents/",
 }

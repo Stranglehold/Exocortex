@@ -1,5 +1,5 @@
-from python.helpers.extension import Extension
-from python.helpers import files
+from helpers.extension import Extension
+from helpers import files
 from agent import LoopData
 import os
 import re
@@ -46,7 +46,7 @@ def _build_tool_registry(agent) -> tuple[str, dict[str, str]]:
     if cached:
         return cached["menu"], cached["specs"]
 
-    from python.helpers import subagents
+    from helpers import subagents
     dirs = subagents.get_paths(agent, "prompts")
 
     # Collect all tool spec files across prompt directories

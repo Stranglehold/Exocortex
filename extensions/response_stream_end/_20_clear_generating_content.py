@@ -17,7 +17,7 @@ No LLM calls. One log item write. Passthrough on any failure.
 """
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 
 class ClearGeneratingContent(Extension):

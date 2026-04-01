@@ -25,8 +25,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from python.helpers.extension import Extension
-from python.helpers.tool import Response
+from helpers.extension import Extension
+from helpers.tool import Response
 
 LEDGER_KEY = "_evidence_ledger"
 

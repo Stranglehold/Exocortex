@@ -26,8 +26,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from python.helpers.extension import Extension
-from python.helpers.tool import Response
+from helpers.extension import Extension
+from helpers.tool import Response
 
 PENDING_KEY = "_pending_py_check"
 

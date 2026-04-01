@@ -27,7 +27,7 @@ import sys
 from typing import Dict, Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # Path injection for Exocortex modules
 _EXOCORTEX_PATH = "/a0/usr/Exocortex"

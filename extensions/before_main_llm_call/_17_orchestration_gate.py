@@ -52,7 +52,7 @@ import re
 from typing import Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 

@@ -30,7 +30,7 @@ import os
 from typing import Optional
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 SETTINGS_PATH  = "/a0/usr/settings.json"
 PROFILE_ROOT   = "/a0/usr/Exocortex/eval/model_profiles"

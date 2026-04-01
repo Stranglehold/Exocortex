@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from agent import Agent, LoopData
 
 # Default context window for local models
@@ -46,7 +46,7 @@ class ContextWatchdog(Extension):
                 f"Responses may degrade. Consider /reset or summarizing history."
             )
             self.agent.context.log.log(type="warning", content=msg)
-            from python.helpers.print_style import PrintStyle
+            from helpers.print_style import PrintStyle
             PrintStyle(font_color="red", padding=True).print(msg)
 
         elif utilization >= WARN_THRESHOLD:
@@ -55,5 +55,5 @@ class ContextWatchdog(Extension):
                 f"({utilization:.0%}) — context filling."
             )
             self.agent.context.log.log(type="warning", content=msg)
-            from python.helpers.print_style import PrintStyle
+            from helpers.print_style import PrintStyle
             PrintStyle(font_color="orange", padding=False).print(msg)

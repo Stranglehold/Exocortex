@@ -1,5 +1,5 @@
-from python.helpers.extension import Extension
-from python.helpers.tool import Response
+from helpers.extension import Extension
+from helpers.tool import Response
 
 # Must match the key used in error_format/_30_failure_tracker.py
 TRACKER_KEY = "_failure_tracker"

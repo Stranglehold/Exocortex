@@ -22,7 +22,7 @@ if _PM_PATH not in _sys.path:
     _sys.path.insert(0, _PM_PATH)
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Constants ────────────────────────────────────────────────────
 
@@ -903,7 +903,7 @@ def _get_format_failure_count(agent) -> int:
     warnings injected by the agent-zero core. These bypass tool_failures.consecutive
     so the graduated cascade wouldn't otherwise detect them.
     """
-    MISFORMAT_SIGNAL = "Your last response was not valid JSON"
+    MISFORMAT_SIGNAL = "You have misformatted your message"  # v1.6: fw.msg_misformat.md
     REPEAT_SIGNAL = "LOOP DETECTED."
     try:
         msgs = agent.history.current.messages
@@ -1066,7 +1066,7 @@ def _drain_staging_buffer(agent):
         return
 
     import asyncio
-    from python.helpers.memory import Memory
+    from plugins._memory.helpers.memory import Memory
 
     affected = [e for e in staging if e.get("turn_idx", 0) >= loop_start_cycle]
     if not affected:
@@ -1173,7 +1173,7 @@ def _execute_tier2(agent, failing_tool, consecutive: int, state: dict, stagnatio
 
         # ── Insert at incision point (primacy position) rather than appending ─────
         try:
-            from python.helpers.history import HistoryMessage
+            from helpers.history import HistoryMessage
             summary_msg = HistoryMessage(content=summary, ai=False)
             current_topic.messages.insert(incision_idx, summary_msg)
         except Exception:

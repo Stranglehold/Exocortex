@@ -1,4 +1,4 @@
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # Keywords that indicate a JSON format/parse failure from DirtyJson or tool extraction
 FORMAT_ERROR_SIGNALS = [

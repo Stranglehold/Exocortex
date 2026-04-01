@@ -34,7 +34,7 @@ import time
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

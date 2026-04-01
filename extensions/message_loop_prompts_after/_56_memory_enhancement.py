@@ -38,8 +38,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
-from python.helpers.memory import Memory
+from helpers.extension import Extension
+from plugins._memory.helpers.memory import Memory
 
 # ── Configuration ────────────────────────────────────────────────────────────
 

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 PLAN_LIBRARY_PATH = Path(__file__).parent / "htn_plan_library.json"
 HTN_STATE_KEY = "_htn_state"
