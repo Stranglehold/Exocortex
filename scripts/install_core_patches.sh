@@ -37,7 +37,7 @@ set -e
 CONTAINER="${1:-flamboyant_bell}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PATCH_DIR="$REPO_ROOT/patches"
-PROFILE_EXT="$CONTAINER:/a0/usr/agents/agent0/extensions/python"
+PLUGIN_EXT="$CONTAINER:/a0/usr/plugins/exocortex/extensions/python"
 
 # Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
 _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
@@ -143,11 +143,11 @@ fi
 # v1.6: profile path only (extensions/python/ subdirectory)
 
 EXT_SRC="$REPO_ROOT/extensions/response_stream_chunk/_21_plain_text_response.py"
-EXT_PROFILE_DST="/a0/usr/agents/agent0/extensions/python/response_stream_chunk/_21_plain_text_response.py"
-EXT_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/python/response_stream_chunk/__pycache__"
+EXT_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/response_stream_chunk/_21_plain_text_response.py"
+EXT_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/response_stream_chunk/__pycache__"
 
 if [ -f "$EXT_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/python/response_stream_chunk
+  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/response_stream_chunk
   docker cp "$EXT_SRC" "$CONTAINER:$EXT_PROFILE_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$EXT_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$EXT_PROFILE_DST' && echo '[PATCH] _21_plain_text_response.py OK'"
@@ -161,11 +161,11 @@ fi
 # doesn't render the raw streaming JSON for every tool call turn.
 
 CLR_SRC="$REPO_ROOT/extensions/response_stream_end/_20_clear_generating_content.py"
-CLR_PROFILE_DST="/a0/usr/agents/agent0/extensions/python/response_stream_end/_20_clear_generating_content.py"
-CLR_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/python/response_stream_end/__pycache__"
+CLR_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/response_stream_end/_20_clear_generating_content.py"
+CLR_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/response_stream_end/__pycache__"
 
 if [ -f "$CLR_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/python/response_stream_end
+  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/response_stream_end
   docker cp "$CLR_SRC" "$CONTAINER:$CLR_PROFILE_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$CLR_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$CLR_PROFILE_DST' && echo '[PATCH] _20_clear_generating_content.py OK'"
@@ -178,11 +178,11 @@ fi
 # v1.6: profile path only
 
 CAT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_18_memory_catalog.py"
-CAT_PROFILE_DST="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_18_memory_catalog.py"
-CAT_PROFILE_PYCACHE="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/__pycache__"
+CAT_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/before_main_llm_call/_18_memory_catalog.py"
+CAT_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/before_main_llm_call/__pycache__"
 
 if [ -f "$CAT_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/python/before_main_llm_call
+  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/before_main_llm_call
   docker cp "$CAT_SRC" "$CONTAINER:$CAT_PROFILE_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$CAT_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$CAT_PROFILE_DST' && echo '[PATCH] _18_memory_catalog.py OK'"

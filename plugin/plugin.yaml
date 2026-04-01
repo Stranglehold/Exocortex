@@ -1,0 +1,12 @@
+name: exocortex
+title: Exocortex
+description: >
+  Sovereignty-first cognitive hardening layer for Agent Zero.
+  Deterministic scaffolding across 12 layers: belief state tracking,
+  working memory, supervisor loop, sleep consolidation, memory
+  classification, ontology, epistemic integrity, and more.
+  No LLM calls in deterministic layers. Graceful degradation on failure.
+version: 2.0.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false
