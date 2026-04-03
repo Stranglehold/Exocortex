@@ -1,0 +1,106 @@
+{
+  "name": "Codec",
+  "author": "Exocortex",
+  "description": "MGS Delta transmission screen. Encrypted, degraded, intimate. Amber on dark sepia.",
+  "version": "1.0.0",
+  "tier": "atmospheric",
+  "colors": {
+    "background": "#100e0a",
+    "text": "#d4c8a8",
+    "text-muted": "#8a8070c7",
+    "primary": "#7a7060",
+    "secondary": "#2a2418",
+    "accent": "#c9922e",
+    "message-bg": "#181410",
+    "highlight": "#7a5c1e",
+    "message-text": "#ccc0a0",
+    "panel": "#141008",
+    "border": "#4a4030a8",
+    "input": "#100e0a",
+    "input-focus": "#181410",
+    "chat-background": "#0e0c08",
+    "error-text": "#cc4444",
+    "warning-text": "#e09c3e",
+    "table-row": "#1a1610"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', monospace"
+  },
+  "preview": {
+    "background": "#100e0a",
+    "text": "#d4c8a8",
+    "accent": "#c9922e"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/mgs-delta-radio-screen.jpg",
+    "opacity": 0.55,
+    "blur": 5,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.6,
+    "backdrop_blur": 2
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": true,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": true,
+      "opacity": 0.025
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.35
+    },
+    "watermark": {
+      "enabled": false,
+      "src": "/themes/assets/FOX_logo_webp.png",
+      "opacity": 0.08,
+      "position": "center",
+      "size": "30%"
+    }
+  },
+  "animation": {
+    "type": "embers",
+    "intensity": 0.5,
+    "color": null
+  },
+  "cursor_trail": {
+    "type": "none",
+    "color": "#c9922e",
+    "intensity": 0.45
+  },
+  "message_reveal": {
+    "type": "scan",
+    "speed": 0.9
+  },
+  "widgets": [
+    {
+      "type": "corner-label",
+      "position": "top-left",
+      "text": "FREQ: 140.85",
+      "cycle": [
+        "FREQ: 140.85",
+        "FREQ: 141.52",
+        "FREQ: 149.53",
+        "FREQ: 140.96",
+        "FREQ: 141.80"
+      ],
+      "cycle_trigger": "agent-response",
+      "color": "#a08860",
+      "font_size": "11px"
+    },
+    {
+      "type": "exclamation",
+      "color": "#e8a030",
+      "trigger": "agent-message"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ Output is deterministic: file presence checks + agent attribute reads.
 import os
 from datetime import datetime, timezone
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 # ---------------------------------------------------------------------------
 # Extension registry — canonical list of all Exocortex extensions

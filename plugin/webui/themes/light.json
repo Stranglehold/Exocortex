@@ -1,0 +1,34 @@
+{
+  "name": "Light",
+  "author": "Agent Zero",
+  "description": "Clean light theme for daytime use",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#fafafa",
+    "text": "#333333",
+    "text-muted": "#333333e4",
+    "primary": "#384653",
+    "secondary": "#e8eaf6",
+    "accent": "#b00020",
+    "message-bg": "#ffffff",
+    "highlight": "#2563eb",
+    "message-text": "#333333",
+    "panel": "#f0f0f0",
+    "border": "#bdbdbdcf",
+    "input": "#e4e4e4",
+    "input-focus": "#dadada",
+    "chat-background": "#fafafa",
+    "error-text": "#920000",
+    "warning-text": "#936214",
+    "table-row": "#edededf3"
+  },
+  "fonts": {
+    "main": "'Rubik', Arial, Helvetica, sans-serif",
+    "code": "'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#fafafa",
+    "text": "#333333",
+    "accent": "#b00020"
+  }
+}

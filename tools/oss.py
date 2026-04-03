@@ -28,7 +28,7 @@ import os
 import urllib.error
 import urllib.request
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 OSS_URL          = os.environ.get("OSS_URL", "http://host.docker.internal:7731")
 OSS_ANALYST_TOKEN = os.environ.get("OSS_ANALYST_TOKEN", "dev_analyst_token")

@@ -18,7 +18,7 @@ import os
 import sys
 from typing import Any
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 ONTOLOGY_DIR = "/a0/usr/ontology"
 CONFIG_PATH = os.path.join(ONTOLOGY_DIR, "ontology_config.json")

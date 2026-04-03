@@ -2,24 +2,23 @@
 theme_author.py — Agent Zero WebUI Theme Authoring Tool
 ========================================================
 
-Creates, validates, and deploys new themes to the Agent Zero webUI.
+Creates, validates, and deploys new themes to the Exocortex theme system.
 
-Use this tool to deploy a completed theme JSON without manually copying files.
-Design the theme JSON according to THEME_AUTHORING_GUIDE.md, then call this
-tool with the complete JSON to validate and deploy it in one step.
+Use this tool to deploy a completed theme JSON. Design the JSON according to
+THEME_AUTHORING_GUIDE.md, then call this tool with the complete JSON to
+validate and deploy in one step.
 
 Actions
 -------
-deploy   — Validate JSON and write to /a0/webui/themes/{key}.json,
-           then add key to knownThemes in theme-store.js.
+deploy   — Validate JSON, write theme file, and add to index.json.
            Returns success with theme name, or validation errors without deploying.
 
 validate — Validate JSON only. Returns "VALID" or a list of specific errors.
            Does not write any files.
 
-list     — List all currently installed themes with name and tier.
+list     — List all currently installed themes with name and description.
 
-remove   — Remove a theme by key: deletes the JSON and removes from knownThemes.
+remove   — Remove a theme by key: deletes the JSON and removes from index.json.
 
 Arguments
 ---------
@@ -29,20 +28,6 @@ theme_key  : Filename key — lowercase, hyphens only, no .json suffix.
              Example: "my-theme", "snake-eater", "big-boss"
 theme_json : Complete theme JSON as a string.
              Required for: deploy, validate.
-
-Examples
---------
-Validate before deploying:
-  action=validate, theme_key=my-theme, theme_json={...}
-
-Deploy a new theme:
-  action=deploy, theme_key=my-theme, theme_json={...}
-
-List installed themes:
-  action=list
-
-Remove a theme:
-  action=remove, theme_key=my-theme
 
 Required JSON fields: name, author, description, version, colors, fonts, preview
 Required color keys: background, text, text-muted, primary, secondary, accent,
@@ -55,15 +40,15 @@ import json
 import os
 import re
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-THEMES_DIR = "/a0/webui/themes"
-THEME_STORE_PATH = "/a0/webui/components/sidebar/themes/theme-store.js"
+THEMES_DIR   = "/a0/usr/plugins/exocortex/webui/themes"
+THEMES_INDEX = "/a0/usr/plugins/exocortex/webui/themes/index.json"
 
 REQUIRED_TOP_FIELDS = {"name", "author", "description", "version", "colors", "fonts", "preview"}
 
@@ -78,12 +63,6 @@ VALID_TIERS = {"palette", "atmospheric", "immersive"}
 # Matches: #RGB, #RGBA, #RRGGBB, #RRGGBBAA, rgba(...)
 COLOR_PATTERN = re.compile(r'^#[0-9a-fA-F]{3,8}$|^rgba\(')
 
-# Matches the knownThemes array in theme-store.js
-KNOWN_THEMES_RE = re.compile(
-    r"(const\s+knownThemes\s*=\s*\[)([^\]]*?)(\])",
-    re.DOTALL,
-)
-
 
 # ---------------------------------------------------------------------------
 # Tool class
@@ -91,7 +70,7 @@ KNOWN_THEMES_RE = re.compile(
 
 class ThemeAuthor(Tool):
     """
-    Deploy, validate, list, or remove Agent Zero webUI themes.
+    Deploy, validate, list, or remove Exocortex webUI themes (v1.6+).
     See module docstring for full usage guide.
     """
 
@@ -148,7 +127,6 @@ def _validate(theme_json_str: str) -> list:
     """Return list of error strings, empty if valid."""
     errors = []
 
-    # 1. Parse JSON
     try:
         theme = json.loads(theme_json_str)
     except json.JSONDecodeError as e:
@@ -157,19 +135,16 @@ def _validate(theme_json_str: str) -> list:
     if not isinstance(theme, dict):
         return ["Theme must be a JSON object."]
 
-    # 2. Required top-level fields
     missing = REQUIRED_TOP_FIELDS - set(theme.keys())
     for f in sorted(missing):
         errors.append(f"Missing required field: {f}")
 
-    # 3. Required color keys
     colors = theme.get("colors", {})
     if isinstance(colors, dict):
         missing_colors = REQUIRED_COLOR_KEYS - set(colors.keys())
         for k in sorted(missing_colors):
             errors.append(f"Missing required color key: colors.{k}")
 
-        # 4. Validate each color value format
         for key, val in colors.items():
             if not isinstance(val, str):
                 errors.append(f"Color value must be a string: colors.{key} = {val!r}")
@@ -181,7 +156,6 @@ def _validate(theme_json_str: str) -> list:
     else:
         errors.append("'colors' must be an object.")
 
-    # 5. Tier validation (optional field)
     tier = theme.get("tier")
     if tier is not None and tier not in VALID_TIERS:
         errors.append(
@@ -192,15 +166,13 @@ def _validate(theme_json_str: str) -> list:
 
 
 def _deploy(theme_key: str, theme_json_str: str) -> str:
-    """Validate, write theme file, update theme-store.js. Returns status message."""
-    # Validate key format
+    """Validate, write theme file, update index.json. Returns status message."""
     if not re.match(r'^[a-z0-9][a-z0-9-]*$', theme_key):
         return (
             f"[THEME] Error: invalid theme_key '{theme_key}'. "
             "Use lowercase letters, digits, and hyphens only."
         )
 
-    # Validate JSON
     errors = _validate(theme_json_str)
     if errors:
         return "[THEME] Validation failed — not deployed:\n" + "\n".join(
@@ -210,26 +182,26 @@ def _deploy(theme_key: str, theme_json_str: str) -> str:
     theme = json.loads(theme_json_str)
     theme_name = theme.get("name", theme_key)
 
-    # Write theme JSON
     dest_path = os.path.join(THEMES_DIR, f"{theme_key}.json")
     try:
+        os.makedirs(THEMES_DIR, exist_ok=True)
         with open(dest_path, "w", encoding="utf-8") as f:
             json.dump(theme, f, indent=2, ensure_ascii=False)
     except OSError as e:
         return f"[THEME] Error writing theme file: {e}"
 
-    # Update theme-store.js
-    store_result = _add_to_known_themes(theme_key)
+    index_result = _add_to_index(theme_key, theme)
 
     return (
         f"[THEME] Deployed '{theme_name}' as key '{theme_key}'.\n"
         f"  File: {dest_path}\n"
-        f"  Store: {store_result}"
+        f"  Index: {index_result}\n"
+        f"  Reload the browser tab to see it in the sidebar theme picker."
     )
 
 
 def _remove_theme(theme_key: str) -> str:
-    """Delete theme JSON and remove from knownThemes."""
+    """Delete theme JSON and remove from index.json."""
     theme_path = os.path.join(THEMES_DIR, f"{theme_key}.json")
 
     removed_file = False
@@ -239,36 +211,33 @@ def _remove_theme(theme_key: str) -> str:
             removed_file = True
         except OSError as e:
             return f"[THEME] Error deleting theme file: {e}"
-    else:
-        pass  # May still be in knownThemes; remove it anyway
 
-    store_result = _remove_from_known_themes(theme_key)
+    index_result = _remove_from_index(theme_key)
 
     if removed_file:
-        return f"[THEME] Removed theme '{theme_key}'.\n  Store: {store_result}"
-    else:
-        return (
-            f"[THEME] Theme file '{theme_key}.json' not found "
-            f"(may already be deleted).\n  Store: {store_result}"
-        )
+        return f"[THEME] Removed theme '{theme_key}'.\n  Index: {index_result}"
+    return (
+        f"[THEME] Theme file '{theme_key}.json' not found "
+        f"(may already be deleted).\n  Index: {index_result}"
+    )
 
 
 def _list_themes() -> str:
-    """List all theme JSON files with name and tier."""
+    """List all theme JSON files with name and description."""
     try:
         entries = []
         for fname in sorted(os.listdir(THEMES_DIR)):
-            if not fname.endswith(".json") or fname == "template.json":
+            if not fname.endswith(".json") or fname in ("template.json", "index.json"):
                 continue
             key = fname[:-5]
             try:
                 with open(os.path.join(THEMES_DIR, fname), encoding="utf-8") as f:
                     data = json.load(f)
                 name = data.get("name", key)
-                tier = data.get("tier", "palette")
-                entries.append(f"  {key:<20}  {name:<22}  tier={tier}")
+                desc = data.get("description", "")[:50]
+                entries.append(f"  {key:<22}  {name:<24}  {desc}")
             except Exception as e:
-                entries.append(f"  {key:<20}  (error reading: {e})")
+                entries.append(f"  {key:<22}  (error reading: {e})")
 
         if not entries:
             return "[THEME] No themes installed."
@@ -278,65 +247,60 @@ def _list_themes() -> str:
 
 
 # ---------------------------------------------------------------------------
-# theme-store.js helpers
+# index.json helpers
 # ---------------------------------------------------------------------------
 
-def _add_to_known_themes(theme_key: str) -> str:
-    """Add theme_key to knownThemes array if not present. Returns status string."""
+def _load_index() -> dict:
     try:
-        with open(THEME_STORE_PATH, encoding="utf-8") as f:
-            content = f.read()
-    except OSError as e:
-        return f"could not read theme-store.js: {e}"
+        with open(THEMES_INDEX, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {"themes": []}
 
-    m = KNOWN_THEMES_RE.search(content)
-    if not m:
-        return "knownThemes array not found in theme-store.js — manual update required"
 
-    keys_str = m.group(2)
-    # Parse existing keys
-    existing = [k.strip().strip("'\"") for k in keys_str.split(",") if k.strip()]
-
-    if theme_key in existing:
-        return "already in knownThemes (no change)"
-
-    existing.append(theme_key)
-    new_keys_str = ", ".join(f"'{k}'" for k in existing)
-    new_content = content[: m.start(2)] + new_keys_str + content[m.end(2):]
-
+def _save_index(index: dict) -> str:
     try:
-        with open(THEME_STORE_PATH, "w", encoding="utf-8") as f:
-            f.write(new_content)
-        return f"added '{theme_key}' to knownThemes"
+        with open(THEMES_INDEX, "w", encoding="utf-8") as f:
+            json.dump(index, f, indent=2, ensure_ascii=False)
+        return "index.json updated"
     except OSError as e:
-        return f"could not write theme-store.js: {e}"
+        return f"could not write index.json: {e}"
 
 
-def _remove_from_known_themes(theme_key: str) -> str:
-    """Remove theme_key from knownThemes array. Returns status string."""
-    try:
-        with open(THEME_STORE_PATH, encoding="utf-8") as f:
-            content = f.read()
-    except OSError as e:
-        return f"could not read theme-store.js: {e}"
+def _add_to_index(theme_key: str, theme: dict) -> str:
+    """Add or update entry for theme_key in index.json."""
+    index = _load_index()
+    themes = index.setdefault("themes", [])
 
-    m = KNOWN_THEMES_RE.search(content)
-    if not m:
-        return "knownThemes array not found in theme-store.js — manual update required"
+    preview = theme.get("preview", {})
+    entry = {
+        "id":          theme_key,
+        "name":        theme.get("name", theme_key),
+        "description": theme.get("description", ""),
+        "preview": {
+            "background": preview.get("background", theme.get("colors", {}).get("background", "#000")),
+            "text":       preview.get("text",       theme.get("colors", {}).get("text", "#fff")),
+            "accent":     preview.get("accent",     theme.get("colors", {}).get("accent", "#888")),
+        },
+    }
 
-    keys_str = m.group(2)
-    existing = [k.strip().strip("'\"") for k in keys_str.split(",") if k.strip()]
+    # Update if exists, else append
+    for i, t in enumerate(themes):
+        if t.get("id") == theme_key:
+            themes[i] = entry
+            return _save_index(index)
 
-    if theme_key not in existing:
-        return f"'{theme_key}' not found in knownThemes (no change)"
+    themes.append(entry)
+    return _save_index(index)
 
-    existing = [k for k in existing if k != theme_key]
-    new_keys_str = ", ".join(f"'{k}'" for k in existing)
-    new_content = content[: m.start(2)] + new_keys_str + content[m.end(2):]
 
-    try:
-        with open(THEME_STORE_PATH, "w", encoding="utf-8") as f:
-            f.write(new_content)
-        return f"removed '{theme_key}' from knownThemes"
-    except OSError as e:
-        return f"could not write theme-store.js: {e}"
+def _remove_from_index(theme_key: str) -> str:
+    """Remove entry for theme_key from index.json."""
+    index = _load_index()
+    before = len(index.get("themes", []))
+    index["themes"] = [t for t in index.get("themes", []) if t.get("id") != theme_key]
+    after = len(index["themes"])
+
+    if before == after:
+        return f"'{theme_key}' not found in index.json (no change)"
+    return _save_index(index)

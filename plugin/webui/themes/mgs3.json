@@ -1,0 +1,153 @@
+{
+  "name": "Metal Gear Solid 3",
+  "author": "Agent Zero",
+  "description": "Survival-themed tactical interface inspired by Metal Gear Solid 3: Snake Eater. Jungle camouflage aesthetics with military-grade utilitarian design.",
+  "version": "1.1.0",
+  "colors": {
+    "background": "#1a1f16",
+    "text": "#e8e4d9",
+    "text-muted": "#b8b4a8c7",
+    "primary": "#5a6f4a",
+    "secondary": "#3d4a35",
+    "accent": "#c97d2e",
+    "message-bg": "#252b20",
+    "highlight": "#8b4513",
+    "message-text": "#f5f1e8",
+    "panel": "#1f261c",
+    "border": "#4a5740a8",
+    "input": "#1a1f16",
+    "input-focus": "#252b20",
+    "chat-background": "#20261d",
+    "error-text": "#cc3333",
+    "warning-text": "#ff9933",
+    "table-row": "#2a3024"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#1a1f16",
+    "text": "#e8e4d9",
+    "accent": "#c97d2e"
+  },
+  "widgets": [
+    {
+      "_comment": "STAMINA — top-left, matches MGS3 HUD. Offset 48px from top to clear the A0 nav toggle button.",
+      "type": "gauge",
+      "position": {
+        "top": "48px",
+        "left": "14px"
+      },
+      "label": "STAMINA",
+      "color": "#5a8c3a",
+      "width": 110,
+      "behavior": "deplete",
+      "deplete_rate": 0.7,
+      "restore_on_idle": true,
+      "low_color": "#c0392b",
+      "low_threshold": 0.2
+    },
+    {
+      "_comment": "Alert status — top-right, matches MGS3 HUD. Offset 68px from top to clear the A0 clock/bell/project header.",
+      "type": "status-badge",
+      "position": {
+        "top": "68px",
+        "right": "14px"
+      },
+      "states": {
+        "idle": {
+          "text": "CAUTION",
+          "color": "#e8a020",
+          "blink": false
+        },
+        "thinking": {
+          "text": "ALERT !",
+          "color": "#cc3322",
+          "blink": true
+        },
+        "active": {
+          "text": "EVASION",
+          "color": "#e8a020",
+          "blink": false
+        },
+        "escalated": {
+          "text": "COMPROMISED",
+          "color": "#cc2200",
+          "blink": true
+        }
+      }
+    },
+    {
+      "_comment": "Corner label — bottom-right, matches MGS3 camo index position. Clears the A0 bottom toolbar (55px).",
+      "type": "corner-label",
+      "position": {
+        "bottom": "68px",
+        "right": "14px"
+      },
+      "text": "CAMO IDX: ---%",
+      "cycle": [
+        "CAMO IDX: 72%",
+        "CAMO IDX: 68%",
+        "CAMO IDX: 81%",
+        "CAMO IDX: 55%",
+        "CAMO IDX: 76%"
+      ],
+      "cycle_trigger": "agent-response",
+      "color": "#8ab070",
+      "font_size": "10px"
+    }
+  ],
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 5,
+    "message": "ALERT: STALEMATE",
+    "position": "bottom-left",
+    "color": "#cc3322"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/mgs-delta-radio-screen.jpg",
+    "opacity": 0.84,
+    "blur": 4,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.15,
+    "backdrop_blur": 3
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.03,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.3
+    },
+    "watermark": {
+      "enabled": true,
+      "src": "/themes/assets/FOX_logo_webp-removebg-preview.png",
+      "opacity": 0.18,
+      "position": "top right",
+      "size": "11%"
+    }
+  },
+  "tier": "atmospheric",
+  "message_reveal": {
+    "type": "typewriter",
+    "speed": 1
+  },
+  "sounds": {
+    "enabled": true,
+    "volume": 0.25,
+    "codec_connect": "/themes/assets/sounds/codec.wav"
+  }
+}

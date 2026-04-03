@@ -4,8 +4,10 @@
 #
 # Target: /a0/usr/plugins/exocortex/
 #   extensions/python/{hook}/  — all Exocortex extensions
+#   extensions/webui/{slot}/   — webui injection components (theme picker)
 #   tools/                     — custom Agent Zero tools
 #   prompts/                   — system prompt files
+#   webui/                     — Alpine.js stores and theme assets
 #   plugin.yaml                — plugin manifest
 #   default_config.yaml        — configuration reference
 #
@@ -19,7 +21,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTAINER="${CONTAINER:-flamboyant_bell}"
+CONTAINER="${CONTAINER:-exocortex_v16}"
 PLUGIN_BASE="/a0/usr/plugins/exocortex"
 
 # On Windows Git Bash, docker exec arguments with Unix paths get translated by MSYS.
@@ -46,13 +48,47 @@ _exec "$CONTAINER" mkdir -p \
   "$PLUGIN_BASE/extensions/python/response_stream_end" \
   "$PLUGIN_BASE/extensions/python/tool_execute_after" \
   "$PLUGIN_BASE/extensions/python/tool_execute_before" \
+  "$PLUGIN_BASE/extensions/webui/sidebar-bottom-wrapper-start" \
+  "$PLUGIN_BASE/extensions/webui/page-head" \
+  "$PLUGIN_BASE/extensions/webui/get_message_handler" \
+  "$PLUGIN_BASE/api" \
   "$PLUGIN_BASE/tools" \
-  "$PLUGIN_BASE/prompts"
+  "$PLUGIN_BASE/prompts" \
+  "$PLUGIN_BASE/webui/themes" \
+  "$PLUGIN_BASE/webui/backgrounds"
 
 # ── Deploy plugin manifest ────────────────────────────────────────────────────
 
 docker cp "$SCRIPT_DIR/plugin/plugin.yaml"        "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
 docker cp "$SCRIPT_DIR/plugin/default_config.yaml" "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
+
+# ── Deploy webui assets (theme system) ───────────────────────────────────────
+
+WEBUI_SRC="$SCRIPT_DIR/plugin/webui"
+WEBUI_DEST="$CONTAINER:$PLUGIN_BASE/webui"
+
+# Alpine.js store + theme editor + artifact runtime
+docker cp "$WEBUI_SRC/theme-store.js"    "$WEBUI_DEST/"
+docker cp "$WEBUI_SRC/theme-editor.js"   "$WEBUI_DEST/"
+docker cp "$WEBUI_SRC/exo-artifact.js"   "$WEBUI_DEST/"
+
+# Theme JSON files
+for f in "$WEBUI_SRC/themes/"*.json; do
+  docker cp "$f" "$WEBUI_DEST/themes/"
+done
+
+# WebUI extension — theme picker sidebar component
+WEBUI_EXT_SRC="$SCRIPT_DIR/plugin/extensions/webui"
+WEBUI_EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/webui"
+
+docker cp "$WEBUI_EXT_SRC/sidebar-bottom-wrapper-start/theme-picker.html" \
+  "$WEBUI_EXT_DEST/sidebar-bottom-wrapper-start/"
+
+# Artifact framework — page-head runtime injection + message handler
+docker cp "$WEBUI_EXT_SRC/page-head/exo-artifact-runtime.html" \
+  "$WEBUI_EXT_DEST/page-head/"
+docker cp "$WEBUI_EXT_SRC/get_message_handler/artifact-handler.js" \
+  "$WEBUI_EXT_DEST/get_message_handler/"
 
 # ── Deploy extensions ─────────────────────────────────────────────────────────
 # Note: _12_org_dispatcher, _13_operator_profile, _14_metacognitive_injection
@@ -120,18 +156,29 @@ docker cp "$EXT_SRC/tool_execute_before/_15_action_boundary.py"      "$EXT_DEST/
 docker cp "$EXT_SRC/tool_execute_before/_20_meta_reasoning_gate.py"  "$EXT_DEST/tool_execute_before/"
 docker cp "$EXT_SRC/tool_execute_before/_30_tool_fallback_advisor.py" "$EXT_DEST/tool_execute_before/"
 
+# ── Deploy plugin API handlers ────────────────────────────────────────────────
+# Loaded by A0 at /api/plugins/exocortex/<handler> — persistent in plugin dir.
+
+API_SRC="$SCRIPT_DIR/plugin/api"
+API_DEST="$CONTAINER:$PLUGIN_BASE/api"
+
+docker cp "$API_SRC/api_theme_save.py"   "$API_DEST/"
+docker cp "$API_SRC/api_theme_upload.py" "$API_DEST/"
+
 # ── Deploy tools ──────────────────────────────────────────────────────────────
 # Custom Agent Zero tools discovered automatically from plugin tools/ directory.
 
 TOOLS_SRC="$SCRIPT_DIR/tools"
 TOOLS_DEST="$CONTAINER:$PLUGIN_BASE/tools"
 
+docker cp "$TOOLS_SRC/emit_artifact.py"       "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/investigation_tools.py" "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/oss.py"                 "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/stack_status.py"        "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/staging_note.py"        "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/swarmfish.py"           "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/tla_check.py"           "$TOOLS_DEST/"
+docker cp "$TOOLS_SRC/theme_author.py"        "$TOOLS_DEST/"
 
 # ── Deploy prompt files ───────────────────────────────────────────────────────
 # These replace per-turn dynamic injection of static content.
@@ -144,9 +191,14 @@ docker cp "$PROMPT_SRC/agent.system.model_awareness.md"      "$PROMPT_DEST/"
 docker cp "$PROMPT_SRC/agent.system.capabilities.md"         "$PROMPT_DEST/"
 
 echo "  Plugin deployment complete."
-echo "  Extensions: $(_exec $CONTAINER find $PLUGIN_BASE/extensions -name '*.py' | wc -l) files"
+echo "  Extensions: $(_exec $CONTAINER find $PLUGIN_BASE/extensions -name '*.py' | wc -l) Python files"
+echo "  WebUI ext:  $(_exec $CONTAINER find $PLUGIN_BASE/extensions/webui -name '*.html' 2>/dev/null | wc -l) HTML components"
+echo "  API:        $(_exec $CONTAINER ls $PLUGIN_BASE/api | wc -l) handlers"
+echo "  Themes:     $(_exec $CONTAINER ls $PLUGIN_BASE/webui/themes | wc -l) files"
 echo "  Tools:      $(_exec $CONTAINER ls $PLUGIN_BASE/tools | wc -l) files"
 echo "  Prompts:    $(_exec $CONTAINER ls $PLUGIN_BASE/prompts | wc -l) files"
 echo ""
 echo "  Plugin visible at: Settings → Plugins → Exocortex"
-echo "  Restart agent or start a fresh chat to load changes."
+echo "  Theme picker appears in sidebar above Preferences section."
+echo "  Click ✏ next to Themes (with a theme active) to open the visual editor."
+echo "  Reload the browser tab to activate (no agent restart needed for webui changes)."

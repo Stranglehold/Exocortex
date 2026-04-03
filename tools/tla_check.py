@@ -50,7 +50,7 @@ import subprocess
 import tempfile
 from typing import Any
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 TLC_JAR = "/usr/local/bin/tla2tools.jar"
 

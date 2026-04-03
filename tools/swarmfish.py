@@ -19,7 +19,7 @@ import os
 import urllib.error
 import urllib.request
 
-from python.helpers.tool import Tool, Response
+from helpers.tool import Tool, Response
 
 SWARMFISH_URL          = os.environ.get("SWARMFISH_URL", "http://host.docker.internal:7732")
 SWARMFISH_ANALYST_TOKEN = os.environ.get("SWARMFISH_ANALYST_TOKEN", "dev_analyst_token")

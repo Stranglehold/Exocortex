@@ -1,0 +1,25 @@
+<script type="module">
+/**
+ * Exocortex Artifact Runtime — page-head injection
+ *
+ * 1. Loads ExoArtifact global (fetch/action/message helpers)
+ * 2. Configures DOMPurify to pass Alpine.js directives through sanitization
+ *    so artifact HTML can use x-data, x-on, @click, :class, etc.
+ */
+
+import "/usr/plugins/exocortex/webui/exo-artifact.js";
+import DOMPurify from "/vendor/dompurify/purify.es.mjs";
+
+// Allow Alpine.js attribute syntax through DOMPurify.
+// These are stripped by default because they aren't standard HTML attributes.
+DOMPurify.addHook("uponSanitizeAttribute", (node, evt) => {
+    const attr = evt.attrName;
+    if (
+        attr.startsWith("x-")   ||   // x-data, x-text, x-show, x-for, …
+        attr.startsWith("@")    ||   // @click, @change, …
+        attr.startsWith(":")         // :class, :style, :disabled, …
+    ) {
+        evt.forceKeepAttr = true;
+    }
+});
+</script>

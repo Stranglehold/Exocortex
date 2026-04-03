@@ -1,28 +1,27 @@
 """
-Tool Registry — Dynamic Custom Tool + Exocortex Skills Awareness
-================================================================
+Tool Registry — Dynamic Custom Tool Injection
+=============================================
 Hook: before_main_llm_call (_16_)
 
-Scans /a0/python/tools/ every turn and injects a compact [CUSTOM TOOLS] block
-into the user message — so the model always knows which tool_names are callable
-beyond the native Agent Zero set.
+Scans user plugin tool directories every turn and injects a compact
+[CUSTOM TOOLS] block into the last user message. Ensures the model
+always knows what custom tools are callable by name.
 
-Also reads /a0/usr/Exocortex/skills/SKILLS_INDEX.md and injects an
-[EXOCORTEX SKILLS] block so the model knows which procedural skill files exist
-and when to read them before starting a task.
+Covers:
+  /a0/usr/plugins/*/tools/*.py   — all user-plugin tools
 
-Grows with the agent automatically:
-  • Any new .py file dropped into /a0/python/tools/ appears the next turn.
-  • Any new row added to SKILLS_INDEX.md appears the next turn.
-  • /a0/usr/Exocortex/tool_manifest.json registers installed programs and
-    runtime-discovered capabilities (e.g. nmap after apt-get install).
-    Created empty on first run if missing. Agent or analyst can write to it.
+For each file: extracts module docstring (first non-empty line) as
+description and all class X(Tool) names -> snake_case as callable tool
+names. Uses ast -- no imports, no side effects.
 
-No imports of tool files (ast-only parsing). No LLM calls. Deterministic.
-Runs after BST (_11_), profile (_13_), and metacognitive injection (_14_).
+Also reads /a0/usr/Exocortex/tool_manifest.json for installed
+programs that the agent or analyst has registered manually.
+
+No LLM calls. Reads only.
 """
 
 import ast
+import glob
 import json
 import os
 import re
@@ -32,420 +31,119 @@ from typing import Optional
 from agent import LoopData
 from helpers.extension import Extension
 
-# ── Configuration ──────────────────────────────────────────────────────────────
+TOOLS_GLOB    = "/a0/usr/plugins/*/tools/*.py"
+MANIFEST_PATH = "/a0/usr/Exocortex/tool_manifest.json"
 
-TOOLS_DIR              = "/a0/tools"
-MANIFEST_PATH          = "/a0/usr/Exocortex/tool_manifest.json"
-EXOCORTEX_SKILLS_DIR   = "/a0/usr/Exocortex/skills"
-A0_SKILLS_DIR          = "/a0/usr/skills"
+# Files to skip even if they match the glob
+SKIP_FILES = {"__init__.py"}
 
-# Files to skip when scanning EXOCORTEX_SKILLS_DIR
-SKILLS_EXCLUDE = {"skills_index.md", "readme.md", "index.md"}
-
-# Max skills entries to inject (bounds token growth)
-MAX_SKILLS = 30
-
-# Agent attribute written by _11_working_memory.py API signature extraction
-WM_API_KEY = "_wm_api_sigs"
-
-# Native Agent Zero tool filenames — excluded from custom listing.
+# Known native tool names -- skip if accidentally scanned
 NATIVE_TOOLS = {
-    # Core A0 tools
     "response", "a2a_chat", "behaviour_adjustment", "browser_agent",
     "call_subordinate", "code_execution_tool", "document_query", "input",
     "memory_load", "memory_save", "memory_delete", "memory_forget",
-    "memory_integrate", "memory_list_gist",
-    "notify_user", "search_engine", "skills_tool", "skill_list",
-    # A0 background / utility tools (background_* are CLI scripts, handled via manifest)
-    "background_list", "background_start", "background_stop",
-    "provider_chat", "tool_validate",
-    "unknown", "vision_load", "wait",
-    # Our browser helper (not a standalone agent tool)
-    "captcha_solver",
+    "notify_user", "search_engine", "skills_tool", "text_editor",
 }
 
 
-# Description overrides for tool files that lack a module docstring
-_DESC_OVERRIDES = {
-    "scheduler": "Schedule tasks by name, date/time, or recurrence. Methods: list_tasks, create_task, find_task_by_name, show_task, update_task, delete_task.",
-}
-
-# ── Extension ──────────────────────────────────────────────────────────────────
-
-class ToolRegistry(Extension):
-    """Inject custom tool registry into user message before each LLM call."""
-
-    async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> None:
-        try:
-            custom_tools = _scan_custom_tools()
-            programs     = _read_manifest()
-            skills       = _scan_exocortex_skills()
-            api_sigs     = getattr(self.agent, WM_API_KEY, {}) or {}
-
-            if not custom_tools and not programs and not skills and not api_sigs:
-                return
-
-            block = _build_block(custom_tools, programs, skills, api_sigs)
-            if not block:
-                return
-
-            user_msg = _get_last_user_message(loop_data.history_output)
-            if not user_msg:
-                return
-
-            existing = user_msg.get("content", "")
-            user_msg["content"] = block + "\n\n" + str(existing)
-
-            tool_files = [name for name, _, _ in custom_tools]
-            print(
-                f"[TOOL-REG] Injected {len(custom_tools)} custom tools "
-                f"({', '.join(tool_files)}), {len(programs)} programs, "
-                f"{len(skills)} skills, {len(api_sigs)} api sigs"
-                f" agent_obj={id(self.agent)}",
-                flush=True,
-            )
-
-        except Exception as e:
-            print(f"[TOOL-REG] error (passthrough): {e}", flush=True)
-
-
-# ── Tool Scanning ───────────────────────────────────────────────────────────────
-
-def _scan_custom_tools() -> list:
-    """
-    Return list of (filename_stem, [snake_case_tool_names], description) tuples
-    for all non-native tool files in TOOLS_DIR.
-    """
-    if not os.path.isdir(TOOLS_DIR):
-        return []
-
-    results = []
-    for fname in sorted(os.listdir(TOOLS_DIR)):
-        if not fname.endswith(".py") or fname.startswith("_"):
-            continue
-        stem = fname[:-3]
-        if stem in NATIVE_TOOLS:
-            continue
-
-        path = os.path.join(TOOLS_DIR, fname)
-        names, desc = _extract_tool_info(path)
-        # Override description for tools with no module docstring
-        if not desc and stem in _DESC_OVERRIDES:
-            desc = _DESC_OVERRIDES[stem]
-        if names:
-            results.append((stem, names, desc))
-
-    return results
+def _to_snake(name: str) -> str:
+    """CamelCase -> snake_case."""
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
 
 
 def _extract_tool_info(path: str) -> tuple:
-    """
-    Parse a tool file with ast (no import) and return:
-      ([snake_case_tool_names], description_string)
-    Tool names come from class names that subclass Tool.
-    Description comes from the module docstring first line.
-    Returns ([], "") on any parse error.
-    """
+    """Parse a tool file with ast. Returns ([tool_names], description)."""
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             src = f.read()
-
         tree = ast.parse(src)
 
-        # Module docstring — first non-blank line
-        raw_doc = ast.get_docstring(tree) or ""
-        desc = next((ln.strip() for ln in raw_doc.splitlines() if ln.strip()), "")
-        desc = textwrap.shorten(desc, width=90, placeholder="...")
+        doc = ast.get_docstring(tree) or ""
+        first_line = next((l.strip() for l in doc.splitlines() if l.strip()), "")
+        desc = textwrap.shorten(first_line, 90) if first_line else ""
 
-        # Class names that directly or indirectly subclass Tool
-        names = []
+        tools = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef):
                 continue
-            for base in node.bases:
-                is_tool = (
-                    (isinstance(base, ast.Name) and base.id == "Tool") or
-                    (isinstance(base, ast.Attribute) and base.attr == "Tool")
-                )
-                if is_tool:
-                    names.append(_to_snake(node.name))
-                    break
+            is_tool = any(
+                (isinstance(b, ast.Name) and b.id == "Tool") or
+                (isinstance(b, ast.Attribute) and b.attr == "Tool")
+                for b in node.bases
+            )
+            if is_tool:
+                snake = _to_snake(node.name)
+                if snake not in NATIVE_TOOLS:
+                    tools.append(snake)
 
-        return names, desc
-
+        return tools, desc
     except Exception:
         return [], ""
 
 
-def _to_snake(name: str) -> str:
-    """CamelCase → snake_case. OssHealth → oss_health."""
-    s = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", name)
-    return s.lower()
-
-
-# ── Exocortex Skills ────────────────────────────────────────────────────────────
-
-def _scan_exocortex_skills() -> list:
+def _scan_tools() -> list:
     """
-    Scan skill directories and return list of (skill_name, filename, trigger) tuples.
-
-    Checks two locations:
-      1. EXOCORTEX_SKILLS_DIR — flat .md files (Exocortex format)
-      2. A0_SKILLS_DIR        — A0 subdirectory format (<name>/SKILL.md)
-
-    Parses YAML frontmatter where present; falls back to filename derivation.
-    Deduplicates by normalized name (Exocortex version wins on collision).
-    Caps at MAX_SKILLS entries to bound token growth.
+    Scan user plugin tool files.
+    Returns [(stem, [tool_names], description), ...]
     """
-    seen: dict = {}  # normalized_name → (skill_name, filename, trigger)
-
-    # ── 1. Exocortex flat skills ──────────────────────────────────────────────
-    if os.path.isdir(EXOCORTEX_SKILLS_DIR):
-        try:
-            for fname in sorted(os.listdir(EXOCORTEX_SKILLS_DIR)):
-                if not fname.endswith(".md"):
-                    continue
-                if fname.lower() in SKILLS_EXCLUDE:
-                    continue
-                path = os.path.join(EXOCORTEX_SKILLS_DIR, fname)
-                name, trigger = _parse_skill_file(path, fname)
-                if not trigger:
-                    continue  # skip files with no parseable trigger (specs, etc.)
-                seen[_norm(name)] = (name, fname, trigger)
-        except Exception:
-            pass
-
-    # ── 2. A0 usr/skills subdirectories ──────────────────────────────────────
-    if os.path.isdir(A0_SKILLS_DIR):
-        try:
-            for entry in sorted(os.listdir(A0_SKILLS_DIR)):
-                skill_md = os.path.join(A0_SKILLS_DIR, entry, "SKILL.md")
-                if not os.path.isfile(skill_md):
-                    continue
-                name, trigger = _parse_skill_file(skill_md, entry)
-                key = _norm(name)
-                if key not in seen:  # Exocortex version takes priority
-                    seen[key] = (name, entry + "/SKILL.md", trigger)
-        except Exception:
-            pass
-
-    return list(seen.values())[:MAX_SKILLS]
-
-
-def _parse_skill_file(path: str, fallback_id: str) -> tuple:
-    """
-    Extract (display_name, trigger_description) from a skill .md file.
-
-    Handles three formats found in the Exocortex skills directory:
-      1. YAML frontmatter at file start (--- name/description ---)
-      2. Attribution block then YAML frontmatter (context-engineering skills)
-      3. No frontmatter — # Skill: Name heading + ## Trigger section
-    """
+    results = []
     try:
-        with open(path, encoding="utf-8") as f:
-            content = f.read(6000)
-
-        name = ""
-        description = ""
-
-        # ── YAML field extraction ─────────────────────────────────────────────
-        # Direct line-based search handles both "frontmatter at start" and
-        # "attribution blockquote then frontmatter" formats without block parsing.
-        fm_match = None
-        fm_name_m  = re.search(r"^name:\s*(.+)",        content, re.MULTILINE)
-        fm_desc_m  = re.search(r"^description:\s*(.+)", content, re.MULTILINE)
-        fm_trig_m  = re.search(r"^triggers:\s*(.+)",    content, re.MULTILINE)
-        if fm_name_m:
-            name = fm_name_m.group(1).strip().strip("\"'")
-            fm_match = fm_name_m          # used later to locate "after_fm"
-        if fm_desc_m:
-            description = fm_desc_m.group(1).strip().strip("\"'")
-        elif fm_trig_m and not description:
-            items = re.findall(r'"([^"]+)"', fm_trig_m.group(1))
-            if items:
-                description = items[0]
-
-        # ── # Skill: Name heading ─────────────────────────────────────────────
-        if not name:
-            heading = re.search(r"^#+\s+(?:Skill:\s+)?(.+)", content, re.MULTILINE)
-            if heading:
-                name = heading.group(1).strip()
-
-        # ── ## Trigger section content ────────────────────────────────────────
-        if not description:
-            trigger_section = re.search(
-                r"^#{1,3}\s+Trigger\s*\n+(.+?)(?=\n#{1,3}\s|\Z)",
-                content,
-                re.MULTILINE | re.DOTALL,
-            )
-            if trigger_section:
-                # First non-blank line of trigger section
-                for line in trigger_section.group(1).splitlines():
-                    line = line.strip()
-                    if line and not line.startswith(("#", ">", "---", "|")):
-                        description = line
-                        break
-
-        # ── First non-blank body line as last-resort description ─────────────
-        if not description:
-            after_fm = content[fm_match.end():] if fm_match else content  # type: ignore[union-attr]
-            for line in after_fm.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                if line.startswith(("#", ">", "---", "|", "!", "```", "*")):
-                    continue
-                # Skip bare k:v lines that look like leftover frontmatter
-                if re.match(r"^\w[\w_-]*:\s", line):
-                    continue
-                description = line
-                break
-
-        # ── Filename-derived name fallback ────────────────────────────────────
-        if not name:
-            stem = os.path.basename(fallback_id).replace(".md", "")
-            name = stem.replace("_", " ").replace("-", " ").title()
-        else:
-            # Title-case kebab/snake names from frontmatter (e.g. "irreversibility-gate")
-            if name == name.lower() and re.search(r"[-_]", name):
-                name = name.replace("-", " ").replace("_", " ").title()
-
-        # Only include files with structured skill markers — exclude specs/design notes.
-        has_fm_desc       = bool(fm_desc_m or (fm_trig_m and description))
-        has_trigger_sec   = bool(re.search(r"^#{1,3}\s+Trigger\s*\n", content, re.MULTILINE))
-        has_skill_heading = bool(re.search(r"^#+\s+Skill:", content, re.MULTILINE))
-        if not has_fm_desc and not has_trigger_sec and not has_skill_heading:
-            return name, ""  # caller skips entries with empty trigger
-
-        trigger = textwrap.shorten(description, width=80, placeholder="...")
-        return name, trigger
-
+        for path in sorted(glob.glob(TOOLS_GLOB)):
+            fname = os.path.basename(path)
+            if fname in SKIP_FILES:
+                continue
+            tools, desc = _extract_tool_info(path)
+            if tools:
+                stem = os.path.splitext(fname)[0]
+                results.append((stem, tools, desc))
     except Exception:
-        stem = os.path.basename(fallback_id).replace(".md", "")
-        return stem.replace("_", " ").title(), ""
+        pass
+    return results
 
-
-def _norm(name: str) -> str:
-    """Normalize a skill name for deduplication (lowercase alphanum only)."""
-    return re.sub(r"[^a-z0-9]", "", name.lower())
-
-
-# ── Manifest ────────────────────────────────────────────────────────────────────
 
 def _read_manifest() -> dict:
-    """
-    Read tool_manifest.json. Returns programs dict (name → description).
-    Creates the file empty if missing so the agent can write to it.
-    """
-    if not os.path.exists(MANIFEST_PATH):
-        try:
+    """Read tool_manifest.json. Creates an empty one on first call."""
+    try:
+        if not os.path.exists(MANIFEST_PATH):
             os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
             with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
                 json.dump(
-                    {
-                        "programs": {},
-                        "notes": (
-                            "Add installed programs or agent-discovered capabilities here. "
-                            "Each key is the program name; value is a brief description. "
-                            "The tool registry extension injects these into every turn."
-                        ),
-                    },
-                    f,
-                    indent=2,
+                    {"programs": {},
+                     "notes": "Add programs/capabilities here when the agent installs them."},
+                    f, indent=2,
                 )
-        except Exception:
-            pass
-        return {}
-
-    try:
-        with open(MANIFEST_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        return {k: str(v) for k, v in data.get("programs", {}).items() if k and v}
+            return {}
+        with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
     except Exception:
         return {}
 
 
-# ── Block Construction ──────────────────────────────────────────────────────────
+def _build_block(tool_files: list, programs: dict) -> str:
+    """Build the [CUSTOM TOOLS] injection block."""
+    if not tool_files and not programs:
+        return ""
 
-def _build_block(
-    custom_tools: list,
-    programs: dict,
-    skills: list,
-    api_sigs: dict,
-) -> str:
-    """Build the [CUSTOM TOOLS], [EXOCORTEX SKILLS], and [API SIGNATURES] injection blocks."""
-    lines = []
+    lines = ["[CUSTOM TOOLS -- call by tool_name]"]
 
-    if custom_tools or programs:
-        lines.append("[CUSTOM TOOLS — call by tool_name]")
+    for _stem, names, desc in tool_files:
+        name_str = ", ".join(names)
+        if desc:
+            lines.append(f"{name_str} -- {desc}")
+        else:
+            lines.append(name_str)
 
-        for _stem, names, desc in custom_tools:
-            name_str = " | ".join(names)
-            if desc:
-                lines.append(f"{name_str} — {desc}")
-            else:
-                lines.append(name_str)
-
-        if programs:
-            lines.append("")
-            lines.append("[INSTALLED PROGRAMS — invoke via code_execution_tool]")
-            for prog, pdesc in programs.items():
-                lines.append(f"{prog} — {pdesc}")
-
-        lines.append("[/CUSTOM TOOLS]")
-
-    if skills:
-        if lines:
-            lines.append("")
-        lines.append("[EXOCORTEX SKILLS — read the skill file before starting the relevant task]")
-        for skill_name, filename, trigger in skills:
-            lines.append(f"{skill_name} ({filename}) — when: {trigger}")
-        lines.append("[/EXOCORTEX SKILLS]")
-
-    if api_sigs:
-        if lines:
-            lines.append("")
-        lines.append("[API SIGNATURES — use exact names/params when calling these]")
-        for sig_str in api_sigs.values():
-            lines.append(f"  {sig_str}")
-        lines.append("[/API SIGNATURES]")
-
-    # Always-on: artifact rendering capability
-    if lines:
+    if programs:
         lines.append("")
-    lines.append("[ARTIFACT RENDERING — output interactive content in the chat panel]")
-    lines.append("Use artifact fences to render HTML, SVG, or JavaScript directly in the UI:")
-    lines.append("  ```artifact:html Title Here")
-    lines.append("  <html content or full page>")
-    lines.append("  ```")
-    lines.append("  ```artifact:svg Diagram Name")
-    lines.append("  <svg>...</svg>")
-    lines.append("  ```")
-    lines.append("Use for: architecture diagrams (Mermaid.js via CDN), dashboards, data")
-    lines.append("visualizations, interactive reports, ER diagrams, sequence diagrams.")
-    lines.append("Mermaid: load from https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js")
-    lines.append("[/ARTIFACT RENDERING]")
+        lines.append("[INSTALLED PROGRAMS]")
+        for prog, pdesc in programs.items():
+            lines.append(f"  {prog} -- {pdesc}")
 
-    # Always-on: file persistence reminder
-    if lines:
-        lines.append("")
-    lines.append("[FILE PERSISTENCE]")
-    lines.append("To save a file to disk, use terminal runtime with heredoc:")
-    lines.append("  cat > /path/to/file.py << 'ENDOFFILE'")
-    lines.append("  <code here>")
-    lines.append("  ENDOFFILE")
-    lines.append("Python runtime runs in an IPython kernel — code executes but files are NOT")
-    lines.append("written to disk unless your code explicitly calls open(..., 'w'). The 'file'")
-    lines.append("field in Python runtime is display metadata only, not a filesystem write.")
-    lines.append("[/FILE PERSISTENCE]")
-
+    lines.append("[/CUSTOM TOOLS]")
     return "\n".join(lines)
 
 
-# ── Message Helper (shared pattern with _13, _14) ──────────────────────────────
-
 def _get_last_user_message(history_output: list) -> Optional[dict]:
-    """Find the most recent operator message in loop history."""
     if not history_output:
         return None
     for msg in reversed(history_output):
@@ -458,3 +156,39 @@ def _get_last_user_message(history_output: list) -> Optional[dict]:
             if isinstance(content, str) and content:
                 return msg
     return None
+
+
+class ToolRegistry(Extension):
+    """Inject custom tool registry block every LLM turn."""
+
+    async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> None:
+        try:
+            user_msg = _get_last_user_message(loop_data.history_output)
+            if not user_msg:
+                return
+
+            tool_files = _scan_tools()
+            programs   = _read_manifest().get("programs", {})
+
+            if not tool_files and not programs:
+                return
+
+            block = _build_block(tool_files, programs)
+            if not block:
+                return
+
+            existing = user_msg.get("content", "")
+            user_msg["content"] = block + "\n\n" + str(existing)
+
+            stems     = [s for s, _, _ in tool_files]
+            all_names = [n for _, names, _ in tool_files for n in names]
+            print(
+                f"[TOOL-REG] Injected {len(stems)} tool files "
+                f"({', '.join(stems)}), "
+                f"{len(all_names)} tools, "
+                f"{len(programs)} programs",
+                flush=True,
+            )
+
+        except Exception:
+            pass
