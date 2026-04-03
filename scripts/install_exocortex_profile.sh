@@ -49,7 +49,6 @@ _exec "$CONTAINER" mkdir -p \
   "$PLUGIN_BASE/extensions/python/tool_execute_after" \
   "$PLUGIN_BASE/extensions/python/tool_execute_before" \
   "$PLUGIN_BASE/extensions/webui/sidebar-bottom-wrapper-start" \
-  "$PLUGIN_BASE/extensions/webui/page-head" \
   "$PLUGIN_BASE/extensions/webui/get_message_handler" \
   "$PLUGIN_BASE/api" \
   "$PLUGIN_BASE/tools" \
@@ -84,9 +83,9 @@ WEBUI_EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/webui"
 docker cp "$WEBUI_EXT_SRC/sidebar-bottom-wrapper-start/theme-picker.html" \
   "$WEBUI_EXT_DEST/sidebar-bottom-wrapper-start/"
 
-# Artifact framework — page-head runtime injection + message handler
-docker cp "$WEBUI_EXT_SRC/page-head/exo-artifact-runtime.html" \
-  "$WEBUI_EXT_DEST/page-head/"
+# Artifact framework — message handler (DOMPurify hook + ExoArtifact import at module load time)
+# NOTE: page-head HTML extension removed — importComponent causes layout disruption.
+# DOMPurify hook and exo-artifact.js import live in artifact-handler.js top-level scope instead.
 docker cp "$WEBUI_EXT_SRC/get_message_handler/artifact-handler.js" \
   "$WEBUI_EXT_DEST/get_message_handler/"
 
