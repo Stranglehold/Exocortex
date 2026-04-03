@@ -183,11 +183,17 @@ docker cp "$TOOLS_SRC/theme_author.py"        "$TOOLS_DEST/"
 # These replace per-turn dynamic injection of static content.
 
 PROMPT_SRC="$SCRIPT_DIR/prompts"
+PLUGIN_PROMPT_SRC="$SCRIPT_DIR/plugin/prompts"
 PROMPT_DEST="$CONTAINER:$PLUGIN_BASE/prompts"
 
 docker cp "$PROMPT_SRC/agent.system.operator_calibration.md" "$PROMPT_DEST/"
 docker cp "$PROMPT_SRC/agent.system.model_awareness.md"      "$PROMPT_DEST/"
 docker cp "$PROMPT_SRC/agent.system.capabilities.md"         "$PROMPT_DEST/"
+
+# Plugin tool documentation prompts (agent.system.tool.*.md — picked up by _11_tools_prompt)
+for f in "$PLUGIN_PROMPT_SRC/"agent.system.tool.*.md; do
+  [ -f "$f" ] && docker cp "$f" "$PROMPT_DEST/"
+done
 
 echo "  Plugin deployment complete."
 echo "  Extensions: $(_exec $CONTAINER find $PLUGIN_BASE/extensions -name '*.py' | wc -l) Python files"
