@@ -1,0 +1,427 @@
+/* ─── Artifact Panel ──────────────────────────────────────────────────────── */
+
+#artifact-panel {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  width: 28px;
+  height: 100%;
+  background: var(--color-panel);
+  border-left: 1px solid var(--color-border);
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+  position: relative;
+  z-index: 100;
+}
+
+#artifact-panel.open {
+  width: var(--artifact-open-width, 440px);
+}
+
+/* Disable transition during pointer-drag resize */
+#artifact-panel.resizing {
+  transition: none !important;
+}
+
+/* ─── Resize sash — left edge of panel ──────────────────────────────────── */
+
+.artifact-sash {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 20;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.artifact-sash:hover,
+.artifact-sash.dragging {
+  background: var(--color-primary, rgba(120, 130, 255, 0.45));
+}
+
+#artifact-panel:not(.open) .artifact-sash {
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* ─── Toggle tab strip (always visible, 28px wide) ──────────────────────── */
+
+.artifact-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex-shrink: 0;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  gap: 10px;
+  border-right: 1px solid var(--color-border);
+  transition: background 0.15s ease;
+}
+
+.artifact-tab:hover {
+  background: var(--color-background-hover);
+}
+
+.artifact-tab .artifact-tab-icon {
+  color: var(--color-primary);
+  transition: transform var(--transition-speed) ease;
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.artifact-tab .artifact-tab-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.artifact-tab .artifact-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.artifact-tab .artifact-dot.visible {
+  opacity: 1;
+}
+
+/* ─── Panel content ──────────────────────────────────────────────────────── */
+
+.artifact-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ─── Multi-artifact tab bar ─────────────────────────────────────────────── */
+
+.artifact-tabs-bar {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--color-border);
+  height: 32px;
+  background: var(--color-background, #161616);
+}
+
+.artifact-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.artifact-tab-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px 0 10px;
+  height: 32px;
+  min-width: 80px;
+  max-width: 160px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-right: 1px solid var(--color-border);
+  position: relative;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+  color: var(--color-text-muted);
+}
+
+.artifact-tab-item:hover {
+  background: var(--color-background-hover);
+  color: var(--color-text);
+}
+
+.artifact-tab-item.active {
+  background: var(--color-panel);
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-primary, #8080ff);
+}
+
+.artifact-tab-type-icon {
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.artifact-tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.artifact-tab-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.artifact-tab-item:hover .artifact-tab-close,
+.artifact-tab-item.active .artifact-tab-close {
+  opacity: 0.6;
+}
+
+.artifact-tab-close:hover {
+  opacity: 1 !important;
+  background: var(--color-background-hover);
+  color: var(--color-text);
+}
+
+/* ─── Header bar ─────────────────────────────────────────────────────────── */
+
+.artifact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.artifact-header-title {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.artifact-header-type {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: var(--color-message-bg);
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.artifact-header-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.artifact-header-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+  border-radius: var(--border-radius-sm);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+}
+
+.artifact-header-btn:hover {
+  background: var(--color-background-hover);
+  color: var(--color-text);
+}
+
+.artifact-btn-active {
+  background: var(--color-primary, rgba(120, 130, 255, 0.2)) !important;
+  color: var(--color-primary, #8080ff) !important;
+}
+
+.artifact-zoom-controls {
+  border-right: 1px solid var(--color-border);
+  padding-right: 4px;
+  margin-right: 2px;
+}
+
+.artifact-service-links {
+  border-right: 1px solid var(--color-border);
+  padding-right: 4px;
+  margin-right: 2px;
+}
+
+/* ─── Frame wrapper (holds skeleton + iframe in same space) ─────────────── */
+
+.artifact-frame-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Skeleton loader ────────────────────────────────────────────────────── */
+
+@keyframes artifact-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+#artifact-skeleton {
+  position: absolute;
+  inset: 0;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 1;
+  background: #1e1e1e;
+}
+
+.light-mode #artifact-skeleton {
+  background: #ffffff;
+}
+
+#artifact-skeleton.visible {
+  opacity: 1;
+}
+
+.skeleton-line,
+.skeleton-block {
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: artifact-shimmer 1.6s ease-in-out infinite;
+}
+
+.light-mode .skeleton-line,
+.light-mode .skeleton-block {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 25%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.06) 75%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-line {
+  height: 11px;
+}
+
+.skeleton-line:nth-child(1) { width: 68%; }
+.skeleton-line:nth-child(2) { width: 88%; animation-delay: 0.1s; }
+.skeleton-line:nth-child(3) { width: 52%; animation-delay: 0.2s; }
+.skeleton-line:nth-child(4) { width: 78%; animation-delay: 0.05s; }
+.skeleton-line:nth-child(5) { width: 62%; animation-delay: 0.15s; }
+
+.skeleton-block {
+  flex: 1;
+  margin-top: 4px;
+  animation-delay: 0.08s;
+  border-radius: 6px;
+  max-height: 240px;
+}
+
+/* ─── Iframe ─────────────────────────────────────────────────────────────── */
+
+#artifact-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #1e1e1e;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.light-mode #artifact-frame {
+  background: #ffffff;
+}
+
+/* ─── Notification dot pulse ─────────────────────────────────────────────── */
+
+@keyframes artifact-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(207, 102, 121, 0.7); }
+  70%  { box-shadow: 0 0 0 5px rgba(207, 102, 121, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(207, 102, 121, 0); }
+}
+
+.artifact-dot.pulse {
+  animation: artifact-pulse 0.6s ease-out;
+}
+
+/* ─── Responsive: hide panel on narrow screens ───────────────────────────── */
+
+@media (max-width: 768px) {
+  #artifact-panel {
+    display: none;
+  }
+}
