@@ -33,42 +33,82 @@ function saveArtifactState(state) {
 }
 
 // ─── Zoom/pan script injected into every artifact ─────────────────────────
-// Listens for postMessage from parent: {t:'zi'|'zo'|'zr'|'pon'|'poff'}
-// Ctrl+wheel also zooms. Drag pans when pan mode is active.
-// If the artifact sets window._hasPanZoom = true before this runs, the
-// generic page-level transform is skipped (D3 graphs handle their own zoom).
+// Wraps content in #az-content-wrapper and transforms THAT, not
+// documentElement — so internal layout/scroll is never disturbed.
+//
+// Zoom: ctrl+wheel (natural), or postMessage {t:'zi'|'zo'|'zr'}
+// Pan:  middle-button drag anywhere, OR space+left-drag anywhere
+//       NOT on interactive elements (a, button, input, select, textarea,
+//       [contenteditable]) or scrollable regions — those get native events.
+//
+// If the artifact sets window._hasPanZoom = true, this whole script is
+// a no-op — D3/Leaflet/etc. handle their own zoom.
 const AZ_ZOOM_SCRIPT = `<script>
 (function(){
   if(window._hasPanZoom)return;
-  var s=1,tx=0,ty=0,pan=false,drag=false,sx=0,sy=0,stx=0,sty=0;
-  var el=document.documentElement;
+
+  // Wrap body content in a transformable container
+  var wrap=document.createElement('div');
+  wrap.id='az-content-wrapper';
+  wrap.style.cssText='transform-origin:0 0;width:100%;min-height:100%;';
+  while(document.body.firstChild)wrap.appendChild(document.body.firstChild);
+  document.body.appendChild(wrap);
+  document.body.style.overflow='hidden';
+
+  var s=1,tx=0,ty=0,drag=false,spaceDown=false,sx=0,sy=0,stx=0,sty=0;
+
   function ap(){
-    el.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')';
-    el.style.transformOrigin='0 0';
+    wrap.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')';
   }
+
+  // Respond to header button postMessages
   window.addEventListener('message',function(e){
     if(window._hasPanZoom)return;
     var d=e.data;if(!d||typeof d!=='object')return;
     if(d.t==='zi'){s=Math.min(s*1.25,10);ap();}
     if(d.t==='zo'){s=Math.max(s/1.25,0.1);ap();}
-    if(d.t==='zr'){s=1;tx=0;ty=0;el.style.transform='';}
-    if(d.t==='pon'){pan=true;document.body.style.cursor='grab';}
-    if(d.t==='poff'){pan=false;document.body.style.cursor='';}
+    if(d.t==='zr'){s=1;tx=0;ty=0;ap();}
   });
+
+  // Ctrl+wheel zooms (standard browser pattern)
   document.addEventListener('wheel',function(e){
-    if(window._hasPanZoom||!e.ctrlKey)return;e.preventDefault();
-    s=Math.min(Math.max(s*(e.deltaY<0?1.1:0.9),0.1),10);ap();
+    if(window._hasPanZoom||!e.ctrlKey)return;
+    e.preventDefault();
+    var delta=e.deltaY<0?1.1:0.9;
+    s=Math.min(Math.max(s*delta,0.1),10);ap();
   },{passive:false});
+
+  // Determine if an element should receive native events
+  function isInteractive(el){
+    if(!el||el===document.body)return false;
+    var tag=el.tagName;
+    if(/^(A|BUTTON|INPUT|SELECT|TEXTAREA|LABEL|SUMMARY)$/.test(tag))return true;
+    if(el.isContentEditable)return true;
+    // Scrollable region: has overflow scroll/auto and scrollable content
+    var cs=window.getComputedStyle(el);
+    var ov=cs.overflow+cs.overflowY+cs.overflowX;
+    if(/scroll|auto/.test(ov)&&(el.scrollHeight>el.clientHeight||el.scrollWidth>el.clientWidth))return true;
+    return isInteractive(el.parentElement);
+  }
+
+  // Middle-button drag (button 1) or space+left-drag
+  document.addEventListener('keydown',function(e){if(e.code==='Space'&&!isInteractive(document.activeElement)){spaceDown=true;document.body.style.cursor='grab';e.preventDefault();}});
+  document.addEventListener('keyup',function(e){if(e.code==='Space'){spaceDown=false;if(!drag)document.body.style.cursor='';}});
+
   document.addEventListener('mousedown',function(e){
-    if(window._hasPanZoom||!pan||e.button!==0)return;
+    var useMiddle=e.button===1;
+    var useLeft=e.button===0&&spaceDown;
+    if(!useMiddle&&!useLeft)return;
+    if(!useMiddle&&isInteractive(e.target))return;
     drag=true;sx=e.clientX;sy=e.clientY;stx=tx;sty=ty;
     document.body.style.cursor='grabbing';e.preventDefault();
   });
   document.addEventListener('mousemove',function(e){
     if(!drag)return;tx=stx+(e.clientX-sx);ty=sty+(e.clientY-sy);ap();
   });
-  document.addEventListener('mouseup',function(){
-    if(!drag)return;drag=false;if(pan)document.body.style.cursor='grab';
+  document.addEventListener('mouseup',function(e){
+    if(!drag)return;drag=false;
+    document.body.style.cursor=spaceDown?'grab':'';
   });
 })();
 <\/script>`;

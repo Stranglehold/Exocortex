@@ -34,16 +34,16 @@ export default async function initArtifactPanel() {
     });
 
     // ── Inject panel DOM ─────────────────────────────────────────────────────
-    const rightPanel = document.getElementById("right-panel");
-    if (!rightPanel || document.getElementById("artifact-panel")) return;
+    // Must insert inside .container (the flex row), not outside it.
+    // afterend of #right-panel would escape the flex context.
+    const container = document.querySelector(".container");
+    if (!container || document.getElementById("artifact-panel")) return;
 
     const panelEl = document.createElement("div");
     panelEl.id = "artifact-panel";
-    // x-data uses the named component registered above.
-    // :class adds the 'open' CSS class that drives the width transition.
     panelEl.setAttribute("x-data", "artifactPanel");
     panelEl.setAttribute(":class", "{ open: open }");
-    rightPanel.insertAdjacentElement("afterend", panelEl);
+    container.appendChild(panelEl);
 
     panelEl.innerHTML = `
     <!-- Toggle tab strip (always-visible 28px strip) -->
@@ -74,12 +74,9 @@ export default async function initArtifactPanel() {
             <span class="artifact-header-type" x-text="type"></span>
             <div class="artifact-header-actions">
                 <div class="artifact-zoom-controls" style="display:flex;gap:0;">
-                    <button class="artifact-header-btn" @click="zoomIn()" title="Zoom in">zoom_in</button>
-                    <button class="artifact-header-btn" @click="zoomOut()" title="Zoom out">zoom_out</button>
+                    <button class="artifact-header-btn" @click="zoomIn()" title="Zoom in (ctrl+scroll)">zoom_in</button>
+                    <button class="artifact-header-btn" @click="zoomOut()" title="Zoom out (ctrl+scroll)">zoom_out</button>
                     <button class="artifact-header-btn" @click="zoomReset()" title="Reset zoom">zoom_out_map</button>
-                    <button class="artifact-header-btn" @click="togglePan()"
-                        :class="panMode ? 'artifact-btn-active' : ''"
-                        title="Pan mode">pan_tool</button>
                 </div>
                 <div class="artifact-service-links" style="display:flex;gap:0;">
                     <template x-for="svc in serviceLinks" :key="svc.label">
