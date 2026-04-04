@@ -469,8 +469,10 @@ function artifactPanelComponent() {
   };
 }
 
-// ─── Register with Alpine ─────────────────────────────────────────────────
+// ─── Export factory for direct use ────────────────────────────────────────
+// Named Alpine.data registration only works before Alpine.start().
+// When loaded via initFw_end (after start), we expose the factory on window
+// so the init module can wire it directly: x-data="artifactPanelFactory()"
+window.artifactPanelFactory = artifactPanelComponent;
 
-document.addEventListener('alpine:init', () => {
-  Alpine.data('artifactPanel', artifactPanelComponent);
-});
+export { artifactPanelComponent };
