@@ -108,4 +108,19 @@ export default async function initArtifactPanel() {
                 title="Artifact"></iframe>
         </div>
     </div>`;
+
+    // ── Measure the fixed top bar and set padding-top on the panel ───────────
+    // #time-date-container is position:fixed — it doesn't push the flex row
+    // down. Measure it after the DOM settles and pad the panel to clear A0 chrome.
+    function applyTopOffset() {
+        const topBar = document.getElementById("time-date-container");
+        if (!topBar) return;
+        const r = topBar.getBoundingClientRect();
+        const offset = Math.ceil(r.bottom) + 4; // 4px breathing room below bar
+        if (offset > 10) panelEl.style.paddingTop = offset + "px";
+    }
+    requestAnimationFrame(() => {
+        applyTopOffset();
+        setTimeout(applyTopOffset, 800); // retry after Alpine renders the bar
+    });
 }
