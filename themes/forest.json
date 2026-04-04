@@ -1,0 +1,34 @@
+{
+  "name": "Forest",
+  "author": "Agent Zero",
+  "description": "Natural organic interface with earthy green tones",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#0f1510",
+    "text": "#e8efe8",
+    "text-muted": "#b8d4c4",
+    "primary": "#2d6a4f",
+    "secondary": "#1a3a2a",
+    "accent": "#52b788",
+    "message-bg": "#152018",
+    "highlight": "#40916c",
+    "message-text": "#f0faf0",
+    "panel": "#121a14",
+    "border": "#3d6e5380",
+    "input": "#0d120e",
+    "input-focus": "#0b0f0c",
+    "chat-background": "#0f1510",
+    "error-text": "#e76f51",
+    "warning-text": "#e9c46a",
+    "table-row": "#131d16"
+  },
+  "fonts": {
+    "main": "'Rubik', Arial, Helvetica, sans-serif",
+    "code": "'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#0f1510",
+    "text": "#e8efe8",
+    "accent": "#2d6a4f"
+  }
+}

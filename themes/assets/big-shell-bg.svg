@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <g fill="none" stroke="#6aabcc">
+    <!-- Big Shell offshore cleanup facility — strut and truss structure -->
+    <!-- Outer hexagonal ring suggestion: 6 strut nodes connected by diagonals -->
+    <!-- Node positions (approximate hexagon, scaled to fill view): -->
+    <!-- top: 600,60   top-right: 970,210  bot-right: 970,590 -->
+    <!-- bot: 600,740  bot-left: 230,590   top-left: 230,210  -->
+    <!-- Primary strut ring -->
+    <polygon points="600,60 970,210 970,590 600,740 230,590 230,210"
+             stroke-width="1.0" opacity="0.42"/>
+    <!-- Inner hexagon: Shell's inner catwalks -->
+    <polygon points="600,170 860,290 860,510 600,630 340,510 340,290"
+             stroke-width="0.7" opacity="0.35"/>
+    <!-- Central hub circle -->
+    <circle cx="600" cy="400" r="80" stroke-width="0.8" opacity="0.38"/>
+    <circle cx="600" cy="400" r="50" stroke-width="0.5" opacity="0.30"/>
+    <circle cx="600" cy="400" r="18" stroke-width="0.4" opacity="0.26"/>
+    <!-- Radial spokes — outer ring to inner ring -->
+    <g stroke-width="0.5" opacity="0.30">
+      <line x1="600" y1="60"  x2="600" y2="170"/>
+      <line x1="970" y1="210" x2="860" y2="290"/>
+      <line x1="970" y1="590" x2="860" y2="510"/>
+      <line x1="600" y1="740" x2="600" y2="630"/>
+      <line x1="230" y1="590" x2="340" y2="510"/>
+      <line x1="230" y1="210" x2="340" y2="290"/>
+    </g>
+    <!-- Inner ring to hub spokes -->
+    <g stroke-width="0.4" opacity="0.26">
+      <line x1="600" y1="170" x2="600" y2="320"/>
+      <line x1="860" y1="290" x2="680" y2="330"/>
+      <line x1="860" y1="510" x2="680" y2="470"/>
+      <line x1="600" y1="630" x2="600" y2="480"/>
+      <line x1="340" y1="510" x2="520" y2="470"/>
+      <line x1="340" y1="290" x2="520" y2="330"/>
+    </g>
+    <!-- Cross-bracing between outer and inner nodes (X patterns) -->
+    <g stroke-width="0.4" opacity="0.22">
+      <!-- top strut cross-brace -->
+      <line x1="600" y1="60"  x2="860" y2="290"/>
+      <line x1="970" y1="210" x2="600" y2="170"/>
+      <!-- right strut cross-brace -->
+      <line x1="970" y1="210" x2="860" y2="510"/>
+      <line x1="970" y1="590" x2="860" y2="290"/>
+      <!-- bottom-right cross-brace -->
+      <line x1="970" y1="590" x2="600" y2="630"/>
+      <line x1="600" y1="740" x2="860" y2="510"/>
+      <!-- bottom-left cross-brace -->
+      <line x1="600" y1="740" x2="340" y2="510"/>
+      <line x1="230" y1="590" x2="600" y2="630"/>
+      <!-- left cross-brace -->
+      <line x1="230" y1="590" x2="340" y2="290"/>
+      <line x1="230" y1="210" x2="340" y2="510"/>
+      <!-- top-left cross-brace -->
+      <line x1="230" y1="210" x2="600" y2="170"/>
+      <line x1="600" y1="60"  x2="340" y2="290"/>
+    </g>
+    <!-- Extended outer water surface: horizontal ruled lines -->
+    <g stroke-width="0.3" opacity="0.18">
+      <line x1="0"   y1="100" x2="200" y2="100"/>
+      <line x1="1000" y1="100" x2="1200" y2="100"/>
+      <line x1="0"   y1="140" x2="180" y2="140"/>
+      <line x1="1020" y1="140" x2="1200" y2="140"/>
+      <line x1="0"   y1="180" x2="160" y2="180"/>
+      <line x1="1040" y1="180" x2="1200" y2="180"/>
+      <line x1="0"   y1="700" x2="200" y2="700"/>
+      <line x1="1000" y1="700" x2="1200" y2="700"/>
+      <line x1="0"   y1="660" x2="180" y2="660"/>
+      <line x1="1020" y1="660" x2="1200" y2="660"/>
+      <line x1="0"   y1="620" x2="160" y2="620"/>
+      <line x1="1040" y1="620" x2="1200" y2="620"/>
+    </g>
+    <!-- Node reinforcement circles at outer hex vertices -->
+    <g stroke-width="0.6" opacity="0.38">
+      <circle cx="600" cy="60"  r="8"/>
+      <circle cx="970" cy="210" r="8"/>
+      <circle cx="970" cy="590" r="8"/>
+      <circle cx="600" cy="740" r="8"/>
+      <circle cx="230" cy="590" r="8"/>
+      <circle cx="230" cy="210" r="8"/>
+    </g>
+    <!-- Node reinforcement at inner hex -->
+    <g stroke-width="0.4" opacity="0.28">
+      <circle cx="600" cy="170" r="6"/>
+      <circle cx="860" cy="290" r="6"/>
+      <circle cx="860" cy="510" r="6"/>
+      <circle cx="600" cy="630" r="6"/>
+      <circle cx="340" cy="510" r="6"/>
+      <circle cx="340" cy="290" r="6"/>
+    </g>
+    <!-- Access walkway cross-lines over water -->
+    <g stroke-width="0.4" opacity="0.22">
+      <line x1="0"   y1="400" x2="230" y2="400"/>
+      <line x1="1200" y1="400" x2="970" y2="400"/>
+      <line x1="0"   y1="394" x2="230" y2="394"/>
+      <line x1="0"   y1="406" x2="230" y2="406"/>
+      <line x1="1200" y1="394" x2="970" y2="394"/>
+      <line x1="1200" y1="406" x2="970" y2="406"/>
+    </g>
+  </g>
+</svg>

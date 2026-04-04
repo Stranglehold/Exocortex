@@ -1,0 +1,121 @@
+{
+  "name": "Kaer Morhen",
+  "author": "Exocortex",
+  "description": "Witcher 3. The keep endures. Deep crimson on near-black, manuscript serif throughout.",
+  "version": "1.0.0",
+  "tier": "atmospheric",
+  "colors": {
+    "background": "#0a0808",
+    "text": "#d4ccc0",
+    "text-muted": "#8a8278c7",
+    "primary": "#7a7268",
+    "secondary": "#2a2018",
+    "accent": "#8b1a1a",
+    "message-bg": "#141010",
+    "highlight": "#5a1010",
+    "message-text": "#ccc4b8",
+    "panel": "#100c0c",
+    "border": "#3a2020a8",
+    "input": "#0a0808",
+    "input-focus": "#141010",
+    "chat-background": "#080608",
+    "error-text": "#cc2222",
+    "warning-text": "#cc8822",
+    "table-row": "#181010"
+  },
+  "fonts": {
+    "main": "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+    "code": "'Courier New', monospace"
+  },
+  "preview": {
+    "background": "#0a0808",
+    "text": "#d4ccc0",
+    "accent": "#8b1a1a"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/kaer-morhen-bg.svg",
+    "opacity": 0.4,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.6,
+    "backdrop_blur": 2
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.4
+    },
+    "watermark": {
+      "enabled": true,
+      "src": "/themes/assets/wolf-medallion.svg",
+      "opacity": 0.06,
+      "position": "center",
+      "size": "40%"
+    }
+  },
+  "animation": {
+    "type": "none",
+    "intensity": 0.5,
+    "color": null
+  },
+  "widgets": [
+    {
+      "type": "moon-phase",
+      "position": "top-right",
+      "color": "#c8b88a",
+      "font_size": "22px"
+    },
+    {
+      "type": "status-badge",
+      "position": "bottom-right",
+      "states": {
+        "idle": {
+          "text": "MEDALLION: STILL",
+          "color": "#7a6848",
+          "blink": false
+        },
+        "thinking": {
+          "text": "MEDALLION: VIBRATING",
+          "color": "#c8a840",
+          "blink": true
+        },
+        "active": {
+          "text": "MONSTER NEARBY",
+          "color": "#8b1a1a",
+          "blink": true
+        },
+        "escalated": {
+          "text": "WRAITH WALKING",
+          "color": "#8b1a1a",
+          "blink": true
+        }
+      }
+    }
+  ],
+  "cursor_trail": {
+    "type": "dust",
+    "color": "#8b4040",
+    "intensity": 0.45
+  },
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 6,
+    "message": "THE KEEP IS SILENT",
+    "position": "bottom-left",
+    "color": "#8b1a1a"
+  }
+}

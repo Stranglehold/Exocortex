@@ -1,0 +1,100 @@
+{
+  "name": "YoRHa",
+  "author": "Exocortex",
+  "description": "NieR: Automata system terminal. Typography as complete aesthetic. NO ERROR.",
+  "version": "1.0.0",
+  "tier": "palette",
+  "colors": {
+    "background": "#080808",
+    "text": "#e8e4dc",
+    "text-muted": "#b0aca4c7",
+    "primary": "#9a9690",
+    "secondary": "#4a4640",
+    "accent": "#52c57a",
+    "message-bg": "#111111",
+    "highlight": "#2a7a48",
+    "message-text": "#e0dcd4",
+    "panel": "#0d0d0d",
+    "border": "#2a2825a8",
+    "input": "#080808",
+    "input-focus": "#0f0f0f",
+    "chat-background": "#080808",
+    "error-text": "#cc3333",
+    "warning-text": "#c9922e",
+    "table-row": "#131312"
+  },
+  "fonts": {
+    "main": "'Courier New', 'Roboto Mono', monospace",
+    "code": "'Courier New', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#080808",
+    "text": "#e8e4dc",
+    "accent": "#52c57a"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/nierautomata-loading.jpg",
+    "opacity": 0.65,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "contain"
+  },
+  "panel": {
+    "opacity": 0.6,
+    "backdrop_blur": 2
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": true,
+      "opacity": 0.03,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.35
+    }
+  },
+  "cursor_trail": {
+    "type": "matrix-dots",
+    "color": "#52c57a",
+    "intensity": 0.55
+  },
+  "message_reveal": {
+    "type": "typewriter",
+    "speed": 1.3
+  },
+  "idle_escalation": {
+    "enabled": true,
+    "threshold_minutes": 4,
+    "message": "UNIT: STANDBY — AWAITING DIRECTIVE",
+    "position": "bottom-left",
+    "color": "#52c57a"
+  },
+  "widgets": [
+    {
+      "type": "boot-sequence",
+      "lines": [
+        "YoRHa No.2 Type B",
+        "─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─",
+        "Connecting to Bunker Server...",
+        "▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%",
+        "TACTICAL UNIT DEPLOYED"
+      ],
+      "duration": 2800,
+      "color": "#e8e4dc",
+      "background": "rgba(0,0,0,0.97)"
+    },
+    {
+      "type": "pod-badge",
+      "position": "bottom-right",
+      "pod": "POD 042",
+      "color": "#c8c4bc"
+    }
+  ]
+}
