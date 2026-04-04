@@ -1,0 +1,13 @@
+name: swarmfish
+title: SWARMFISH
+description: >
+  Analytic consensus engine. Eight analytical profiles (Base Rate Analyst, Contrarian,
+  Historian, Reflexivity Modeler, Decomposer, Network Analyst, Sentiment Decoder,
+  Risk Manager) independently assess prediction questions then aggregate to a consensus.
+  V2: configurable committee, full deliberation transparency, dissent as first-class object,
+  persistent sessions, domain-specific calibration.
+  Data: /a0/usr/swarmfish/swarmfish.db (SQLite, auto-created on first prediction).
+version: 2.0.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false
