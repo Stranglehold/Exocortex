@@ -63,25 +63,18 @@ PROMPT_DEST="$CONTAINER:$PLUGIN_BASE/prompts"
 
 docker cp "$PROMPT_SRC/agent.system.tool.swarmfish.md" "$PROMPT_DEST/"
 
-# ── Main tool file (goes to Exocortex plugin tools, not SWARMFISH plugin) ─────
-# Tools are discovered from the Exocortex plugin's tools/ directory.
-# SWARMFISH tools are deployed alongside the other Exocortex tools.
+# ── Tool files (deployed to A0 native tools dir — where A0 dispatches from) ──
+# A0 loads tool classes from /a0/tools/. Plugin subdirs are text-injection only.
 
-EXOCORTEX_TOOLS="$CONTAINER:/a0/usr/plugins/exocortex/tools"
+A0_TOOLS="$CONTAINER:/a0/tools"
 TOOLS_SRC="$SCRIPT_DIR/../../tools"
 
-docker cp "$TOOLS_SRC/swarmfish.py" "$EXOCORTEX_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish.py"       "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_panel.py" "$A0_TOOLS/"
 
-# Tool documentation also goes to Exocortex plugin prompts (scanned by _11_tools_prompt)
-# regardless of whether the SWARMFISH plugin is enabled in A0 settings.
+# Tool documentation also goes to Exocortex plugin prompts
 EXOCORTEX_PROMPTS="$CONTAINER:/a0/usr/plugins/exocortex/prompts"
 docker cp "$PROMPT_SRC/agent.system.tool.swarmfish.md" "$EXOCORTEX_PROMPTS/"
-
-# Also update migration-path copy if it exists (dual-path issue from DEC-030)
-LEGACY_TOOLS="$CONTAINER:/a0/usr/agents/agent0/extensions/python/before_main_llm_call"
-if _exec "$CONTAINER" test -d "/a0/usr/agents/agent0/extensions/python" 2>/dev/null; then
-  echo "  Note: migration-path directory exists — tool files in Exocortex plugin take priority"
-fi
 
 # ── Clear pycache ──────────────────────────────────────────────────────────────
 

@@ -83,13 +83,15 @@ docker cp "$API_SRC/api_oss_rejections.py"    "$API_DEST/"
 docker cp "$API_SRC/api_oss_staging.py"       "$API_DEST/"
 docker cp "$API_SRC/api_oss_network.py"       "$API_DEST/"
 
-# ── Tool files (deployed to Exocortex plugin tools dir) ───────────────────────
+# ── Tool files (deployed to A0 native tools dir — where A0 dispatches from) ──
+# A0 loads tool classes from /a0/tools/, not from plugin subdirectories.
+# The plugin's tools/ dir is only scanned by _16_tool_registry for text injection.
 
-EXOCORTEX_TOOLS="$CONTAINER:/a0/usr/plugins/exocortex/tools"
+A0_TOOLS="$CONTAINER:/a0/tools"
 TOOLS_SRC="$SCRIPT_DIR/../../tools"
 
-docker cp "$TOOLS_SRC/oss.py"       "$EXOCORTEX_TOOLS/"
-docker cp "$TOOLS_SRC/oss_panel.py" "$EXOCORTEX_TOOLS/"
+docker cp "$TOOLS_SRC/oss.py"       "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_panel.py" "$A0_TOOLS/"
 
 # ── Clear pycache ──────────────────────────────────────────────────────────────
 
@@ -131,9 +133,9 @@ done
 # ── Syntax check: tools ───────────────────────────────────────────────────────
 
 echo "  Syntax checking tools..."
-EXOCORTEX_TOOLS_PATH="/a0/usr/plugins/exocortex/tools"
+A0_TOOLS_PATH="/a0/tools"
 for f in oss.py oss_panel.py; do
-  if _exec "$CONTAINER" python3 -m py_compile "$EXOCORTEX_TOOLS_PATH/$f" 2>/dev/null; then
+  if _exec "$CONTAINER" python3 -m py_compile "$A0_TOOLS_PATH/$f" 2>/dev/null; then
     echo "    ✓ tools/$f"
   else
     echo "    ✗ tools/$f  FAILED"
