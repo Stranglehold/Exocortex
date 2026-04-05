@@ -1,0 +1,14 @@
+name: oss
+title: Open Source Signals
+description: >
+  Intelligence ledger for open-source signal collection and analysis.
+  Ingests RSS feeds, extracts claims via LLM, deduplicates via FAISS embeddings,
+  tracks narrative drift, contradictions, silence, activation patterns, and
+  propagation dynamics. V2: analyst works inside the pipeline — directs attention
+  via active questions, challenges classifications, reviews rejections, and receives
+  evidence-based answers via synthesis. Integrates with SWARMFISH for prediction.
+  Data: /a0/usr/oss/oss.db (SQLite, auto-created). FAISS: /a0/usr/oss/claims.index.
+version: 2.0.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false
