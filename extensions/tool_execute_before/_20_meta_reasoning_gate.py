@@ -103,6 +103,11 @@ TOOL_SCHEMAS = {
             "command": "method",
             "operation": "method",
         },
+        # V1.7 colon-dispatch: "skills_tool:list" is split by agent.py before reaching
+        # this extension. MetaGate receives tool_name="skills_tool" with tool_args={}
+        # and no "method" key — but the method was already consumed upstream. Skip the
+        # method required-check when tool_args contains no user-supplied args at all.
+        "colon_dispatch": True,
     },
 }
 
@@ -204,6 +209,12 @@ class MetaReasoningGate(Extension):
         """Return list of missing required argument names."""
         required = schema.get("required", [])
         conditionally_required = schema.get("conditionally_required", {})
+
+        # V1.7 colon-dispatch: agent.py splits "tool:method" before calling extensions.
+        # If this tool uses colon-dispatch AND tool_args is empty, the method was already
+        # consumed upstream — skip the required check entirely to avoid false warnings.
+        if schema.get("colon_dispatch") and not tool_args:
+            return []
         missing = []
 
         for arg in required:

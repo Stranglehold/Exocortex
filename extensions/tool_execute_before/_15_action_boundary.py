@@ -94,16 +94,26 @@ TIER_4_TOOL_NAMES = [
 # boundary before promotion.
 
 TIER_4_SYSTEM_WRITE_PATHS = {
-    "/a0/python/",   # v1.5 path — kept for backwards compatibility during migration
-    "/a0/tools/",    # v1.6 tools path
-    "/a0/helpers/",  # v1.6 helpers path
+    "/a0/python/",      # v1.5 path — kept for backwards compatibility during migration
+    "/a0/tools/",       # v1.6 tools path
+    "/a0/helpers/",     # v1.6 helpers path
     "/a0/agents/",
-    "/a0/usr/agents/",
+    "/a0/usr/agents/",  # V1.7 profile-path extensions
+    "/a0/usr/plugins/", # V1.7 plugin tools/extensions
 }
 
 # Matches: open('/path', 'w'), open("/path", "w"), open('/path', 'wb'), open('/path', 'a')
 _PY_OPEN_WRITE_RX = re.compile(
     r"""open\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"](?:w|a|wb|ab)['"]""",
+    re.IGNORECASE,
+)
+
+# Gap B: variable indirection — open(var, 'w') where path is stored in a variable.
+# The above regex only catches string literals. This catches any open() write where
+# the first argument is NOT a string literal. Paired with a string-literal scan to
+# confirm a system path appears in the same code block.
+_PY_OPEN_WRITE_VAR_RX = re.compile(
+    r"""open\s*\(\s*(?!['"])[^)]+,\s*['"](?:w|a|wb|ab)['"]""",
     re.IGNORECASE,
 )
 
@@ -345,6 +355,13 @@ def _classify(
         for sys_path in TIER_4_SYSTEM_WRITE_PATHS:
             if path.startswith(sys_path):
                 return (4, "s4_system_write", [f"py_open_write:{path}"], path)
+
+    # Gap B: variable indirection — open(var, 'w') where var holds a system path.
+    # Detects: path = '/a0/...'; open(path, 'w') or with open(path, 'w') as f:
+    if _PY_OPEN_WRITE_VAR_RX.search(command):
+        for sys_path in TIER_4_SYSTEM_WRITE_PATHS:
+            if sys_path in command:
+                return (4, "s4_system_write", [f"py_open_write_indirect:{sys_path}"], sys_path)
 
     # Tier 4: command patterns
     # Gap B fix: skip matches that fall inside a quoted string literal —
