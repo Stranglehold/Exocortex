@@ -115,6 +115,13 @@ TOOL_SCHEMAS = {
         # before tool_execute_before fires. tool_args is empty; method was consumed upstream.
         "colon_dispatch": True,
     },
+    "text_editor": {
+        "required": ["method"],
+        # Colon-dispatch: text_editor:read, text_editor:write, text_editor:patch.
+        # Per-method required args (path, content, edits) are validated internally by the
+        # tool itself — MetaGate only needs to suppress the false method-missing warning.
+        "colon_dispatch": True,
+    },
 }
 
 
