@@ -322,6 +322,12 @@ def _extract_command(tool_args: Optional[Dict], tool_name: str) -> str:
         return tool_name
     if tool_name in SHELL_TOOLS:
         return tool_args.get("code", "")
+    # For file-writing tools, only scan the path — not the content being written.
+    # Scanning content causes false positives when documents mention words like
+    # "whois", "nmap", "ssh", "git push" in explanatory text.
+    if tool_name == "text_editor":
+        path = tool_args.get("path", "")
+        return f"{tool_name} {path}"
     # For other tools, build a string for matching against tool name + args
     return f"{tool_name} {json.dumps(tool_args, default=str)}"
 
