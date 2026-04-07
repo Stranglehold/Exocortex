@@ -224,10 +224,12 @@ class MetaReasoningGate(Extension):
         conditionally_required = schema.get("conditionally_required", {})
 
         # V1.7 colon-dispatch: agent.py splits "tool:method" before calling extensions.
-        # If this tool uses colon-dispatch AND tool_args is empty, the method was already
-        # consumed upstream — skip the required check entirely to avoid false warnings.
-        if schema.get("colon_dispatch") and not tool_args:
-            return []
+        # The method arg is ALWAYS consumed upstream regardless of what other args are
+        # present — remove "method" from the required list entirely for colon-dispatch
+        # tools. (The old "and not tool_args" guard was wrong: text_editor:write arrives
+        # with {path, content} so tool_args is non-empty, but method is still gone.)
+        if schema.get("colon_dispatch"):
+            required = [r for r in required if r != "method"]
         missing = []
 
         for arg in required:
