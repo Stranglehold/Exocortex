@@ -109,6 +109,12 @@ TOOL_SCHEMAS = {
         # method required-check when tool_args contains no user-supplied args at all.
         "colon_dispatch": True,
     },
+    "scheduler": {
+        "required": ["method"],
+        # Same colon-dispatch pattern as skills_tool — agent.py splits "scheduler:list_tasks"
+        # before tool_execute_before fires. tool_args is empty; method was consumed upstream.
+        "colon_dispatch": True,
+    },
 }
 
 
