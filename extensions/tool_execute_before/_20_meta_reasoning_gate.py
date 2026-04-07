@@ -138,7 +138,33 @@ class MetaReasoningGate(Extension):
     async def execute(self, tool_args: dict[str, Any] | None = None,
                       tool_name: str = "", **kwargs):
         try:
-            if not tool_args or not tool_name:
+            if not tool_name:
+                return
+
+            # Phase 0: Orchestration enforcement
+            # If _57_orchestration_mode has activated, warn the agent when it
+            # tries to execute directly instead of delegating.
+            orch_state = getattr(self.agent, "_orch_state", None)
+            if (isinstance(orch_state, dict)
+                    and orch_state.get("phase") in ("planning", "executing")
+                    and tool_name in ("code_execution_tool", "text_editor")):
+                try:
+                    self.agent.context.log.log(
+                        type="warning",
+                        content=f"[ORCH-GATE] Direct tool blocked: {tool_name} "
+                                f"(phase={orch_state['phase']})",
+                    )
+                    self.agent.hist_add_warning(
+                        f"[ORCHESTRATION MODE] You are the orchestrator. "
+                        f"Do not use {tool_name} directly. "
+                        f"Delegate this work to call_subordinate with a bounded task description."
+                    )
+                except Exception:
+                    pass
+                # Warning only — tool still executes. Hard blocking requires
+                # a different mechanism outside MetaGate's scope.
+
+            if not tool_args:
                 return
 
             schema = TOOL_SCHEMAS.get(tool_name)

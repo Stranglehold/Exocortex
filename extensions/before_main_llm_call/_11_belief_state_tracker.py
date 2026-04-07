@@ -35,6 +35,33 @@ TAXONOMY_PATH          = Path(__file__).parent / "slot_taxonomy.json"
 BELIEF_KEY             = "__bst_belief_state__"
 MAX_HISTORY_SCAN_TURNS = 8
 
+# ── Complexity classification ──────────────────────────────────────────────────
+# Domains where complexity is meaningful (skip for conversation/orientation/etc.)
+COMPLEX_ELIGIBLE_DOMAINS = {
+    "coding", "system_admin", "planning", "investigation", "analysis",
+    "bugfix", "git_ops", "file_ops",
+}
+
+_COMPLEX_BUILD_RX = re.compile(
+    r'\b('
+    r'build|framework|scaffold|'
+    r'implement\s+phase|create\s+system|'
+    r'develop\s+(?:a\s+)?(?:tool|plugin|module|service|library)|'
+    r'multiple\s+(?:files?|modules?|collectors?|components?|classes?)|'
+    r'phase\s+[0-9]|step\s+[0-9]\s+of|'
+    r'full\s+(?:stack|pipeline|system)|'
+    r'end.to.end|'
+    r'flesh\s+out|'
+    r'complete\s+(?:the\s+)?(?:build|implementation|system)'
+    r')\b',
+    re.IGNORECASE,
+)
+
+_MULTI_STEP_RX = re.compile(
+    r'\b(then|after\s+that|next|followed\s+by|and\s+also|step\s+[0-9])\b',
+    re.IGNORECASE,
+)
+
 # ── Compound classification constants ─────────────────────────────────────────
 SECONDARY_MIN_SIGNALS = 1   # Secondary must match at least 1 signal
 MOMENTUM_THRESHOLD    = 3   # Turns before momentum resists reclassification
@@ -718,20 +745,31 @@ class BeliefStateTracker(Extension):
                 enrichment_plan      = enrichment_plan,
             )
 
+            # ── Complexity classification ─────────────────────────────────────
+            # Additive slot — used by _57_orchestration_mode to gate delegation mode.
+            complexity = "simple"
+            if final_primary["domain"] in COMPLEX_ELIGIBLE_DOMAINS:
+                if _COMPLEX_BUILD_RX.search(message):
+                    complexity = "complex_build"
+                elif _MULTI_STEP_RX.search(message):
+                    complexity = "multi_step"
+
             # Persist compound momentum state and user message count
             if not hasattr(self.agent, "_bst_store") or self.agent._bst_store is None:
                 self.agent._bst_store = {}
             self.agent._bst_store["_compound_sig"]   = final_signature
             self.agent._bst_store["_compound_turns"] = final_momentum
             self.agent._bst_store["_user_msg_count"] = user_msg_count
+            self.agent._bst_store["_complexity"]      = complexity
 
             # Write to extras_persistent (backward-compat key + new compound key)
             ep = getattr(loop_data, "extras_persistent", None)
             if ep is None:
                 loop_data.extras_persistent = {}
                 ep = loop_data.extras_persistent
-            ep["_bst_domain"]   = compound_cls.primary_domain
-            ep["_bst_compound"] = compound_cls.to_dict()
+            ep["_bst_domain"]     = compound_cls.primary_domain
+            ep["_bst_compound"]   = compound_cls.to_dict()
+            ep["_bst_complexity"] = complexity
 
             # ── Logging ───────────────────────────────────────────────────────
             sec_str    = (
