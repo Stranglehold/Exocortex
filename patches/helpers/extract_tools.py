@@ -6,11 +6,72 @@ from .files import get_abs_path, deabsolute_path
 import regex
 from fnmatch import fnmatch
 
+# Gemma 4 / native LLM tool call format:
+#   <|tool_call>call:TOOL_NAME{arg: "val", ...}<tool_call|>
+# May be preceded by <channel|> or other tokens.
+_NATIVE_TOOL_CALL_RX = re.compile(
+    r'<\|tool_call\>\s*call\s*:\s*(\w+)\s*(\{)',
+    re.IGNORECASE,
+)
+
+
+def _find_closing_brace(s: str) -> int:
+    """Return index of the } that closes the { at s[0]. Returns -1 if not found."""
+    if not s or s[0] != '{':
+        return -1
+    depth = 0
+    in_str = False
+    escape = False
+    for i, ch in enumerate(s):
+        if escape:
+            escape = False
+            continue
+        if ch == '\\' and in_str:
+            escape = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
 def json_parse_dirty(json:str) -> dict[str,Any] | None:
     if not json or not isinstance(json, str):
         return None
 
-    ext_json = extract_json_object_string(json.strip())
+    stripped = json.strip()
+
+    # ── Native tool call format (Gemma 4, etc.) ───────────────────────────
+    # Pattern: <|tool_call>call:TOOL_NAME{arg: "val", ...}<tool_call|>
+    # Detect before standard JSON path — args dict has no tool_name key.
+    m = _NATIVE_TOOL_CALL_RX.search(stripped)
+    if m:
+        tool_name = m.group(1)
+        # m.group(2) == '{'; start from the { character
+        args_start = m.start(2)
+        args_str = stripped[args_start:]
+        end_idx = _find_closing_brace(args_str)
+        args_json = args_str[:end_idx + 1] if end_idx >= 0 else extract_json_object_string(args_str)
+        tool_args = {}
+        if args_json:
+            try:
+                parsed = DirtyJson.parse_string(args_json)
+                if isinstance(parsed, dict):
+                    tool_args = parsed
+            except Exception:
+                pass
+        return {"tool_name": tool_name, "tool_args": tool_args}
+
+    # ── Standard JSON path ────────────────────────────────────────────────
+    ext_json = extract_json_object_string(stripped)
     if ext_json:
         try:
             data = DirtyJson.parse_string(ext_json)
@@ -19,8 +80,7 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                 # after reasoning tokens. Treat the original text as a plain response
                 # rather than routing to Unknown and dumping the full tool list.
                 if not data.get("tool_name", "").strip():
-                    text = json.strip()
-                    return {"tool_name": "response", "tool_args": {"text": text}}
+                    return {"tool_name": "response", "tool_args": {"text": stripped}}
                 return data
         except Exception:
             # If parsing fails, fall through to plain-text fallback
@@ -29,9 +89,8 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
     # Fallback: plain text → implicit response tool call.
     # Reasoning-distilled models respond in natural language after thinking tokens
     # rather than JSON. Wrapping as a response call avoids the misformat loop.
-    text = json.strip()
-    if text:
-        return {"tool_name": "response", "tool_args": {"text": text}}
+    if stripped:
+        return {"tool_name": "response", "tool_args": {"text": stripped}}
     return None
 
 def extract_json_object_string(content):
