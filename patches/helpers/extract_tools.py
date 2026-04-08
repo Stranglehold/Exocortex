@@ -107,6 +107,12 @@ def extract_json_object_string(content):
         # If there's a closing '}', return the substring from start to end
         return content[start:end+1]
 
+def extract_json_root_string(content):
+    """Alias for extract_json_object_string — used by agent.py stream_callback
+    to extract a complete JSON root object from partial stream buffers.
+    Added in V1.7 agent.py but was missing from our patched extract_tools.py."""
+    return extract_json_object_string(content)
+
 def extract_json_string(content):
     # Regular expression pattern to match a JSON object
     pattern = r'\{(?:[^{}]|(?R))*\}|\[(?:[^\[\]]|(?R))*\]|"(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?'
