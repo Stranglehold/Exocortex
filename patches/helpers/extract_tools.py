@@ -73,6 +73,12 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
     # ── Standard JSON path ────────────────────────────────────────────────
     ext_json = extract_json_object_string(stripped)
     if ext_json:
+        # Without a closing '}' the object is guaranteed incomplete at the stream
+        # level. DirtyJson will still "parse" partial input (e.g. '{\n    "' → {'': None}),
+        # producing garbage that triggers stop_response after only a few tokens.
+        # Skip parse entirely until the response contains at least one '}'.
+        if '}' not in ext_json:
+            return None
         try:
             data = DirtyJson.parse_string(ext_json)
             if isinstance(data, dict):
@@ -89,7 +95,12 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
     # Fallback: plain text → implicit response tool call.
     # Reasoning-distilled models respond in natural language after thinking tokens
     # rather than JSON. Wrapping as a response call avoids the misformat loop.
-    if stripped:
+    #
+    # Guard: do NOT apply to strings starting with '{' — those are incomplete or
+    # malformed JSON objects, not plain text. Returning a non-None result for a
+    # partial '{' causes stream_callback to fire stop_response after just one
+    # character, killing the stream immediately.
+    if stripped and not stripped.startswith('{'):
         return {"tool_name": "response", "tool_args": {"text": stripped}}
     return None
 
