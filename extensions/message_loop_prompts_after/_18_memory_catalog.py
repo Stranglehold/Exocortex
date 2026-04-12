@@ -1,7 +1,7 @@
 """
 Memory Catalog — Session Start Injection
 =========================================
-Hook: before_main_llm_call (_18_)
+Hook: message_loop_prompts_after (_18_)
 
 Injects a compact catalog of what's in memory at the start of each session —
 once only, before the first LLM call. Addresses "library without a catalog":
@@ -28,6 +28,15 @@ Gate: only fires once per session (per agent instance). Does nothing if
       both memory stores are empty or inaccessible.
 
 No LLM calls. Reads only — no writes to either memory store.
+
+Hook correction (2026-04-12): moved from before_main_llm_call to
+message_loop_prompts_after. The before_main_llm_call hook fires after
+prepare_prompt() assembles full_prompt — modifications to history_output
+there do not reach the current turn's LLM call. message_loop_prompts_after
+fires inside prepare_prompt() before output_langchain runs, so the catalog
+appears in the assembled prompt.
+
+Async fix (2026-04-12): Memory.get() is async def — added await.
 """
 
 import json
@@ -83,7 +92,7 @@ class MemoryCatalog(Extension):
 
             print("[MEM-CAT] Memory catalog injected.", flush=True)
             try:
-                self.agent.context.log.log(type="util", content="[MEM-CAT] Memory catalog injected.")
+                self.agent.context.log.log(type="info", content="[MEM-CAT] Memory catalog injected.")
             except Exception:
                 pass
 

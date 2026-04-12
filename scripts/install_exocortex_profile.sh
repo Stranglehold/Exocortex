@@ -100,8 +100,6 @@ EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/python"
 docker cp "$EXT_SRC/before_main_llm_call/_11_belief_state_tracker.py" "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/slot_taxonomy.json"          "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_15_htn_plan_selector.py"    "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/_16_tool_registry.py"        "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/_18_memory_catalog.py"       "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_20_context_watchdog.py"     "$EXT_DEST/before_main_llm_call/"
 # Proactive Reasoning Supervisor — injection hook (v1.6 source path)
 docker cp "$EXT_SRC/python/before_main_llm_call/_12_proactive_supervisor.py" "$EXT_DEST/before_main_llm_call/"
@@ -117,6 +115,8 @@ docker cp "$EXT_SRC/hist_add_before/_11_working_memory.py" "$EXT_DEST/hist_add_b
 docker cp "$EXT_SRC/message_loop_end/_50_supervisor_loop.py" "$EXT_DEST/message_loop_end/"
 
 # message_loop_prompts_after
+docker cp "$EXT_SRC/message_loop_prompts_after/_16_tool_registry.py"           "$EXT_DEST/message_loop_prompts_after/"
+docker cp "$EXT_SRC/message_loop_prompts_after/_18_memory_catalog.py"           "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_55_memory_relevance_filter.py" "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_56_memory_enhancement.py"       "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_58_ontology_query.py"           "$EXT_DEST/message_loop_prompts_after/"
