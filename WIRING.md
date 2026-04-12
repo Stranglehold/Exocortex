@@ -2,13 +2,21 @@
 
 *A spaghetti diagram for a system that earns the name. Read this before changing anything that touches shared state, string constants, or execution order. The REPEAT_SIGNAL bug (2026-03-31) was caused by changing a prompt file without updating the string constant that matched against it — that kind of failure is what this document prevents.*
 
-**Last updated:** 2026-03-31
+**Last updated:** 2026-04-12
 
 ---
 
 ## Hook Execution Pipeline
 
 Agent Zero fires hooks at fixed points in its loop. Extensions within each hook run in **numeric prefix order** (lower = earlier). Inserting a new extension at an existing number silently reorders others — always check for conflicts.
+
+### Critical hook timing note
+
+**`before_main_llm_call`** fires AFTER `prepare_prompt()` has already assembled `full_prompt`. Modifications to `history_output` made here do NOT reach the current LLM call.
+
+**`message_loop_prompts_after`** fires INSIDE `prepare_prompt()` before `output_langchain` runs. Modifications to `history_output` here DO reach the LLM.
+
+Rule: any extension that injects context into the user message must use `message_loop_prompts_after`. Use `before_main_llm_call` for state reads, classification, and agent attribute writes — not for prompt injection.
 
 ### Per-turn sequence (one full agent loop iteration)
 
@@ -21,20 +29,18 @@ USER MESSAGE ARRIVES
 
         │
         ▼
-[before_main_llm_call]     — fires before every LLM call, in prefix order
+[before_main_llm_call]     — fires before LLM call, AFTER prepare_prompt() — state ops only
   _10_session_init           reads staging.jsonl → injects staging entries (turn 1 only)
   _11_belief_state_tracker   classifies domain → writes agent._bst_store
   _12_completion_tracker     tracks task completion signals
-  _12_org_dispatcher         reads _bst_store → activates org role
+  _12_proactive_supervisor   reasoning chain analysis → supervisor signals
   _13_operator_profile       injects operator profile block
   _13_reasoning_state        reads staging.jsonl artifacts → injects artifact list
-  _14_metacognitive_injection reads _bst_store → injects model config note
   _14_situational_orientation reads _error_diagnosis → injects situational context
   _15_htn_plan_selector      reads _bst_store → injects HTN plan if active
-  _16_tool_registry          scans /a0/python/tools/ → injects [CUSTOM TOOLS] block
   _17_library_catalog        reads catalog.json → injects [LIBRARY] collection summary
   _17_orchestration_gate     reads _bst_store → injects orchestration context
-  _18_memory_catalog         injects memory domain catalog (once per session)
+                             ↑ NOTE: injections here do not reach LLM — use _57_orchestration_mode
   _20_context_watchdog       monitors context fill %, injects warning at threshold
 
         │
@@ -62,8 +68,8 @@ USER MESSAGE ARRIVES
         ▼
 [tool_execute_before]      — fires before each tool execution
   _15_action_boundary        classifies command tier → may set _action_gate_active=True
-  _17_py_write_tracker       tracks Python file writes for artifact registry
   _20_meta_reasoning_gate    deterministic parameter correction
+  _25_write_guard            backs up file before text_editor write
   _30_tool_fallback_advisor  reads _error_diagnosis → injects recovery advice
 
         │
@@ -77,6 +83,7 @@ USER MESSAGE ARRIVES
   _20_reset_failure_counter  resets _failure_tracker[tool_name] on success
   _22_response_finalizer     post-processes tool response
   _25_evidence_ledger_recorder  appends to _evidence_ledger; marks entries _loop_active if looping
+  _26_write_validator        checks text_editor output for syntax errors and truncation
   _27_code_quality_gate      checks code execution output quality
   _30_tool_fallback_logger   reads _error_diagnosis + _failure_tracker + _bst_store → injects fallback advice
   _60_sleep_trigger          triggers async sleep consolidation if conditions met
@@ -98,9 +105,12 @@ USER MESSAGE ARRIVES
 
         │
         ▼
-[message_loop_prompts_after] — fires before memory is injected into next prompt
+[message_loop_prompts_after] — fires INSIDE prepare_prompt() — history_output writes reach LLM
+  _16_tool_registry          scans /a0/usr/plugins/*/tools/ → injects [CUSTOM TOOLS] block
+  _18_memory_catalog         injects memory domain catalog (once per session, gate: _memory_catalog_built)
   _55_memory_relevance_filter  filters memory candidates
   _56_memory_enhancement       reads _bst_store → expands queries, applies decay
+  _57_orchestration_mode     reads _bst_store → injects delegation scaffolding (supersedes _17_orchestration_gate)
   _58_ontology_query           queries ontology FAISS for entity context
   _95_tiered_tool_injection    injects full tool specs for seen tools
 
@@ -138,8 +148,9 @@ The most dangerous part of the system: state written by one component and read b
 
 | Attribute | Written by | Read by | Notes |
 |-----------|-----------|---------|-------|
-| `_bst_store` | `_11_belief_state_tracker` | `_12_org_dispatcher`, `_14_metacognitive_injection`, `_15_htn_plan_selector`, `_17_orchestration_gate`, `_25_epistemic_integrity`, `_30_tool_fallback_logger`, `_50_supervisor_loop`, `_52_selective_memorizer`, `_53_insight_capture`, `_55_memory_classifier`, `_56_memory_enhancement` | Dict. Key sub-fields: `_compound_sig` (domain signature), `_compound_turns` (momentum), `_user_msg_count`. Access via `getattr(agent, "_bst_store", {})` — never crashes on missing. |
+| `_bst_store` | `_11_belief_state_tracker` | `_12_proactive_supervisor`, `_14_situational_orientation`, `_15_htn_plan_selector`, `_17_orchestration_gate`, `_25_epistemic_integrity`, `_30_tool_fallback_logger`, `_50_supervisor_loop`, `_52_selective_memorizer`, `_53_insight_capture`, `_55_memory_classifier`, `_56_memory_enhancement`, `_57_orchestration_mode` | Dict. Key sub-fields: `_compound_sig` (domain signature), `_compound_turns` (momentum), `_user_msg_count`. Access via `getattr(agent, "_bst_store", {})` — never crashes on missing. |
 | `_bst_store["_compound_sig"]` | `_11_bst` | Everything that reads `_bst_store` | String like `"investigation+analysis"`. First segment before `+` = primary domain. |
+| `_memory_catalog_built` | `_18_memory_catalog` (True after first injection) | `_18_memory_catalog` (self-gate, once per session) | Bool on agent. If deployed to two hooks, the first-firing version sets this and the second skips — deploy to one hook only. |
 
 ### Supervisor loop state (in `agent._supervisor_state` dict)
 
@@ -174,7 +185,9 @@ The most dangerous part of the system: state written by one component and read b
 ## External Service Dependencies
 
 ```
-Agent Zero container (flamboyant_bell)
+Agent Zero container (exocortex_v16)
+  │  REST API: POST /api/api_message  (X-API-KEY header)
+  │  Port changes on every restart — check: docker port exocortex_v16
   │
   ├── LM Studio (Windows host :1234)
   │     └── chat + utility LLM calls (OpenAI-compatible API)
@@ -207,6 +220,22 @@ These files in `/a0/prompts/` are patched by `install_core_patches.sh`. A0 core 
 
 ---
 
+## Extension Load Path
+
+Agent Zero loads extensions from two path types, deduplicated by file stem (profile path wins):
+
+1. **Profile path** (per-agent): `/a0/usr/agents/agent0/extensions/python/<hook>/`
+2. **Plugin path** (per-plugin): `/a0/usr/plugins/exocortex/extensions/python/<hook>/`
+
+Both paths searched via `subagents.get_paths(agent, "extensions/python", hook)`. Dedup: same filename in both paths → profile path version runs, plugin version skipped. When deploying an extension, ensure it's in the `python/` subdirectory — files at `extensions/<hook>/` (without `python/`) are silently ignored.
+
+Import paths inside the container must use the module name as Python sees it — NOT the filesystem path:
+- Correct: `from helpers.extension import Extension`
+- Correct: `from plugins._memory.helpers.memory import Memory`
+- Wrong: `from python.helpers.extension import Extension` (causes `ModuleNotFoundError` on load)
+
+---
+
 ## Known Fragile Seams
 
 Lessons learned the hard way. Check these first when something breaks silently.
@@ -219,6 +248,10 @@ Lessons learned the hard way. Check these first when something breaks silently.
 | 4 | Numeric prefix collision | Two extensions at same number — Python loads alphabetically, order undefined | Check for conflicts before adding a new extension |
 | 5 | `_action_gate_active` left True after Tier 4 block | Supervisor permanently suppresses stall warnings | `_20_error_comprehension` clears it on any successful tool output — if EC is disabled, gate sticks |
 | 6 | Library catalog path mismatch | `_17_library_catalog` injects empty block, agent doesn't know library exists | `CATALOG_PATH` in library.py, `_17_library_catalog.py`, and `library-scan` SKILL.md must all agree |
+| 7 | Extension deployed to `before_main_llm_call` instead of `message_loop_prompts_after` | Injection fires (logs show it), but `[CUSTOM TOOLS]` / catalog blocks never appear in LLM context — agent doesn't know tools exist | `before_main_llm_call` fires after `prepare_prompt()` returns — too late. Move to `message_loop_prompts_after`. Verified 2026-04-12: `_16_tool_registry` and `_18_memory_catalog` were silently doing nothing for multiple sessions. |
+| 8 | Extension deployed to `extensions/<hook>/` instead of `extensions/python/<hook>/` | Extension file exists, never loads, no error | The `python/` subdirectory is required. Files at the bare hook path are invisible to `get_paths()`. |
+| 9 | Same extension in two hooks with a once-per-session gate | Wrong-hook version fires first, sets flag, correct-hook version skips forever | `_memory_catalog_built` flag: if `_18_memory_catalog.py` exists in both `before_main_llm_call` and `message_loop_prompts_after`, before fires first and blocks the correct version. Keep each extension in exactly one hook. |
+| 10 | Extension import uses `python.helpers.*` | `ModuleNotFoundError: No module named 'python.helpers'` at extension load — entire hook fails silently | Use `from helpers.extension import Extension`, `from plugins._memory.helpers.memory import Memory` |
 
 ---
 
@@ -229,13 +262,13 @@ A0 core prompts
   fw.msg_repeat.md ──────────────────────────────┐
   fw.msg_not_json.md ─────────────────────────┐  │
                                               │  │
-_11_bst ──► _bst_store ──────────────────────────────────► _12_org_dispatcher
-                        │                    │  │          _14_metacognitive
+_11_bst ──► _bst_store ──────────────────────────────────► _12_proactive_supervisor
+                        │                    │  │          _14_situational_orientation
                         │                    │  │          _15_htn
                         │                    │  │          _50_supervisor ◄──── MISFORMAT_SIGNAL
                         │                    │  └────────► _50_supervisor ◄──── REPEAT_SIGNAL
                         │                    └──────────► _25_epistemic
-                        └──────────────────────────────► _52, _53, _55, _56
+                        └──────────────────────────────► _52, _53, _55, _56, _57_orch
 
 _15_action_boundary ──► _action_gate_active ──────────► _50_supervisor
 
@@ -253,8 +286,12 @@ _50_supervisor ──► _loop_active ──────────────
 
 error_format/_30_failure_tracker ──► _failure_tracker ► _50_supervisor (via count)
 tool_execute_after/_20_reset ◄─────────────────────────── (resets on success)
+
+_16_tool_registry ──────────────────────────────────► [CUSTOM TOOLS] in LLM context (every turn)
+_18_memory_catalog ─────────────────────────────────► [MEMORY CATALOG] in LLM context (session start)
+_57_orchestration_mode ─────────────────────────────► [ORCHESTRATION] in LLM context (when active)
 ```
 
 ---
 
-*When adding a new component: (1) identify every shared state key it reads or writes, (2) add it to the tables above, (3) check for numeric prefix conflicts, (4) if it matches against any string from a prompt file, document that coupling explicitly.*
+*When adding a new component: (1) identify every shared state key it reads or writes, (2) add it to the tables above, (3) check for numeric prefix conflicts, (4) if it matches against any string from a prompt file, document that coupling explicitly, (5) confirm it's in `extensions/python/<hook>/` not `extensions/<hook>/`, (6) confirm it uses `from helpers.extension import Extension` not `from python.helpers.*`.*
