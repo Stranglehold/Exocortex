@@ -953,3 +953,26 @@ class OssSynthesize(Tool):
             synthesis_text,
         ]
         return Response(message="\n".join(lines), break_loop=False)
+
+
+# ---------------------------------------------------------------------------
+# OssIngestSprint
+# ---------------------------------------------------------------------------
+
+class OssIngestSprint(Tool):
+    """
+    Run a bounded OSS ingestion sprint — fetch RSS sources, extract claims via LLM,
+    deduplicate, and return a summary of what was found.
+
+    Use when the intelligence ledger is empty or stale and you need fresh data before
+    analysis. After the sprint completes, use oss_topic or oss_synthesize to query
+    the new claims. The background loop is also started for ongoing updates.
+
+    Args:
+        topic            (str): Topic tag to highlight in results (e.g. 'iran-hormuz')
+        duration_minutes (int): Max runtime in minutes (default: 7, max: 10)
+    """
+
+    async def execute(self, **kwargs) -> Response:
+        # Dispatched via /a0/tools/oss_ingest_sprint.py
+        return Response(message="[OSS] dispatch error", break_loop=False)

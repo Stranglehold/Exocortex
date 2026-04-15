@@ -138,12 +138,16 @@ async def _idle_monitor(agent, idle_minutes: float, ctx: str) -> None:
 
 async def _run_phase1(agent, ctx: str) -> None:
     """Run Phase 0 through Phase 4 consolidation."""
+    import importlib
+    import sleep_consolidation as _sc_mod
+    importlib.reload(_sc_mod)  # always use latest version from disk
     from sleep_consolidation import (
         run_phase0_consolidation,
         run_phase1_consolidation,
         run_phase2_consolidation,
         run_phase3_consolidation,
         run_phase4_consolidation,
+        run_phase5_consolidation,
     )
 
     # Prefer context ID as session identifier; fall back to env var
@@ -235,6 +239,21 @@ async def _run_phase1(agent, ctx: str) -> None:
             pass
     except Exception as e:
         print(f"[SLEEP] Phase 4 error: {e}", flush=True)
+
+    # Phase 5: AgentEvolver experience integration
+    try:
+        r5 = run_phase5_consolidation(session_id, phase2_result=locals().get("r2"))
+        summary5 = (
+            f"Phase 5 — experiences_recorded={r5['experiences_recorded']}, "
+            f"engine_unavailable={r5['engine_unavailable']}"
+        )
+        print(f"[SLEEP] {summary5}", flush=True)
+        try:
+            agent.context.log.log(type="info", content=f"[SLEEP] {summary5}")
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[SLEEP] Phase 5 error: {e}", flush=True)
 
 
 # ── Config Loader ────────────────────────────────────────────────────────────

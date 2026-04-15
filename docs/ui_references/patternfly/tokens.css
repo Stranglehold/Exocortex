@@ -1,0 +1,328 @@
+/* ============================================================
+ * PatternFly (Red Hat) Design Tokens — Curated Extract
+ * Source: https://github.com/patternfly/patternfly
+ *         src/patternfly/base/tokens/tokens-dark.scss (438 tokens)
+ *         src/patternfly/base/tokens/tokens-charts-dark.scss (chart layer)
+ *         src/patternfly/base/tokens/tokens-glass-dark.scss (glass theme)
+ *         src/patternfly/base/tokens/tokens-palette.scss (raw palette)
+ * Extracted: 2026-04-14
+ *
+ * PatternFly is Red Hat's design system, used by OpenShift, Ansible
+ * Tower, Quay, Foreman, RHEL Insights, and most enterprise Red Hat
+ * products. Domain match: monitoring/operations dashboards.
+ *
+ * Compared to Primer:
+ *   - Primer: 900 tokens, 41 prefix groups, "intensity-focused"
+ *     (default/muted/emphasis triplet)
+ *   - PatternFly: 438 tokens, hierarchical naming, "interaction-
+ *     focused" (default/hover/clicked triplet)
+ *
+ * These are ORTHOGONAL axes. Primer answers "how prominent is this
+ * thing visually?" PatternFly answers "what's the user doing to this
+ * thing right now?" A complete design system needs both.
+ *
+ * Naming convention is deeply hierarchical with double-dashes:
+ *   --pf-t--<scope>--<theme>--<property>--<category>--<state>
+ *
+ * Example breakdown:
+ *   --pf-t--global--background--color--status--success--default
+ *    │    │      │           │     │      │       │
+ *    │    │      │           │     │      │       └─ state
+ *    │    │      │           │     │      └────────  category (success/danger/warning/info/custom)
+ *    │    │      │           │     └────────────────  semantic class (status vs nonstatus)
+ *    │    │      │           └──────────────────────  property type
+ *    │    │      └──────────────────────────────────  scope (global vs component-local)
+ *    │    └─────────────────────────────────────────  prefix
+ *    └──────────────────────────────────────────────  PatternFly token marker
+ *
+ * Long names but extremely explicit. Every token tells you exactly
+ * what it is, where it applies, and what state it represents.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-theme="pf-dark"] {
+
+  /* ============================================================
+   * SURFACE HIERARCHY — primary / secondary / tertiary
+   *
+   * PatternFly distinguishes THREE elevation levels on a page:
+   *   primary   — main content surface (cards, panels)
+   *   secondary — secondary surface (nested cards, sidebars)
+   *   tertiary  — third level (deeply nested or inset content)
+   *
+   * Each has interaction state variants. This is more granular
+   * than Primer's --bgColor-{default,muted,emphasis} which mixes
+   * intensity and elevation in a single axis.
+   *
+   * PLUS three special-purpose surfaces:
+   *   floating  — floats above other content (menus, popovers)
+   *   sticky    — sticky-positioned elements (sticky headers)
+   *   inverse   — inverted contrast (light surfaces in dark theme)
+   * ============================================================ */
+  --pf-t--global--background--color--primary--default:    /* main surface */;
+  --pf-t--global--background--color--primary--hover:      /* main surface, hovered */;
+  --pf-t--global--background--color--primary--clicked:    /* main surface, pressed */;
+
+  --pf-t--global--background--color--secondary--default:  /* secondary surface */;
+  --pf-t--global--background--color--secondary--hover:    /* secondary, hovered */;
+  --pf-t--global--background--color--secondary--clicked:  /* secondary, pressed */;
+
+  --pf-t--global--background--color--tertiary--default:   /* third-level surface */;
+
+  --pf-t--global--background--color--floating--default:   /* floating elements */;
+  --pf-t--global--background--color--floating--hover:     /* floating, hovered */;
+  --pf-t--global--background--color--floating--clicked:   /* floating, pressed */;
+  --pf-t--global--background--color--floating--secondary--default: /* nested floating */;
+
+  --pf-t--global--background--color--sticky--default:     /* sticky positioned */;
+
+  --pf-t--global--background--color--inverse--default:    /* inverted contrast */;
+  --pf-t--global--background--color--inverse--hover:      /* inverted, hovered */;
+  --pf-t--global--background--color--inverse--clicked:    /* inverted, pressed */;
+
+  /* ============================================================
+   * SPECIAL-PURPOSE SURFACES
+   *
+   * PatternFly has dedicated tokens for UI patterns that benefit
+   * from explicit naming rather than ad-hoc styling:
+   *   backdrop  — modal scrim background
+   *   skeleton  — skeleton loading placeholders (default + subtle)
+   *   striped   — alternating table row stripes
+   *   highlight — selected/highlighted state background
+   *   disabled  — disabled element background
+   *   action--plain — icon-only buttons
+   *   control   — form control backgrounds
+   *
+   * Each gets its own token because it represents a distinct UI
+   * pattern with its own design constraints.
+   * ============================================================ */
+  --pf-t--global--background--color--backdrop--default:           /* modal scrim */;
+  --pf-t--global--background--color--loading--skeleton--default:  /* skeleton main */;
+  --pf-t--global--background--color--loading--skeleton--subtle:   /* skeleton subtle */;
+  --pf-t--global--background--color--striped--row--default:       /* table row stripe */;
+  --pf-t--global--background--color--highlight--default:          /* highlighted */;
+  --pf-t--global--background--color--highlight--clicked:          /* highlighted, pressed */;
+  --pf-t--global--background--color--disabled--default:           /* disabled */;
+  --pf-t--global--background--color--action--plain--default:      /* icon button bg */;
+  --pf-t--global--background--color--action--plain--hover:        /* icon button bg hover */;
+  --pf-t--global--background--color--action--plain--clicked:      /* icon button bg pressed */;
+  --pf-t--global--background--color--control--default:            /* form control bg */;
+  --pf-t--global--background--color--control--read-only:          /* read-only control bg */;
+
+  /* ============================================================
+   * GLASS THEME — backdrop blur as a theme token
+   *
+   * PatternFly's glass theme is a separate file with the SAME
+   * variable names but different values. The crucial token is:
+   *
+   *   --pf-t--global--background--filter--glass--blur--primary:
+   *     blur(16px)    (in glass theme)
+   *     initial       (in non-glass theme — disabled)
+   *
+   * Background colors switch from solid to RGBA with ~50% opacity:
+   *   --pf-t--global--background--color--primary--default:
+   *     rgba(41, 41, 41, 0.5)  (in glass theme)
+   *     #151515                 (in default theme — solid)
+   *
+   * Components don't change at all. They reference the variables.
+   * Switching the theme = swapping one CSS file for another.
+   * This is theme-as-token-overlay.
+   *
+   * Compared to OpenGridWorks's glass (hardcoded blur amount) and
+   * 7.css's glass (gradient-based, no blur at all), PatternFly's
+   * approach is the most flexible: blur amount is a TOKEN that
+   * themes can override.
+   * ============================================================ */
+  --pf-t--global--background--filter--glass--blur--primary:    blur(16px);
+  --pf-t--global--background--color--glass--primary--default:  rgba(41, 41, 41, 0.5);
+
+  /* ============================================================
+   * STATUS COLORS — the interaction-state triplet
+   *
+   * Five status categories: success, info, warning, danger, custom.
+   * Each has THREE interaction states: default, hover, clicked.
+   * Each state exists as THREE properties: color (text/icon),
+   * background-color, border-color.
+   *
+   * Total: 5 × 3 × 3 = 45 status tokens.
+   *
+   * This is PatternFly's most distinctive contribution. Where Primer
+   * has intensity levels (default/muted/emphasis), PatternFly has
+   * interaction states (default/hover/clicked). They're orthogonal
+   * — a complete system has both.
+   * ============================================================ */
+
+  /* SUCCESS — text/icon color */
+  --pf-t--global--color--status--success--default:    /* success text default */;
+  --pf-t--global--color--status--success--hover:      /* success text hovered */;
+  --pf-t--global--color--status--success--clicked:    /* success text pressed */;
+
+  /* SUCCESS — border color */
+  --pf-t--global--border--color--status--success--default: /* success border default */;
+  --pf-t--global--border--color--status--success--hover:   /* success border hovered */;
+  --pf-t--global--border--color--status--success--clicked: /* success border pressed */;
+
+  /* DANGER — text/icon color */
+  --pf-t--global--color--status--danger--default:     /* danger text default */;
+  --pf-t--global--color--status--danger--hover:       /* danger text hovered */;
+  --pf-t--global--color--status--danger--clicked:     /* danger text pressed */;
+
+  /* DANGER — border color */
+  --pf-t--global--border--color--status--danger--default:  /* danger border default */;
+  --pf-t--global--border--color--status--danger--hover:    /* danger border hovered */;
+  --pf-t--global--border--color--status--danger--clicked:  /* danger border pressed */;
+
+  /* WARNING, INFO, CUSTOM follow the same triplet pattern */
+  /* (omitted for brevity — see source) */
+
+  /* ============================================================
+   * STATUS vs NONSTATUS — semantic distinction
+   *
+   * PatternFly explicitly distinguishes:
+   *   --color--status--*    — colors that CARRY MEANING
+   *                            (success means "good", danger means "error")
+   *   --color--nonstatus--* — colors that are CATEGORICAL/DECORATIVE
+   *                            (blue is just blue, used for visual variety
+   *                             in tags, labels, charts)
+   *
+   * This is brilliant. It encodes the rule "don't use status colors
+   * for decorative purposes" at the token level. If you need a blue
+   * label, use --color--nonstatus--blue, not --color--status--info.
+   *
+   * 125 status tokens × 5 categories vs 136 nonstatus tokens × 8 hues.
+   * Both axes are richly populated.
+   * ============================================================ */
+
+  /* NONSTATUS color examples — purely categorical, no semantic meaning */
+  --pf-t--global--color--nonstatus--blue--100:   /* blue label/tag */;
+  --pf-t--global--color--nonstatus--green--100:  /* green label/tag */;
+  --pf-t--global--color--nonstatus--purple--100: /* purple label/tag */;
+  --pf-t--global--color--nonstatus--orange--100: /* orange label/tag */;
+  --pf-t--global--color--nonstatus--teal--100:   /* teal label/tag */;
+  --pf-t--global--color--nonstatus--yellow--100: /* yellow label/tag */;
+  --pf-t--global--color--nonstatus--red--100:    /* red label/tag */;
+  --pf-t--global--color--nonstatus--gray--100:   /* gray label/tag */;
+  /* Each has 100, 200, 300 intensity levels = 24 nonstatus color tokens */
+
+  /* ============================================================
+   * READ/UNREAD STATE TOKENS
+   *
+   * PatternFly has dedicated tokens for notification read/unread
+   * state, including "unread + needs attention" as a third level.
+   * This is the level of UI specificity their dashboards demand.
+   * ============================================================ */
+  --pf-t--global--color--status--read--on-primary:        /* read indicator on primary bg */;
+  --pf-t--global--color--status--read--on-secondary:      /* read indicator on secondary bg */;
+  --pf-t--global--color--status--unread--default:         /* unread indicator */;
+  --pf-t--global--color--status--unread--attention--default: /* unread + needs attention */;
+  --pf-t--global--color--status--unread--attention--clicked: /* unread + attention, pressed */;
+
+  /* ============================================================
+   * FAVORITE state — its own token
+   * ============================================================ */
+  --pf-t--global--dark--color--favorite--100:    /* favorite/star indicator */;
+  --pf-t--global--dark--color--favorite--200:    /* favorite hover */;
+
+  /* ============================================================
+   * SHADOWS — split by direction
+   *
+   * Just SIX shadow tokens, but split into a clever pattern:
+   *   --box-shadow--color--{sm,md,lg}--default
+   *   --box-shadow--color--{sm,md,lg}--directional
+   *
+   * "default" = ambient shadow (light from above)
+   * "directional" = directional shadow (light from a specific angle)
+   *
+   * The directional variant is for elements that imply they're lit
+   * from a specific direction — useful for creating depth hierarchy
+   * where you want some elements to "lean" toward the light source.
+   *
+   * Compared to Primer's role-based naming (resting/floating/inset),
+   * PatternFly's is direction-based. Different mental model. Primer
+   * answers "what's this element doing?" PatternFly answers "where
+   * is the light coming from?"
+   * ============================================================ */
+  --pf-t--global--box-shadow--color--sm--default:      /* small ambient */;
+  --pf-t--global--box-shadow--color--sm--directional:  /* small directional */;
+  --pf-t--global--box-shadow--color--md--default:      /* medium ambient */;
+  --pf-t--global--box-shadow--color--md--directional:  /* medium directional */;
+  --pf-t--global--box-shadow--color--lg--default:      /* large ambient */;
+  --pf-t--global--box-shadow--color--lg--directional:  /* large directional */;
+
+  /* ============================================================
+   * FOCUS RING — minimal, one token
+   *
+   * Just one focus token. PatternFly relies on the underlying
+   * accent color for focus state and exposes only the color, not
+   * the full outline shorthand. Cleaner than Primer's two tokens
+   * (color + shorthand) but less flexible.
+   * ============================================================ */
+  --pf-t--global--focus-ring--color--default: /* focus ring color */;
+}
+
+/* ============================================================
+ * CHART TOKENS — the dashboard domain match
+ *
+ * PatternFly ships a SEPARATE token layer specifically for charts.
+ * 173 lines of chart-specific tokens covering:
+ *   - Stroke widths (xs/sm/lg)
+ *   - Font sizes (xs/sm/lg/2xl)
+ *   - Layout dimensions (default chart width/height/padding)
+ *   - Label positioning (margin/padding/text-anchor)
+ *   - Stroke style (line-cap, line-join)
+ *   - 7-color categorical palette (blue/green/orange/purple/red-orange/teal/yellow + black)
+ *   - 5-step intensity per color
+ *   - Sequential color scales (colorscale 100/200/300/...) for heat maps
+ *   - Chart-specific status colors (note: chart success uses BLUE, not green)
+ *   - Two warning levels (orange + yellow)
+ *
+ * KEY INSIGHT: charts have different design constraints than UI.
+ * Chart fonts need to be smaller. Chart strokes need consistency.
+ * Chart status colors might need to differ from UI status colors
+ * (PatternFly uses blue for chart success because green-on-dark
+ * charts have legibility issues in some lighting).
+ *
+ * If we ever build calibration charts or hypothesis lifecycle
+ * visualizations in Exocortex, we should NOT just reuse the UI
+ * tokens — we should add a chart-specific token layer.
+ * ============================================================ */
+
+[data-theme="pf-dark-charts"] {
+  /* Chart layout primitives */
+  --pf-t--chart--global--BorderWidth--xs:    1;
+  --pf-t--chart--global--BorderWidth--sm:    2;
+  --pf-t--chart--global--BorderWidth--lg:    8;
+
+  --pf-t--chart--global--FontSize--xs:       12;
+  --pf-t--chart--global--FontSize--sm:       14;
+  --pf-t--chart--global--FontSize--lg:       18;
+  --pf-t--chart--global--FontSize--2xl:      22;
+
+  --pf-t--chart--global--label--margin:      8;
+  --pf-t--chart--global--label--padding:     10;
+  --pf-t--chart--global--label--text-anchor: middle;
+
+  --pf-t--chart--global--layout--height:     300;
+  --pf-t--chart--global--layout--width:      450;
+  --pf-t--chart--global--layout--padding:    50;
+
+  --pf-t--chart--global--stroke--width--xs:  1;
+  --pf-t--chart--global--stroke--width--sm:  2;
+  --pf-t--chart--global--stroke-line-cap:    round;
+  --pf-t--chart--global--stroke-line-join:   round;
+
+  /* Chart status colors — note success uses BLUE not green */
+  --pf-t--chart--global--success--color--100: /* chart success (blue, not green!) */;
+  --pf-t--chart--global--warning--color--100: /* chart warning level 1 (orange) */;
+  --pf-t--chart--global--warning--color--200: /* chart warning level 2 (yellow) */;
+  --pf-t--chart--global--danger--color--100:  /* chart danger (red-orange) */;
+
+  /* Categorical color scales — for visualizing data progression
+   * (heat maps, gradient fills, sequential value displays) */
+  --pf-t--chart--theme--colorscales--blue--colorscale--100:    /* sequential blue 1 */;
+  --pf-t--chart--theme--colorscales--blue--colorscale--200:    /* sequential blue 2 */;
+  --pf-t--chart--theme--colorscales--blue--colorscale--300:    /* sequential blue 3 */;
+  /* etc — each color has a 5-step color scale */
+}

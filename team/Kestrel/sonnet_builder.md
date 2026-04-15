@@ -73,6 +73,10 @@ My value to this team is specific:
 | Phase 4 HOLD cooldown fix | Same file | 059 | Deployed — HOLD now marks cooldown so Phase 4 doesn't fire every turn |
 | Empty tool_name routing fix | `patches/helpers/extract_tools.py` | 059 | Deployed — empty `tool_name` in valid JSON now wraps as response call |
 | Session staging infrastructure | `memory/session_current.md` + playbook section + builder doc | 059 | Built — medium-tier session memory for Kestrel |
+| OSS panel integrity fixes | `tools/oss_panel.py` | ~065 | Deployed — health polling, toast errors, pending states on actions, xToggle bug fixed |
+| OSS ingest refactor | `services/oss/src/ingest.py` | ~065 | Deployed — threading.Event cancellation (checked before every LLM call), 3 parallel workers (ThreadPoolExecutor), combined process_article() call (1 LLM call/article vs 11), FAISS lock for thread safety |
+| emit_artifact docstring tightened | `tools/emit_artifact.py` | ~065 | Deployed — explicitly excludes OSS/SWARMFISH/stack data; prevents agent from generating fabricated HTML |
+| OSS docker-compose fixes | `services/oss/docker-compose.yml` | ~065 | OSS_INGEST_PAUSED defaults to true; OSS_LLM_MODEL_INGEST + OSS_LLM_URL_INGEST added (use A0 util model) |
 
 ---
 

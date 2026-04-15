@@ -18,8 +18,10 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import httpx
+import psycopg2
 
 import config
+from acp.resolver import resolve_session
 
 log = logging.getLogger(__name__)
 
@@ -30,20 +32,63 @@ log = logging.getLogger(__name__)
 MONITOR_ENABLED  = os.environ.get("SWARMFISH_MONITOR_ENABLED", "false").lower() == "true"
 MONITOR_INTERVAL = int(os.environ.get("SWARMFISH_MONITOR_INTERVAL_MINUTES", "30"))
 STATE_FILE       = Path("/app/data/monitor_state.json")
+# SFA-001 P4.3 — pause state persistence across container restart.
+# The prior implementation stored _ACTIVE in memory only and re-read it
+# from the env var on every restart, wiping the analyst's runtime toggle.
+# This file stores the most recent toggle so runtime pause survives restart.
+PAUSE_STATE_FILE = Path("/app/data/monitor_pause_state.json")
 SWARMFISH_URL    = "http://localhost:7732"
 MIN_NEW_CLAIMS   = int(os.environ.get("SWARMFISH_MONITOR_MIN_CLAIMS", "1"))
 
 # Dissenter threshold: profile confidence must deviate this much from consensus to be flagged
 DISSENT_THRESHOLD = 0.20
 
+# Autonomous resolver trigger thresholds
+RESOLVE_MIN_AGE_DAYS      = int(os.environ.get("SWARMFISH_RESOLVE_AGE_DAYS", "7"))
+RESOLVE_COOLDOWN_DAYS     = int(os.environ.get("SWARMFISH_RESOLVE_COOLDOWN_DAYS", "3"))
+RESOLVE_MAX_PER_CYCLE     = int(os.environ.get("SWARMFISH_RESOLVE_MAX_PER_CYCLE", "3"))
+
 # ---------------------------------------------------------------------------
 # Runtime toggle — can be flipped without restart via /monitor/toggle
 # ---------------------------------------------------------------------------
 
-_ACTIVE   = MONITOR_ENABLED  # starts from env var; mutable at runtime
+def _load_pause_state(default: bool) -> bool:
+    """Read persisted pause state from disk. Returns `default` if the file
+    does not exist or is unreadable — ensures we degrade gracefully on a
+    fresh install where the pause file hasn't been written yet."""
+    try:
+        if PAUSE_STATE_FILE.exists():
+            data = json.loads(PAUSE_STATE_FILE.read_text())
+            persisted = data.get("active")
+            if isinstance(persisted, bool):
+                return persisted
+    except Exception as e:
+        log.warning(f"[MONITOR] Could not read pause state file: {e}")
+    return default
+
+
+def _save_pause_state(active: bool):
+    """Persist the current pause state so it survives container restart."""
+    try:
+        PAUSE_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        PAUSE_STATE_FILE.write_text(json.dumps({
+            "active": active,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }))
+    except Exception as e:
+        log.warning(f"[MONITOR] Could not save pause state file: {e}")
+
+
+_ACTIVE   = _load_pause_state(MONITOR_ENABLED)  # persisted across restart
 _RUNNING  = False            # True while a cycle is in progress
 _LAST_RUN: dict = {}         # populated after each cycle
 _CYCLE_LOCK = threading.Lock()  # prevents concurrent monitor cycles
+
+# Wake-up event for the scheduler loop. Acts as a cooperative cancellation
+# signal: set it to wake a pending time.sleep, and an in-flight cycle checks
+# _ACTIVE between topics to break early. Mirrors the OSS ingestion cancel
+# pattern from 2026-04-05 — same bug shape, same fix.
+_WAKE_EVENT = threading.Event()
 
 
 def get_status() -> dict:
@@ -59,6 +104,11 @@ def get_status() -> dict:
 def set_active(value: bool):
     global _ACTIVE
     _ACTIVE = value
+    _save_pause_state(value)  # SFA-001 P4.3 — survive container restart
+    # Wake the scheduler thread so it re-evaluates immediately — both to
+    # abort a pending time.sleep after pause and to resume promptly after
+    # the analyst toggles monitoring back on.
+    _WAKE_EVENT.set()
     log.info(f"[MONITOR] {'Enabled' if value else 'Disabled'} at runtime")
 
 
@@ -252,6 +302,160 @@ def _extract_source_profiles(session: dict, consensus: float) -> list[dict]:
     return profiles
 
 
+def _find_sessions_to_review(db_conn) -> list[str]:
+    """
+    Return session IDs eligible for autonomous resolution.
+
+    Eligibility:
+      - Session has a consensus (completed prediction)
+      - Session still has unscored predictions
+      - Session is at least RESOLVE_MIN_AGE_DAYS old
+      - No proposal exists yet, OR the most recent proposal is still pending
+        and older than RESOLVE_COOLDOWN_DAYS (so we don't spam proposals for
+        hypotheses the operator hasn't reviewed yet)
+      - Cap to RESOLVE_MAX_PER_CYCLE to keep LLM cost bounded per cycle
+    """
+    cursor = db_conn.cursor()
+    cursor.execute("""
+        SELECT s.id
+        FROM acp_sessions s
+        JOIN acp_session_predictions sp ON sp.session_id = s.id
+        JOIN acp_predictions p ON p.id = sp.prediction_id
+        LEFT JOIN LATERAL (
+            SELECT created_at, operator_action
+            FROM acp_proposed_resolutions
+            WHERE session_id = s.id
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) latest_prop ON TRUE
+        WHERE s.consensus_confidence IS NOT NULL
+          AND s.created_at <= NOW() - (%s || ' days')::interval
+        GROUP BY s.id, s.created_at, latest_prop.created_at, latest_prop.operator_action
+        HAVING COUNT(p.id) FILTER (WHERE p.scored = FALSE) > 0
+           AND (
+                latest_prop.created_at IS NULL
+             OR (latest_prop.operator_action IS NULL
+                 AND latest_prop.created_at <= NOW() - (%s || ' days')::interval)
+           )
+        ORDER BY s.created_at ASC
+        LIMIT %s
+    """, (RESOLVE_MIN_AGE_DAYS, RESOLVE_COOLDOWN_DAYS, RESOLVE_MAX_PER_CYCLE))
+    rows = cursor.fetchall()
+    cursor.close()
+    return [str(r[0]) for r in rows]
+
+
+def run_resolution_review_cycle() -> dict:
+    """
+    Find eligible old sessions and run the autonomous resolver on them.
+    Each proposal is written to acp_proposed_resolutions (advisory, not applied
+    to calibration until the operator accepts via /acp/outcome).
+    Returns a summary dict.
+    """
+    summary = {
+        "reviewed":  0,
+        "proposed":  0,
+        "errors":    0,
+        "verdicts":  {"confirmed": 0, "falsified": 0, "still_pending": 0},
+    }
+
+    try:
+        db = psycopg2.connect(config.DB_URL)
+    except Exception as e:
+        log.warning(f"[RESOLVER-CYCLE] DB connect failed: {e}")
+        summary["errors"] += 1
+        return summary
+
+    try:
+        session_ids = _find_sessions_to_review(db)
+        summary["reviewed"] = len(session_ids)
+        if not session_ids:
+            log.info("[RESOLVER-CYCLE] No sessions eligible for review")
+            return summary
+
+        log.info(f"[RESOLVER-CYCLE] Reviewing {len(session_ids)} eligible session(s)")
+        for sid in session_ids:
+            try:
+                result = resolve_session(db, sid)
+                summary["proposed"] += 1
+                v = result.get("verdict", "still_pending")
+                if v in summary["verdicts"]:
+                    summary["verdicts"][v] += 1
+            except Exception as e:
+                log.warning(f"[RESOLVER-CYCLE] Session {sid[:8]} resolve failed: {e}")
+                summary["errors"] += 1
+    finally:
+        db.close()
+
+    print(
+        f"[RESOLVER-CYCLE] Complete — reviewed={summary['reviewed']}, "
+        f"proposed={summary['proposed']}, errors={summary['errors']}, "
+        f"verdicts={summary['verdicts']}",
+        flush=True,
+    )
+    return summary
+
+
+def _llm_health_check() -> tuple[bool, float, str]:
+    """Quick health probe against LM Studio before a full cycle kicks off.
+
+    Revised 2026-04-14 (second investigation pass):
+    The original implementation checked "response content is non-empty" as
+    the success criterion. That was wrong for reasoning-distilled models
+    (qwen3.5-*-reasoning-distilled), which consume their entire generation
+    budget on <think>...</think> tokens BEFORE producing visible output.
+    A healthy reasoning model given a 10-token budget will return zero
+    visible content because it's still thinking.
+
+    The fix: check that the model actually GENERATED tokens (any kind —
+    reasoning or visible) within a reasonable time budget, not that any
+    specific visible text came back. The measurement that matters is
+    whether tokens are flowing at expected speed, not whether they parsed
+    into visible content.
+
+    Expected healthy response: completes in under 10 seconds with
+    completion_tokens > 0. Warning: 10-30 seconds. Degraded: over 30
+    seconds. Failed: exception, timeout, or zero completion_tokens.
+    """
+    try:
+        import httpx, time
+        start = time.monotonic()
+        r = httpx.post(
+            f"{config.LLM_BASE_URL}/chat/completions",
+            json={
+                "model": config.LLM_MODEL,
+                # Short neutral prompt — just wants the model to generate
+                # something. We're not parsing the output, just measuring
+                # that tokens flow.
+                "messages": [{"role": "user", "content": "ok"}],
+                "max_tokens": 20,
+                "temperature": 0.0,
+            },
+            timeout=60,
+        )
+        elapsed = time.monotonic() - start
+        if r.status_code != 200:
+            return (False, elapsed, f"HTTP {r.status_code}: {r.text[:200]}")
+        data = r.json()
+        usage = data.get("usage") or {}
+        completion_tokens = usage.get("completion_tokens", 0)
+        # The real success criterion: did the model generate ANY tokens?
+        # Reasoning models return empty content on small budgets, but the
+        # usage.completion_tokens field records the actual work done.
+        if completion_tokens == 0:
+            return (False, elapsed, "model generated 0 tokens")
+        # Speed check: 20 tokens in under 10s means ~2 tok/sec minimum,
+        # well below the healthy ~25 tok/sec but confirms the model is
+        # active and responsive. Slow-but-working is flagged as DEGRADED
+        # in the caller, not failed.
+        return (True, elapsed,
+                f"generated {completion_tokens} tokens (~{completion_tokens/elapsed:.1f} tok/sec)")
+    except httpx.TimeoutException:
+        return (False, 60.0, "health check timed out after 60s")
+    except Exception as e:
+        return (False, 0.0, f"health check exception: {e}")
+
+
 def run_monitoring_cycle(state: dict) -> dict:
     """
     Single monitoring cycle. Checks all active OSS topics for new signal.
@@ -267,6 +471,22 @@ def run_monitoring_cycle(state: dict) -> dict:
     topics_checked    = 0
 
     try:
+        # SFA-001 follow-up (2026-04-14) — pre-cycle LLM health check.
+        # Catches LM Studio in a degraded state BEFORE we waste a cycle's
+        # worth of timeouts. Healthy expectation: <10s. Anything >30s is
+        # a warning; we abort the cycle so the analyst can intervene.
+        ok, elapsed, msg = _llm_health_check()
+        if not ok:
+            print(f"[MONITOR] ⚠ LLM HEALTH CHECK FAILED ({elapsed:.1f}s) — aborting cycle. {msg}", flush=True)
+            return state
+        if elapsed > 30.0:
+            print(f"[MONITOR] ⚠ LLM HEALTH CHECK DEGRADED ({elapsed:.1f}s) — aborting cycle to avoid cascade. {msg}", flush=True)
+            return state
+        if elapsed > 10.0:
+            print(f"[MONITOR] LLM health check slow but passing ({elapsed:.1f}s): {msg}", flush=True)
+        else:
+            print(f"[MONITOR] LLM health ok ({elapsed:.1f}s)", flush=True)
+
         topics = _get_oss_topics()
         if not topics:
             log.info("[MONITOR] No active OSS topics found, skipping cycle")
@@ -275,6 +495,14 @@ def run_monitoring_cycle(state: dict) -> dict:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         for topic in topics:
+            # Cooperative cancellation check — if the analyst hit pause
+            # mid-cycle, stop starting new topic predictions. The in-flight
+            # HTTP call (if any) still runs to completion; this only
+            # prevents NEW work from being queued after pause.
+            if not _ACTIVE:
+                print("[MONITOR] Pause requested — breaking out of topic loop", flush=True)
+                break
+
             tag   = topic.get('tag', '')
             label = topic.get('display_name') or tag
             if not tag:
@@ -342,6 +570,23 @@ class SwarmfishMonitor:
                     _save_state(state)
                 except Exception as e:
                     log.error(f"[MONITOR] Cycle error: {e}")
+                # Autonomous resolution pass — evaluate old, unscored sessions
+                # against newly-ingested OSS claims. Advisory only.
+                # Skip if pause was requested mid-cycle so we don't start a
+                # fresh batch of LLM calls after the analyst asked to stop.
+                if _ACTIVE:
+                    try:
+                        run_resolution_review_cycle()
+                    except Exception as e:
+                        log.error(f"[MONITOR] Resolution review cycle error: {e}")
             else:
                 log.debug("[MONITOR] Skipping cycle (disabled)")
-            time.sleep(MONITOR_INTERVAL * 60)
+
+            # Wakeable sleep. When _ACTIVE is true, wait at most one interval
+            # before the next cycle. When _ACTIVE is false, wait indefinitely
+            # until set_active() flips the flag and sets the event. Either
+            # way, a state change wakes us immediately instead of forcing
+            # the analyst to wait up to 30 minutes for the pause to take.
+            timeout = (MONITOR_INTERVAL * 60) if _ACTIVE else None
+            _WAKE_EVENT.wait(timeout)
+            _WAKE_EVENT.clear()

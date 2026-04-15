@@ -1,0 +1,134 @@
+/* ============================================================
+ * System.css Design Tokens — Curated Extract
+ * Source: https://github.com/sakofchit/system.css (style.css, 698 lines)
+ * Extracted: 2026-04-14
+ *
+ * System.css recreates classic Mac OS interfaces (System 1-7 era:
+ * 1984-1995). 1-bit black/white originally, greyscale by System 7.
+ * Chicago bitmap font, dotted desktop pattern, hard 2px drop shadows.
+ *
+ * Most minimal color palette of any reference (4 colors total).
+ * The whole library is 698 lines including font definitions and
+ * scrollbar styling.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-system-theme="classic-mac"] {
+
+  /* ============================================================
+   * 4-COLOR PALETTE — the entire System.css color set
+   *
+   * Classic Mac OS was 1-bit (black/white) initially, then
+   * grayscale by System 7. System.css ships exactly 4 colors:
+   *   white, black, mid-grey, dark-grey
+   *
+   * Plus a three-tier semantic mapping (primary/secondary/tertiary)
+   * and a single disabled token. That's it.
+   * ============================================================ */
+  --sys-color-white:    #FFFFFF;
+  --sys-color-black:    #000000;
+  --sys-color-grey:     #A5A5A5;
+  --sys-color-darkgrey: #B6B7B8;
+
+  /* Three-tier semantic — note that PRIMARY is white because Mac OS
+     was a light theme inverted from modern dark themes */
+  --sys-primary:    var(--sys-color-white);
+  --sys-secondary:  var(--sys-color-black);
+  --sys-tertiary:   var(--sys-color-grey);
+  --sys-disabled:   var(--sys-color-darkgrey);
+
+  /* ============================================================
+   * THE 2px DROP SHADOW — single-token shadow language
+   *
+   * System.css uses ONE box-shadow value across the entire
+   * library: `2px 2px`. No blur, no color (defaults to
+   * currentColor). Every dialog, button, and modal gets the
+   * same hard offset shadow.
+   *
+   * This is the print-aesthetic discipline at its most extreme:
+   * one shadow definition, used everywhere, consistency by
+   * having no choices to make.
+   * ============================================================ */
+  --sys-box-shadow: 2px 2px;
+
+  /* ============================================================
+   * BITMAP FONTS — Chicago, Monaco, plus recreations
+   *
+   * The original Mac system fonts:
+   *   Chicago — UI font (System 1-7)
+   *   Monaco  — monospace
+   *
+   * Plus recreations by Giles Booth that work better at small sizes:
+   *   Chicago_12 — pixel-perfect 12pt Chicago
+   *   Geneva_9   — 9pt Geneva (the body font in classic Mac OS)
+   *
+   * For Exocortex: bitmap fonts at non-native sizes look terrible
+   * on modern displays. Don't port directly. The lesson is that
+   * pixel-perfect typography matters when pixels are visible.
+   * ============================================================ */
+  --sys-font-system: Chicago, "ChiKareGo2", monospace;
+  --sys-font-mono:   Monaco, monospace;
+
+  /* ============================================================
+   * COMPUTED GEOMETRY — radio/checkbox math at the token level
+   *
+   * System.css computes radio button and checkbox dimensions via
+   * CSS calc() on tokens. This means changing --radio-width
+   * automatically resizes the dot, the label spacing, and the
+   * positioning. Worth knowing as a pattern: when geometry has
+   * inter-dependent values, computed tokens are more robust than
+   * hardcoded duplicate values.
+   * ============================================================ */
+  --sys-radio-width:           12px;
+  --sys-radio-dot-width:       6px;
+  --sys-radio-label-spacing:   6px;
+  --sys-checkbox-width:        13px;
+  --sys-checkmark-width:       12px;
+  --sys-element-spacing:       8px;
+  --sys-grouped-element-spacing: 6px;
+}
+
+/* ============================================================
+ * THE DESKTOP DOT GRID — recreated via linear-gradients
+ *
+ * Classic Mac OS had a dotted grid desktop pattern. System.css
+ * recreates it via two crossed linear-gradients with 21px stops.
+ * Pure CSS, no images. The result is a 22x22px tiled dot pattern
+ * that scales to any viewport.
+ *
+ * For Exocortex: not directly portable (we don't want a dot
+ * pattern desktop), but the technique is worth knowing. Any
+ * tiled background pattern can be implemented with 2 linear-
+ * gradients and background-size — no image asset needed.
+ * ============================================================ */
+.sys-dot-grid {
+  background:
+    linear-gradient(90deg, var(--sys-primary) 21px, transparent 1%) center,
+    linear-gradient(var(--sys-primary) 21px, transparent 1%) center,
+    var(--sys-secondary);
+  background-size: 22px 22px;
+}
+
+/* ============================================================
+ * 1-BIT DITHER PATTERN — classic Mac scrollbar fill
+ *
+ * The signature Mac scrollbar uses a 50% gray dither pattern
+ * created via two crossed 45deg linear-gradients with 25%/75%
+ * color stops. Pure CSS recreation of the 1-bit dithering used
+ * to fake mid-tones on 1-bit displays.
+ *
+ * For Exocortex: not directly relevant but a clever technique
+ * for any "1-bit retro mode" we might add to the panel.
+ * ============================================================ */
+.sys-dither-50 {
+  background:
+    linear-gradient(45deg, var(--sys-secondary) 25%, transparent 25%,
+                    transparent 75%, var(--sys-secondary) 75%, var(--sys-secondary)),
+    linear-gradient(45deg, var(--sys-secondary) 25%, transparent 25%,
+                    transparent 75%, var(--sys-secondary) 75%, var(--sys-secondary));
+  background-color: var(--sys-primary);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}

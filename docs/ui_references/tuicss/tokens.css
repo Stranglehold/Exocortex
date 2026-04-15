@@ -1,0 +1,156 @@
+/* ============================================================
+ * TuiCss Design Tokens
+ * Source: https://github.com/vinibiavatti1/TuiCss (master/dist/tuicss.css)
+ * Extracted: 2026-04-14
+ *
+ * TuiCss recreates MS-DOS / IBM PC text-mode interfaces in pure CSS.
+ * It does NOT use CSS custom properties, transitions, easing curves,
+ * backdrop filters, or :hover/:active pseudo-classes. The aesthetic
+ * is intentionally pre-modern.
+ *
+ * What this file captures: the categorical color palette, font stack,
+ * border styles, and "hard drop shadow" pattern that define the look.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+:root {
+
+  /* ---------- IBM PC / MS-DOS 16-color VGA palette ---------- */
+  /*
+   * The full canonical CGA/EGA color set used by IBM PC text modes.
+   * Eight base colors at "normal" intensity (channel value 168 = 0xA8)
+   * plus eight bright variants (channel value 255 = 0xFF) plus dark
+   * gray (85, 85, 85). Black and white round out the 16.
+   *
+   * This is the palette that 1980s mainframe terminals, BBSes,
+   * Norton Commander, and military intelligence workstations all
+   * shared. Major Zero from MGS3 would have stared at these colors.
+   *
+   * Use these for "deep retro" mode or for categorical color where
+   * historical authenticity matters.
+   */
+
+  /* Base 8 (normal intensity) */
+  --tui-black:        rgb(0, 0, 0);
+  --tui-blue:         rgb(0, 0, 168);
+  --tui-green:        rgb(0, 168, 0);
+  --tui-cyan:         rgb(0, 168, 168);
+  --tui-red:          rgb(168, 0, 0);
+  --tui-purple:       rgb(168, 0, 168);
+  --tui-orange:       rgb(168, 86, 0);   /* "brown" in original CGA spec */
+  --tui-light-gray:   rgb(168, 168, 168);
+
+  /* Bright 8 (high intensity) */
+  --tui-dark-gray:        rgb(85, 85, 85);    /* sometimes called "bright black" */
+  --tui-bright-blue:      rgb(0, 0, 255);
+  --tui-bright-green:     rgb(0, 255, 0);
+  --tui-bright-cyan:      rgb(0, 255, 255);
+  --tui-bright-red:       rgb(255, 0, 0);
+  --tui-bright-purple:    rgb(255, 0, 255);
+  --tui-yellow:           rgb(255, 255, 0);   /* "bright brown" → yellow */
+  --tui-white:            rgb(255, 255, 255);
+
+  /* ---------- Typography ---------- */
+  /*
+   * TuiCss ships a custom bitmap font called "DOS" that recreates
+   * the IBM VGA 8x16 character set. The fallback is Lucida Console,
+   * a monospace font that ships on most systems.
+   *
+   * No font loading helpers in this token file — if you want the
+   * authentic DOS font, fetch it from the TuiCss resources/ folder.
+   */
+  --tui-font-dos:  "DOS", "Lucida Console", "Consolas", monospace;
+  --tui-font-stack: "Lucida Console", "Consolas", "Courier New", monospace;
+
+  /* All TuiCss text is monospace. There is no proportional font option. */
+
+  /* ---------- Borders ---------- */
+  /*
+   * Three border weights observed in source. Borders are always solid
+   * rectangles drawn via CSS border properties — TuiCss does NOT use
+   * Unicode box-drawing characters as I expected. The border IS the
+   * visual element; it's not decoration on top of content.
+   */
+  --tui-border-thin:    2px solid;       /* default — most components */
+  --tui-border-double:  6px white double; /* emphasis — used for window chrome */
+
+  /* Combined with the categorical color palette so any color can be a border */
+
+  /* ---------- Drop shadows ---------- */
+  /*
+   * The signature "popping out of the screen" effect. Hard offset shadows
+   * in pure black, no blur. Five sizes from 10px to 30px.
+   *
+   * The lack of blur is the whole point — it produces the effect of a
+   * paper sticker on a flat surface, not a floating UI element.
+   */
+  --tui-shadow-sm:  10px 10px black;
+  --tui-shadow-md:  15px 15px black;
+  --tui-shadow-lg:  20px 20px black;
+  --tui-shadow-xl:  25px 25px black;
+  --tui-shadow-xxl: 30px 30px black;
+
+  /* Negative-offset variants for shadows in the upper-left direction */
+  --tui-shadow-sm-inv:  -10px 10px black;
+  --tui-shadow-md-inv:  -15px 15px black;
+  --tui-shadow-lg-inv:  -20px 20px black;
+
+  /* ---------- Animation budget ---------- */
+  /*
+   * TuiCss has exactly ONE @keyframes rule: `indeterminate` (the
+   * loading bar). There are zero transition declarations. There are
+   * zero :hover or :active pseudo-class rules.
+   *
+   * State changes are handled by JavaScript adding/removing classes
+   * like .active, .selected, .disabled. No interpolation. State is
+   * binary: it either is, or it is not.
+   *
+   * This is the pre-2000 design philosophy. It produces a different
+   * feel than fast-transition designs: instead of "responsive and
+   * alive", it feels "precise and unambiguous". Use this approach
+   * for status indicators that should never lie about their state.
+   */
+}
+
+/* ============================================================
+ * UTILITY CLASSES — port-ready
+ * ============================================================ */
+
+/* "Authentic CGA window" — the signature TuiCss container.
+ * Use sparingly; this is high-aesthetic, low-information-density. */
+.tui-classic-window {
+  background-color: var(--tui-blue);
+  color: var(--tui-white);
+  padding: 1px;
+  display: inline-block;
+  box-shadow: var(--tui-shadow-sm);
+  font-family: var(--tui-font-stack);
+  border: var(--tui-border-thin) var(--tui-white);
+}
+
+/* "DOS button" — flat colored rectangle with hard shadow.
+ * No hover state by design. The click action carries all feedback. */
+.tui-classic-button {
+  display: inline-block;
+  padding: 1px 10px;
+  background-color: var(--tui-green);
+  color: var(--tui-black);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: var(--tui-shadow-sm);
+  user-select: none;
+  font-family: var(--tui-font-stack);
+}
+
+/* Categorical pill — one of the 16 colors. Use for status that maps
+ * to a discrete category, not a continuous value. */
+.tui-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  font-family: var(--tui-font-stack);
+}

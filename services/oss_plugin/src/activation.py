@@ -27,7 +27,7 @@ _DISTINCT_CLUSTERS      = {"left", "right", "center", "international", "independ
 def _embed(texts: list):
     try:
         from sentence_transformers import SentenceTransformer  # noqa: PLC0415
-        m = SentenceTransformer("all-MiniLM-L6-v2")
+        m = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
         return m.encode(texts, normalize_embeddings=True)
     except Exception as e:
         log.warning(f"_embed failed: {e}")

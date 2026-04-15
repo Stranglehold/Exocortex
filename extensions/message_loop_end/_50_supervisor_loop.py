@@ -95,6 +95,21 @@ ANOMALY_CONTEXT = "context"
 ANOMALY_CASCADE = "cascade"
 ANOMALY_PACE = "pace"
 ANOMALY_STAGNATION = "stagnation"
+ANOMALY_COMPLETION_STALL = "completion_stall"
+
+# Completion boundary loop detection (Item 3, KESTREL_OBSERVATIONS_2026-04-12.md)
+# Fires when the agent's text output contains completion signals but the last
+# tool called was not `response` for N consecutive turns.
+COMPLETION_STALL_THRESHOLD = 3
+COMPLETION_STALL_KEY = "_completion_stall_count"
+
+COMPLETION_SIGNALS = frozenset([
+    "task complete", "task is done", "task is complete", "task done",
+    "all done", "work is done", "successfully completed", "implementation complete",
+    "build complete", "all tests pass", "all tests passing", "tests passing",
+    "all passing", "all checks pass", "tests pass", "builds successfully",
+    "everything works", "all green",
+])
 
 # ── Canary CUSUM buffer ───────────────────────────────────────────────────────
 # Sub-threshold signal accumulation (Ansoff 1975; Page 1954 CUSUM).
@@ -198,7 +213,12 @@ LOOP_ALTERNATIVES = {
         "Break the command into smaller steps and test each",
         "Check syntax and imports in isolation before running full code",
         "Test with a minimal example to isolate the failure",
-        "Delegate the implementation to a subagent via call_subordinate",
+        # NOTE: call_subordinate deliberately excluded — subagents face the same
+        # tool constraints and delegation spirals produce depth-34 dead ends.
+        # Write failures specifically need file-writing strategy changes, not delegation.
+        "Write files using text_editor:write with a direct content literal (NOT Python string construction)",
+        "Write in sections: ≤40 lines per text_editor:write call, use append mode for subsequent sections",
+        "Use shell heredoc to write: cat > file.py << 'EOF' ... EOF (no Python string assembly needed)",
         "Verify dependencies are installed (pip list, import check)",
         "Check permissions or environment state first",
     ],
@@ -305,11 +325,23 @@ class SupervisorLoop(Extension):
             # Run anomaly detectors (order: most severe first)
             # ── Graduated loop tier detection ─────────────────────────────────────
             consecutive, failing_tool = _get_loop_metrics(ctx, thresholds)
-            # Also detect response-format loops (misformat + repeat) — these bypass tool_failures
+
+            # SFX-001 (2026-04-15): Decouple native repeat detection from tier clock.
+            # Previously, A0's native repeat detector (fw.msg_repeat.md) was allowed to
+            # accelerate the tier escalation count — one byte-for-byte identical JSON
+            # response would advance the supervisor's consecutive count and trigger Tier 1.
+            # This produced false positives on reasoning models (qwen3.5-27b outputs
+            # structured JSON; identical tool calls are common and correct, not loops).
+            # Fix: native repeat signals are logged for observability but do NOT
+            # substitute into `consecutive`. Tool failures drive the tier clock.
             fmt_consecutive = _get_format_failure_count(self.agent)
-            if fmt_consecutive > consecutive:
-                consecutive = fmt_consecutive
-                failing_tool = "response_format"
+            if fmt_consecutive > 0:
+                print(
+                    f"[SUPERVISOR] Native repeat signal detected (fmt_consecutive={fmt_consecutive})"
+                    f" — monitored but NOT accelerating tier clock.",
+                    flush=True,
+                )
+
             new_loop_tier, old_loop_tier = _update_loop_state(
                 self.agent, state, consecutive, failing_tool, thresholds, ctx
             )
@@ -442,12 +474,34 @@ class SupervisorLoop(Extension):
                     _inject_stall(self.agent, ctx, role, state)
                     injected = True
 
-            # 5. Loop detection — Tier 1 (warn, respects cooldown)
+            # 5. Loop detection — Tier 1 (silent), Tier 2+ (substantive)
+            #
+            # SFX-001 (2026-04-15): Tier 1 is now SILENT — it monitors and marks
+            # the cooldown but does NOT inject a "LOOP DETECTED" message.
+            #
+            # Why: injecting "LOOP DETECTED. Use call_subordinate." into a context
+            # already heavy with failed attempts causes a meta-loop — the agent reads
+            # the prescription, tries call_subordinate, that also looks repetitive, the
+            # detector fires again. The weight of history overwhelms one small instruction.
+            # (Documented in instrument/Chatlog_annotated.md: "the instruction to do
+            # something different is drowned by the overwhelming pattern of what it's
+            # been doing.")
+            #
+            # Tier 2 (context surgery) is now the first VISIBLE response — it changes
+            # context structure rather than adding text to an overwhelmed context.
+            # Tier 3 (circuit breaker) remains unchanged.
+            #
             # Deferred when proactive supervisor has already intervened this turn.
-            # Tier 2 (summarize) and Tier 3 (reset) are unaffected — they are failsafes.
             if not injected and not action_gate and not proactive_fired and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
-                _inject_loop(self.agent, ctx, state)
-                injected = True
+                # Silent Tier 1: log internally, mark cooldown, do NOT inject text.
+                print(
+                    f"[SUPERVISOR] Tier 1 loop (silent) — "
+                    f"tool={failing_tool} consecutive={consecutive} "
+                    f"(no injection; first substantive response is Tier 2 surgery)",
+                    flush=True,
+                )
+                _mark_cooldown(state, ANOMALY_LOOP)
+                # Note: injected stays False — downstream handlers may still fire normally.
             elif proactive_fired and new_loop_tier == "warn":
                 try:
                     self.agent.context.log.log(
@@ -456,6 +510,16 @@ class SupervisorLoop(Extension):
                     )
                 except Exception:
                     pass
+
+            # 6. Completion boundary stall detection.
+            # Fires when the agent text signals task completion but the response
+            # tool was not called for COMPLETION_STALL_THRESHOLD consecutive turns.
+            # This is the ST-004 class of failure: task done, response blocked.
+            if not injected and not action_gate and _cooldown_ok(state, ANOMALY_COMPLETION_STALL):
+                stall_count = _detect_completion_stall(self.agent, state)
+                if stall_count >= COMPLETION_STALL_THRESHOLD:
+                    _inject_completion_stall(self.agent, state)
+                    injected = True
 
             _set_state(self.agent, state)
 
@@ -830,6 +894,55 @@ def _detect_loop(ctx: dict) -> bool:
 
     return False
 
+
+
+def _detect_completion_stall(agent, state: dict) -> int:
+    """
+    Detect when the agent has completed the task but cannot emit the response tool.
+
+    A completion stall is: the agent's most recent AI message contains completion
+    signals ("done", "complete", "finished", etc.) AND the last tool called was
+    not `response`. Returns the updated completion_stall_count.
+
+    Resets to 0 on: any `response` tool call, or any turn without completion signals.
+    """
+    try:
+        msgs = agent.history.current.messages
+        if not msgs:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # Find the most recent AI message
+        last_ai_msg = None
+        last_tool = ""
+        for msg in reversed(msgs):
+            if getattr(msg, "ai", False):
+                last_ai_msg = msg
+                last_tool = (getattr(msg, "tool_name", None) or "").lower()
+                break
+
+        if not last_ai_msg:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # If last tool was response, task is done — reset counter
+        if "response" in last_tool:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # Check if AI text contains completion signals
+        content = last_ai_msg.content if isinstance(last_ai_msg.content, str) else str(last_ai_msg.content or "")
+        low = content.lower()
+
+        if any(sig in low for sig in COMPLETION_SIGNALS):
+            count = state.get(COMPLETION_STALL_KEY, 0) + 1
+            state[COMPLETION_STALL_KEY] = count
+            return count
+        else:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+    except Exception:
+        return 0
 
 
 def _detect_output_stagnation(tool_output_hashes: list) -> dict:
@@ -1488,7 +1601,19 @@ def _get_last_tool_output(agent) -> str:
 
 
 def _inject_loop(agent, ctx: dict, state: dict):
-    """Inject loop detection — names the closed strategy and the opposing approach."""
+    """
+    Loop detection message — fires at Tier 2+ (after context surgery has
+    already changed the context structure). By the time this fires, Tier 1
+    has silently accumulated evidence across multiple turns, and the model
+    is now looking at a compressed/surgically-modified context.
+
+    SFX-001 (2026-04-15): Removed prescriptive escape routes ("use call_subordinate").
+    Prescribed tool names create meta-loops — the agent tries the prescribed tool,
+    that also looks repetitive, the detector fires again. The message now names
+    the closed strategy and the blocking pattern, trusting the model to choose
+    its own path. The model is a better judge of the right alternative than a
+    static prescription is.
+    """
     history = ctx.get("failure_history", [])
     recent = history[-LOOP_DETECTION_THRESHOLD:] if len(history) >= LOOP_DETECTION_THRESHOLD else history
 
@@ -1498,20 +1623,23 @@ def _inject_loop(agent, ctx: dict, state: dict):
         n = len(recent)
         alternatives = LOOP_ALTERNATIVES.get(tool, DEFAULT_ALTERNATIVES)
         alt_list = "\n".join(f"  - {a}" for a in alternatives)
+
         msg = (
-            f"[SUPERVISOR] LOOP DETECTED — {tool} has failed {n} times ({error_type}).\n"
-            f"This strategy is closed. Do not retry {tool}.\n"
-            f"ESCAPE ROUTE: use call_subordinate to spawn a fresh subagent with a clear bounded objective — a new context breaks loops that persistence cannot.\n"
-            f"Other approaches:\n{alt_list}"
+            f"[SUPERVISOR] This approach is blocked — {tool} has not made progress "
+            f"after {n} attempts ({error_type}).\n"
+            f"The current strategy is exhausted. Think about what's blocking progress "
+            f"and choose a fundamentally different path.\n"
+            f"Possible directions:\n{alt_list}"
         )
     else:
         msg = (
-            "[SUPERVISOR] You are repeating the same failing action. "
-            "Stop and try a fundamentally different approach — different tool, different path, or "
-            "use call_subordinate to delegate to a fresh subagent with a clear bounded objective."
+            "[SUPERVISOR] This approach is not making progress. "
+            "Think about what's actually blocking you — "
+            "the obstacle is likely upstream of the tool you're using. "
+            "Choose a different strategy."
         )
 
-    # Prepend last tool output so the model has concrete diagnostic content.
+    # Prepend last tool output so the model has concrete diagnostic context.
     last_output = _get_last_tool_output(agent)
     if last_output:
         msg = f"[LAST TOOL OUTPUT]\n{last_output}\n[/LAST TOOL OUTPUT]\n\n" + msg
@@ -1527,6 +1655,33 @@ def _inject_loop(agent, ctx: dict, state: dict):
             msg += extra
 
     _emit(agent, msg, ANOMALY_LOOP, state)
+
+
+def _inject_completion_stall(agent, state: dict):
+    """
+    Inject completion stall warning.
+
+    The ST-004 class of failure: agent has finished its work, signals completion
+    in its text output, but cannot reach the `response` tool and loops on
+    whatever it can reach instead. The supervisor fires after
+    COMPLETION_STALL_THRESHOLD consecutive turns with this pattern.
+    """
+    count = state.get(COMPLETION_STALL_KEY, COMPLETION_STALL_THRESHOLD)
+    msg = (
+        f"[SUPERVISOR] Completion stall detected (n={count}) — you appear to have "
+        f"completed the task but haven't called the `response` tool.\n"
+        f"Call `response` now with your final answer. Do not call any other tool.\n"
+        f'Your next action: {{"tool_name": "response", "tool_args": {{"text": "your summary here"}}}}'
+    )
+    try:
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Completion stall detected (n={count}), injecting Tier 1",
+            flush=True,
+        )
+    except Exception:
+        pass
+    _emit(agent, msg, ANOMALY_COMPLETION_STALL, state)
 
 
 def _inject_context_warning(agent, ctx: dict, state: dict):

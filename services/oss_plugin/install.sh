@@ -90,8 +90,20 @@ docker cp "$API_SRC/api_oss_network.py"       "$API_DEST/"
 A0_TOOLS="$CONTAINER:/a0/tools"
 TOOLS_SRC="$SCRIPT_DIR/../../tools"
 
-docker cp "$TOOLS_SRC/oss.py"       "$A0_TOOLS/"
-docker cp "$TOOLS_SRC/oss_panel.py" "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_ingest_sprint.py" "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_topic.py"         "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_drift.py"         "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_dynamics.py"      "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_hypotheses.py"    "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_health.py"        "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_submit.py"        "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_list_topics.py"   "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_add_topic.py"     "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_ingest_pause.py"  "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_ingest_resume.py" "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_question.py"      "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_synthesize.py"    "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/oss_panel.py"         "$A0_TOOLS/"
 
 # ── Clear pycache ──────────────────────────────────────────────────────────────
 
@@ -134,7 +146,10 @@ done
 
 echo "  Syntax checking tools..."
 A0_TOOLS_PATH="/a0/tools"
-for f in oss.py oss_panel.py; do
+for f in oss_ingest_sprint.py oss_topic.py oss_drift.py oss_dynamics.py oss_hypotheses.py oss_health.py \
+          oss_submit.py oss_list_topics.py oss_add_topic.py \
+          oss_ingest_pause.py oss_ingest_resume.py \
+          oss_question.py oss_synthesize.py oss_panel.py; do
   if _exec "$CONTAINER" python3 -m py_compile "$A0_TOOLS_PATH/$f" 2>/dev/null; then
     echo "    ✓ tools/$f"
   else

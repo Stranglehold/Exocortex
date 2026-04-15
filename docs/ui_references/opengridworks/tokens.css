@@ -1,0 +1,199 @@
+/* ============================================================
+ * OpenGridWorks Design Tokens
+ * Source: https://opengridworks.com/power-plants
+ * Extracted: 2026-04-13
+ *
+ * This file is a RAW EXTRACT of the --ds-* custom properties
+ * exposed by OpenGridWorks's compiled CSS. Do not edit values —
+ * modifications belong in docs/ui_references/exocortex.css
+ * (the curated master).
+ * ============================================================ */
+
+:root {
+
+  /* ---------- Timing ---------- */
+  /* 80ms for micro-feedback (button press). 150ms for most hover/color swaps.
+   * 250ms for panel reveals. 400ms for larger layout changes. 600ms for
+   * deliberate slow motion. */
+  --ds-duration-instant:  80ms;
+  --ds-duration-fast:     0.15s;
+  --ds-duration-normal:   0.25s;
+  --ds-duration-slow:     0.4s;
+  --ds-duration-glacial:  0.6s;
+
+  /* ---------- Easing ---------- */
+  /* ease-out is more aggressive than Material (reaches near-final fast).
+   * ease-spring overshoots 56% — useful for "arrive with emphasis" motions.
+   * ease-smooth is the default for natural deceleration. */
+  --ds-ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-ease-in:      cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --ds-ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-smooth:  cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ds-ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---------- Typography ---------- */
+  --ds-font-body:    "Inter", "Segoe UI", system-ui, sans-serif;
+  --ds-font-display: "Avenir Next", "Inter", "Segoe UI", system-ui, sans-serif;
+  --ds-font-mono:    "IBM Plex Mono", "SF Mono", "Consolas", "Liberation Mono", monospace;
+
+  --ds-text-xs:   11px;
+  --ds-text-sm:   12px;
+  --ds-text-base: 13px;
+  --ds-text-md:   14px;
+  --ds-text-lg:   16px;
+  --ds-text-xl:   18px;
+
+  /* ---------- Radius ---------- */
+  --ds-radius-sm:   6px;
+  --ds-radius-md:   10px;
+  --ds-radius-lg:   14px;
+  --ds-radius-xl:   18px;
+  --ds-radius-pill: 999px;
+
+  /* ---------- Surfaces (dark theme, the load-bearing one) ---------- */
+  /* Layered depth: void is deepest, scrim is highest elevation.
+   * Each surface sits visually on top of the one below it. */
+  --ds-surface-void:    #060810;   /* deepest background */
+  --ds-surface-base:    #0a0f1a;   /* app background */
+  --ds-surface-raised:  #0f1629;   /* cards, containers */
+  --ds-surface-overlay: #151d35;   /* modals, dropdowns */
+  --ds-surface-scrim:   #0a0f1aeb; /* full-screen dim / glass panel bg */
+
+  /* ---------- Text (dark theme) ---------- */
+  --ds-text-primary:   #f0f2f5;   /* body text, data values */
+  --ds-text-secondary: #b0b8c8;   /* subheadings, context */
+  --ds-text-tertiary:  #6b7a8d;   /* metadata, labels */
+  --ds-text-dim:       #3d4a5c;   /* disabled, far-background */
+
+  /* ---------- Borders ---------- */
+  /* Opacity-based so they adapt to any surface color */
+  --ds-border-subtle:   #94a3b80f;  /* 6%  */
+  --ds-border-default:  #94a3b81f;  /* 12% */
+  --ds-border-strong:   #94a3b838;  /* 22% */
+  --ds-border-accent:   #00e5ff40;  /* 25% cyan — for focus/active states */
+
+  /* ---------- Accents ---------- */
+  /* Cyan is the primary accent — use for active/focus/interactive signal.
+   * Blue and purple are secondary accents for categorical distinction.
+   * -muted variants are the translucent backgrounds (for hover fills). */
+  --ds-accent-cyan:        #00e5ff;
+  --ds-accent-cyan-muted:  #00e5ff26;   /* 15% for hover bg */
+  --ds-accent-cyan-glow:   #00e5ff59;   /* 35% for glow shadows */
+
+  --ds-accent-blue:        #38bdf8;
+  --ds-accent-blue-muted:  #38bdf81f;   /* 12% */
+
+  --ds-accent-purple:        #8b5cf6;
+  --ds-accent-purple-muted:  #8b5cf626; /* 15% */
+
+  /* ---------- Signal colors (semantic state) ---------- */
+  /* Use these for outcome states. Same hue family as accents but
+   * semantically reserved. */
+  --ds-signal-positive: #34d399;   /* success, confirmed, healthy */
+  --ds-signal-negative: #f87171;   /* error, falsified, critical */
+  --ds-signal-warning:  #fbbf24;   /* caution, pending, deferred */
+  --ds-signal-info:     #60a5fa;   /* info, neutral status */
+
+  /* ---------- Shadows (dark theme) ---------- */
+  --ds-shadow-sm:  0 1px 2px  rgba(0,0,0,0.3);
+  --ds-shadow-md:  0 4px 12px rgba(0,0,0,0.4);
+  --ds-shadow-lg:  0 8px 24px rgba(0,0,0,0.5);
+  --ds-shadow-xl:  0 16px 40px rgba(0,0,0,0.55);
+
+  /* Glow shadows — apply over the base shadow when an element is active.
+   * The cyan glow is the "this is alive" signal. */
+  --ds-shadow-glow-cyan:   0 0 20px rgba(0,229,255,0.06), 0 0 40px rgba(0,229,255,0.03);
+  --ds-shadow-glow-accent: 0 0 16px rgba(56,189,248,0.08);
+
+  /* ---------- Glass (the signature effect) ---------- */
+  /* Apply backdrop-filter to any container that sits above the map/background.
+   * saturate(150%) boosts the color beneath the glass so it reads as "lit". */
+  --ds-glass-bg:   #0a0f1aeb;
+  --ds-glass-blur: blur(32px) saturate(150%);
+
+  /* ============================================================
+   * LIGHT-THEME COUNTERPARTS
+   * (exhaustive — OpenGridWorks ships both. Exocortex is dark-only,
+   * but including these lets us swap if we ever want to.)
+   * ============================================================ */
+  --ds-surface-void-light:    #f8f9fb;
+  --ds-surface-base-light:    #ffffff;
+  --ds-surface-raised-light:  #f1f3f7;
+  --ds-surface-overlay-light: #e8ebf0;
+  --ds-surface-scrim-light:   #fffffff2;
+
+  --ds-text-primary-light:   #0f172a;
+  --ds-text-secondary-light: #475569;
+  --ds-text-tertiary-light:  #94a3b8;
+  --ds-text-dim-light:       #cbd5e1;
+
+  --ds-border-subtle-light:  #0000000f;
+  --ds-border-default-light: #0000001a;
+  --ds-border-strong-light:  #0000002e;
+
+  --ds-shadow-sm-light: 0 1px 3px  rgba(15,23,42,0.08);
+  --ds-shadow-md-light: 0 4px 12px rgba(15,23,42,0.10);
+  --ds-shadow-lg-light: 0 10px 24px rgba(15,23,42,0.12);
+  --ds-shadow-xl-light: 0 16px 40px rgba(15,23,42,0.15);
+
+  --ds-glass-bg-light: #fffffff2;
+}
+
+/* ============================================================
+ * INTERACTION PATTERNS
+ * Signature moves reused across OpenGridWorks's components.
+ * ============================================================ */
+
+/* Hover scale-up: 6% is noticeable without being garish. Combine with
+ * the 80ms transform duration for tactile feedback. */
+.ds-hover-grow { transition: transform var(--ds-duration-instant) var(--ds-ease-out); }
+.ds-hover-grow:hover  { transform: scale(1.06); }
+.ds-hover-grow:active { transform: scale(0.95); }
+
+/* Cyan signal: the "this element is alive / interactive" treatment.
+ * Hover cyans the text + background tint + border + adds a glow shadow. */
+.ds-cyan-signal {
+  transition:
+    color        var(--ds-duration-fast) var(--ds-ease-out),
+    background   var(--ds-duration-fast) var(--ds-ease-out),
+    border-color var(--ds-duration-fast) var(--ds-ease-out),
+    box-shadow   var(--ds-duration-fast) var(--ds-ease-out),
+    transform    var(--ds-duration-instant) var(--ds-ease-out);
+}
+.ds-cyan-signal:hover {
+  color: var(--ds-accent-cyan);
+  background: var(--ds-accent-cyan-muted);
+  border-color: var(--ds-border-accent);
+  box-shadow: var(--ds-shadow-glow-cyan), var(--ds-shadow-md);
+  transform: scale(1.03);
+}
+.ds-cyan-signal:active { transform: scale(0.97); }
+
+/* Glass panel: the backdrop-blur treatment. Apply to any container that
+ * should float over a base layer (map, background gradient, etc.) */
+.ds-glass {
+  background: var(--ds-glass-bg);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+          backdrop-filter: var(--ds-glass-blur);
+  border: 1px solid var(--ds-border-default);
+}
+
+/* Small-caps section headers — the "technical label" treatment */
+.ds-section-header {
+  font-family: var(--ds-font-body);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ds-text-tertiary);
+}
+
+/* Tabular numerals — for any data display where scanning matters */
+.ds-mono   { font-family: var(--ds-font-mono); }
+.ds-tnum   { font-variant-numeric: tabular-nums; }
+
+/* Focus ring — keyboard accessibility + visual feedback on tab-to-focus */
+.ds-focus-ring:focus-visible {
+  outline: 2px solid var(--ds-accent-cyan);
+  outline-offset: 2px;
+}

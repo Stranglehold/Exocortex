@@ -37,6 +37,10 @@ TOOL_SCHEMAS = {
             "session": 0,
             "reset": False,
         },
+        # Strip any key not in this set — prevents system-prompt content
+        # (e.g. datetime strings) from leaking into tool_args as garbage keys.
+        "known_args": {"runtime", "code", "session", "reset", "allow_running"},
+        "strip_unknown_args": True,
     },
     "response": {
         "required": ["text"],
@@ -174,6 +178,10 @@ class MetaReasoningGate(Extension):
             # Phase 1: Fix argument name aliases
             self._fix_arg_aliases(tool_args, schema)
 
+            # Phase 1b: Strip keys not in known_args (prevents system-prompt
+            # content leaking into tool_args as garbage keys on local models)
+            self._strip_unknown_args(tool_args, schema)
+
             # Phase 2: Fix value aliases (e.g. runtime: "bash" -> "terminal")
             self._fix_value_aliases(tool_args, schema)
 
@@ -184,19 +192,32 @@ class MetaReasoningGate(Extension):
             missing = self._check_required(tool_args, schema)
 
             if missing:
-                # Log the issue
-                self.agent.context.log.log(
-                    type="warning",
-                    content=f"[MetaGate] Tool '{tool_name}' missing required args: {missing}"
-                )
-                # Inject warning into history so model sees the problem
-                self.agent.hist_add_warning(
+                msg = (
                     f"Tool '{tool_name}' is missing required arguments: "
-                    f"{', '.join(missing)}. Check the tool usage format and retry."
+                    f"{', '.join(missing)}. Retry the tool call with all required args present."
                 )
+                # Log the issue
+                try:
+                    self.agent.context.log.log(
+                        type="warning",
+                        content=f"[MetaGate] {msg}"
+                    )
+                except Exception:
+                    pass
+                # Inject warning into history so model sees the problem
+                try:
+                    self.agent.hist_add_warning(msg)
+                except Exception:
+                    pass
+                # Raise to abort tool execution — prevents downstream KeyError crashes.
+                # A0's exception handler will add this to the retry context.
+                raise ValueError(f"[MetaGate] {msg}")
 
+        except ValueError:
+            # Re-raise MetaGate abort signals — do not swallow
+            raise
         except Exception as e:
-            # Graceful degradation — never block tool execution
+            # Graceful degradation for all other MetaGate errors
             try:
                 self.agent.context.log.log(
                     type="warning",
@@ -218,6 +239,29 @@ class MetaReasoningGate(Extension):
                     )
                 except Exception:
                     pass
+
+    def _strip_unknown_args(self, tool_args: dict, schema: dict):
+        """Remove keys not in known_args for tools with complete schemas.
+
+        Defends against local models leaking system-prompt content (datetime
+        strings, injected blocks, etc.) into tool_args as garbage keys.
+        Only fires when schema has strip_unknown_args=True and known_args set.
+        """
+        if not schema.get("strip_unknown_args"):
+            return
+        known = schema.get("known_args")
+        if not known:
+            return
+        garbage = [k for k in list(tool_args.keys()) if k not in known]
+        for k in garbage:
+            del tool_args[k]
+            try:
+                self.agent.context.log.log(
+                    type="warning",
+                    content=f"[MetaGate] Stripped unrecognized arg key: {repr(k)[:120]}"
+                )
+            except Exception:
+                pass
 
     def _fix_value_aliases(self, tool_args: dict, schema: dict):
         """Fix wrong argument values (e.g. runtime: bash -> terminal)."""

@@ -42,7 +42,7 @@ def _find_relevant_claims(conn, question_text: str, limit: int = 40) -> list:
         if not os.path.exists(faiss_path):
             return _fallback_claims(conn, limit)
 
-        m = SentenceTransformer("all-MiniLM-L6-v2")
+        m = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
         vec = m.encode([question_text], normalize_embeddings=True).astype(np.float32)
         idx = faiss.read_index(faiss_path)
         k = min(limit, idx.ntotal)

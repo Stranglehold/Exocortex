@@ -117,6 +117,7 @@ docker cp "$EXT_SRC/message_loop_end/_50_supervisor_loop.py" "$EXT_DEST/message_
 # message_loop_prompts_after
 docker cp "$EXT_SRC/message_loop_prompts_after/_16_tool_registry.py"           "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_18_memory_catalog.py"           "$EXT_DEST/message_loop_prompts_after/"
+docker cp "$EXT_SRC/message_loop_prompts_after/_19_skill_suggester.py"           "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_55_memory_relevance_filter.py" "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_56_memory_enhancement.py"       "$EXT_DEST/message_loop_prompts_after/"
 docker cp "$EXT_SRC/message_loop_prompts_after/_58_ontology_query.py"           "$EXT_DEST/message_loop_prompts_after/"

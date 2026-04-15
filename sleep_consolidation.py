@@ -450,6 +450,8 @@ def run_phase3_consolidation(session_id: str = "unknown") -> dict:
 
 # ── Phase 4: Loop-Period Memory Adjudication ─────────────────────────────────
 
+AMBIGUITY_ESCAPE_THRESHOLD = 3  # Force resolution after this many ambiguous evaluations
+
 _FACT_PATTERNS = [
     re.compile(r"\b(exists?|found|not found|missing|present|absent)\b", re.IGNORECASE),
     re.compile(r"\b(error|returns?|responded?|status)\s+\d{3}\b", re.IGNORECASE),
@@ -525,12 +527,35 @@ async def run_phase4_consolidation(agent, session_id: str = "unknown") -> dict:
                 result["promoted_to_inferred"] += 1
                 changed += 1
             else:
-                result["left_ambiguous"] += 1
-                # Leave as loop_period — retrieval still suppressed
+                count = cls.get("ambiguity_count", 0) + 1
+                cls["ambiguity_count"] = count
+                doc.metadata["classification"] = cls
+                changed += 1  # persist counter even when below threshold
+                if count >= AMBIGUITY_ESCAPE_THRESHOLD:
+                    # Force resolution: attempt wins over fact when both match (or neither)
+                    if is_attempt:
+                        cls["validity"] = "deprecated"
+                        result["deprecated"] += 1
+                    else:
+                        cls["validity"] = "inferred"
+                        lin = doc.metadata.get("lineage", {})
+                        lin["loop_period_promoted"] = True
+                        doc.metadata["lineage"] = lin
+                        result["promoted_to_inferred"] += 1
+                    doc.metadata["classification"] = cls
+                    changed += 1
+                    print(
+                        f"[SLEEP] Phase 4 forced resolution (ambiguity_count={count}): "
+                        f"validity={cls['validity']}",
+                        flush=True,
+                    )
+                else:
+                    result["left_ambiguous"] += 1
+                    # Leave as loop_period — retrieval still suppressed
 
         if changed:
             try:
-                db.db._save_db()
+                db._save_db()
             except Exception as e:
                 result["errors"] += 1
                 print(f"[SLEEP] Phase 4 save error: {e}", flush=True)
@@ -545,6 +570,95 @@ async def run_phase4_consolidation(agent, session_id: str = "unknown") -> dict:
     except Exception as e:
         result["errors"] += 1
         print(f"[SLEEP] Phase 4 error: {e}", flush=True)
+
+    _write_sleep_report(result)
+    return result
+
+
+# ── Phase 5: AgentEvolver Experience Integration ──────────────────────────────
+
+_AGENTEVOLVER_PLUGIN_DIR = "/a0/usr/plugins/agentevolver_self_improvement"
+
+
+def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optional[dict] = None) -> dict:
+    """
+    Phase 5 consolidation — AgentEvolver experience integration.
+
+    Converts sleep-cycle findings into SelfImprovementEngine experiences.
+    Two sources:
+      1. Anti-patterns captured by Phase 2 this session → failure experiences.
+         Lessons = the pre_action_check from the anti-pattern.
+      2. Phase 4 deprecated loop-period memories (if phase2_result provided) →
+         note the failure type in task_description for context.
+
+    No LLM calls. Deterministic read of this session's procedural memory entries.
+    Silently skips if the AgentEvolver plugin is unavailable.
+    """
+    result = {
+        "session_id": session_id,
+        "timestamp": datetime.now().isoformat(),
+        "phase": "Phase 5 - AgentEvolver Experience Integration",
+        "experiences_recorded": 0,
+        "engine_unavailable": False,
+        "errors": 0,
+    }
+
+    # --- Load the SelfImprovementEngine ---
+    helpers_path = os.path.join(_AGENTEVOLVER_PLUGIN_DIR, "helpers")
+    if helpers_path not in sys.path:
+        sys.path.insert(0, helpers_path)
+
+    try:
+        from self_improvement import SelfImprovementEngine  # type: ignore
+        engine = SelfImprovementEngine(_AGENTEVOLVER_PLUGIN_DIR)
+    except Exception as e:
+        result["engine_unavailable"] = True
+        result["errors"] += 1
+        print(f"[SLEEP] Phase 5 engine load failed (plugin missing?): {e}", flush=True)
+        _write_sleep_report(result)
+        return result
+
+    # --- Source 1: anti-patterns captured by Phase 2 this session ---
+    try:
+        from procedural_memory_api import ProceduralMemory  # type: ignore
+        pm = ProceduralMemory()
+
+        new_patterns = [
+            s for s in pm.index.get("skills", [])
+            if s.get("type") == "ANTI-PATTERN"
+            and s.get("session_id") == session_id
+            and any("sleep-phase2" in tag for tag in s.get("tags", []))
+        ]
+
+        for pattern in new_patterns:
+            tool = pattern.get("failing_tool", "unknown")
+            domain = pattern.get("domain", "general")
+            pre_check = pattern.get("pre_action_check", "").strip()
+            lessons = [pre_check] if pre_check else [f"Avoid repeated {tool} calls without state change"]
+            consecutive = pattern.get("consecutive", 3)
+
+            engine.add_experience(
+                task_type=domain,
+                task_description=(
+                    f"Agent looped on tool '{tool}' in domain '{domain}' "
+                    f"({consecutive} consecutive calls) — captured by sleep Phase 2."
+                ),
+                actions=[f"called '{tool}' {consecutive}+ times without progress"],
+                outcome="failure",
+                lessons_learned=lessons,
+            )
+            result["experiences_recorded"] += 1
+
+    except Exception as e:
+        result["errors"] += 1
+        print(f"[SLEEP] Phase 5 anti-pattern read error: {e}", flush=True)
+
+    summary_msg = (
+        f"Phase 5 — experiences_recorded={result['experiences_recorded']}, "
+        f"errors={result['errors']}"
+        + (" (engine unavailable)" if result["engine_unavailable"] else "")
+    )
+    print(f"[SLEEP] {summary_msg}", flush=True)
 
     _write_sleep_report(result)
     return result

@@ -29,6 +29,10 @@
 #     → injects compact memory domain catalog once at session start
 #     → gives agent visibility into what's stored before querying blind
 #
+#   /a0/agent.py (validate_tool_request)
+#     → A0's validator rejects tool_args={} (empty dict is falsy in Python)
+#     → Patch: `not tool_args` → `tool_args is None` so no-arg tools work
+#
 # Usage: ./scripts/install_core_patches.sh [container_name]
 # Default container: flamboyant_bell
 
@@ -127,6 +131,22 @@ else
   echo "[PATCH] WARNING: $PROMPT_SRC not found — skipped."
 fi
 
+# ── 2d. Prompt: agent.system.datetime.md (safer format for local models) ─────
+# Original: "- current datetime: {{date_time}}\n- rely on this info always up to date"
+# Local models (Gemma 4) treat the "- key: value" bullet pattern as JSON and
+# leak the datetime string into tool_args as a garbage key. Replaced with a
+# single declarative sentence that is clearly not JSON structure.
+
+DATETIME_SRC="$PATCH_DIR/prompts/agent.system.datetime.md"
+DATETIME_DST="/a0/prompts/agent.system.datetime.md"
+
+if [ -f "$DATETIME_SRC" ]; then
+  docker cp "$DATETIME_SRC" "$CONTAINER:$DATETIME_DST"
+  echo "[PATCH] prompts/agent.system.datetime.md deployed (safer format)."
+else
+  echo "[PATCH] WARNING: $DATETIME_SRC not found — skipped."
+fi
+
 # ── 2c. Prompt: browser_agent.system.md (CAPTCHA guidance) ───────────────────
 
 BROWSER_PROMPT_SRC="$PATCH_DIR/prompts/browser_agent.system.md"
@@ -222,5 +242,28 @@ if [ -f "$CSS_SRC" ]; then
 else
   echo "[PATCH] WARNING: $CSS_SRC not found — skipped."
 fi
+
+# ── 7. agent.py: validate_tool_request empty-args fix ────────────────────────
+# A0 validate_tool_request uses `not tool_request.get("tool_args")` which is
+# True for empty dict {} (falsy). No-arg tools (oss_health, swarmfish_calibration,
+# etc.) always fail with "must have a tool_args (type dictionary) field".
+# Fix: check for None rather than falsiness.
+
+_exec "$CONTAINER" python3 -c "
+path = '/a0/agent.py'
+with open(path, 'r') as f:
+    content = f.read()
+old = 'if not tool_request.get(\"tool_args\") or not isinstance(tool_request.get(\"tool_args\"), dict):'
+new = 'if tool_request.get(\"tool_args\") is None or not isinstance(tool_request.get(\"tool_args\", {}), dict):'
+if old in content:
+    content = content.replace(old, new, 1)
+    with open(path, 'w') as f:
+        f.write(content)
+    print('[PATCH] agent.py validate_tool_request: empty-args fix applied.')
+elif new in content:
+    print('[PATCH] agent.py validate_tool_request: already patched, skipped.')
+else:
+    print('[PATCH] WARNING: agent.py pattern not found — manual check required.')
+"
 
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."

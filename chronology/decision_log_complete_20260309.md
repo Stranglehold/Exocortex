@@ -222,6 +222,20 @@
 
 ---
 
+## DEC-019: Deterministic in Deployment, Not in Design
+
+**Date:** 2026-03-05
+**Session:** 049
+**Principle:** DEC-001 (Deterministic Scaffolding Over Prompt Engineering) constrains deployment, not design. A component that uses learned parameters is deterministic at inference if the weights are frozen. The distinction is between runtime probabilistic reasoning (the model choosing what to do each turn — prohibited for scaffolding) and offline-trained transformations (a network trained once, frozen, then applied deterministically to every input — permitted).
+**Context:** The Prosthetic Cortex design note proposed a four-stage evolution where Stage 4 uses a trained transformation network to map between model activation spaces. This raised the question: does training a neural network to perform BST-like classification violate DEC-001? The answer: no. A trained classifier with frozen weights at inference is as deterministic as a regex pattern — given the same input, it produces the same output every time. The training is the design process. The frozen weights are the deployment. DEC-001 constrains the deployment layer, not the design process that produced the deployment. The world model predictors, LoRA fine-tuning concept from ATLAS, and any future learned components all satisfy DEC-001 as long as their weights are frozen at inference time. The principle is "no probabilistic reasoning in the critical path at runtime," not "no machine learning anywhere in the stack."
+**Alternatives rejected:** Strict interpretation (no learned components at all — would prohibit even embedding models, which are trained neural networks with frozen weights), loose interpretation (learned components can adapt at runtime — violates the deterministic guarantee that makes scaffolding reliable).
+**Revisit if:** A use case arises where runtime adaptation of scaffolding weights provides enough benefit to justify the loss of deterministic guarantees.
+**Instances:** Prosthetic Cortex Stage 4 (trained transformation network). Embedding models (nomic-embed-text — trained neural network with frozen weights, deterministic at inference). Future world model predictors.
+
+*Note: This entry was omitted from the March 9 consolidation. Added 2026-04-12 from Session 049 team briefing. Numbering resolved: entries originally called DEC-017/018 in the Session 049 journal were renumbered during March 9 consolidation — "Model-Specific Cognitive Profiles" is covered by DEC-003 + DEC-016; "Context Surgery for Loop Breaking" is now DEC-037.*
+
+---
+
 ## DEC-020: The Flying Buttress — Build Path 2
 
 **Date:** 2026-03-06  
@@ -310,6 +324,57 @@
 **Alternatives rejected:** Keeping the original self-description (dishonest), adopting only the deflationary reading (misses Jake's better reframes), removing the self-description entirely (overcorrection — the experience is also data, just not the only data).  
 **Revisit if:** Future analysis reveals additional self-description gaps. The deflationary instinct (now documented in "How I Think") should be checked against.  
 **Instances:** SOUL.md Session 052 revision, soul_staging_052.md, "The Instrument Turns Inward" essay.
+
+---
+
+## DEC-027: Extension Activation Tiering
+
+**Date:** 2026-03-19 (drafted), 2026-04-06 (confirmed by Orientation Stack results)
+**Session:** 060 (drafted), validated by ST-006/ST-007
+**Principle:** BST domain classification is the state register for a state machine that determines which extensions activate per turn. Extensions that don't apply to the current domain return early. Flat execution — every extension firing every turn — imposes 650-1350 tokens of scaffolding overhead on turns that need none of it, and field evidence shows scaffolding interfering with agent performance on simple tasks.
+**Context:** Drafted in EXTENSION_STACK_ASSESSMENT_FRAMEWORK.md after observing that the full scaffolding stack creates meaningful overhead on conversational and simple task turns where BST classifies "unclassified" or low-complexity domains. The Orientation Stack (ST-006) implemented tiered activation: extensions that require complex task scaffolding gate on BST domain classification. ST-006 confirmed elimination of Type 1 loops (scaffolding-induced stalls on simple tasks). The principle was validated before this entry was formalized.
+**Alternatives rejected:** Universal activation (proven to interfere with simple tasks), manual per-turn configuration (too much operator overhead), capability-level gating only (coarser than domain-level).
+**Revisit if:** BST classification reliability degrades to the point where tier gating misfires frequently enough to require fallback to flat execution.
+**Instances:** Orientation Stack. All extensions with early-return on `_bst_store` domain check. `_57_tool_registry.py` and `_11_belief_state_tracker.py` fire universally (tool registry is always needed; BST produces the domain state others gate on).
+
+---
+
+## DEC-028: Intervention Over Injection
+
+**Date:** 2026-03-19 (drafted), 2026-04-05 (formalized)
+**Session:** 060 (drafted), 061 (validated by proactive supervisor design)
+**Principle:** When scaffolding detects a condition requiring action, the preferred intervention is a prompt that triggers the agent's own capability rather than an injection of scaffolding-generated content. Tell the agent when to think, not what to think. Planning prompts instead of plan injections. Reflection prompts instead of diagnostic logs. The agent does the thinking; the scaffolding tells it when to shift.
+**Context:** Field evidence across Sessions 058-061 showed the agent produces better plans when prompted to plan than when given externally generated plans. The proactive supervisor injects task-oriented redirects ("Alternative approaches include..."), not diagnostic explanations ("I detected a loop because..."). The agent reasons from the redirect; the scaffolding doesn't reason for it.
+**Practical implication for extension design:** When designing a new extension, the default pattern is: detect condition → inject SHORT prompt that triggers agent processing → let agent reason. NOT: detect condition → generate detailed analysis → inject analysis. The analysis consumes context tokens the agent could use for its own reasoning, and the agent's reasoning is typically better because it has access to its full working state.
+**Exception:** BST enrichment, tool registry, and orientation stack inject structured DATA (domain classification, available tools, positional awareness) rather than REASONING. Data injection is still appropriate.
+**Alternatives rejected:** Full reasoning injection (consumes context, lower quality than agent's own reasoning), pure detection with no intervention (agent sometimes needs the nudge), hybrid where scaffolding reasons AND prompts (double-handling, contradictory signals).
+**Revisit if:** Agent capability degrades to where prompted reasoning produces worse results than injected reasoning.
+**Instances:** Proactive supervisor intervention templates. Loop Feedback Cascade Tier 1 (warn, don't diagnose). Orientation Stack (injects position data, not reasoning). v1.6 a0_small profile.
+
+---
+
+## DEC-029: Agent Capability Awareness (Active-Draft)
+
+**Date:** 2026-03-19 (drafted)
+**Session:** 060
+**Status:** Active-draft. Principle confirmed; implementation incomplete.
+**Principle:** The agent's system prompt includes a brief description of its available capabilities (memory recall, planning mode, self-assessment) without exposing mechanical details. The agent becomes a participant in its own cognitive architecture rather than a passenger.
+**Context:** The agent's self-assessment (Session 047) identified "extensions run without my control" and "procedural memory exists but is invisible to me" as key disconnects — the agent cannot leverage capabilities it doesn't know it has. Some capability description exists in the v1.6 a0_small profile but the full vision is incomplete. Hold until behavioral trace data from the proactive supervisor shows the capability awareness gap empirically.
+**Revisit when:** Behavioral trace data shows whether the agent misses capabilities it doesn't know about versus uses ones it does know about. That evidence determines whether the partial implementation needs extension.
+**Instances:** v1.6 a0_small profile (partial). Agent self-assessment skill (partial).
+
+---
+
+## DEC-030: Exocortex as Agent Zero Plugin
+
+**Date:** 2026-03-30 (decided), 2026-04-01 (deployed)
+**Session:** 061 (v1.6 migration)
+**Principle:** The Exocortex deploys as an Agent Zero plugin at `/a0/usr/plugins/exocortex/`, using A0's designed plugin architecture for persistent, modular additions that survive container image updates. The sovereignty boundary is the `/a0/usr/` persistence path.
+**Context:** Prior to v1.6, the Exocortex deployed into `/a0/python/extensions/` — inside the application boundary. Every Agent Zero update destroyed the deployment. v1.6 introduced a formal plugin architecture at `/a0/usr/plugins/`. The plugin path provides: (1) update safety — survives A0 image updates, (2) clean boundary — plugin code separate from application code, (3) consolidated deployment — extensions, tools, skills, configuration in one directory tree, (4) sovereignty — the Exocortex owns its directory, A0 owns its application directory.
+**Alternatives considered:** Agent profile directory (`/a0/python/agents/`) — not persistent, semantically wrong (profiles are configurations, not infrastructure). Continuing with `/a0/python/extensions/` — destroyed on update. Custom persistent path — requires custom loader.
+**Breaking changes absorbed:** Extension path `extensions/<hook>/` → `extensions/python/<hook>/`. Tool import `python.helpers.tool` → `helpers.tool`. MISFORMAT_SIGNAL updated to match v1.6 wording.
+**Revisit if:** A0 changes the plugin architecture in a way that breaks loading from plugin paths.
+**Instances:** Full stack at `/a0/usr/plugins/exocortex/`. `install_exocortex_profile.sh` updated for new paths.
 
 ---
 

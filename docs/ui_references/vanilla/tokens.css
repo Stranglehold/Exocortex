@@ -1,0 +1,239 @@
+/* ============================================================
+ * Vanilla Framework (Canonical) Design Tokens — Curated Extract
+ * Source: https://github.com/canonical/vanilla-framework
+ *         tokens/color/dark/{background,base,border,brand,code,icon,link,text}.json
+ *         tokens/opacity/dark/disabled.json
+ * Extracted: 2026-04-14
+ *
+ * Vanilla Framework is Canonical's design system, used by Ubuntu's
+ * web properties: ubuntu.com, snapcraft.io, charmhub.io, MAAS UI,
+ * Juju Dashboard, Landscape, Cube. Smaller in scope than Primer/
+ * PatternFly/Carbon but with its own opinionated philosophy.
+ *
+ * NAMING CONVENTION: Vanilla uses W3C Design Tokens Format Module
+ * (the official W3C standard for design token files). Each token
+ * declares:
+ *   - $type:  the token type (color, opacity, dimension, etc.)
+ *   - $value: the actual value
+ *   - themeable: whether this token can be customized per-theme
+ *
+ * Reference syntax is dot-path: {color.text.link.default}
+ *
+ * Compiled to CSS via a Style Dictionary build, generating CSS
+ * variables with kebab-case names like --color-text-default.
+ *
+ * Compared to other production systems we've extracted:
+ *   - Primer: per-token JSON5 with documentation comments
+ *   - PatternFly: SCSS source compiled via Style Dictionary
+ *   - Carbon: JS source with imported color constants
+ *   - Vanilla: W3C Design Tokens JSON files (the standard)
+ *
+ * Vanilla's W3C standard compliance makes it the most portable —
+ * other tools that consume W3C tokens (Figma plugins, Tokens
+ * Studio, etc.) can import Vanilla tokens directly without
+ * a custom parser.
+ *
+ * Also notable: Vanilla's "dark" theme (#262626 base) is much
+ * LIGHTER than Carbon's g100 (#161616) or Primer dark (#0d1117).
+ * Canonical favors less-extreme contrast — Vanilla's dark mode
+ * is closer to what others call "dimmed dark mode."
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-vanilla-theme="dark"] {
+
+  /* ============================================================
+   * BASE COLORS — the four status primitives
+   *
+   * Vanilla uses positive/negative/caution/information instead
+   * of the more common success/danger/warning/info. The naming
+   * choice emphasizes VALENCE rather than action:
+   *
+   *   positive    — favorable outcome (success)
+   *   negative    — unfavorable outcome (danger)
+   *   caution     — needs attention (warning)
+   *   information — neutral information (info)
+   *
+   * "Negative" doesn't necessarily mean something bad happened
+   * that the user did. It could just mean a value went down or
+   * a result was unfavorable. More flexible vocabulary for
+   * monitoring/operations contexts where "danger" is too
+   * loaded a word.
+   *
+   * Note the desaturated base hues — these are NOT the bright
+   * #ff0000-style primary colors. Canonical chose softer hues
+   * to match their less-extreme contrast philosophy.
+   * ============================================================ */
+  --color-base-positive:    #62A36C;   /** desaturated green */
+  --color-base-negative:    #D17B85;   /** desaturated rose */
+  --color-base-caution:     #C48831;   /** desaturated amber */
+  --color-base-information: #5EA6ED;   /** desaturated blue */
+
+  /* ============================================================
+   * BACKGROUND — surfaces and special-purpose
+   *
+   * Note: the "default" background is #262626, much lighter than
+   * other dark themes (Carbon: #161616, Primer: #0d1117). This
+   * is Canonical's preference for less-extreme contrast.
+   * ============================================================ */
+  --color-background-default:   #262626;
+  --color-background-alt:       #202020;     /** alternative — slightly darker */
+  --color-background-hover:     rgba(255, 255, 255, 0.05);
+  --color-background-active:    rgba(255, 255, 255, 0.08);
+  --color-background-overlay:   rgba(17, 17, 17, 0.85);   /** modal scrim */
+
+  /* Special-purpose backgrounds — each is a recurring UI pattern */
+  --color-background-tooltip:   #111111;     /** tooltips need very dark bg */
+  --color-background-code:      rgba(255, 255, 255, 0.03);   /** inline code */
+  --color-background-input:     rgba(255, 255, 255, 0.04);   /** form inputs */
+
+  /* Brand-specific — built into the design system */
+  --color-background-canonical-logo: #E95420;     /** Ubuntu orange */
+
+  /* Status backgrounds — explicit alpha progression (20% / 30% / 36%) */
+  --color-background-positive-default:    rgba(10, 189, 37, 0.20);
+  --color-background-positive-hover:      rgba(0, 199, 30, 0.30);
+  --color-background-positive-active:     rgba(0, 199, 30, 0.36);
+
+  --color-background-negative-default:    rgba(255, 102, 120, 0.20);
+  --color-background-negative-hover:      rgba(255, 102, 120, 0.30);
+  --color-background-negative-active:     rgba(255, 102, 120, 0.36);
+
+  --color-background-caution-default:     rgba(255, 115, 0, 0.20);
+  --color-background-caution-hover:       rgba(255, 143, 51, 0.30);
+  --color-background-caution-active:      rgba(255, 115, 0, 0.36);
+
+  --color-background-information-default: rgba(0, 137, 255, 0.20);
+  --color-background-information-hover:   rgba(0, 137, 255, 0.30);
+  --color-background-information-active:  rgba(0, 137, 255, 0.36);
+
+  --color-background-neutral-default:     rgba(255, 255, 255, 0.15);
+  --color-background-neutral-hover:       rgba(255, 255, 255, 0.20);
+  --color-background-neutral-active:      rgba(255, 255, 255, 0.25);
+
+  /* ============================================================
+   * BORDERS — including TINTED variants
+   *
+   * Vanilla distinguishes border colors by intensity:
+   *   --border-positive       — full saturation (uses base color)
+   *   --border-tinted-positive — desaturated, softer
+   *
+   * The tinted variants are for borders that need to communicate
+   * status without dominating the visual. Use full-saturation
+   * borders for attention-grabbing alerts; use tinted borders
+   * for inline status indicators that should be present but
+   * not loud.
+   *
+   * This is similar to Primer's muted/emphasis distinction but
+   * applied specifically to borders.
+   * ============================================================ */
+  --color-border-default:        rgba(255, 255, 255, 0.20);
+  --color-border-low-contrast:   rgba(255, 255, 255, 0.10);
+  --color-border-high-contrast:  rgba(255, 255, 255, 0.50);
+  --color-border-highlight:      #FFFFFF;
+  --color-border-accent:         #0F95A1;     /** teal accent */
+  --color-border-focus:          #99CCFF;
+  --color-border-neutral:        #A6A6A6;
+
+  /* Full-saturation status borders */
+  --color-border-positive:       var(--color-base-positive);
+  --color-border-negative:       var(--color-base-negative);
+  --color-border-caution:        var(--color-base-caution);
+  --color-border-information:    var(--color-base-information);
+
+  /* Tinted (softer) status borders */
+  --color-border-tinted-positive:    #62a36c;
+  --color-border-tinted-negative:    #d17b85;
+  --color-border-tinted-caution:     #c48831;
+  --color-border-tinted-information: hsl(210deg 80% 65%);
+  --color-border-tinted-neutral:     hsl(0deg 0% 65%);
+
+  /* ============================================================
+   * TEXT — with the inactive vs muted distinction
+   *
+   * Vanilla distinguishes THREE less-prominent text states:
+   *   --text-default   — primary content (#ffffff)
+   *   --text-muted     — secondary content (60% white)
+   *   --text-inactive  — dormant element, still present (75% white)
+   *
+   * The muted/inactive distinction is subtle but principled:
+   *   - "muted" content is intentionally de-emphasized
+   *     (helper text, captions, metadata)
+   *   - "inactive" content is currently dormant but should
+   *     remain readable (an unselected tab, a disabled button
+   *     that's still informative)
+   *
+   * Most other systems collapse these into "secondary." Vanilla
+   * gives them separate tokens so designers can choose the
+   * right contrast for each case.
+   * ============================================================ */
+  --color-text-default:   #ffffff;
+  --color-text-muted:     rgba(255, 255, 255, 0.6);    /** secondary content */
+  --color-text-inactive:  rgba(255, 255, 255, 0.75);   /** dormant element */
+
+  --color-text-positive:    var(--color-base-positive);
+  --color-text-negative:    var(--color-base-negative);
+  --color-text-caution:     var(--color-base-caution);
+  --color-text-information: var(--color-base-information);
+
+  /* Link text — primary and visited */
+  --color-text-link-default:  #6699CC;
+  --color-text-link-visited:  #A679D2;
+
+  /* Button text — five variants for different button types */
+  --color-text-button-brand:    #ffffff;
+  --color-text-button-default:  var(--color-text-default);
+  --color-text-button-base:     var(--color-text-default);
+  --color-text-button-positive: #ffffff;
+  --color-text-button-negative: #ffffff;
+
+  /* ============================================================
+   * ICONS — parallel to text but with special status states
+   *
+   * Vanilla has a status.queued icon color (#808080 gray) for
+   * elements that are queued/pending — distinct from disabled.
+   * "Disabled" means "you can't interact"; "queued" means "this
+   * is waiting its turn." Different semantic states.
+   * ============================================================ */
+  --color-icon-default:     var(--color-text-default);
+  --color-icon-muted:       var(--color-text-muted);
+  --color-icon-positive:    var(--color-base-positive);
+  --color-icon-negative:    var(--color-base-negative);
+  --color-icon-caution:     var(--color-base-caution);
+  --color-icon-information: var(--color-base-information);
+  --color-icon-link:        var(--color-text-link-default);
+
+  --color-icon-status-queued:  #808080;     /** queued, not disabled */
+
+  /* ============================================================
+   * BRAND TOKENS — first-class brand identity
+   * ============================================================ */
+  --color-brand-ubuntu: #e95420;     /** the famous Ubuntu orange */
+  --color-brand-accent: #70bbc2;     /** Vanilla's secondary brand teal */
+}
+
+/* ============================================================
+ * OPACITY TOKENS — separate token type
+ *
+ * Vanilla uses a separate W3C token type for opacity values.
+ * This is a small but principled distinction: opacity is
+ * different from color and gets its own validation rules.
+ *
+ * Notable: TWO disabled levels:
+ *   --opacity-disabled-default: 33%   (most disabled elements)
+ *   --opacity-disabled-range:   50%   (slider/range inputs need
+ *                                      to remain visible enough
+ *                                      to communicate value)
+ *
+ * Range inputs are a special case because the track and thumb
+ * need to communicate a value position even when disabled.
+ * 33% opacity makes them invisible; 50% keeps them readable.
+ * Most systems use the same opacity for all disabled elements;
+ * Vanilla acknowledges the slider exception.
+ * ============================================================ */
+[data-vanilla-theme="dark"] {
+  --opacity-disabled-default: 0.33;     /** 33% — most disabled elements */
+  --opacity-disabled-range:   0.5;      /** 50% — slider/range inputs */
+}

@@ -69,8 +69,12 @@ docker cp "$PROMPT_SRC/agent.system.tool.swarmfish.md" "$PROMPT_DEST/"
 A0_TOOLS="$CONTAINER:/a0/tools"
 TOOLS_SRC="$SCRIPT_DIR/../../tools"
 
-docker cp "$TOOLS_SRC/swarmfish.py"       "$A0_TOOLS/"
-docker cp "$TOOLS_SRC/swarmfish_panel.py" "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_predict.py"     "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_session.py"     "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_sessions.py"    "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_calibration.py" "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_outcome.py"     "$A0_TOOLS/"
+docker cp "$TOOLS_SRC/swarmfish_panel.py"       "$A0_TOOLS/"
 
 # Tool documentation also goes to Exocortex plugin prompts
 EXOCORTEX_PROMPTS="$CONTAINER:/a0/usr/plugins/exocortex/prompts"
@@ -91,6 +95,12 @@ done
 echo "  Syntax checking API handlers..."
 for f in api_swarmfish_predict.py api_swarmfish_session.py api_swarmfish_sessions.py api_swarmfish_calibration.py api_swarmfish_outcome.py; do
   _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/api/$f" && echo "    ✓ $f" || echo "    ✗ $f FAILED"
+done
+
+echo "  Syntax checking tools..."
+A0_TOOLS_PATH="/a0/tools"
+for f in swarmfish_predict.py swarmfish_session.py swarmfish_sessions.py swarmfish_calibration.py swarmfish_outcome.py swarmfish_panel.py; do
+  _exec "$CONTAINER" python3 -m py_compile "$A0_TOOLS_PATH/$f" && echo "    ✓ $f" || echo "    ✗ $f FAILED"
 done
 
 # ── Summary ────────────────────────────────────────────────────────────────────

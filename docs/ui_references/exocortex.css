@@ -1,0 +1,1197 @@
+/* ============================================================
+ * Exocortex Design System (curated)
+ * ============================================================
+ *
+ * This file is the CURATED MASTER — the subset of design patterns
+ * from docs/ui_references/<site>/tokens.css that we have explicitly
+ * decided to use across Exocortex user interfaces (OSS panel, host
+ * control daemon bootstrap UI, any future panels).
+ *
+ * Raw extracts live in docs/ui_references/<site>/tokens.css and are
+ * never edited. This file is the place where we curate, adapt, and
+ * harmonize. When a pattern ports from a reference to here, note
+ * WHICH reference it came from in a comment so we can trace the
+ * lineage.
+ *
+ * Sources so far:
+ *   - opengridworks — tokens + interaction patterns (2026-04-13)
+ * ============================================================ */
+
+:root {
+
+  /* ============================================================
+   * TIMING — from opengridworks
+   * Fast enough to feel instant, slow enough to register.
+   * ============================================================ */
+  --ds-duration-instant:  80ms;     /* button press, micro-feedback */
+  --ds-duration-fast:     0.15s;    /* color/background swaps */
+  --ds-duration-normal:   0.25s;    /* panel reveal, row expand */
+  --ds-duration-slow:     0.4s;     /* layout shifts */
+  --ds-duration-glacial:  0.6s;     /* deliberate slow motion */
+
+  /* ============================================================
+   * EASING — from opengridworks
+   * ease-out is more aggressive than Material; reaches near-final
+   * value fast then smooths to rest. This is what makes things
+   * feel responsive instead of leisurely.
+   * ============================================================ */
+  --ds-ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-ease-smooth:  cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ds-ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);    /* overshoots — use for emphasis */
+
+  /* ============================================================
+   * TYPOGRAPHY — adapted from opengridworks
+   * Inter for UI, IBM Plex Mono for data. No display font — we
+   * don't need Avenir Next (paid) and Inter's display weights
+   * are sufficient.
+   * ============================================================ */
+  --ds-font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --ds-font-mono: "IBM Plex Mono", "SF Mono", "Consolas", "Liberation Mono", monospace;
+
+  --ds-text-xs:   11px;
+  --ds-text-sm:   12px;
+  --ds-text-base: 13px;
+  --ds-text-md:   14px;
+  --ds-text-lg:   16px;
+  --ds-text-xl:   18px;
+
+  /* ============================================================
+   * RADIUS — from opengridworks
+   * ============================================================ */
+  --ds-radius-sm:   6px;
+  --ds-radius-md:   10px;
+  --ds-radius-lg:   14px;
+  --ds-radius-pill: 999px;
+
+  /* ============================================================
+   * SURFACES — from opengridworks (dark-only, Exocortex is dark-only)
+   * Layered depth: void = deepest, scrim = floating glass panel.
+   * ============================================================ */
+  --ds-surface-void:    #060810;    /* deepest background */
+  --ds-surface-base:    #0a0f1a;    /* app background */
+  --ds-surface-raised:  #0f1629;    /* cards, containers */
+  --ds-surface-overlay: #151d35;    /* modals, dropdowns */
+  --ds-surface-scrim:   #0a0f1aeb;  /* glass panel bg (92% alpha) */
+
+  /* ============================================================
+   * TEXT — from opengridworks
+   * Four levels instead of two gives room for hierarchy.
+   * ============================================================ */
+  --ds-text-primary:   #f0f2f5;     /* body text, data values */
+  --ds-text-secondary: #b0b8c8;     /* subheadings, context */
+  --ds-text-tertiary:  #6b7a8d;     /* metadata, labels */
+  --ds-text-dim:       #3d4a5c;     /* disabled, far-background */
+
+  /* ============================================================
+   * BORDERS — from opengridworks
+   * Opacity-based so they adapt to any surface color automatically.
+   * ============================================================ */
+  --ds-border-subtle:  rgba(148, 163, 184, 0.06);
+  --ds-border-default: rgba(148, 163, 184, 0.12);
+  --ds-border-strong:  rgba(148, 163, 184, 0.22);
+  --ds-border-accent:  rgba(0, 229, 255, 0.25);
+
+  /* ============================================================
+   * ACCENTS — from opengridworks
+   * Cyan is primary. Blue and purple are secondary for when we
+   * need categorical distinction. The -muted variants are the
+   * translucent backgrounds for hover fills.
+   * ============================================================ */
+  --ds-accent-cyan:        #00e5ff;
+  --ds-accent-cyan-muted:  rgba(0, 229, 255, 0.15);
+  --ds-accent-cyan-glow:   rgba(0, 229, 255, 0.35);
+
+  --ds-accent-blue:        #38bdf8;
+  --ds-accent-blue-muted:  rgba(56, 189, 248, 0.12);
+
+  --ds-accent-purple:        #8b5cf6;
+  --ds-accent-purple-muted:  rgba(139, 92, 246, 0.15);
+
+  /* ============================================================
+   * SIGNALS — from opengridworks (extended with primer triplet pattern)
+   *
+   * Semantic state colors. These map directly onto Exocortex's
+   * classification model:
+   *   positive → promoted, confirmed, correct, healthy
+   *   negative → falsified, incorrect, failing
+   *   warning  → pending, deferred, stale, attention-needed
+   *   info     → neutral status, monitoring, background process
+   *
+   * Triplet pattern from primer: every category has THREE intensity
+   * levels — default (the base color, use for text/icons), muted
+   * (translucent, use for backgrounds/fills), and emphasis (saturated,
+   * use for prominent UI like pills and active buttons).
+   * ============================================================ */
+  --ds-signal-positive:          #34d399;       /** default — positive text/icons */
+  --ds-signal-negative:          #f87171;       /** default — negative text/icons */
+  --ds-signal-warning:           #fbbf24;       /** default — warning text/icons */
+  --ds-signal-info:              #60a5fa;       /** default — info text/icons */
+
+  /* Muted fill variants — use for status pill backgrounds, hover tints */
+  --ds-signal-positive-muted:    rgba(52, 211, 153, 0.15);
+  --ds-signal-negative-muted:    rgba(248, 113, 113, 0.15);
+  --ds-signal-warning-muted:     rgba(251, 191, 36, 0.15);
+  --ds-signal-info-muted:        rgba(96, 165, 250, 0.15);
+
+  /* Emphasis variants — saturated, for prominent backgrounds (active states, alerts) */
+  --ds-signal-positive-emphasis: #10b981;       /** saturated positive bg */
+  --ds-signal-negative-emphasis: #ef4444;       /** saturated negative bg */
+  --ds-signal-warning-emphasis:  #f59e0b;       /** saturated warning bg */
+  --ds-signal-info-emphasis:     #3b82f6;       /** saturated info bg */
+
+  /* ============================================================
+   * STATE ALIASES — semantic intent decoupled from visual implementation
+   * Source: primer (closed/open/draft alias pattern)
+   *
+   * Components reference SEMANTIC state (confirmed, falsified, pending),
+   * not visual signal (positive, negative, warning). If the visual
+   * mapping ever changes, only these aliases need to be updated —
+   * components stay the same.
+   *
+   * Currently the mapping is 1:1 with the signal colors. The point
+   * is that they CAN diverge if needed. Use these in the Pending
+   * tab, Hypotheses tab, and Calibration tab where the data has
+   * meaningful state names.
+   * ============================================================ */
+  --ds-state-confirmed:           var(--ds-signal-positive);
+  --ds-state-confirmed-muted:     var(--ds-signal-positive-muted);
+  --ds-state-confirmed-emphasis:  var(--ds-signal-positive-emphasis);
+
+  --ds-state-falsified:           var(--ds-signal-negative);
+  --ds-state-falsified-muted:     var(--ds-signal-negative-muted);
+  --ds-state-falsified-emphasis:  var(--ds-signal-negative-emphasis);
+
+  --ds-state-pending:             var(--ds-signal-warning);
+  --ds-state-pending-muted:       var(--ds-signal-warning-muted);
+  --ds-state-pending-emphasis:    var(--ds-signal-warning-emphasis);
+
+  --ds-state-still-pending:       var(--ds-signal-info);
+  --ds-state-still-pending-muted: var(--ds-signal-info-muted);
+  --ds-state-still-pending-emphasis: var(--ds-signal-info-emphasis);
+
+  --ds-state-running:             var(--ds-signal-info);   /** monitor cycle running */
+  --ds-state-paused:              var(--ds-signal-warning); /** ingestion/monitor paused */
+  --ds-state-stopped:             var(--ds-text-tertiary); /** service stopped */
+
+  /* ============================================================
+   * TEXT-ON-BACKGROUND TOKENS
+   * Source: primer (--fgColor-onEmphasis pattern)
+   *
+   * When you put text on a colored background (button, pill, alert),
+   * you need a different text color than your default. These tokens
+   * encode the contrast pairing rule once.
+   *
+   * Use --ds-text-on-emphasis on any element whose background is
+   * a *-emphasis variant. Use --ds-text-on-accent specifically for
+   * elements with the cyan accent background.
+   *
+   * The rule: never write `color: white` directly on a button.
+   * Use one of these tokens. If the contrast rule changes, every
+   * component updates without per-component edits.
+   * ============================================================ */
+  --ds-text-on-emphasis:  #ffffff;             /** white text on saturated emphasis backgrounds */
+  --ds-text-on-accent:    #060810;             /** dark text on the bright cyan accent (cyan is light enough that white text fails contrast) */
+  --ds-text-on-positive:  #042f1e;             /** dark text on positive emphasis */
+  --ds-text-on-negative:  #ffffff;             /** white text on negative emphasis */
+  --ds-text-on-warning:   #251a00;             /** dark text on warning emphasis */
+  --ds-text-on-info:      #ffffff;             /** white text on info emphasis */
+
+  /* ============================================================
+   * INTERACTION STATE TRIPLET — orthogonal to intensity triplet
+   * Source: patternfly (default/hover/clicked pattern)
+   *
+   * Where Primer's triplet (default/muted/emphasis) is INTENSITY,
+   * PatternFly's triplet (default/hover/clicked) is INTERACTION
+   * STATE. These are orthogonal axes. A button can be:
+   *
+   *   intensity-default  × state-rest
+   *   intensity-default  × state-hover
+   *   intensity-default  × state-clicked
+   *   intensity-emphasis × state-rest
+   *   intensity-emphasis × state-hover
+   *   intensity-emphasis × state-clicked
+   *
+   * This gives us six concrete states per category. Most categories
+   * will use only the rest+hover+clicked combination on the default
+   * intensity. Emphasis interactivity is reserved for primary CTAs
+   * where every state needs to be explicit.
+   *
+   * Vendored as state-specific tokens for the most active categories
+   * (confirmed/falsified/pending). Other categories can adopt the
+   * pattern when needed.
+   * ============================================================ */
+  --ds-state-confirmed-rest:    var(--ds-signal-positive);
+  --ds-state-confirmed-hover:   #4ade80;             /** brighter positive */
+  --ds-state-confirmed-clicked: #16a34a;             /** darker positive */
+
+  --ds-state-falsified-rest:    var(--ds-signal-negative);
+  --ds-state-falsified-hover:   #fb7185;             /** brighter negative */
+  --ds-state-falsified-clicked: #dc2626;             /** darker negative */
+
+  --ds-state-pending-rest:      var(--ds-signal-warning);
+  --ds-state-pending-hover:     #fcd34d;             /** brighter warning */
+  --ds-state-pending-clicked:   #d97706;             /** darker warning */
+
+  /* ============================================================
+   * SURFACE ROLE ALIASES — primary/secondary/tertiary
+   * Source: patternfly (role-based naming)
+   *
+   * Our existing surface tokens (--ds-surface-{void,base,raised,
+   * overlay,scrim}) describe DEPTH. PatternFly's role-based names
+   * describe FUNCTION. Both are useful — depth tells you "how deep
+   * is this stacking layer", role tells you "what part of the page
+   * is this."
+   *
+   * These aliases let new code use role-based names while existing
+   * code keeps using depth-based names. Both reference the same
+   * underlying values.
+   *
+   * Mapping:
+   *   surface-primary    → main content area      → surface-base
+   *   surface-secondary  → nested cards/sidebars  → surface-raised
+   *   surface-tertiary   → deeply nested content  → surface-overlay
+   *   surface-floating   → menus/popovers         → surface-overlay
+   *   surface-sticky     → sticky headers         → surface-scrim
+   * ============================================================ */
+  --ds-surface-primary:   var(--ds-surface-base);
+  --ds-surface-secondary: var(--ds-surface-raised);
+  --ds-surface-tertiary:  var(--ds-surface-overlay);
+  --ds-surface-floating:  var(--ds-surface-overlay);
+  --ds-surface-sticky:    var(--ds-surface-scrim);
+
+  /* ============================================================
+   * SPECIAL-PURPOSE BACKGROUND TOKENS
+   * Source: patternfly (skeleton/striped/backdrop tokens)
+   *
+   * Each represents a recurring UI pattern that benefits from
+   * having its own dedicated token. Currently unused — reserved
+   * for when we add the corresponding UI features.
+   * ============================================================ */
+  --ds-bgColor-backdrop:        rgba(6, 8, 16, 0.7);   /** modal scrim — for future modals */
+  --ds-bgColor-row-striped:     rgba(148, 163, 184, 0.03);  /** alternating table rows */
+  --ds-bgColor-skeleton:        var(--ds-surface-raised);   /** skeleton loader main */
+  --ds-bgColor-skeleton-subtle: var(--ds-surface-base);     /** skeleton loader subtle */
+
+  /* ============================================================
+   * GLASS BLUR AS A THEME TOKEN
+   * Source: patternfly (--background--filter--glass--blur--primary)
+   *
+   * The OpenGridWorks glass uses hardcoded blur values. PatternFly
+   * makes the blur amount a token, allowing themes to override it.
+   *
+   * Use --ds-glass-blur-amount in your backdrop-filter declarations
+   * instead of hardcoded values. A future "performance mode" theme
+   * can set this to `none` to disable backdrop-filter entirely.
+   * ============================================================ */
+  --ds-glass-blur-amount: blur(20px) saturate(140%);
+  /* Note: --ds-glass-blur (defined later in the GLASS section) uses this */
+
+  /* ============================================================
+   * RESERVED NAMESPACES (not yet populated)
+   * Source: patternfly (status vs nonstatus distinction; chart layer)
+   *
+   * --ds-categorical-* : Reserved for purely decorative colors
+   *                      (no semantic meaning). Use when adding
+   *                      tag/label colors that need visual variety
+   *                      but shouldn't be confused with status.
+   *                      DO NOT use signal colors for decoration.
+   *
+   * --ds-chart-*       : Reserved for chart-specific tokens.
+   *                      Charts have different design constraints
+   *                      than UI: smaller fonts, different stroke
+   *                      widths, sometimes different status colors
+   *                      (e.g., chart success uses blue not green
+   *                      because green-on-dark has legibility
+   *                      issues). When we build calibration trends
+   *                      or hypothesis lifecycle visualizations,
+   *                      add tokens under this namespace.
+   * ============================================================ */
+
+  /* ============================================================
+   * CAUTION-UNDEFINED — the "I don't know yet" status color
+   * Source: carbon (--cds-support-caution-undefined)
+   *
+   * Standard four-status systems (success/warning/error/info)
+   * force you to classify every state. Carbon adds a third caution
+   * level for situations where you've detected something off but
+   * can't classify it: --cds-support-caution-undefined (purple).
+   *
+   * For Exocortex this maps DIRECTLY onto the resolver's
+   * still_pending verdict. When the autonomous resolver says
+   * "I cannot determine confirmed/falsified from the available
+   * evidence," that's not "info" — it's "indeterminate." Purple
+   * communicates that more honestly than blue.
+   *
+   * Use --ds-state-undefined for resolver still_pending verdicts,
+   * sessions awaiting evidence, hypothesis with insufficient data,
+   * any "operator should review but no clear verdict" state.
+   * ============================================================ */
+  --ds-state-undefined:         #a78bfa;             /** purple — Carbon caution-undefined */
+  --ds-state-undefined-muted:   rgba(167, 139, 250, 0.15);
+  --ds-state-undefined-emphasis: #8b5cf6;
+
+  /* ============================================================
+   * HELPER TEXT TOKEN
+   * Source: carbon (--cds-text-helper)
+   *
+   * For explanatory text that appears below form inputs (e.g.,
+   * "Enter your topic name", "Recorded outcome will calibrate
+   * the system"). Sits between text-secondary and text-disabled
+   * in contrast — readable but doesn't compete with the input.
+   * ============================================================ */
+  --ds-text-helper: #8a96a8;             /** between text-secondary and text-tertiary */
+
+  /* ============================================================
+   * AI CONTENT TOKENS — visual marker for LLM-generated content
+   * Source: carbon (--cds-ai-* namespace)
+   *
+   * THE MOST IMPORTANT FINDING FROM PHASE 2.
+   *
+   * Carbon ships dedicated tokens for AI-generated UI content.
+   * The "aura" pattern is a gradient glow that surrounds AI
+   * elements, distinguishing them from regular UI. IBM Watson
+   * products use this to communicate epistemic provenance —
+   * users can see at a glance which content came from AI vs
+   * deterministic logic.
+   *
+   * For Exocortex this is HIGHLY RELEVANT. We have AI-generated
+   * content all over the place:
+   *   - Hypothesis explanations (LLM-generated)
+   *   - Swarmfish committee predictions (8 LLM calls per session)
+   *   - Resolver verdicts (LLM evaluation of past predictions)
+   *   - Operator briefs in hypothesis details
+   *   - Calibration narratives
+   *
+   * Currently we have ZERO visual treatment that marks "this came
+   * from an LLM" vs "this came from deterministic code." The AI
+   * aura pattern would communicate provenance at the UI level.
+   *
+   * This connects directly to the Epistemic Integrity Layer that
+   * already exists in Exocortex's backend. We have deterministic
+   * fact-checking for AI outputs. Now we have a way to visually
+   * mark AI outputs in the UI as well.
+   *
+   * Adapted from Carbon's blue-based aura to use our cyan accent.
+   * The aura color matches our --ds-accent-cyan so AI elements
+   * feel like they belong to the Exocortex visual language.
+   *
+   * USE GUIDELINES:
+   *   --ds-ai-bg          : background of AI-generated content blocks
+   *   --ds-ai-border      : border of AI-generated content
+   *   --ds-ai-aura-start  : gradient start (saturated cyan-glow)
+   *   --ds-ai-aura-end    : gradient end (transparent)
+   *   --ds-ai-shadow      : drop shadow with cyan glow
+   *   --ds-ai-skeleton-bg : skeleton loader for pending AI content
+   *
+   * Apply via .ds-ai-content utility class (defined later).
+   * Do NOT apply to deterministic content. The visual difference
+   * IS the message.
+   * ============================================================ */
+  --ds-ai-bg:                   #0a1820;                          /** subtle cyan-tinted dark */
+  --ds-ai-border:               rgba(0, 229, 255, 0.30);          /** cyan border */
+  --ds-ai-border-strong:        rgba(0, 229, 255, 0.50);          /** stronger border for hover */
+  --ds-ai-aura-start:           rgba(0, 229, 255, 0.18);          /** aura glow start */
+  --ds-ai-aura-end:             rgba(0, 229, 255, 0);             /** aura glow end (transparent) */
+  --ds-ai-aura-hover-start:     rgba(0, 229, 255, 0.30);          /** stronger aura on hover */
+  --ds-ai-shadow:               0 0 12px rgba(0, 229, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --ds-ai-shadow-hover:         0 0 20px rgba(0, 229, 255, 0.15), 0 8px 20px rgba(0, 0, 0, 0.5);
+  --ds-ai-skeleton-bg:          #0f1d28;                          /** loading bg for AI content */
+
+  /* ============================================================
+   * INACTIVE TEXT — distinct from muted
+   * Source: vanilla (text.inactive vs text.muted)
+   *
+   * Vanilla distinguishes THREE less-prominent text states where
+   * most systems have two:
+   *   default  — primary content
+   *   muted    — intentionally de-emphasized (helper text, captions)
+   *   inactive — dormant but readable (unselected tabs, closed
+   *              expansion headers, dim button labels)
+   *
+   * The visual difference: inactive (75%) is brighter than muted
+   * (60%). A user can read inactive text comfortably; muted text
+   * requires more effort.
+   *
+   * Use --ds-text-inactive for elements that exist and matter but
+   * are currently dormant (an unselected tab is dormant — once you
+   * click it, it's the active tab; the OTHER tabs become inactive).
+   * Use --ds-text-tertiary (our current "muted") for explanatory
+   * text that should always be subtle.
+   * ============================================================ */
+  --ds-text-inactive: rgba(176, 184, 200, 0.75);   /** dormant element, still readable */
+
+  /* ============================================================
+   * TINTED BORDER VARIANTS (reserved)
+   * Source: vanilla (border.tinted.* namespace)
+   *
+   * Two intensity levels for status borders. The default versions
+   * (already defined above) are full-saturation; these tinted
+   * variants are softer for inline status indicators that should
+   * be present but not loud.
+   *
+   * Reserved namespace, not vendored as code yet. When we add
+   * inline status indicators that need softer borders (e.g., per-
+   * row status indicators in tables), use the tinted variants.
+   * ============================================================ */
+  /* --ds-border-tinted-positive: ... */
+  /* --ds-border-tinted-negative: ... */
+  /* --ds-border-tinted-warning:  ... */
+  /* --ds-border-tinted-info:     ... */
+
+  /* ============================================================
+   * BRAND IDENTITY (reserved)
+   * Source: vanilla (color.brand.ubuntu, color.brand.accent)
+   *
+   * Reserved namespace for any future Exocortex visual identity.
+   * If we add a wordmark, logo, or signature color beyond the
+   * cyan accent, it should live here — not hardcoded in panel
+   * HTML or component code.
+   *
+   * Centralizing brand colors in tokens makes brand evolution
+   * cheap. Components reference --ds-brand-* tokens; updating
+   * the brand updates every component automatically.
+   * ============================================================ */
+  /* --ds-brand-exocortex:        (reserved for visual mark color) */
+  /* --ds-brand-exocortex-accent: (reserved for secondary brand color) */
+
+  /* ============================================================
+   * THEMEABLE METADATA (documentation only)
+   * Source: vanilla (themeable: true|false annotation)
+   *
+   * Vanilla annotates every token with whether it's themeable.
+   * Non-themeable tokens are part of the framework's identity
+   * and should NOT be overridden when adding theme variants.
+   *
+   * For Exocortex, when we eventually add multi-theme support
+   * (deep retro mode, high contrast mode, performance mode),
+   * the following tokens should be considered NON-THEMEABLE:
+   *
+   *   --ds-accent-cyan        (the cyan IS our identity)
+   *   --ds-ai-* (any)         (AI provenance signaling is canonical)
+   *   --ds-state-undefined    (purple = "I don't know yet" is canonical)
+   *
+   * All other tokens may be safely overridden by theme variants.
+   *
+   * This is documentation, not code — there's no enforcement
+   * mechanism. But documenting the rule prevents accidental
+   * overrides that would erode the framework's identity.
+   * ============================================================ */
+
+  /* ============================================================
+   * SHADOWS — by ROLE, not by SIZE
+   * Source: opengridworks (base values) + primer (role naming + hairline pattern)
+   *
+   * Restructured from the original numeric scale. Each shadow now
+   * communicates the elevation INTENT of the element wearing it:
+   *
+   *   resting   — element at rest, sitting on the surface
+   *               (cards, panels, stat tiles, info boxes)
+   *   floating  — element floating above other content
+   *               (dropdowns, popovers, modals, tooltips, expanded rows)
+   *   inset     — element recessed below the surface
+   *               (sunken inputs, wells, code blocks)
+   *
+   * Floating shadows include a 1px hairline border drawn via
+   * box-shadow's first stop (`0 0 0 1px var(--ds-border-default)`).
+   * This means floating elements get a clean edge for free — no
+   * separate `border` declaration needed, no layout impact.
+   *
+   * The legacy --ds-shadow-{sm,md,lg,xl} names are aliased below
+   * for backwards compat with code that already references them.
+   * ============================================================ */
+  --ds-shadow-resting-xs: 0 1px 2px rgba(0,0,0,0.3);                                    /** minimal lift — buttons */
+  --ds-shadow-resting-sm: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);         /** small cards, info boxes */
+  --ds-shadow-resting-md: 0 4px 12px rgba(0,0,0,0.4);                                   /** stat tiles, expanded rows */
+
+  --ds-shadow-floating-sm: 0 0 0 1px rgba(148,163,184,0.12), 0 6px 12px rgba(0,0,0,0.4);                                   /** dropdowns, tooltips */
+  --ds-shadow-floating-md: 0 0 0 1px rgba(148,163,184,0.12), 0 8px 16px rgba(0,0,0,0.4), 0 4px 32px rgba(0,0,0,0.3);       /** popovers, menus */
+  --ds-shadow-floating-lg: 0 0 0 1px rgba(148,163,184,0.12), 0 24px 48px rgba(0,0,0,0.5);                                  /** modals, dialogs */
+  --ds-shadow-floating-xl: 0 0 0 1px rgba(148,163,184,0.12), 0 32px 64px rgba(0,0,0,0.55);                                 /** full-screen overlays */
+
+  --ds-shadow-inset:       inset 0 1px 2px rgba(0,0,0,0.3);                             /** sunken inputs, code blocks */
+
+  --ds-shadow-glow-cyan: 0 0 20px rgba(0,229,255,0.06), 0 0 40px rgba(0,229,255,0.03);
+
+  /* Legacy aliases — backwards compat with existing rules */
+  --ds-shadow-sm: var(--ds-shadow-resting-sm);
+  --ds-shadow-md: var(--ds-shadow-resting-md);
+  --ds-shadow-lg: var(--ds-shadow-floating-md);
+  --ds-shadow-xl: var(--ds-shadow-floating-lg);
+
+  /* ============================================================
+   * GLASS — from opengridworks (adapted: blur reduced from 32px to 20px)
+   * Refined by patternfly: blur amount is a theme-overridable token.
+   *
+   * --ds-glass-blur references --ds-glass-blur-amount, which can
+   * be overridden by a future "performance mode" or "no glass"
+   * theme without touching component code.
+   * ============================================================ */
+  --ds-glass-bg:   var(--ds-surface-scrim);
+  --ds-glass-blur: var(--ds-glass-blur-amount);
+}
+
+/* ============================================================
+ * INTERACTION PATTERNS (adapted from opengridworks)
+ * ============================================================ */
+
+/* Cyan signal — the "this is interactive" treatment.
+ * Apply to buttons, clickable rows, toggles.
+ * Transforms hover from a flat color swap into a tactile event. */
+.ds-cyan-signal {
+  transition:
+    color        var(--ds-duration-fast)    var(--ds-ease-out),
+    background   var(--ds-duration-fast)    var(--ds-ease-out),
+    border-color var(--ds-duration-fast)    var(--ds-ease-out),
+    box-shadow   var(--ds-duration-fast)    var(--ds-ease-out),
+    transform    var(--ds-duration-instant) var(--ds-ease-out);
+}
+.ds-cyan-signal:hover:not(:disabled) {
+  color: var(--ds-accent-cyan);
+  background: var(--ds-accent-cyan-muted);
+  border-color: var(--ds-border-accent);
+  box-shadow: var(--ds-shadow-glow-cyan), var(--ds-shadow-md);
+  transform: scale(1.03);
+}
+.ds-cyan-signal:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.ds-cyan-signal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Glass panel — apply to floating containers */
+.ds-glass {
+  background: var(--ds-glass-bg);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+          backdrop-filter: var(--ds-glass-blur);
+  border: 1px solid var(--ds-border-default);
+}
+
+/* Small-caps section header — technical-label feel */
+.ds-section-header {
+  font-family: var(--ds-font-body);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ds-text-tertiary);
+}
+
+/* Tabular numerals — data scanning */
+.ds-tnum { font-variant-numeric: tabular-nums; }
+.ds-mono { font-family: var(--ds-font-mono); }
+
+/* Focus ring — keyboard accessibility */
+.ds-focus-ring:focus-visible {
+  outline: 2px solid var(--ds-accent-cyan);
+  outline-offset: 2px;
+}
+
+/* Data-label tooltip pattern — zero-JS hover tooltips.
+ * Usage: <button class="ds-has-tooltip" data-label="What this button does">
+ */
+.ds-has-tooltip {
+  position: relative;
+}
+.ds-has-tooltip::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--ds-surface-overlay);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-text-primary);
+  font-family: var(--ds-font-body);
+  font-size: var(--ds-text-xs);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-duration-fast) var(--ds-ease-out);
+  z-index: 1000;
+}
+.ds-has-tooltip:hover::after {
+  opacity: 1;
+}
+
+/* ============================================================
+ * STATUS PILL UTILITIES
+ * Maps Exocortex semantic states to signal colors consistently.
+ * ============================================================ */
+.ds-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid transparent;
+  font-size: var(--ds-text-xs);
+  font-family: var(--ds-font-body);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ds-pill-positive {
+  color: var(--ds-signal-positive);
+  background: var(--ds-signal-positive-muted);
+  border-color: var(--ds-signal-positive);
+}
+.ds-pill-negative {
+  color: var(--ds-signal-negative);
+  background: var(--ds-signal-negative-muted);
+  border-color: var(--ds-signal-negative);
+}
+.ds-pill-warning {
+  color: var(--ds-signal-warning);
+  background: var(--ds-signal-warning-muted);
+  border-color: var(--ds-signal-warning);
+}
+.ds-pill-info {
+  color: var(--ds-signal-info);
+  background: var(--ds-signal-info-muted);
+  border-color: var(--ds-signal-info);
+}
+.ds-pill-muted {
+  color: var(--ds-text-tertiary);
+  background: var(--ds-border-subtle);
+  border-color: var(--ds-border-default);
+}
+
+/* ============================================================
+ * INSTANTANEOUS-STATE UTILITY
+ * Source: tuicss
+ *
+ * Apply to elements where state is canonical (not visual decoration).
+ * Status indicators that should never mislead during a transition:
+ *   - service running/stopped pills
+ *   - claim counts and stat numbers
+ *   - monitor active/paused indicators
+ *   - calibration values
+ *
+ * These elements should snap to the new value the instant the data
+ * changes. Animating them creates a window where the visual reads
+ * one thing but the data says another. TuiCss's whole design
+ * philosophy is that this kind of indicator should be instantaneous
+ * and unambiguous. We borrow that as a focused utility class
+ * applied selectively where it matters.
+ *
+ * The rest of the UI (buttons, hover states, panel reveals) keeps
+ * the OpenGridWorks fast-transition treatment. This isn't a global
+ * override — it's a discipline applied to truth-bearing elements.
+ * ============================================================ */
+.ds-instant-state,
+.ds-instant-state * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* ============================================================
+ * HARD DROP SHADOW (retro / physical artifact treatment)
+ * Source: tuicss
+ *
+ * Use sparingly. The hard offset shadow with no blur reads as
+ * "physical sticker on a flat surface" rather than "floating UI
+ * element." Useful for elements that should feel anchored and
+ * permanent — release notes, archived records, locked snapshots.
+ * Do NOT mix with the soft glow shadows from opengridworks on
+ * the same surface.
+ * ============================================================ */
+.ds-hard-shadow      { box-shadow: 6px 6px var(--ds-surface-void); }
+.ds-hard-shadow-lg   { box-shadow: 10px 10px var(--ds-surface-void); }
+
+/* ============================================================
+ * RETRO 16-COLOR PALETTE (deep reference, not for general use)
+ * Source: tuicss
+ *
+ * The full IBM PC / MS-DOS CGA/EGA palette, exposed as namespace.
+ * Reserved for an opt-in "Major Zero deep retro" mode, or for
+ * categorical color assignment when historical authenticity is the
+ * point. The base 8 (intensity 168) are usable on modern displays;
+ * the bright 8 (intensity 255) are eye-searing and should be used
+ * sparingly as accents only.
+ * ============================================================ */
+:root {
+  --tui-black:        rgb(0, 0, 0);
+  --tui-blue:         rgb(0, 0, 168);
+  --tui-green:        rgb(0, 168, 0);
+  --tui-cyan:         rgb(0, 168, 168);
+  --tui-red:          rgb(168, 0, 0);
+  --tui-purple:       rgb(168, 0, 168);
+  --tui-orange:       rgb(168, 86, 0);
+  --tui-light-gray:   rgb(168, 168, 168);
+  --tui-dark-gray:        rgb(85, 85, 85);
+  --tui-bright-blue:      rgb(0, 0, 255);
+  --tui-bright-green:     rgb(0, 255, 0);
+  --tui-bright-cyan:      rgb(0, 255, 255);
+  --tui-bright-red:       rgb(255, 0, 0);
+  --tui-bright-purple:    rgb(255, 0, 255);
+  --tui-yellow:           rgb(255, 255, 0);
+  --tui-white:            rgb(255, 255, 255);
+}
+
+/* ============================================================
+ * Z-INDEX LAYER SCALE
+ * Source: openprops
+ *
+ * Replaces ad-hoc z-index numbers with a canonical scale. Use
+ * --ds-layer-1 through 5 for normal stacking. --ds-layer-overlay
+ * for floating menus/dropdowns. --ds-layer-modal for modal dialogs.
+ * --ds-layer-toast for transient notifications. --ds-layer-important
+ * is reserved for true emergencies (system warnings).
+ * ============================================================ */
+:root {
+  --ds-layer-1:         1;
+  --ds-layer-2:         2;
+  --ds-layer-3:         3;
+  --ds-layer-4:         4;
+  --ds-layer-5:         5;
+  --ds-layer-overlay:   100;
+  --ds-layer-modal:     500;
+  --ds-layer-toast:     900;
+  --ds-layer-important: 2147483647;
+}
+
+/* ============================================================
+ * EASING CURVES — supplemental
+ * Source: openprops
+ *
+ * The OpenGridWorks ease tokens (--ds-ease-out, --ds-ease-spring,
+ * etc.) cover most of our needs. These add personality variants
+ * for moments where we want the motion to feel a particular way:
+ *
+ *   --ds-ease-circ-out  : arc-like deceleration, feels mechanical
+ *   --ds-ease-expo-out  : extremely aggressive deceleration
+ *   --ds-ease-quart-out : assertive but smooth
+ *   --ds-ease-bounce    : visible bounce on arrival
+ *
+ * Use the --ds-ease-out from OpenGridWorks as the default.
+ * Reach for these only when you want the motion to be visible
+ * personality, not invisible polish.
+ * ============================================================ */
+:root {
+  --ds-ease-circ-out:  cubic-bezier(.075, .82, .165, 1);
+  --ds-ease-expo-out:  cubic-bezier(.19, 1, .22, 1);
+  --ds-ease-quart-out: cubic-bezier(.165, .84, .44, 1);
+  --ds-ease-bounce:    linear(0, 0.004, 0.016, 0.035, 0.062, 0.098, 0.141 11.4%, 0.25, 0.39, 0.562, 0.764, 1 30.3%, 0.847 34.8%, 0.787, 0.737, 0.699, 0.672, 0.655, 0.65, 0.656, 0.672, 0.699, 0.738, 0.787, 0.847 61.7%, 1 66.2%, 0.946, 0.908, 0.885 74.2%, 0.879, 0.878, 0.879, 0.885 79.5%, 0.908, 0.946, 1 87.4%, 0.981, 0.968, 0.96, 0.957, 0.96, 0.968, 0.981, 1);
+}
+
+/* ============================================================
+ * ANIMATION PRESETS
+ * Source: openprops
+ *
+ * Pre-built `animation:` shorthand strings paired with their
+ * @keyframes. Apply by setting `animation: var(--ds-anim-*)` on
+ * any element. The most useful for Exocortex:
+ *
+ *   --ds-anim-fade-in       : content reveals (panel expand, modal open)
+ *   --ds-anim-slide-in-up   : contextual menus, dropdowns
+ *   --ds-anim-shake-x       : error feedback, "this prediction failed"
+ *   --ds-anim-pulse         : "running cycle in progress" indicator
+ *   --ds-anim-blink         : attention markers, alert indicators
+ *   --ds-anim-spin          : loading spinners (already used by .spin class)
+ * ============================================================ */
+:root {
+  --ds-anim-fade-in:       fade-in       var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-fade-out:      fade-out      var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-slide-in-up:   slide-in-up   var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-slide-in-down: slide-in-down var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-shake-x:       shake-x       0.5s var(--ds-ease-out);
+  --ds-anim-pulse:         pulse         2s   var(--ds-ease-in-out) infinite;
+  --ds-anim-blink:         blink         1s   var(--ds-ease-out)    infinite;
+  --ds-anim-spin:          spin          1s   linear                infinite;
+}
+
+@keyframes fade-in       { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out      { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slide-in-up   { from { transform: translateY(8px);  opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slide-in-down { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+/* @keyframes spin already defined in OSS panel — do not redefine */
+
+/* ============================================================
+ * NOISE TEXTURE — REJECTED on Exocortex
+ * Source: openprops
+ *
+ * SVG-encoded fractal noise filter. In theory, applying this as
+ * a background-image at low opacity adds subtle texture and
+ * prevents banding on dark displays.
+ *
+ * In practice on Exocortex's dark theme: the noise was visible
+ * as an "oatmeal" pattern that read as display corruption.
+ * Tested at .04 opacity, looked like the screen was failing.
+ * Removed from both OSS panel and daemon page on 2026-04-14.
+ *
+ * The token is preserved here for documentation. If you want to
+ * try noise on a future surface, use a much lower opacity (.01
+ * or below) and test on the actual hardware before shipping.
+ * Or use a different baseFrequency — .05 is high-frequency grain;
+ * .25+ is finer. Open Props ships --noise-1 through --noise-5
+ * with progressively higher frequencies (smaller grain).
+ *
+ * DO NOT re-add to body backdrops without visual verification.
+ * ============================================================ */
+:root {
+  --ds-noise: url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)' opacity='.015'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+ * ASYMMETRIC HOVER TRANSITION
+ * Source: 7css
+ *
+ * 7.css buttons fade hover-in fast (0.3s) and hover-out slow (1s).
+ * This creates the feeling that the button "noticed you" and is
+ * lingering after your cursor moves on. Different from
+ * OpenGridWorks's symmetric 150ms transitions.
+ *
+ * NOT applied as a default — would override our existing fast
+ * symmetric transitions. Available as opt-in via `.ds-warm-hover`
+ * for elements that benefit from feeling humanized: primary CTAs,
+ * welcome panels, anything where lingering is desirable.
+ *
+ * Use OpenGridWorks's symmetric 150ms for elements that should
+ * feel mechanical (controls, status pills, navigation).
+ * ============================================================ */
+:root {
+  --ds-duration-warm-in:  0.3s;
+  --ds-duration-warm-out: 1s;
+}
+
+.ds-warm-hover {
+  transition:
+    background-color var(--ds-duration-warm-out) linear,
+    border-color     var(--ds-duration-warm-out) linear,
+    color            var(--ds-duration-warm-out) linear,
+    box-shadow       var(--ds-duration-warm-out) linear;
+}
+.ds-warm-hover:hover {
+  transition:
+    background-color var(--ds-duration-warm-in) ease,
+    border-color     var(--ds-duration-warm-in) ease,
+    color            var(--ds-duration-warm-in) ease,
+    box-shadow       var(--ds-duration-warm-in) ease;
+}
+
+/* ============================================================
+ * DEFAULT-BUTTON PULSE
+ * Source: 7css (Aero "press Enter to do this" affordance)
+ *
+ * A subtle cyan inner glow that breathes — alternates the blur
+ * radius of an inset shadow over 1 second. Used to mark "this is
+ * the primary action; press Enter."
+ *
+ * Apply to the default action button on any form. Do NOT apply
+ * to multiple buttons at once — the whole point is to disambiguate
+ * one of N buttons as "the one."
+ *
+ * Adapted from 7.css: replaced the hardcoded #34deffdd cyan with
+ * our --ds-accent-cyan-glow, kept the timing and animation curve.
+ * ============================================================ */
+@keyframes ds-default-pulse {
+  from { box-shadow: inset 0 0 4px 1px var(--ds-accent-cyan-glow); }
+  to   { box-shadow: inset 0 0 1px 1px var(--ds-accent-cyan-glow); }
+}
+.ds-default-pulse {
+  animation: ds-default-pulse 1.5s ease infinite alternate;
+}
+
+/* ============================================================
+ * AERO GLASS (fallback for when backdrop-filter is too expensive)
+ * Source: 7css
+ *
+ * 7.css implements glass entirely with stacked CSS gradients —
+ * no backdrop-filter required. Use this when:
+ *   - The element doesn't have content behind it to blur
+ *   - You're on hardware where backdrop-filter is expensive
+ *   - You want consistent appearance regardless of background
+ *
+ * Compared to .ds-glass (backdrop-filter version):
+ *   - .ds-glass blurs whatever's behind it (modern, dynamic)
+ *   - .ds-aero-glass uses pre-baked gradients (period, static)
+ *
+ * Both are valid. Pick based on context.
+ * ============================================================ */
+.ds-aero-glass {
+  background:
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.04),
+      rgba(0, 0, 0, 0.10),
+      rgba(255, 255, 255, 0.04)
+    ),
+    var(--ds-surface-raised);
+  border: 1px solid var(--ds-border-default);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),    /* top edge highlight */
+    var(--ds-shadow-md);
+}
+
+/* ============================================================
+ * HARD-STOP GRADIENT UTILITY
+ * Source: 7css (the signature Aero "two-tone surface" technique)
+ *
+ * The visual signature of Windows 7 Aero. A linear gradient with
+ * a HARD STOP at 45% creates the appearance of a curved surface
+ * caught in raking light, even though it's mathematically flat.
+ *
+ * Adapted to dark theme: instead of light gray → dark gray, we
+ * use surface-raised → surface-base. The effect is much subtler
+ * on a dark surface but still reads as "this is a slightly
+ * curved surface, not a flat block."
+ *
+ * Use sparingly — overusing it makes UI look retro Windows.
+ * Reserve for elements that should read as "physical surface"
+ * (cards, panels) rather than "data display" (rows, lists).
+ * ============================================================ */
+.ds-hard-stop-gradient {
+  background: linear-gradient(
+    var(--ds-surface-raised) 45%,
+    var(--ds-surface-overlay) 45%,
+    var(--ds-surface-base)
+  );
+}
+
+/* ============================================================
+ * AI CONTENT BLOCK — utility class for LLM-generated content
+ * Source: carbon (--cds-ai-aura-* pattern)
+ *
+ * Apply this to any container that displays content directly
+ * generated by an LLM (resolver verdicts, committee predictions,
+ * operator briefs, hypothesis explanations).
+ *
+ * The visual treatment communicates "this was produced by an AI,
+ * apply appropriate skepticism." The aura is subtle but clearly
+ * different from deterministic UI surfaces.
+ *
+ * DO NOT apply to:
+ *   - Status pills (deterministic)
+ *   - Claim counts and stats (deterministic)
+ *   - Service control state (deterministic)
+ *   - Configuration controls (deterministic)
+ *
+ * DO apply to:
+ *   - Resolver Proposal box in Pending tab
+ *   - Committee reasoning in SWARMFISH → Predict
+ *   - Operator brief in hypothesis details
+ *   - Any future agent-authored content surface
+ * ============================================================ */
+.ds-ai-content {
+  position: relative;
+  background: var(--ds-ai-bg);
+  border: 1px solid var(--ds-ai-border);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-ai-shadow);
+  transition:
+    border-color var(--ds-duration-fast) var(--ds-ease-out),
+    box-shadow   var(--ds-duration-fast) var(--ds-ease-out);
+}
+
+.ds-ai-content::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--ds-ai-aura-start),
+    var(--ds-ai-aura-end) 50%,
+    var(--ds-ai-aura-start)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+.ds-ai-content:hover {
+  border-color: var(--ds-ai-border-strong);
+  box-shadow: var(--ds-ai-shadow-hover);
+}
+
+/* AI label — small text indicator that can be placed inside the block */
+.ds-ai-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ds-accent-cyan);
+}
+.ds-ai-label::before {
+  content: "◆";
+  font-size: 0.75em;
+}
+
+/* ============================================================
+ * READING COLUMN — for long-form text views
+ * Source: tufte (55% reading width principle)
+ *
+ * Apply to any container that displays long-form text the user
+ * is meant to read carefully (analyst notes, post-mortem
+ * narratives, hypothesis lineage essays). Caps line length at
+ * ~65 characters so the reader's eye doesn't have to track
+ * across long lines.
+ *
+ * NOT for dashboard data displays. Dashboards want full-width.
+ * Use this only for reading content.
+ * ============================================================ */
+.ds-reading-column {
+  max-width: 65ch;
+  font-size: var(--ds-text-md);
+  line-height: 1.65;
+}
+
+/* ============================================================
+ * NEWTHOUGHT — small-caps section break
+ * Source: tufte (.newthought pattern)
+ *
+ * For a paragraph that begins a new thought. Lighter than a
+ * heading but more meaningful than a paragraph break. Useful
+ * inside long-form LLM-generated content (resolver verdicts,
+ * hypothesis explanations) where natural section breaks need
+ * to be marked without explicit headings.
+ *
+ * Usage: wrap the first 2-4 words of a paragraph in this class.
+ *   <p><span class="ds-newthought">The committee found</span>
+ *      that the prediction was supported by claims #4523, #4531,
+ *      and #4544.</p>
+ * ============================================================ */
+.ds-newthought {
+  font-variant: small-caps;
+  font-size: 1.15em;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ============================================================
+ * SIDENOTE PATTERN — CSS-only marginal annotations
+ * Source: tufte (sidenote counter + float-right margin pattern)
+ *
+ * The signature Tufte layout. Use when you have primary content
+ * + supporting evidence and want both visible at the same time
+ * without click-to-expand. Each sidenote floats in the right
+ * margin next to its inline reference, with auto-numbered
+ * markers via CSS counters.
+ *
+ * Usage:
+ *   <div class="ds-sidenote-host">
+ *     <p>The resolver evaluated this prediction
+ *       <span class="ds-sidenote-number"></span>
+ *       and could not determine confirmed/falsified.
+ *       <span class="ds-sidenote">
+ *         The resolver scanned 30 OSS claims, none of which
+ *         contained direct evidence about the prediction.
+ *       </span>
+ *     </p>
+ *   </div>
+ *
+ * The CSS counter ties the inline marker to the sidenote
+ * automatically. No manual numbering. No JavaScript.
+ *
+ * Reserved as utility classes. Not yet applied to any element
+ * in the OSS panel. Will be most useful for:
+ *   - Resolver verdicts with cited claims
+ *   - Hypothesis explanations with provenance
+ *   - Calibration narratives explaining Brier score changes
+ * ============================================================ */
+.ds-sidenote-host {
+  counter-reset: ds-sidenote-counter;
+  position: relative;
+}
+
+.ds-sidenote-number {
+  counter-increment: ds-sidenote-counter;
+}
+
+.ds-sidenote-number::after {
+  content: counter(ds-sidenote-counter);
+  font-size: 0.7em;
+  vertical-align: super;
+  color: var(--ds-accent-cyan);
+  font-weight: 600;
+  margin-left: 0.1em;
+}
+
+.ds-sidenote {
+  float: right;
+  clear: right;
+  margin-right: -45%;
+  width: 40%;
+  margin-top: 0.3rem;
+  font-size: var(--ds-text-xs);
+  line-height: 1.4;
+  color: var(--ds-text-secondary);
+  position: relative;
+  padding-left: 8px;
+  border-left: 2px solid var(--ds-border-accent);
+}
+
+.ds-sidenote::before {
+  content: counter(ds-sidenote-counter);
+  font-size: 0.7em;
+  vertical-align: super;
+  color: var(--ds-accent-cyan);
+  font-weight: 600;
+  margin-right: 0.3em;
+}
+
+/* On narrow viewports, sidenotes drop below their reference */
+@media (max-width: 1100px) {
+  .ds-sidenote {
+    float: none;
+    width: 100%;
+    margin-right: 0;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* ============================================================
+ * OLD-STYLE NUMERALS for inline body text
+ * Source: tufte (numeral distinction)
+ *
+ * Apply to inline numbers in long-form prose to make them blend
+ * with lowercase text. Tabular numerals (already used for stats)
+ * stand out for alignment; old-style numerals fit in.
+ *
+ * Only effective when the font supports old-style figures via
+ * OpenType. IBM Plex Mono supports it; most monospace fonts
+ * don't. Test before relying on it.
+ * ============================================================ */
+.ds-numeral-prose { font-variant-numeric: oldstyle-nums; }
+/* (.ds-tnum already defined above for tabular-nums in stats/tables) */
+
+/* ============================================================
+ * CALM MODE — disable all motion for reading
+ * Source: tufte (no-animation philosophy for content focus)
+ *
+ * Apply to long-form reading content where transitions would
+ * compete with the text. Different from .ds-instant-state
+ * (TuiCss) which is for truth-bearing indicators that should
+ * snap to new state instantly. Calm mode is for content the
+ * user is meant to READ carefully without distraction.
+ * ============================================================ */
+.ds-calm-mode,
+.ds-calm-mode * {
+  transition: none !important;
+  animation: none !important;
+}

@@ -87,6 +87,17 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                 # rather than routing to Unknown and dumping the full tool list.
                 if not data.get("tool_name", "").strip():
                     return {"tool_name": "response", "tool_args": {"text": stripped}}
+                # text_editor colon-dispatch inference — Gemma 4 and similar models
+                # emit "text_editor" without the required :read/:write/:patch suffix.
+                # Infer the correct method from tool_args so A0 dispatches correctly.
+                if data.get("tool_name") == "text_editor":
+                    args = data.get("tool_args", {})
+                    if "content" in args:
+                        data["tool_name"] = "text_editor:write"
+                    elif "edits" in args:
+                        data["tool_name"] = "text_editor:patch"
+                    else:
+                        data["tool_name"] = "text_editor:read"
                 return data
         except Exception:
             # If parsing fails, fall through to plain-text fallback

@@ -24,6 +24,8 @@ Validated by SkillsBench (Li, Chen et al., 2026): curated procedural knowledge i
 | API Caller | `api_caller.md` | Calling external APIs, making HTTP requests, fetching data from URLs, REST/GraphQL |
 | Artifact Saving | `artifact_saving.md` | Producing HTML dashboards, SVG diagrams, interactive charts, or any visual artifact to save or display |
 | Human CAPTCHA | `HUMAN_CAPTCHA.md` | Browser automation encounters a CAPTCHA challenge that cannot be solved programmatically |
+| Design Buildplan | `design-buildplan/SKILL.md` | Complex task with unknowns — produce a grounded, phased build plan artifact before any execution begins |
+| Execute Buildplan | `execute-buildplan/SKILL.md` | Execute a plan file from design-buildplan with per-step independent verification, phase gates, and test gate |
 
 ### Architectural Pattern Skills
 

@@ -14,6 +14,9 @@ Call this tool when:
 
 No arguments required. No LLM calls. No external dependencies.
 Output is deterministic: file presence checks + agent attribute reads.
+
+Updated 2026-04-15: fixed EXT_ROOT for DEC-030 profile path migration
+and rebuilt EXTENSIONS dict from live container ground truth (42 files).
 """
 
 import os
@@ -22,19 +25,42 @@ from datetime import datetime, timezone
 from helpers.tool import Tool, Response
 
 # ---------------------------------------------------------------------------
-# Extension registry — canonical list of all Exocortex extensions
+# Extension registry — rebuilt from /a0/usr/agents/agent0/extensions/ 2026-04-15
 # ---------------------------------------------------------------------------
 
-EXT_ROOT = "/a0/python/extensions"
+EXT_ROOT = "/a0/usr/agents/agent0/extensions"
 
 EXTENSIONS = {
     "before_main_llm_call": [
-        ("_11_bst",      "_11_belief_state_tracker.py"),
-        ("_12_org",      "_12_org_dispatcher.py"),
-        ("_13_profile",  "_13_operator_profile.py"),
-        ("_14_meta",     "_14_metacognitive_injection.py"),
-        ("_15_htn",      "_15_htn_plan_selector.py"),
-        ("_20_watchdog", "_20_context_watchdog.py"),
+        ("_10_session_init",         "_10_session_init.py"),
+        ("_11_bst",                  "_11_belief_state_tracker.py"),
+        ("_12_completion",           "_12_completion_tracker.py"),
+        ("_13_operator_profile",     "_13_operator_profile.py"),
+        ("_13_reasoning_state",      "_13_reasoning_state.py"),
+        ("_14_situational",          "_14_situational_orientation.py"),
+        ("_15_htn",                  "_15_htn_plan_selector.py"),
+        ("_16_tool_registry",        "_16_tool_registry.py"),
+        ("_17_library_catalog",      "_17_library_catalog.py"),
+        ("_17_orchestration_gate",   "_17_orchestration_gate.py"),
+        ("_18_memory_catalog",       "_18_memory_catalog.py"),
+        ("_20_watchdog",             "_20_context_watchdog.py"),
+        ("_60_sleep_activity",       "_60_sleep_activity.py"),
+    ],
+    "hist_add_before": [
+        ("_11_wm", "_11_working_memory.py"),
+    ],
+    "message_loop_end": [
+        ("_48_task_tracker",      "_48_task_tracker.py"),
+        ("_49_reasoning_update",  "_49_reasoning_state_update.py"),
+        ("_50_supervisor",        "_50_supervisor_loop.py"),
+    ],
+    "message_loop_prompts_after": [
+        ("_16_tool_registry",  "_16_tool_registry.py"),
+        ("_18_memory_catalog", "_18_memory_catalog.py"),
+        ("_55_recall",         "_55_memory_relevance_filter.py"),
+        ("_56_enhance",        "_56_memory_enhancement.py"),
+        ("_58_ontology",       "_58_ontology_query.py"),
+        ("_95_tiered_tools",   "_95_tiered_tool_injection.py"),
     ],
     "monologue_end": [
         ("_25_ei",          "_25_epistemic_integrity.py"),
@@ -45,28 +71,21 @@ EXTENSIONS = {
         ("_59_ontology",    "_59_ontology_maintenance.py"),
     ],
     "tool_execute_after": [
-        ("_20_error",    "_20_error_comprehension.py"),
-        ("_20_reset",    "_20_reset_failure_counter.py"),
-        ("_25_ledger",   "_25_evidence_ledger_recorder.py"),
-        ("_30_fallback", "_30_tool_fallback_logger.py"),
-        ("_60_sleep",    "_60_sleep_trigger.py"),
+        ("_20_error",        "_20_error_comprehension.py"),
+        ("_20_reset",        "_20_reset_failure_counter.py"),
+        ("_22_finalizer",    "_22_response_finalizer.py"),
+        ("_25_ledger",       "_25_evidence_ledger_recorder.py"),
+        ("_26_write_valid",  "_26_write_validator.py"),
+        ("_27_code_quality", "_27_code_quality_gate.py"),
+        ("_30_fallback",     "_30_tool_fallback_logger.py"),
+        ("_60_sleep",        "_60_sleep_trigger.py"),
     ],
     "tool_execute_before": [
-        ("_15_action",    "_15_action_boundary.py"),
-        ("_20_meta_gate", "_20_meta_reasoning_gate.py"),
-        ("_30_advisor",   "_30_tool_fallback_advisor.py"),
-    ],
-    "message_loop_end": [
-        ("_50_supervisor", "_50_supervisor_loop.py"),
-    ],
-    "message_loop_prompts_after": [
-        ("_55_recall",   "_55_memory_relevance_filter.py"),
-        ("_56_enhance",  "_56_memory_enhancement.py"),
-        ("_58_ontology", "_58_ontology_query.py"),
-        ("_95_tools",    "_95_tiered_tool_injection.py"),
-    ],
-    "hist_add_before": [
-        ("_11_wm", "_11_working_memory.py"),
+        ("_15_action",       "_15_action_boundary.py"),
+        ("_17_py_write",     "_17_py_write_tracker.py"),
+        ("_20_meta_gate",    "_20_meta_reasoning_gate.py"),
+        ("_25_write_guard",  "_25_write_guard.py"),
+        ("_30_advisor",      "_30_tool_fallback_advisor.py"),
     ],
 }
 
@@ -80,7 +99,7 @@ class StackStatus(Tool):
     Report the live state of the Exocortex extension stack.
 
     Returns:
-      - Which extensions are present in the container (file check)
+      - Which extensions are present in the container (file check at profile path)
       - Runtime state accumulated by active layers this session
     """
 
@@ -99,6 +118,10 @@ class StackStatus(Tool):
 
 def _build_report(agent) -> str:
     lines = ["[EXOCORTEX STACK STATUS]", ""]
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    lines.append(f"Generated: {ts}")
+    lines.append(f"Profile path: {EXT_ROOT}")
+    lines.append("")
 
     # ── Section 1: Extension presence ──────────────────────────────────────
     total = sum(len(v) for v in EXTENSIONS.values())
@@ -114,40 +137,33 @@ def _build_report(agent) -> str:
                 present += 1
             mark = "✓" if exists else "✗"
             row_parts.append(f"{mark}{label}")
-        ext_lines.append(f"  {hook:<32}  {' '.join(row_parts)}")
+        ext_lines.append(f"  {hook:<32}  {' | '.join(row_parts)}")
 
-    lines.append(f"Extensions ({present}/{total} present)")
+    lines.append(f"Extensions ({present}/{total} present at profile path)")
     lines.extend(ext_lines)
     lines.append("")
 
     # ── Section 2: Runtime state ────────────────────────────────────────────
-    lines.append("Runtime state")
+    lines.append("Runtime state (session-accumulated)")
 
-    # BST
     bst_line = _read_bst(agent)
     lines.append(f"  BST            {bst_line}")
 
-    # Evidence ledger
     ev_line = _read_evidence(agent)
     lines.append(f"  Evidence       {ev_line}")
 
-    # Epistemic Integrity
     ei_line = _read_ei(agent)
     lines.append(f"  EI             {ei_line}")
 
-    # Action gate
     gate_line = _read_action_gate(agent)
     lines.append(f"  Action gate    {gate_line}")
 
-    # Supervisor
     sup_line = _read_supervisor(agent)
     lines.append(f"  Supervisor     {sup_line}")
 
-    # Working memory
     wm_line = _read_working_memory(agent)
     lines.append(f"  Working mem    {wm_line}")
 
-    # Operator profile
     op_line = _read_operator_profile(agent)
     lines.append(f"  Operator       {op_line}")
 
@@ -178,7 +194,6 @@ def _read_bst(agent) -> str:
 def _read_evidence(agent) -> str:
     try:
         ledger = None
-        # Try get_data first, then direct attr
         try:
             ledger = agent.get_data("_evidence_ledger")
         except Exception:
@@ -208,7 +223,6 @@ def _read_ei(agent) -> str:
         total   = ei.get("total_claims", 0)
         high    = ei.get("high_risk_count", 0)
         claims  = ei.get("claims", [])
-        # Most recent verdict
         last_verdict = "none"
         if claims:
             last_verdict = claims[-1].get("verdict", "?")
@@ -270,7 +284,6 @@ def _read_operator_profile(agent) -> str:
             return "cache present, profile empty"
         comm    = profile.get("communication_patterns", {})
         avg_len = comm.get("avg_turn_length_chars", 0)
-        floor   = profile.get("floor_giving", {})
         return f"loaded (avg {avg_len:.0f} chars/turn)"
     except Exception as e:
         return f"read error: {e}"

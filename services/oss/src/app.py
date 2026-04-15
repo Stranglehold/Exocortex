@@ -59,7 +59,7 @@ app = Flask(__name__)
 def add_cors(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Analyst-Token'
     return response
 
 @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
@@ -164,6 +164,26 @@ def health():
                 cur.execute("SELECT COUNT(*) AS n FROM source_network_edges")
                 edge_count = cur.fetchone()['n']
 
+                # SFA-001 P4 — source health summary for header badge.
+                # Counts sources with either an explicit fetch error OR a
+                # stale last_successful_fetch_at (>24h). Social sources with
+                # null timestamps are excluded (they use a different ingest
+                # path; dormant-by-design is not a failure).
+                cur.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE last_fetch_error IS NOT NULL) AS failing_count,
+                        COUNT(*) FILTER (
+                            WHERE last_fetch_error IS NULL
+                              AND source_type <> 'social'
+                              AND last_successful_fetch_at IS NOT NULL
+                              AND last_successful_fetch_at < NOW() - INTERVAL '24 hours'
+                        ) AS stale_count
+                    FROM sources
+                """)
+                sh = cur.fetchone()
+                source_health_failing = sh['failing_count'] or 0
+                source_health_stale   = sh['stale_count']   or 0
+
         return jsonify({
             'status': 'operational',
             'service': 'oss',
@@ -174,6 +194,10 @@ def health():
                 'returned': counts['returned_count'],
             },
             'sources_count': sources_count,
+            'source_health': {
+                'failing': source_health_failing,
+                'stale':   source_health_stale,
+            },
             'network_edges': edge_count,
             'last_ingestion': counts['last_ingestion'].isoformat() if counts['last_ingestion'] else None,
             'ingest_paused': is_paused(),
@@ -503,8 +527,10 @@ def full_record():
 
     Input:  { topic: str, since: ISO datetime }
     Output: {
-        claims: [...],
-        contradictions: [...],   # requires analyst_token, else omitted
+        claims: [...],             # ALL claims for the topic, STAGED and PROMOTED
+                                    # and IRRELEVANT mixed — caller filters
+                                    # on `trust_level` if promotion status matters
+        contradictions: [...],     # requires analyst_token, else omitted
         silences: [...],
         activations: [...]
     }
@@ -512,6 +538,16 @@ def full_record():
     This is the full picture: what was said, what changed,
     what was missing, and what spiked simultaneously.
     The analyst draws conclusions. The system provides the record.
+
+    NOTE (SFA-001 finding 1, fixed 2026-04-14):
+      This endpoint returns ALL claims for a topic regardless of trust_level.
+      The trust_level field IS now included in each claim dict so callers can
+      filter client-side. If you only want PROMOTED claims, use /api/feed
+      instead — it filters server-side and supports limit/sort. The prior
+      version of this endpoint omitted trust_level, which caused the
+      services/swarmfish/src/oss_bridge.py bug where the bridge filtered on
+      a field that wasn't returned, silently producing zero results for every
+      call. See eval/SILENT_FAILURE_AUDIT_2026-04-14.md for the full history.
     """
     data = request.get_json(force=True)
     require_field(data, 'topic')
@@ -524,7 +560,7 @@ def full_record():
             query = """
                 SELECT c.id, c.claim_text, c.article_url, c.article_title,
                        c.technique_class, c.extracted_at, c.published_at,
-                       c.topic_tags,
+                       c.topic_tags, c.trust_level,
                        s.name AS source_name, s.cluster, s.confidence_score
                 FROM claims c
                 JOIN sources s ON s.id = c.source_id
@@ -1503,7 +1539,16 @@ def admin_ingest():
     """Trigger a manual ingestion pass and run all analysis engines."""
     try:
         claims_inserted = run_ingestion()
-        contradictions  = scan_new_claims()
+        # Coordination guard returned None — pass was deferred because
+        # swarmfish was running a prediction cycle. Don't run the analysis
+        # passes either (they're cheap but pointless without new claims).
+        if claims_inserted is None:
+            return jsonify({
+                'status':  'deferred',
+                'reason':  'swarmfish prediction cycle in progress',
+                'message': 'Sprint deferred — swarmfish committee is mid-cycle. Try again after it finishes.',
+            })
+        contradictions, _  = scan_new_claims()
         silences        = run_silence_scan()
         activations     = run_activation_scan()
         return jsonify({
@@ -1703,22 +1748,62 @@ def admin_add_topic():
 @app.route('/api/sources', methods=['GET'])
 def list_sources():
     """
-    Return all registered sources with ingestion stats.
-    Used by the Sources UI tab.
+    Return all registered sources with ingestion stats AND health info.
+
+    SFA-001 P3.2 — health fields added:
+      last_successful_fetch_at: ISO timestamp or null
+      last_fetch_error:         string or null
+      claims_last_24h:          count of claims this source contributed in
+                                 the last 24 hours, useful for dead-source
+                                 detection
+      health:                   'healthy' | 'stale' | 'failing' | 'dormant'
     """
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT id, name, url, source_type, cluster,
-                           confidence_score, total_claims, created_at
-                    FROM sources
-                    ORDER BY name
+                    SELECT s.id, s.name, s.url, s.source_type, s.cluster,
+                           s.confidence_score, s.total_claims, s.created_at,
+                           s.last_successful_fetch_at, s.last_fetch_error,
+                           (
+                             SELECT COUNT(*) FROM claims c
+                             WHERE c.source_id = s.id
+                               AND c.extracted_at >= NOW() - INTERVAL '24 hours'
+                           ) AS claims_last_24h
+                    FROM sources s
+                    ORDER BY s.name
                 """)
                 rows = [dict(r) for r in cur.fetchall()]
                 for r in rows:
                     if r.get('created_at'):
                         r['created_at'] = r['created_at'].isoformat()
+                    if r.get('last_successful_fetch_at'):
+                        r['last_successful_fetch_at'] = r['last_successful_fetch_at'].isoformat()
+                    # Derive a health label:
+                    #   failing  — explicit fetch error recorded
+                    #   dormant  — never fetched (social/manual sources)
+                    #   stale    — last fetch > 6 hours ago and zero claims in 24h
+                    #   healthy  — recent fetch with claims, or explicit last_fetch
+                    last = r.get('last_successful_fetch_at')
+                    err = r.get('last_fetch_error')
+                    if err:
+                        r['health'] = 'failing'
+                    elif last is None and r.get('source_type') in ('social', 'official') and r.get('total_claims', 0) == 0:
+                        r['health'] = 'dormant'
+                    elif last is None:
+                        r['health'] = 'dormant'
+                    else:
+                        # We have at least one successful fetch timestamp
+                        from datetime import datetime, timezone, timedelta
+                        try:
+                            last_dt = datetime.fromisoformat(last)
+                            age_hours = (datetime.now(timezone.utc) - last_dt).total_seconds() / 3600
+                            if age_hours > 24:
+                                r['health'] = 'stale'
+                            else:
+                                r['health'] = 'healthy'
+                        except Exception:
+                            r['health'] = 'unknown'
         return jsonify({'sources': rows, 'total': len(rows)})
     except Exception as e:
         log.error(f"list_sources failed: {e}")
@@ -2080,6 +2165,3239 @@ def admin_x_search():
     except Exception as e:
         log.error(f"x_search failed: {e}")
         return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Standalone control panel — data endpoints
+# ---------------------------------------------------------------------------
+
+@app.route('/api/staging', methods=['GET'])
+def api_staging():
+    """List staged claims with source name. Used by the standalone control panel."""
+    topic = request.args.get('topic')
+    limit = int(request.args.get('limit', 100))
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            if topic:
+                cur.execute("""
+                    SELECT c.id, c.claim_text, c.trust_level, c.staging_confidence,
+                           c.source_id, c.topic_tags, c.extracted_at, s.name AS source_name
+                    FROM claims c
+                    JOIN sources s ON s.id = c.source_id
+                    WHERE c.trust_level = 'STAGED'
+                      AND c.topic_tags::text LIKE %s
+                    ORDER BY c.id DESC LIMIT %s
+                """, (f'%"{topic}"%', limit))
+            else:
+                cur.execute("""
+                    SELECT c.id, c.claim_text, c.trust_level, c.staging_confidence,
+                           c.source_id, c.topic_tags, c.extracted_at, s.name AS source_name
+                    FROM claims c
+                    JOIN sources s ON s.id = c.source_id
+                    WHERE c.trust_level = 'STAGED'
+                    ORDER BY c.id DESC LIMIT %s
+                """, (limit,))
+            rows = [dict(row) for row in cur.fetchall()]
+            for r in rows:
+                if isinstance(r.get('topic_tags'), str):
+                    try: r['topic_tags'] = json.loads(r['topic_tags'])
+                    except: r['topic_tags'] = []
+                if r.get('extracted_at') and hasattr(r['extracted_at'], 'isoformat'):
+                    r['extracted_at'] = r['extracted_at'].isoformat()
+        return jsonify({'ok': True, 'result': rows})
+    except Exception as e:
+        log.error(f"api_staging: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sources_list', methods=['GET'])
+def api_sources_list():
+    """List sources joined with credibility. Used by the standalone control panel.
+
+    SFA-001 P3.2 — also returns last_successful_fetch_at, last_fetch_error,
+    and claims_last_24h so the Sources tab can surface dead/stale sources
+    at a glance instead of silently showing them as "total: 0" rows.
+    """
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT s.id AS source_id, s.name AS source_name, s.url, s.source_type, s.cluster,
+                       s.confidence_score, s.total_claims, s.acknowledged_retcon_count,
+                       s.last_successful_fetch_at, s.last_fetch_error,
+                       (SELECT COUNT(*) FROM claims c
+                        WHERE c.source_id = s.id
+                          AND c.extracted_at >= NOW() - INTERVAL '24 hours') AS claims_last_24h
+                FROM sources s ORDER BY s.name
+            """)
+            rows = [dict(row) for row in cur.fetchall()]
+            # ISO-serialize timestamps + derive health label
+            from datetime import datetime, timezone
+            for r in rows:
+                if r.get('last_successful_fetch_at'):
+                    last_dt = r['last_successful_fetch_at']
+                    r['last_successful_fetch_at'] = last_dt.isoformat()
+                    age_hours = (datetime.now(timezone.utc).replace(tzinfo=None) - last_dt.replace(tzinfo=None)).total_seconds() / 3600 if last_dt else None
+                else:
+                    age_hours = None
+                err = r.get('last_fetch_error')
+                if err:
+                    r['health'] = 'failing'
+                elif r.get('last_successful_fetch_at') is None:
+                    r['health'] = 'dormant'
+                elif age_hours is not None and age_hours > 24:
+                    r['health'] = 'stale'
+                else:
+                    r['health'] = 'healthy'
+            # Attempt credibility join; table may not exist in older deployments
+            cred_map = {}
+            try:
+                cur.execute("SELECT source_id, overall, set_by, last_updated FROM source_credibility")
+                for r in cur.fetchall():
+                    cred_map[r['source_id']] = r
+            except Exception:
+                conn.rollback()  # clear the error so conn is still usable
+            for r in rows:
+                cred = cred_map.get(r['source_id'], {})
+                r['overall'] = float(cred.get('overall') or r.get('confidence_score') or 0.7)
+                r['_c'] = r['overall']
+                r['set_by'] = cred.get('set_by', 'default')
+                lu = cred.get('last_updated')
+                r['last_updated'] = lu.isoformat() if lu and hasattr(lu, 'isoformat') else str(lu or '')
+                if r.get('confidence_score') is not None:
+                    r['confidence_score'] = float(r['confidence_score'])
+        return jsonify({'ok': True, 'result': rows})
+    except Exception as e:
+        log.error(f"api_sources_list: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/topics_list', methods=['GET'])
+def api_topics_list():
+    """List all topics with live claim counts. Used by the standalone control panel."""
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT t.tag, t.display_name, t.description, t.active,
+                       COUNT(c.id) AS live_count
+                FROM topics t
+                LEFT JOIN claims c ON (
+                    c.topic_tags::text LIKE ('%"' || t.tag || '"%')
+                    AND c.trust_level != 'IRRELEVANT'
+                )
+                GROUP BY t.tag, t.display_name, t.description, t.active
+                ORDER BY t.active DESC, t.tag
+            """)
+            rows = [dict(row) for row in cur.fetchall()]
+        return jsonify({'ok': True, 'topics': rows})
+    except Exception as e:
+        log.error(f"api_topics_list: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/quick_promote', methods=['POST'])
+@require_analyst_auth
+def admin_quick_promote():
+    """Quick-promote a staged claim using its own staging_confidence. No weights required."""
+    data = request.get_json(force=True)
+    claim_id = data.get('claim_id')
+    if not claim_id:
+        return jsonify({'ok': False, 'error': 'claim_id required'}), 400
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id, staging_confidence, source_id, trust_level FROM claims WHERE id=%s",
+                        (int(claim_id),))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'ok': False, 'error': 'claim not found'}), 404
+            _, conf, src_id, trust = row
+            if trust != 'STAGED':
+                return jsonify({'ok': False, 'error': f'claim is {trust}, not STAGED'}), 400
+            conf = float(conf or 0.7)
+            cur.execute("SELECT name, confidence_score FROM sources WHERE id=%s", (src_id,))
+            src = cur.fetchone()
+            src_weights = json.dumps({(src[0] if src else 'unknown'): float(src[1] if src and src[1] else 0.7)})
+            cur.execute("""
+                INSERT INTO promotion_snapshots
+                  (claim_id, promoted_at, promotion_confidence, source_weights,
+                   threshold_at_promotion, promoting_evidence, falsification_predictions)
+                VALUES (%s, NOW(), %s, %s, 0.5, '[]', '[]')
+            """, (int(claim_id), conf, src_weights))
+            cur.execute("UPDATE claims SET trust_level='PROMOTED' WHERE id=%s", (int(claim_id),))
+            conn.commit()
+        return jsonify({'ok': True, 'claim_id': int(claim_id)})
+    except Exception as e:
+        log.error(f"quick_promote: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/source_credibility', methods=['POST'])
+@require_analyst_auth
+def admin_source_credibility():
+    """Upsert source credibility overall score."""
+    data = request.get_json(force=True)
+    source_id = data.get('source_id')
+    overall = float(data.get('overall', 0.7))
+    if not source_id:
+        return jsonify({'ok': False, 'error': 'source_id required'}), 400
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            # Update confidence_score directly on sources table
+            cur.execute("UPDATE sources SET confidence_score=%s WHERE id=%s",
+                        (overall, int(source_id)))
+            conn.commit()
+        return jsonify({'ok': True, 'source_id': int(source_id), 'overall': overall})
+    except Exception as e:
+        log.error(f"source_credibility: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Standalone control panel — HTML page
+# ---------------------------------------------------------------------------
+
+_PANEL_TOKEN = os.environ.get('OSS_ANALYST_TOKEN', 'dev_analyst_token')
+_SF_PORT = os.environ.get('SWARMFISH_PANEL_PORT', '7732')
+
+_CONTROL_PANEL_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exocortex Control</title>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+/* ============================================================
+ * Design tokens — ported from docs/ui_references/exocortex.css
+ * Source: opengridworks (extracted 2026-04-13)
+ * ============================================================ */
+:root{
+  /* Timing */
+  --ds-duration-instant: 80ms;
+  --ds-duration-fast: .15s;
+  --ds-duration-normal: .25s;
+  --ds-duration-slow: .4s;
+  /* Easing */
+  --ds-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ds-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --ds-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  /* Surfaces (layered depth) */
+  --ds-surface-void: #060810;
+  --ds-surface-base: #0a0f1a;
+  --ds-surface-raised: #0f1629;
+  --ds-surface-overlay: #151d35;
+  --ds-surface-scrim: rgba(10,15,26,.92);
+  /* Text */
+  --ds-text-primary: #f0f2f5;
+  --ds-text-secondary: #b0b8c8;
+  --ds-text-tertiary: #6b7a8d;
+  --ds-text-dim: #3d4a5c;
+  /* Borders (opacity-based) */
+  --ds-border-subtle: rgba(148,163,184,.06);
+  --ds-border-default: rgba(148,163,184,.12);
+  --ds-border-strong: rgba(148,163,184,.22);
+  --ds-border-accent: rgba(0,229,255,.25);
+  /* Accents */
+  --ds-accent-cyan: #00e5ff;
+  --ds-accent-cyan-muted: rgba(0,229,255,.15);
+  --ds-accent-cyan-glow: rgba(0,229,255,.35);
+  --ds-accent-blue: #38bdf8;
+  --ds-accent-purple: #8b5cf6;
+  /* Signal colors (semantic state) — triplet pattern from primer */
+  --ds-signal-positive: #34d399;
+  --ds-signal-negative: #f87171;
+  --ds-signal-warning: #fbbf24;
+  --ds-signal-info: #60a5fa;
+  --ds-signal-positive-muted: rgba(52,211,153,.15);
+  --ds-signal-negative-muted: rgba(248,113,113,.15);
+  --ds-signal-warning-muted: rgba(251,191,36,.15);
+  --ds-signal-info-muted: rgba(96,165,250,.15);
+  --ds-signal-positive-emphasis: #10b981;
+  --ds-signal-negative-emphasis: #ef4444;
+  --ds-signal-warning-emphasis: #f59e0b;
+  --ds-signal-info-emphasis: #3b82f6;
+  /* State aliases (primer pattern — components reference semantic intent) */
+  --ds-state-confirmed: var(--ds-signal-positive);
+  --ds-state-confirmed-muted: var(--ds-signal-positive-muted);
+  --ds-state-confirmed-emphasis: var(--ds-signal-positive-emphasis);
+  --ds-state-falsified: var(--ds-signal-negative);
+  --ds-state-falsified-muted: var(--ds-signal-negative-muted);
+  --ds-state-falsified-emphasis: var(--ds-signal-negative-emphasis);
+  --ds-state-pending: var(--ds-signal-warning);
+  --ds-state-pending-muted: var(--ds-signal-warning-muted);
+  --ds-state-still-pending: var(--ds-signal-info);
+  --ds-state-running: var(--ds-signal-info);
+  --ds-state-paused: var(--ds-signal-warning);
+  --ds-state-stopped: var(--ds-text-tertiary);
+  /* Text on colored backgrounds (primer onEmphasis pattern) */
+  --ds-text-on-emphasis: #ffffff;
+  --ds-text-on-accent: #060810;
+  --ds-text-on-positive: #042f1e;
+  --ds-text-on-negative: #ffffff;
+  --ds-text-on-warning: #251a00;
+  --ds-text-on-info: #ffffff;
+  /* Interaction state triplet (patternfly default/hover/clicked pattern) */
+  --ds-state-confirmed-rest: var(--ds-signal-positive);
+  --ds-state-confirmed-hover: #4ade80;
+  --ds-state-confirmed-clicked: #16a34a;
+  --ds-state-falsified-rest: var(--ds-signal-negative);
+  --ds-state-falsified-hover: #fb7185;
+  --ds-state-falsified-clicked: #dc2626;
+  --ds-state-pending-rest: var(--ds-signal-warning);
+  --ds-state-pending-hover: #fcd34d;
+  --ds-state-pending-clicked: #d97706;
+  /* Surface role aliases (patternfly primary/secondary/tertiary) */
+  --ds-surface-primary: var(--ds-surface-base);
+  --ds-surface-secondary: var(--ds-surface-raised);
+  --ds-surface-tertiary: var(--ds-surface-overlay);
+  --ds-surface-floating: var(--ds-surface-overlay);
+  --ds-surface-sticky: var(--ds-surface-scrim);
+  /* Special-purpose backgrounds (patternfly skeleton/striped/backdrop) */
+  --ds-bgColor-backdrop: rgba(6,8,16,.7);
+  --ds-bgColor-row-striped: rgba(148,163,184,.03);
+  --ds-bgColor-skeleton: var(--ds-surface-raised);
+  --ds-bgColor-skeleton-subtle: var(--ds-surface-base);
+  /* Glass blur as theme token (patternfly pattern — overridable per theme) */
+  --ds-glass-blur-amount: blur(20px) saturate(140%);
+  /* Carbon caution-undefined: the "I don't know yet" status color */
+  --ds-state-undefined: #a78bfa;
+  --ds-state-undefined-muted: rgba(167,139,250,.15);
+  --ds-state-undefined-emphasis: #8b5cf6;
+  /* Carbon helper text token (between secondary and tertiary in contrast) */
+  --ds-text-helper: #8a96a8;
+  /* Vanilla: text-inactive (dormant but readable, distinct from muted) */
+  --ds-text-inactive: rgba(176,184,200,.75);
+  /* Carbon AI tokens — visual marker for LLM-generated content */
+  --ds-ai-bg: #0a1820;
+  --ds-ai-border: rgba(0,229,255,.30);
+  --ds-ai-border-strong: rgba(0,229,255,.50);
+  --ds-ai-aura-start: rgba(0,229,255,.18);
+  --ds-ai-aura-end: rgba(0,229,255,0);
+  --ds-ai-aura-hover-start: rgba(0,229,255,.30);
+  --ds-ai-shadow: 0 0 12px rgba(0,229,255,.08), 0 4px 12px rgba(0,0,0,.4);
+  --ds-ai-shadow-hover: 0 0 20px rgba(0,229,255,.15), 0 8px 20px rgba(0,0,0,.5);
+  --ds-ai-skeleton-bg: #0f1d28;
+  /* Shadows by ROLE not size (primer pattern) — legacy aliases below */
+  --ds-shadow-resting-xs: 0 1px 2px rgba(0,0,0,.3);
+  --ds-shadow-resting-sm: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.2);
+  --ds-shadow-resting-md: 0 4px 12px rgba(0,0,0,.4);
+  --ds-shadow-floating-sm: 0 0 0 1px rgba(148,163,184,.12), 0 6px 12px rgba(0,0,0,.4);
+  --ds-shadow-floating-md: 0 0 0 1px rgba(148,163,184,.12), 0 8px 16px rgba(0,0,0,.4), 0 4px 32px rgba(0,0,0,.3);
+  --ds-shadow-floating-lg: 0 0 0 1px rgba(148,163,184,.12), 0 24px 48px rgba(0,0,0,.5);
+  --ds-shadow-inset: inset 0 1px 2px rgba(0,0,0,.3);
+  --ds-shadow-sm: var(--ds-shadow-resting-sm);
+  --ds-shadow-md: var(--ds-shadow-resting-md);
+  --ds-shadow-lg: var(--ds-shadow-floating-md);
+  --ds-shadow-glow-cyan: 0 0 20px rgba(0,229,255,.06), 0 0 40px rgba(0,229,255,.03);
+  /* Radius */
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 10px;
+  --ds-radius-pill: 999px;
+
+  /* ---- Legacy aliases — existing rules still reference these, ---- */
+  /* ---- now bound to the new design system values above.        ---- */
+  --bg: var(--ds-surface-void);
+  --bg2: var(--ds-surface-base);
+  --bg3: var(--ds-surface-raised);
+  --bg4: var(--ds-surface-overlay);
+  --bdr: var(--ds-border-default);
+  --txt: var(--ds-text-primary);
+  --mu: var(--ds-text-tertiary);
+  --pri: var(--ds-accent-cyan);
+  --ok: var(--ds-signal-positive);
+  --warn: var(--ds-signal-warning);
+  --err: var(--ds-signal-negative);
+  --font: 12px/1.5 'IBM Plex Mono','Consolas','Monaco',monospace;
+
+  /* ---- Phase 1 additions: from openprops, tuicss, 7css ---- */
+  /* Z-index layer scale (openprops) */
+  --ds-layer-1: 1;
+  --ds-layer-2: 2;
+  --ds-layer-3: 3;
+  --ds-layer-overlay: 100;
+  --ds-layer-modal: 500;
+  --ds-layer-toast: 900;
+  --ds-layer-important: 2147483647;
+  /* (--ds-noise removed: too visible at .04 opacity on dark backgrounds — looked like display corruption) */
+  /* Asymmetric warm hover timings (7css) */
+  --ds-duration-warm-in: .3s;
+  --ds-duration-warm-out: 1s;
+  /* Animation presets (openprops) */
+  --ds-anim-fade-in: ds-fade-in var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-slide-in-up: ds-slide-in-up var(--ds-duration-normal) var(--ds-ease-out);
+  --ds-anim-shake-x: ds-shake-x .5s var(--ds-ease-out);
+  --ds-anim-pulse: ds-pulse 2s var(--ds-ease-in-out) infinite;
+  --ds-anim-blink: ds-blink 1s var(--ds-ease-out) infinite;
+}
+
+/* ============================================================
+ * KEYFRAMES — animation presets from openprops
+ * Plus the 7css default-button pulse adapted to our cyan glow
+ * ============================================================ */
+@keyframes ds-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ds-slide-in-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+@keyframes ds-shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes ds-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes ds-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes ds-default-pulse {
+  from { box-shadow: var(--ds-shadow-glow-cyan), inset 0 0 5px 1px rgba(0,229,255,.4); }
+  to   { box-shadow: var(--ds-shadow-glow-cyan), inset 0 0 1px 1px rgba(0,229,255,.4); }
+}
+
+/* ============================================================
+ * UTILITY CLASSES — opt-in patterns from the reference library
+ * ============================================================ */
+
+/* Truth-bearing instantaneous state (tuicss) — disable transitions */
+.ds-instant-state, .ds-instant-state * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Default-button pulse (7css adapted) — for primary CTA */
+.ds-default-pulse {
+  animation: ds-default-pulse 1.5s ease infinite alternate;
+}
+
+/* Aero glass alternative (7css) — gradient-based, no backdrop-filter */
+.ds-aero-glass {
+  background:
+    linear-gradient(to right, rgba(255,255,255,.04), rgba(0,0,0,.10), rgba(255,255,255,.04)),
+    var(--ds-surface-raised);
+  border: 1px solid var(--ds-border-default);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), var(--ds-shadow-md);
+}
+
+/* Tufte: newthought — small-caps section break inside long-form content */
+.ds-newthought{font-variant:small-caps;font-size:1.15em;letter-spacing:.05em;font-weight:500;color:var(--ds-text-primary)}
+/* Tufte: reading column — bounded width for long-form text */
+.ds-reading-column{max-width:65ch;font-size:var(--ds-text-md);line-height:1.65}
+/* Tufte: calm mode — disable all motion for reading content */
+.ds-calm-mode,.ds-calm-mode *{transition:none!important;animation:none!important}
+/* Tufte: old-style numerals for inline prose numbers */
+.ds-numeral-prose{font-variant-numeric:oldstyle-nums}
+
+/* AI content block (carbon AI aura pattern) — visual marker for LLM-generated content */
+.ds-ai-content {
+  position: relative;
+  background: var(--ds-ai-bg);
+  border: 1px solid var(--ds-ai-border);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-ai-shadow);
+  transition: border-color var(--ds-duration-fast) var(--ds-ease-out), box-shadow var(--ds-duration-fast) var(--ds-ease-out);
+}
+.ds-ai-content:hover {
+  border-color: var(--ds-ai-border-strong);
+  box-shadow: var(--ds-ai-shadow-hover);
+}
+.ds-ai-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ds-accent-cyan);
+}
+.ds-ai-label::before {
+  content: "◆";
+  font-size: .75em;
+}
+body{font:var(--font);color:var(--ds-text-primary);min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(ellipse at 20% 0%,rgba(0,229,255,.03) 0%,transparent 50%),radial-gradient(ellipse at 80% 100%,rgba(139,92,246,.025) 0%,transparent 50%),var(--ds-surface-void);position:relative}
+/* Linear-style ambient dot grid — Phase 4 research from docs/ui_references/beyond_css/shaders.md.
+   Linear's "mesh gradient" is actually a dot grid with slow drift over a radial gradient base.
+   No shader, no canvas, no JS — pure CSS background-image + position animation. Masked so the
+   grid fades out near the edges, only catching the eye in the middle where motion is expected. */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  background-image:
+    radial-gradient(circle 1px at center, rgba(0,229,255,0.18) 1px, transparent 1.8px),
+    radial-gradient(circle 1px at center, rgba(139,92,246,0.10) 1px, transparent 1.8px);
+  background-size:28px 28px, 56px 56px;
+  background-position:0 0, 14px 14px;
+  -webkit-mask-image:radial-gradient(ellipse 90% 80% at center, #000 20%, transparent 85%);
+  mask-image:radial-gradient(ellipse 90% 80% at center, #000 20%, transparent 85%);
+  animation:ds-grid-drift 180s linear infinite;
+}
+#hdr,#tabbar,#body{position:relative;z-index:1}
+@keyframes ds-grid-drift{
+  0%  {background-position:0 0, 14px 14px}
+  100%{background-position:28px 28px, 42px 42px}
+}
+@media (prefers-reduced-motion: reduce){
+  body::before{animation:none}
+}
+/* Tick-flash — Bloomberg pattern via application_sites.md research. Brief directional color
+   flash on numerical change. Green up, red down. Returns to transparent over 600ms. No movement,
+   no layout shift — communicates direction via peripheral motion only. */
+@keyframes ds-tick-up{
+  0%  {background-color:rgba(52,211,153,.32);color:var(--ds-signal-positive)}
+  100%{background-color:transparent;color:inherit}
+}
+@keyframes ds-tick-down{
+  0%  {background-color:rgba(248,113,113,.32);color:var(--ds-signal-negative)}
+  100%{background-color:transparent;color:inherit}
+}
+.tick-up  {animation:ds-tick-up   600ms ease-out;border-radius:var(--ds-radius-sm);padding:0 3px;margin:0 -3px}
+.tick-down{animation:ds-tick-down 600ms ease-out;border-radius:var(--ds-radius-sm);padding:0 3px;margin:0 -3px}
+a{color:var(--pri);text-decoration:none}
+/* Header */
+#hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--ds-surface-scrim);border-bottom:1px solid var(--ds-border-default);flex-shrink:0;-webkit-backdrop-filter:var(--ds-glass-blur-amount);backdrop-filter:var(--ds-glass-blur-amount)}
+#hdr-title{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ds-text-primary)}
+.hbadge{font-size:10px;padding:2px 10px;border-radius:var(--ds-radius-pill);border:1px solid transparent;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.hbadge-ok{background:var(--ds-signal-positive-muted);border-color:rgba(52,211,153,.4);color:var(--ds-signal-positive)}
+.hbadge-warn{background:var(--ds-signal-warning-muted);border-color:rgba(251,191,36,.4);color:var(--ds-signal-warning)}
+.hbadge-err{background:var(--ds-signal-negative-muted);border-color:rgba(248,113,113,.4);color:var(--ds-signal-negative)}
+.hmu{font-size:10px;color:var(--ds-text-tertiary)}
+#hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+/* Tabs */
+#tabbar{display:flex;padding:0 10px;background:var(--ds-surface-scrim);border-bottom:1px solid var(--ds-border-default);flex-shrink:0;overflow-x:auto;-webkit-backdrop-filter:var(--ds-glass-blur-amount);backdrop-filter:var(--ds-glass-blur-amount)}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--ds-text-inactive);padding:6px 11px;cursor:pointer;font:var(--font);white-space:nowrap;margin-bottom:-1px;transition:color var(--ds-duration-fast) var(--ds-ease-out),border-bottom-color var(--ds-duration-fast) var(--ds-ease-out)}
+.tab:hover{color:var(--ds-accent-cyan)}
+.tab-on{color:var(--ds-accent-cyan);border-bottom-color:var(--ds-accent-cyan);font-weight:600}
+.tbadge{font-size:9px;padding:1px 6px;border-radius:var(--ds-radius-pill);background:var(--ds-accent-cyan-muted);color:var(--ds-accent-cyan);border:1px solid var(--ds-border-accent);margin-left:4px;font-weight:600;font-variant-numeric:tabular-nums;display:inline-block}
+/* Body */
+#body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.panel{padding:10px 14px;overflow-y:auto;flex:1;display:none}
+.panel-on{display:block}
+/* Sections */
+.sec{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ds-text-tertiary);padding:10px 0 5px;border-top:1px solid var(--ds-border-default);margin-top:8px}
+.sec-first{border-top:none;margin-top:0}
+/* Stat grid */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:4px}
+.stat{background:var(--ds-surface-raised);border:1px solid var(--ds-border-default);border-radius:var(--ds-radius-md);padding:10px 12px;text-align:center;transition:border-color var(--ds-duration-fast) var(--ds-ease-out),box-shadow var(--ds-duration-fast) var(--ds-ease-out)}
+.stat:hover{border-color:var(--ds-border-accent);box-shadow:var(--ds-shadow-glow-cyan),var(--ds-shadow-sm)}
+.stat-n{font-size:22px;font-weight:700;color:var(--ds-text-primary);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat-l{font-size:9px;color:var(--ds-text-tertiary);margin-top:3px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.stat-staged .stat-n{color:var(--ds-signal-warning)}
+.stat-ok .stat-n{color:var(--ds-signal-positive)}
+/* Health metrics */
+.hmetrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:5px}
+.hmet{background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:5px 8px;font-size:11px}
+.hmet-label{font-size:10px;color:var(--mu);margin-bottom:2px}
+.hmet-ok{border-color:#2a5a2a}
+.hmet-warn{border-color:#6a5000}
+/* Claim rows */
+.crow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 8px;border-radius:var(--ds-radius-sm);border-bottom:1px solid var(--ds-border-default);font-size:11px;transition:background var(--ds-duration-fast) var(--ds-ease-out),border-color var(--ds-duration-fast) var(--ds-ease-out)}
+.crow:last-child{border-bottom:none}
+.crow:hover{background:var(--ds-accent-cyan-muted);border-color:var(--ds-border-accent)}
+.crow-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.crow-src{font-size:10px;color:var(--mu);white-space:nowrap}
+.crow-btns{display:flex;gap:4px;flex-shrink:0}
+.cconf{font-size:10px;color:var(--mu);white-space:nowrap}
+.crow-detail{font-size:11px;color:var(--mu);padding:4px 8px 8px;line-height:1.5;border-bottom:1px solid var(--bdr)}
+/* Pill */
+.pill{display:inline-flex;align-items:center;font-size:9px;padding:2px 8px;border-radius:var(--ds-radius-pill);border:1px solid transparent;white-space:nowrap;font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.pill-staged{background:var(--ds-signal-warning-muted);border-color:rgba(251,191,36,.4);color:var(--ds-signal-warning)}
+.pill-ok{background:var(--ds-signal-positive-muted);border-color:rgba(52,211,153,.4);color:var(--ds-signal-positive)}
+.pill-err{background:var(--ds-signal-negative-muted);border-color:rgba(248,113,113,.4);color:var(--ds-signal-negative)}
+.pill-mu{background:var(--ds-border-subtle);border-color:var(--ds-border-default);color:var(--ds-text-tertiary)}
+.pill-undefined{background:var(--ds-state-undefined-muted);border-color:rgba(167,139,250,.4);color:var(--ds-state-undefined)}
+/* Source rows */
+.srow{display:grid;grid-template-columns:1fr 80px auto;gap:10px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--ds-border-default);font-size:11px;transition:background var(--ds-duration-fast) var(--ds-ease-out)}
+.srow:last-child{border-bottom:none}
+.srow:hover{background:var(--ds-accent-cyan-muted)}
+.sname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.surl{font-size:10px;color:var(--mu)}
+.srange{width:100%;accent-color:var(--pri)}
+.sval{font-size:12px;font-weight:700;text-align:center;width:38px}
+.ssaved{font-size:10px;color:var(--ok);margin-left:4px}
+/* Control */
+.ctl-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
+.ctl-row:last-child{border-bottom:none}
+.trow{display:grid;grid-template-columns:100px 120px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-bottom:1px solid var(--bdr);font-size:11px}
+.trow:last-child{border-bottom:none}
+/* SWARMFISH */
+.sf-tabs{display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--bdr)}
+.sf-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);padding:4px 10px;cursor:pointer;font:var(--font);margin-bottom:-1px}
+.sf-tab-on{color:var(--txt);border-bottom-color:var(--pri);font-weight:600}
+.sf-tab:hover{color:var(--txt)}
+.prow{display:grid;grid-template-columns:150px 46px 1fr;gap:6px;align-items:start;padding:3px 6px;border-radius:var(--ds-radius-sm);font-size:11px;cursor:pointer;transition:background var(--ds-duration-fast) var(--ds-ease-out)}
+.prow:hover{background:var(--ds-accent-cyan-muted)}
+.pname{font-weight:500;display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pconf{font-weight:700;text-align:right}
+.psum{font-size:11px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdetail{background:var(--ds-surface-raised);border-radius:var(--ds-radius-md);margin:2px 0 6px 10px;padding:8px 12px;font-size:11px;line-height:1.5;color:var(--ds-text-secondary);box-shadow:var(--ds-shadow-floating-sm)}
+.conf-high{color:#4fa34f}.conf-mid{color:#c09010}.conf-low{color:#b83838}
+.sess-row{display:grid;grid-template-columns:120px 80px 1fr 50px;gap:8px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--ds-border-default);font-size:11px;cursor:pointer;transition:background var(--ds-duration-fast) var(--ds-ease-out),border-color var(--ds-duration-fast) var(--ds-ease-out)}
+.sess-row:last-child{border-bottom:none}
+.sess-row:hover{background:var(--ds-accent-cyan-muted);border-color:var(--ds-border-accent)}
+.sess-detail{background:var(--ds-surface-raised);border-radius:var(--ds-radius-md);margin:2px 0 8px;padding:10px 12px;font-size:11px;box-shadow:var(--ds-shadow-floating-sm)}
+/* Controls: buttons, inputs */
+.btn{background:rgba(15,22,41,.5);border:1px solid var(--ds-border-default);color:var(--ds-text-secondary);padding:3px 10px;border-radius:var(--ds-radius-sm);cursor:pointer;font:var(--font);transition:color var(--ds-duration-fast) var(--ds-ease-out),background var(--ds-duration-fast) var(--ds-ease-out),border-color var(--ds-duration-fast) var(--ds-ease-out),box-shadow var(--ds-duration-fast) var(--ds-ease-out),transform var(--ds-duration-instant) var(--ds-ease-out)}
+.btn:hover:not(:disabled){color:var(--ds-accent-cyan);background:var(--ds-accent-cyan-muted);border-color:var(--ds-border-accent);box-shadow:var(--ds-shadow-glow-cyan),var(--ds-shadow-md);transform:scale(1.03)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.btn-p{background:var(--ds-accent-cyan-muted)!important;border-color:var(--ds-border-accent)!important;color:var(--ds-accent-cyan)!important}
+.btn-p:hover:not(:disabled){background:rgba(0,229,255,.22)!important;box-shadow:var(--ds-shadow-glow-cyan),var(--ds-shadow-floating-md)!important}
+.btn-ok{border-color:rgba(52,211,153,.4)!important;color:var(--ds-signal-positive)!important;background:var(--ds-signal-positive-muted)!important}
+.btn-ok:hover:not(:disabled){background:rgba(52,211,153,.22)!important;box-shadow:0 0 16px rgba(52,211,153,.15),var(--ds-shadow-md)!important}
+.btn-err{border-color:rgba(248,113,113,.4)!important;color:var(--ds-signal-negative)!important;background:var(--ds-signal-negative-muted)!important}
+.btn-err:hover:not(:disabled){background:rgba(248,113,113,.22)!important;box-shadow:0 0 16px rgba(248,113,113,.15),var(--ds-shadow-md)!important}
+.btn-warn{background:var(--ds-signal-warning-muted)!important;border-color:rgba(251,191,36,.4)!important;color:var(--ds-signal-warning)!important}
+.btn-warn:hover:not(:disabled){background:rgba(251,191,36,.22)!important;box-shadow:0 0 16px rgba(251,191,36,.15),var(--ds-shadow-md)!important}
+.inp{background:var(--ds-surface-raised);border:1px solid var(--ds-border-default);color:var(--ds-text-primary);padding:4px 8px;border-radius:var(--ds-radius-sm);font:var(--font);outline:none;transition:border-color var(--ds-duration-fast) var(--ds-ease-out),box-shadow var(--ds-duration-fast) var(--ds-ease-out)}
+.inp:focus{border-color:var(--ds-accent-cyan);box-shadow:0 0 0 3px rgba(0,229,255,.1)}
+.inp:focus-visible{outline:none}
+.inp-sm{width:180px}
+.sel{background:var(--bg3);border:1px solid var(--bdr);color:var(--txt);padding:3px 6px;border-radius:4px;font:var(--font);outline:none}
+.err-box{background:var(--ds-signal-negative-muted);border:1px solid rgba(248,113,113,.4);color:var(--ds-signal-negative);padding:6px 10px;border-radius:var(--ds-radius-sm);font-size:11px;margin-top:6px;animation:var(--ds-anim-shake-x)}
+.info-box{background:var(--ds-surface-raised);border:1px solid var(--ds-border-default);color:var(--ds-text-secondary);padding:8px 12px;border-radius:var(--ds-radius-md);font-size:11px;margin-top:6px;box-shadow:var(--ds-shadow-sm)}
+.result-box{background:var(--ds-surface-raised);border:1px solid var(--ds-border-default);border-radius:var(--ds-radius-md);padding:12px;margin-top:8px;font-size:11px;line-height:1.6;box-shadow:var(--ds-shadow-md)}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* SFA-001 P0.1 — header pending-verdict pulse. Only fires when the
+   falsified-count transitions upward (via Alpine $watch below), then
+   decays over one animation cycle. Respects prefers-reduced-motion. */
+.pbadge-pulse{animation:pbadge-pulse 1.6s ease-out 2}
+@keyframes pbadge-pulse{
+  0%  {box-shadow:0 0 0 0 rgba(248,113,113,.65), 0 0 8px 2px rgba(248,113,113,.35)}
+  60% {box-shadow:0 0 0 8px rgba(248,113,113,0),    0 0 14px 4px rgba(248,113,113,.18)}
+  100%{box-shadow:0 0 0 0 rgba(248,113,113,0),      0 0 0 0 rgba(248,113,113,0)}
+}
+@media (prefers-reduced-motion: reduce){
+  .pbadge-pulse{animation:none}
+}
+/* Sprint activity marquee — XP.css sliding-stripe pattern
+   archived from docs/ui_references/xp/notes.md.
+   Uses repeating-linear-gradient + animated background-position
+   so stripes tile seamlessly across the full button width.
+   Overrides :disabled dimming so the button reads as ACTIVE
+   (glowing cyan) rather than greyed-out while work is running. */
+.btn-sprinting{position:relative;overflow:hidden}
+.btn-sprinting::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,rgba(0,229,255,.22) 0,rgba(0,229,255,.22) 3px,transparent 3px,transparent 14px);animation:ds-marquee-slide .9s linear infinite;mix-blend-mode:screen}
+.btn-sprinting:disabled{opacity:1!important;cursor:progress!important;color:var(--ds-accent-cyan)!important;border-color:var(--ds-border-accent)!important;background:rgba(0,229,255,.14)!important;box-shadow:var(--ds-shadow-glow-cyan),var(--ds-shadow-md)!important;transform:none!important}
+@keyframes ds-marquee-slide{0%{background-position:0 0}100%{background-position:14px 0}}
+.flt-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+
+/* ============================================================
+ * LIVE AGENT VIEW — "organizational life" surface for watching
+ * swarmfish predictions in progress. Composes Phase 4 patterns:
+ * - station grid with breathing/typing animations
+ * - SVG consensus ring via stroke-dasharray
+ * - tick-flash on confidence change
+ * - event log with append-bottom + jump-to-latest
+ * - Devil's Inquisitor adversarial panel
+ * ============================================================ */
+
+/* Mission Board — the top panel */
+.lv-mission{
+  display:grid;grid-template-columns:1fr auto;gap:16px;
+  padding:14px 18px;margin-bottom:12px;
+  background:var(--ds-surface-raised);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-md);
+  box-shadow:var(--ds-shadow-md);
+  position:relative;overflow:hidden;
+}
+.lv-mission::before{
+  /* Subtle scanline across the top — cinematic "mission active" feel */
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--ds-accent-cyan),transparent);
+  opacity:.6;
+  animation:lv-scan 8s linear infinite;
+}
+@keyframes lv-scan{
+  0%  {transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
+}
+@media (prefers-reduced-motion: reduce){
+  .lv-mission::before{animation:none;opacity:.3}
+}
+.lv-mission-head{display:flex;flex-direction:column;gap:4px}
+.lv-mission-title{
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ds-accent-cyan)
+}
+.lv-mission-q{
+  font-size:14px;color:var(--ds-text-primary);line-height:1.4;
+  font-weight:500
+}
+.lv-mission-meta{
+  display:flex;gap:14px;font-size:10px;color:var(--ds-text-tertiary);
+  text-transform:uppercase;letter-spacing:.05em;margin-top:4px;
+  font-variant-numeric:tabular-nums
+}
+.lv-mission-meta span strong{color:var(--ds-text-primary);font-weight:600}
+
+/* Consensus ring — SVG arc-dasharray, fills as profiles complete */
+.lv-ring{display:flex;flex-direction:column;align-items:center;gap:4px}
+.lv-ring svg{width:96px;height:96px;display:block}
+.lv-ring-bg{fill:none;stroke:var(--ds-surface-base);stroke-width:8}
+.lv-ring-fg{
+  fill:none;stroke:var(--ds-accent-cyan);stroke-width:8;
+  stroke-linecap:round;
+  transition:stroke-dashoffset var(--ds-duration-slow) var(--ds-ease-out),
+             stroke var(--ds-duration-normal) var(--ds-ease-out);
+}
+.lv-ring-fg.lv-err{stroke:var(--ds-signal-negative)}
+.lv-ring-fg.lv-warn{stroke:var(--ds-signal-warning)}
+.lv-ring-label{
+  text-anchor:middle;dominant-baseline:central;
+  font:700 18px/1 var(--font);fill:var(--ds-text-primary);
+  font-variant-numeric:tabular-nums
+}
+.lv-ring-meta{text-anchor:middle;font:500 9px/1 var(--font);fill:var(--ds-text-tertiary);
+  text-transform:uppercase;letter-spacing:.1em}
+.lv-ring-sub{font-size:10px;color:var(--ds-text-tertiary);
+  text-transform:uppercase;letter-spacing:.08em}
+
+/* Committee section header */
+.lv-sec{
+  font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ds-text-tertiary);
+  margin:14px 0 8px;padding:0 4px;
+  display:flex;align-items:center;gap:8px
+}
+.lv-sec::before{
+  content:"";flex:0 0 3px;height:12px;background:var(--ds-accent-cyan);
+  border-radius:2px;box-shadow:0 0 6px rgba(0,229,255,.5)
+}
+
+/* Station grid — 4 columns x 2 rows for 8 committee members */
+.lv-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  margin-bottom:14px
+}
+@media (max-width: 900px){
+  .lv-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Individual station card */
+.lv-station{
+  position:relative;padding:10px 12px 12px;
+  background:var(--ds-surface-scrim);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-sm);
+  min-height:92px;overflow:hidden;
+  transition:border-color var(--ds-duration-fast) var(--ds-ease-out),
+             box-shadow var(--ds-duration-fast) var(--ds-ease-out),
+             transform var(--ds-duration-fast) var(--ds-ease-out)
+}
+
+/* Breathing animation on waiting/idle stations — subtle proof of life */
+.lv-station.lv-waiting{
+  animation:lv-breathe 4s ease-in-out infinite;
+  opacity:.75
+}
+@keyframes lv-breathe{
+  0%,100%{transform:scale(1.0)}
+  50%    {transform:scale(1.008)}
+}
+@media (prefers-reduced-motion: reduce){
+  .lv-station.lv-waiting{animation:none}
+}
+
+/* Running station — cyan border glow + typing indicator visible */
+.lv-station.lv-running{
+  border-color:var(--ds-border-accent);
+  box-shadow:0 0 0 1px var(--ds-border-accent),
+             0 0 18px rgba(0,229,255,.25);
+  background:var(--ds-accent-cyan-muted)
+}
+.lv-station.lv-running::after{
+  /* Sliding stripe — reuses the Sprint button marquee pattern from earlier */
+  content:"";position:absolute;top:0;left:0;right:0;bottom:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(90deg,
+    rgba(0,229,255,.12) 0,rgba(0,229,255,.12) 2px,
+    transparent 2px,transparent 12px);
+  animation:ds-marquee-slide 1.2s linear infinite;
+  mix-blend-mode:screen
+}
+@media (prefers-reduced-motion: reduce){
+  .lv-station.lv-running::after{animation:none;opacity:.3}
+}
+
+/* Complete station — solid border, settled look */
+.lv-station.lv-complete{
+  border-color:rgba(52,211,153,.35);
+  background:rgba(52,211,153,.06)
+}
+/* Failed station — red tint */
+.lv-station.lv-failed{
+  border-color:rgba(248,113,113,.45);
+  background:rgba(248,113,113,.08);
+  opacity:.85
+}
+/* Confidence-capped — amber */
+.lv-station.lv-capped{
+  border-color:rgba(251,191,36,.45);
+  background:rgba(251,191,36,.06)
+}
+
+/* Station internals */
+.lv-st-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;margin-bottom:6px
+}
+.lv-st-name{
+  font-size:11px;font-weight:700;color:var(--ds-text-primary);
+  letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.lv-st-status{
+  font-size:8px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;padding:2px 6px;border-radius:var(--ds-radius-pill);
+  white-space:nowrap;flex-shrink:0
+}
+.lv-st-status.lv-waiting{color:var(--ds-text-tertiary);background:rgba(255,255,255,.04)}
+.lv-st-status.lv-running{color:var(--ds-accent-cyan);background:var(--ds-accent-cyan-muted)}
+.lv-st-status.lv-complete{color:var(--ds-signal-positive);background:var(--ds-signal-positive-muted)}
+.lv-st-status.lv-failed{color:var(--ds-signal-negative);background:var(--ds-signal-negative-muted)}
+.lv-st-status.lv-capped{color:var(--ds-signal-warning);background:var(--ds-signal-warning-muted)}
+
+.lv-st-conf{
+  font:700 22px/1 var(--font);
+  color:var(--ds-text-primary);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em
+}
+.lv-st-conf.lv-muted{color:var(--ds-text-tertiary);font-weight:400;font-size:18px}
+.lv-st-method{
+  font-size:9px;color:var(--ds-text-tertiary);
+  line-height:1.3;margin-top:4px;min-height:24px;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical
+}
+
+/* Typing dots — visible when status=running */
+.lv-dots{display:inline-flex;gap:3px;margin-left:4px;align-items:center;vertical-align:middle}
+.lv-dots span{
+  display:inline-block;width:4px;height:4px;border-radius:50%;
+  background:var(--ds-accent-cyan);
+  animation:lv-dot 1.2s ease-in-out infinite
+}
+.lv-dots span:nth-child(2){animation-delay:.15s}
+.lv-dots span:nth-child(3){animation-delay:.3s}
+@keyframes lv-dot{
+  0%,60%,100%{opacity:.25;transform:scale(.85)}
+  30%        {opacity:1;  transform:scale(1.1)}
+}
+@media (prefers-reduced-motion: reduce){
+  .lv-dots span{animation:none;opacity:.7}
+}
+
+/* Devil's Inquisitor adversarial panel */
+.lv-di{
+  padding:12px 14px;margin-bottom:14px;
+  background:var(--ds-surface-scrim);
+  border:1px solid var(--ds-border-default);
+  border-left:3px solid var(--ds-accent-violet);
+  border-radius:var(--ds-radius-sm);
+  position:relative
+}
+.lv-di.lv-alert{
+  border-color:rgba(248,113,113,.55);
+  border-left-color:var(--ds-signal-negative);
+  box-shadow:var(--ds-shadow-glow-cyan);
+  animation:pbadge-pulse 1.6s ease-out 2
+}
+.lv-di-title{
+  font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ds-accent-violet);
+  margin-bottom:6px;display:flex;align-items:center;gap:6px
+}
+.lv-di-warning{
+  font-size:12px;color:var(--ds-text-primary);line-height:1.5;
+  margin:8px 0
+}
+.lv-di-facts{margin:6px 0;padding-left:16px}
+.lv-di-facts li{
+  font-size:11px;color:var(--ds-text-secondary);line-height:1.5;
+  margin-bottom:3px
+}
+
+/* Event log — Vercel-style append-bottom */
+.lv-log{
+  background:var(--ds-surface-scrim);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-sm);
+  max-height:260px;overflow-y:auto;
+  padding:6px 0;position:relative
+}
+.lv-log-row{
+  display:grid;grid-template-columns:80px 16px 1fr;gap:10px;
+  padding:3px 12px;font-size:10px;line-height:1.5;
+  border-bottom:1px solid rgba(255,255,255,.02)
+}
+.lv-log-ts{
+  color:var(--ds-text-tertiary);font-variant-numeric:tabular-nums;
+  white-space:nowrap
+}
+.lv-log-icon{text-align:center;opacity:.8}
+.lv-log-msg{color:var(--ds-text-secondary);word-break:break-word}
+.lv-log-msg strong{color:var(--ds-text-primary);font-weight:600}
+.lv-log-row.lv-new{animation:ds-tick-up 900ms ease-out}
+.lv-log-row.lv-err .lv-log-msg{color:var(--ds-signal-negative)}
+.lv-log-row.lv-ok  .lv-log-icon{color:var(--ds-signal-positive)}
+.lv-log-row.lv-info .lv-log-icon{color:var(--ds-accent-cyan)}
+.lv-log-row.lv-warn .lv-log-icon{color:var(--ds-signal-warning)}
+
+.lv-log-empty{
+  padding:16px;text-align:center;color:var(--ds-text-tertiary);
+  font-size:11px;font-style:italic
+}
+
+/* ============================================================
+ * ARCHIVE VIEW — "what they thought vs how it actually played out"
+ *
+ * A historical browser for past predictions with three-pane expand:
+ *   1) What the committee thought at T0 (operator brief, profile outputs)
+ *   2) How new evidence updated the picture (resolver verdict + cited claims)
+ *   3) Final outcome if scored (Brier, conditions, analyst post-mortem)
+ *
+ * Plus analyst note field and topic trajectory mini-chart.
+ * ============================================================ */
+
+.ar-filter{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:8px 10px;margin-bottom:8px;
+  background:var(--ds-surface-scrim);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-sm)
+}
+.ar-filter input, .ar-filter select{
+  background:var(--bg3);border:1px solid var(--bdr);
+  color:var(--txt);padding:4px 8px;border-radius:var(--ds-radius-sm);
+  font:var(--font);outline:none;font-size:11px
+}
+.ar-filter input:focus, .ar-filter select:focus{
+  border-color:var(--ds-border-accent)
+}
+
+/* Trajectory mini-chart */
+.ar-traj{
+  padding:12px 14px 8px;margin-bottom:10px;
+  background:var(--ds-surface-scrim);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-sm);
+  position:relative
+}
+.ar-traj-title{
+  font-size:10px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ds-text-tertiary);
+  margin-bottom:6px;display:flex;align-items:center;gap:8px
+}
+.ar-traj svg{width:100%;height:90px;display:block}
+.ar-traj-grid{stroke:rgba(255,255,255,.04);stroke-width:1;fill:none}
+.ar-traj-line{
+  stroke:var(--ds-accent-cyan);stroke-width:1.8;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px rgba(0,229,255,.4))
+}
+.ar-traj-line.ar-range{
+  stroke:rgba(0,229,255,.3);stroke-width:.8
+}
+.ar-traj-dot{fill:var(--ds-accent-cyan);r:2.5}
+.ar-traj-dot.lv-capped{fill:var(--ds-signal-warning)}
+.ar-traj-dot.lv-err{fill:var(--ds-signal-negative)}
+.ar-traj-label{
+  font:500 9px/1 var(--font);
+  fill:var(--ds-text-tertiary);
+  font-variant-numeric:tabular-nums
+}
+.ar-traj-empty{
+  padding:24px;text-align:center;color:var(--ds-text-tertiary);
+  font-size:11px;font-style:italic
+}
+
+/* Session list row */
+.ar-row{
+  display:grid;grid-template-columns:16px 1fr 80px 60px 60px 60px;
+  gap:8px;padding:8px 10px;font-size:11px;
+  border-bottom:1px solid var(--ds-border-default);
+  cursor:pointer;align-items:center;
+  transition:background var(--ds-duration-fast) var(--ds-ease-out)
+}
+.ar-row:hover{background:rgba(0,229,255,.04)}
+.ar-row-verdict{font-size:11px;text-align:center}
+.ar-row-q{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ds-text-primary)}
+.ar-row-meta{font-size:9px;color:var(--ds-text-tertiary);text-transform:uppercase;letter-spacing:.05em;font-variant-numeric:tabular-nums}
+
+/* Three-pane expand */
+.ar-detail{
+  background:var(--ds-surface-void);
+  border-top:1px solid var(--ds-border-default);
+  border-bottom:1px solid var(--ds-border-default);
+  padding:0
+}
+.ar-pane{padding:14px 16px;border-bottom:1px solid var(--ds-border-default)}
+.ar-pane:last-child{border-bottom:none}
+.ar-pane-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:10px
+}
+.ar-pane-num{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--ds-accent-cyan-muted);
+  color:var(--ds-accent-cyan);
+  border:1px solid var(--ds-border-accent);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:11px;flex-shrink:0
+}
+.ar-pane-title{
+  font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ds-text-primary)
+}
+.ar-pane-subtitle{
+  font-size:10px;color:var(--ds-text-tertiary);
+  margin-left:auto;text-transform:uppercase;letter-spacing:.05em
+}
+.ar-brief{
+  background:var(--ds-surface-base);
+  padding:10px 12px;border-radius:var(--ds-radius-sm);
+  font-size:11px;line-height:1.6;color:var(--ds-text-secondary);
+  white-space:pre-wrap;max-height:260px;overflow-y:auto;
+  border:1px solid var(--ds-border-default)
+}
+.ar-profile-list{display:grid;gap:6px;margin-top:10px}
+.ar-profile-row{
+  display:grid;grid-template-columns:1fr 50px;gap:10px;
+  padding:6px 10px;background:var(--ds-surface-scrim);
+  border-radius:var(--ds-radius-sm);font-size:10px;
+  border:1px solid var(--ds-border-default)
+}
+.ar-profile-name{font-weight:600;color:var(--ds-text-primary)}
+.ar-profile-pred{color:var(--ds-text-tertiary);font-size:10px;line-height:1.4;margin-top:2px}
+.ar-profile-conf{
+  font-weight:700;font-variant-numeric:tabular-nums;
+  text-align:right;align-self:center
+}
+.ar-profile-reflect{
+  margin-top:6px;padding:6px 8px;font-size:10px;line-height:1.5;
+  background:rgba(139,92,246,.06);
+  border-left:2px solid var(--ds-accent-violet);
+  color:var(--ds-text-secondary);font-style:italic
+}
+.ar-profile-reflect::before{
+  content:"self-reflection: ";font-style:normal;font-weight:600;
+  color:var(--ds-accent-violet);text-transform:uppercase;
+  font-size:8px;letter-spacing:.08em
+}
+
+/* Resolver verdict pane */
+.ar-resolution{
+  padding:10px 12px;margin-top:8px;
+  border-radius:var(--ds-radius-sm);border:1px solid var(--ds-border-default)
+}
+.ar-resolution.ar-falsified{
+  background:rgba(248,113,113,.06);
+  border-color:rgba(248,113,113,.3)
+}
+.ar-resolution.ar-confirmed{
+  background:rgba(52,211,153,.06);
+  border-color:rgba(52,211,153,.3)
+}
+.ar-resolution.ar-pending{
+  background:rgba(251,191,36,.04);
+  border-color:rgba(251,191,36,.25)
+}
+.ar-verdict-chip{
+  display:inline-block;padding:3px 10px;border-radius:var(--ds-radius-pill);
+  font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:6px
+}
+.ar-verdict-chip.ar-falsified{background:var(--ds-signal-negative-muted);color:var(--ds-signal-negative)}
+.ar-verdict-chip.ar-confirmed{background:var(--ds-signal-positive-muted);color:var(--ds-signal-positive)}
+.ar-verdict-chip.ar-pending{background:var(--ds-signal-warning-muted);color:var(--ds-signal-warning)}
+.ar-cited-claim{
+  font-size:10px;color:var(--ds-text-secondary);
+  padding:4px 8px;margin-top:4px;
+  background:var(--ds-surface-base);
+  border-left:2px solid var(--ds-border-default);line-height:1.4
+}
+
+/* Analyst note textarea */
+.ar-note-box{
+  display:flex;flex-direction:column;gap:6px;margin-top:8px
+}
+.ar-note-box textarea{
+  background:var(--ds-surface-base);
+  border:1px solid var(--ds-border-default);
+  border-radius:var(--ds-radius-sm);
+  padding:8px 10px;font:var(--font);color:var(--ds-text-primary);
+  resize:vertical;min-height:60px;outline:none;font-size:11px
+}
+.ar-note-box textarea:focus{border-color:var(--ds-border-accent)}
+.ar-note-saved{font-size:9px;color:var(--ds-signal-positive);opacity:0;transition:opacity .3s}
+.ar-note-saved.visible{opacity:1}
+
+/* Status pills and aggregate chip */
+.lv-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:var(--ds-radius-pill);
+  font-size:9px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase
+}
+.lv-chip-live{
+  background:var(--ds-accent-cyan-muted);
+  color:var(--ds-accent-cyan);
+  border:1px solid var(--ds-border-accent)
+}
+.lv-chip-live::before{
+  content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--ds-accent-cyan);
+  animation:ds-pulse 1.6s ease-in-out infinite
+}
+.lv-chip-done{
+  background:var(--ds-signal-positive-muted);
+  color:var(--ds-signal-positive)
+}
+.lv-chip-idle{
+  background:rgba(255,255,255,.04);color:var(--ds-text-tertiary)
+}
+
+</style>
+</head>
+<body x-data="app()" x-init="init()">
+
+<!-- Header -->
+<div id="hdr">
+  <span id="hdr-title">EXOCORTEX CONTROL</span>
+  <span :class="hCls(health&&health.status)"
+    x-text="health?health.status:'…'"
+    class="hbadge"></span>
+  <span class="hmu" x-show="health"
+    x-text="'P:' + (health&&health.claims&&health.claims.promoted||0) + ' S:' + (health&&health.claims&&health.claims.staged||0)"></span>
+  <span class="hmu" x-show="health&&health.ingest_paused" style="color:#b83838">● PAUSED</span>
+  <span class="hmu" x-show="health&&!health.ingest_paused" style="color:#4fa34f">● LIVE</span>
+
+  <!--
+    SFA-001 FINDING 3 FIX (P0.1) — Pending resolver verdict badge.
+    The autonomous resolver was correctly flagging SWARMFISH prediction
+    failures for weeks and the badge was buried in a sub-tab. This surfaces
+    the count in the header so self-diagnostic output cannot be silently
+    ignored. Click to navigate to the Pending tab. Separate highlight when
+    any verdict is 'falsified' because those are the load-bearing cases.
+  -->
+  <span x-show="pendingCount > 0"
+        :class="pendingFalsifiedCount > 0 ? 'hbadge hbadge-err pbadge-pulse' : 'hbadge hbadge-warn'"
+        @click="go('swarmfish'); sfTab='pending'; loadPending()"
+        style="cursor:pointer"
+        :title="pendingFalsifiedCount > 0
+                ? pendingFalsifiedCount + ' falsified verdicts waiting for review — click to open Pending tab'
+                : pendingCount + ' pending verdicts waiting for review — click to open Pending tab'">
+    ⚠ <span x-text="pendingCount"></span> PENDING
+    <span x-show="pendingFalsifiedCount > 0" x-text="'(' + pendingFalsifiedCount + ' FALSIFIED)'" style="margin-left:4px"></span>
+  </span>
+
+  <!--
+    SFA-001 P4 — source health header badge.
+    Fires when any source has an explicit fetch error OR has not
+    successfully fetched in >24h. Click to open the Sources tab.
+    Prevents the State-Dept-silent-for-28-days failure mode.
+  -->
+  <span x-show="(health?.source_health?.failing || 0) + (health?.source_health?.stale || 0) > 0"
+        :class="(health?.source_health?.failing || 0) > 0 ? 'hbadge hbadge-err' : 'hbadge hbadge-warn'"
+        @click="go('sources'); loadSources()"
+        style="cursor:pointer"
+        :title="'Source health issue — ' + (health?.source_health?.failing || 0) + ' failing, ' + (health?.source_health?.stale || 0) + ' stale (>24h). Click to inspect.'">
+    ⚠ <span x-text="(health?.source_health?.failing || 0) + (health?.source_health?.stale || 0)"></span> SOURCE
+  </span>
+
+  <div id="hdr-right">
+    <span class="hmu" x-show="health" x-text="'last: ' + (health&&health.last_ingestion ? health.last_ingestion.slice(5,16).replace('T',' ') : '—')"></span>
+    <button class="btn" @click="loadHealth()" title="Refresh status" :disabled="hL">
+      <span :class="hL?'spin':''">↻</span>
+    </button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div id="tabbar">
+  <button class="tab" :class="view==='status'?'tab-on':''" @click="go('status')">Status</button>
+  <button class="tab" :class="view==='claims'?'tab-on':''" @click="go('claims')">
+    Claims
+    <span class="tbadge" x-show="health&&(health.claims&&health.claims.staged||0)>0"
+      x-text="health&&health.claims&&health.claims.staged||0"></span>
+  </button>
+  <button class="tab" :class="view==='sources'?'tab-on':''" @click="go('sources')">Sources</button>
+  <button class="tab" :class="view==='control'?'tab-on':''" @click="go('control')">Control</button>
+  <button class="tab" :class="view==='swarmfish'?'tab-on':''" @click="go('swarmfish')">SWARMFISH</button>
+  <button class="tab" :class="view==='live'?'tab-on':''" @click="go('live')">
+    Live Agent
+    <span class="tbadge" x-show="liveStatus==='live'" style="background:var(--ds-accent-cyan-muted);color:var(--ds-accent-cyan)" x-text="'◉ LIVE'"></span>
+  </button>
+  <button class="tab" :class="view==='archive'?'tab-on':''" @click="go('archive')">Archive</button>
+  <button class="tab" :class="view==='hypotheses'?'tab-on':''" @click="go('hypotheses')">
+    Hypotheses
+    <span class="tbadge" x-show="hypothesesActiveCount > 0" x-text="hypothesesActiveCount"></span>
+  </button>
+</div>
+
+<!-- Panels -->
+<div id="body">
+
+  <!-- STATUS -->
+  <div class="panel" :class="view==='status'?'panel-on':''">
+    <div class="sec sec-first">Intelligence Counts</div>
+    <div class="stats">
+      <div class="stat stat-ok">
+        <div class="stat-n" x-text="health&&health.claims&&health.claims.promoted||0"></div>
+        <div class="stat-l">promoted</div>
+      </div>
+      <div class="stat stat-staged">
+        <div class="stat-n" x-text="health&&health.claims&&health.claims.staged||0"></div>
+        <div class="stat-l">staged</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" x-text="health&&health.claims&&health.claims.irrelevant||0"></div>
+        <div class="stat-l">irrelevant</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" x-text="health&&health.sources_count||0"></div>
+        <div class="stat-l">sources</div>
+      </div>
+    </div>
+
+    <div class="sec">Health Metrics</div>
+    <div class="hmetrics" x-show="health&&health.health_report">
+      <template x-for="[k,v] in Object.entries((health&&health.health_report)||{}).filter(([k])=>typeof (health&&health.health_report||{})[k]==='object'&&(health&&health.health_report||{})[k]!==null&&'status' in (health&&health.health_report||{})[k])" :key="k">
+        <div class="hmet" :class="v.status==='OK'?'hmet-ok':'hmet-warn'">
+          <div class="hmet-label" x-text="k.replace(/_/g,' ')"></div>
+          <span :class="v.status==='OK'?'conf-high':'conf-low'" x-text="v.status"></span>
+        </div>
+      </template>
+    </div>
+
+    <div class="sec">Capabilities</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0">
+      <template x-for="c in (health&&health.capabilities||[])" :key="c">
+        <span class="pill pill-mu" x-text="c"></span>
+      </template>
+    </div>
+  </div>
+
+  <!-- CLAIMS -->
+  <div class="panel" :class="view==='claims'?'panel-on':''">
+    <div class="flt-row">
+      <select class="sel" x-model="cTopic" @change="loadClaims()">
+        <option value="">All topics</option>
+        <template x-for="t in cTopics" :key="t.tag">
+          <option :value="t.tag" x-text="t.display_name||t.tag"></option>
+        </template>
+      </select>
+      <button class="btn" @click="loadClaims()" :disabled="cL">
+        <span :class="cL?'spin':''">↻</span> Refresh
+      </button>
+      <span class="hmu" x-text="cClaims.length + ' staged'"></span>
+      <span x-show="cClaims.length>0" style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-ok" @click="cPromoteAll()">Promote All</button>
+        <button class="btn btn-err" @click="cDiscardAll()">Discard All</button>
+      </span>
+    </div>
+    <div x-show="cE" class="err-box" x-text="cE"></div>
+    <div x-show="!cL && cClaims.length===0 && !cE" class="info-box">No staged claims.</div>
+    <template x-for="c in cClaims" :key="c.id">
+      <div>
+        <div class="crow">
+          <span class="crow-text" @click="cSel=cSel===c.id?null:c.id" x-text="c.claim_text||''"></span>
+          <span class="cconf" x-text="c.staging_confidence!=null?Math.round(c.staging_confidence*100)+'%':''"></span>
+          <div class="crow-btns">
+            <span class="pill pill-mu" style="margin-right:2px" x-text="c.source_name||''"></span>
+            <button class="btn btn-ok" @click.stop="cPromote(c)">✓</button>
+            <button class="btn btn-err" @click.stop="cDiscard(c)">✕</button>
+          </div>
+        </div>
+        <div class="crow-detail" x-show="cSel===c.id">
+          <div style="margin-bottom:4px" x-text="c.claim_text||''"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="hmu" x-text="'source: ' + (c.source_name||'—')"></span>
+            <span class="hmu" x-text="'extracted: ' + ((c.extracted_at||'').slice(0,16).replace('T',' '))"></span>
+            <span x-show="(c.topic_tags||[]).length>0">
+              <template x-for="t in (c.topic_tags||[])" :key="t">
+                <span class="pill pill-mu" x-text="t" style="margin-right:3px"></span>
+              </template>
+            </span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- SOURCES -->
+  <div class="panel" :class="view==='sources'?'panel-on':''">
+    <div class="flt-row">
+      <span class="hmu" x-text="sSrcs.length + ' sources'"></span>
+      <span class="hmu" x-show="sSrcs.length > 0"
+            x-text="'· ' + sSrcs.filter(s => s.health === 'healthy').length + ' healthy · ' +
+                    sSrcs.filter(s => s.health === 'stale').length + ' stale · ' +
+                    sSrcs.filter(s => s.health === 'failing').length + ' failing · ' +
+                    sSrcs.filter(s => s.health === 'dormant').length + ' dormant'"></span>
+      <button class="btn" @click="loadSources()" :disabled="sL">
+        <span :class="sL?'spin':''">↻</span> Refresh
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:16px 1fr 80px 100px 60px 60px;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+      <span></span><span>Source</span><span style="text-align:right">24h</span><span>Credibility</span><span style="text-align:center">Score</span><span></span>
+    </div>
+    <template x-for="s in sSrcs" :key="s.source_id">
+      <div class="srow" style="grid-template-columns:16px 1fr 80px 100px 60px 60px">
+        <!-- SFA-001 P3.2 — health dot: green=healthy, yellow=stale, red=failing, grey=dormant -->
+        <span :title="s.health + (s.last_fetch_error ? ' — ' + s.last_fetch_error : '')"
+              :style="{
+                display:'inline-block',width:'10px',height:'10px',borderRadius:'50%',
+                background: s.health==='healthy' ? '#4fa34f' :
+                            s.health==='stale'   ? '#c09010' :
+                            s.health==='failing' ? '#b83838' :
+                                                   '#555',
+                alignSelf:'center'
+              }"></span>
+        <div>
+          <div class="sname" x-text="s.source_name||s.source_id"></div>
+          <div class="surl" x-text="s.url||''"></div>
+          <div class="hmu" x-show="s.last_fetch_error" style="color:#b83838;font-size:9px"
+               x-text="'error: ' + (s.last_fetch_error||'').slice(0,80)"></div>
+        </div>
+        <div class="sval" style="text-align:right;font-variant-numeric:tabular-nums"
+             :style="s.claims_last_24h > 0 ? 'color:var(--ds-text-primary)' : 'color:var(--mu)'"
+             x-text="s.claims_last_24h || 0"></div>
+        <input type="range" class="srange" min="0" max="1" step="0.05"
+          :value="s._c"
+          @input="s._c=parseFloat($event.target.value)"
+          @change="sSave(s)">
+        <div class="sval" :style="s._c>=0.7?'color:#4fa34f':s._c>=0.4?'color:#c09010':'color:#b83838'"
+          x-text="parseFloat(s._c||0.7).toFixed(2)"></div>
+        <span class="ssaved" x-show="sSaved[s.source_id]">✓</span>
+      </div>
+    </template>
+  </div>
+
+  <!-- CONTROL -->
+  <div class="panel" :class="view==='control'?'panel-on':''">
+    <div class="sec sec-first">Ingestion Pipeline</div>
+    <div class="ctl-row">
+      <button class="btn" :class="xPaused?'btn-ok':'btn-warn'" @click="xToggle()" :disabled="xToggleL">
+        <span x-text="xPaused?'▶ Resume':'⏸ Pause'"></span>
+      </button>
+      <button class="btn btn-p" :class="xSprintL?'btn-sprinting':''" @click="xSprint()" :disabled="xSprintL">
+        <span :class="xSprintL?'spin':''">⚡</span> Sprint
+      </button>
+      <span class="hmu" x-show="xMsg" x-text="xMsg"></span>
+    </div>
+
+    <div class="sec">Topics</div>
+    <div style="display:grid;grid-template-columns:100px 1fr auto auto;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+      <span>Tag</span><span>Name</span><span>Claims</span><span>Active</span>
+    </div>
+    <template x-for="t in xTopics" :key="t.tag">
+      <div class="trow">
+        <code x-text="t.tag||''"></code>
+        <span x-text="t.display_name||t.tag||''"></span>
+        <span x-effect="flashTickOnChange($el, t.live_count||0)" x-text="t.live_count||0" style="font-variant-numeric:tabular-nums;display:inline-block"></span>
+        <span :class="t.active?'conf-high':'hmu'" x-text="t.active?'●':'○'"></span>
+      </div>
+    </template>
+
+    <div class="sec">Add Topic</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0">
+      <input class="inp inp-sm" placeholder="Display name" x-model="xNewTopic">
+      <input class="inp" style="width:120px" placeholder="tag (auto)" x-model="xTopicTag">
+      <input class="inp inp-sm" placeholder="Description (optional)" x-model="xTopicDesc">
+      <button class="btn btn-p" @click="xAddTopic()" :disabled="!xNewTopic.trim()">Add</button>
+    </div>
+    <div x-show="xTopicMsg" class="info-box" x-text="xTopicMsg"></div>
+
+    <!-- SWARMFISH MONITOR CONTROL -->
+    <div class="sec">Swarmfish Autonomous Monitor</div>
+    <div x-show="sfMonitorStatus && sfMonitorStatus.unavailable" class="info-box"
+         style="color:var(--warn)">
+      Swarmfish container unreachable. Check it is running.
+    </div>
+    <div x-show="sfMonitorStatus && !sfMonitorStatus.unavailable" style="padding:6px 8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span :class="sfMonitorStatus && sfMonitorStatus.active ? 'pill pill-ok' : 'pill pill-mu'"
+              x-text="sfMonitorStatus && sfMonitorStatus.active ? 'ACTIVE' : 'PAUSED'"></span>
+        <span class="hmu" x-show="sfMonitorStatus && sfMonitorStatus.running"
+              style="color:var(--ds-accent-cyan);animation:var(--ds-anim-pulse)">● cycle in progress</span>
+        <span class="hmu"
+              x-text="'interval: ' + (sfMonitorStatus ? sfMonitorStatus.interval_minutes + 'm' : '?')"></span>
+        <span class="hmu"
+              x-text="'min claims: ' + (sfMonitorStatus ? sfMonitorStatus.min_claims : '?')"></span>
+      </div>
+      <div class="hmu" style="font-size:10px;margin-bottom:6px"
+           x-show="sfMonitorStatus && sfMonitorStatus.last_run">
+        Last run:
+        <span x-text="sfMonitorStatus && sfMonitorStatus.last_run && (sfMonitorStatus.last_run.at||'').slice(5,19).replace('T',' ')"></span>
+        — topics checked:
+        <span x-text="sfMonitorStatus && sfMonitorStatus.last_run && sfMonitorStatus.last_run.topics_checked"></span>,
+        hypotheses:
+        <span x-text="sfMonitorStatus && sfMonitorStatus.last_run && sfMonitorStatus.last_run.hypotheses_posted"></span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn"
+                :class="sfMonitorStatus && sfMonitorStatus.active ? 'btn-warn' : 'btn-ok'"
+                @click="toggleSFMonitor()" :disabled="sfMonitorL">
+          <span x-text="sfMonitorStatus && sfMonitorStatus.active ? '⏸ Pause Monitor' : '▶ Resume Monitor'"></span>
+        </button>
+        <button class="btn btn-p" @click="runSFMonitorNow()"
+                :disabled="sfMonitorL || (sfMonitorStatus && sfMonitorStatus.running)">
+          <span :class="sfMonitorL?'spin':''">⚡</span> Run Cycle Now
+        </button>
+        <button class="btn" @click="loadSFMonitor()" :disabled="sfMonitorL"
+                title="Refresh status">↻</button>
+        <span class="hmu" x-show="sfMonitorMsg" x-text="sfMonitorMsg" style="align-self:center;padding-left:8px"></span>
+      </div>
+    </div>
+    <div x-show="sfMonitorStatus === null" class="hmu" style="padding:6px 8px">Loading monitor status…</div>
+
+    <!-- SERVICE CONTROL (via host control daemon) -->
+    <div class="sec">Service Control</div>
+    <div x-show="!ctrlDaemon.reachable" class="info-box" style="color:var(--warn)">
+      Host control daemon unreachable at <code x-text="ctrlDaemonUrl"></code>.
+      Start it with <code>services/control/start_daemon.bat</code> on the host.
+      <button class="btn" @click="loadDaemonStatus()" :disabled="ctrlDaemonL"
+              style="margin-left:8px">↻ Retry</button>
+    </div>
+    <div x-show="ctrlDaemon.reachable && !ctrlDaemon.authed" class="info-box" style="color:var(--warn)">
+      Daemon reachable but control token is wrong or missing.
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input class="inp inp-sm" type="password" placeholder="control token"
+               x-model="ctrlToken" style="flex:1">
+        <button class="btn btn-p" @click="saveDaemonToken()">Save token</button>
+      </div>
+    </div>
+
+    <template x-for="svc in ctrlDaemon.services" :key="svc.service">
+      <div style="padding:8px;border-bottom:1px solid var(--bdr)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <span style="font-weight:600" x-text="svc.display_name"></span>
+          <span :class="svc.all_running ? 'pill pill-ok' : (svc.any_running ? 'pill pill-staged' : 'pill pill-mu')"
+                x-text="svc.all_running ? 'ALL RUNNING' : (svc.any_running ? 'PARTIAL' : 'STOPPED')"></span>
+          <span class="hmu" style="font-size:10px"
+                x-text="svc.containers.length + ' container' + (svc.containers.length===1?'':'s')"></span>
+          <span class="hmu" style="margin-left:auto" x-show="ctrlBusy[svc.service]">working…</span>
+        </div>
+        <template x-for="c in svc.containers" :key="c.name">
+          <div style="font-size:10px;padding-left:8px">
+            <span style="display:inline-block;min-width:70px"
+                  :style="c.status === 'running' ? 'color:var(--ok)' : (c.status === 'exited' ? 'color:var(--mu)' : 'color:var(--err)')"
+                  x-text="c.status || '?'"></span>
+            <span class="hmu" x-text="c.name"></span>
+          </div>
+        </template>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn btn-ok"
+                  @click="svcAction(svc.service, 'start')"
+                  :disabled="svc.all_running || ctrlBusy[svc.service]">Start</button>
+          <button class="btn btn-err"
+                  @click="svcAction(svc.service, 'stop')"
+                  :disabled="!svc.any_running || ctrlBusy[svc.service]">Stop</button>
+          <button class="btn btn-p"
+                  @click="svcAction(svc.service, 'restart')"
+                  :disabled="ctrlBusy[svc.service]">Restart</button>
+        </div>
+      </div>
+    </template>
+    <div x-show="ctrlMsg" class="info-box" x-text="ctrlMsg"></div>
+  </div>
+
+  <!-- SWARMFISH -->
+  <div class="panel" :class="view==='swarmfish'?'panel-on':''">
+    <div class="sf-tabs">
+      <button class="sf-tab" :class="sfTab==='predict'?'sf-tab-on':''" @click="sfTab='predict'">Predict</button>
+      <button class="sf-tab" :class="sfTab==='sessions'?'sf-tab-on':''" @click="sfTab='sessions';loadSFSessions()">Sessions</button>
+      <button class="sf-tab" :class="sfTab==='pending'?'sf-tab-on':''" @click="sfTab='pending';loadPending()">
+        Pending
+        <span class="tbadge" x-show="pendingCount > 0" x-text="pendingCount"></span>
+      </button>
+      <button class="sf-tab" :class="sfTab==='calibration'?'sf-tab-on':''" @click="sfTab='calibration';loadSFSessions()">Calibration</button>
+    </div>
+
+    <!-- Predict -->
+    <div x-show="sfTab==='predict'">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <input class="inp" style="flex:1;min-width:200px" placeholder="Question or scenario…"
+          x-model="prQ" @keydown.enter="prPredict()">
+        <input class="inp" style="width:130px" placeholder="Domain (optional)" x-model="prDomain">
+        <button class="btn btn-p" :class="prQ.trim()&&!prL?'ds-default-pulse':''"
+                @click="prPredict()" :disabled="!prQ.trim()||prL">
+          <span :class="prL?'spin':''">▶</span> Predict
+        </button>
+      </div>
+      <div x-show="prL" class="info-box">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bdr)">
+          <span class="spin">◐</span>
+          <span>Committee in session —</span>
+          <span x-text="prElapsed + 's elapsed'" style="font-weight:600"></span>
+          <span class="hmu" style="margin-left:auto"
+            x-text="Object.keys(prDone).length + '/' + (prProfiles.length || '?') + ' done'"></span>
+        </div>
+        <template x-for="name in prProfiles" :key="name">
+          <div class="prow" style="display:flex;align-items:center;gap:8px;padding:2px 0">
+            <span x-text="prDone[name] ? '✅' : (prCurrent === name ? '⏳' : '⏸')" style="width:14px"></span>
+            <span x-text="name" style="flex:1"></span>
+            <span class="hmu" x-show="prDone[name]"
+              x-text="prDone[name] ? 'conf ' + Math.round((prDone[name].confidence||0)*100) + '%' : ''"></span>
+          </div>
+        </template>
+        <div x-show="prProfiles.length === 0" class="hmu" style="padding:4px 0">Loading profiles…</div>
+      </div>
+      <div x-show="prE" class="err-box" x-text="prE"></div>
+      <div x-show="prResult" class="result-box">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <span style="font-size:14px;font-weight:700;color:var(--txt)"
+              x-text="prConsensus!=null ? Math.round(prConsensus*100)+'%' : '—'"></span>
+            <span class="hmu" style="margin-left:6px" x-text="prMetaConf"></span>
+            <span class="hmu" style="margin-left:6px" x-show="prRangeLow!=null"
+              x-text="'range ' + Math.round(prRangeLow*100) + '–' + Math.round(prRangeHigh*100) + '%'"></span>
+          </div>
+          <div class="hmu" x-text="'profiles: ' + prAllProfiles.length"></div>
+        </div>
+        <div x-show="prResult&&prResult.operator_brief" class="ds-ai-content"
+          style="color:var(--ds-text-secondary);font-size:11px;line-height:1.6;margin-bottom:8px;padding:10px 12px;white-space:pre-wrap"
+          x-text="prResult&&prResult.operator_brief||''"></div>
+
+        <!-- DISSENTERS: profiles whose confidence deviates >=20% from consensus -->
+        <div x-show="prDissenters.length > 0" style="margin-bottom:8px;padding:6px 8px;border:1px solid var(--warn);border-radius:4px;background:rgba(184,56,56,0.08)">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);margin-bottom:4px">
+            ⚠ Dissent detected —
+            <span x-text="prDissenters.length + (prDissenters.length===1?' profile':' profiles') + ' diverged ≥20% from consensus'"></span>
+          </div>
+          <template x-for="d in prDissenters" :key="d.profile_name">
+            <div style="padding:4px 0;border-top:1px solid var(--bdr);margin-top:4px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-weight:600" x-text="d.profile_name"></span>
+                <span :class="confCls(d.confidence)" x-text="pct(d.confidence)"></span>
+                <span class="hmu" x-text="(d.confidence > prConsensus ? '+' : '') + Math.round((d.confidence - prConsensus)*100) + ' pts vs consensus'"></span>
+                <span class="hmu" style="margin-left:auto" x-text="d.confidence > prConsensus ? 'more confident' : 'more cautious'"></span>
+              </div>
+              <div style="font-size:11px;color:var(--mu);margin-top:2px" x-text="d.reasoning_summary || d.prediction || ''"></div>
+            </div>
+          </template>
+        </div>
+
+        <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mu);margin-bottom:4px">Committee</div>
+        <template x-for="p in prAllProfiles" :key="p.profile_name||p.assessment_id">
+          <div>
+            <div class="prow" @click="prExpanded=prExpanded===p.profile_name?null:p.profile_name">
+              <span class="pname">
+                <span x-text="prExpanded===p.profile_name?'▼':'▶'"></span>
+                <span x-text="p.profile_name||''"></span>
+                <span x-show="p.confidence_capped" style="color:var(--warn)"> ⚠</span>
+              </span>
+              <span class="pconf" :class="confCls(p.confidence)"
+                x-text="p.error?'ERR':pct(p.confidence)"></span>
+              <span class="psum" x-text="p.error||p.reasoning_summary||p.prediction||''"></span>
+            </div>
+            <div x-show="prExpanded===p.profile_name" class="pdetail">
+              <div x-show="!p.error" style="margin-bottom:4px"><span class="ds-ai-label">Profile reasoning</span></div>
+              <div x-show="p.error" style="color:var(--err)" x-text="p.error||''"></div>
+              <div x-show="!p.error" class="ds-ai-content" style="padding:8px 10px;line-height:1.5"
+                   x-text="p.prediction||p.reasoning_summary||''"></div>
+              <div x-show="p.risk_flags&&p.risk_flags.length" style="margin-top:6px">
+                <span class="hmu">Risk: </span>
+                <span x-text="(p.risk_flags||[]).join(', ')"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Sessions -->
+    <div x-show="sfTab==='sessions'">
+      <div x-show="ssL" class="hmu">Loading sessions…</div>
+      <div x-show="!ssL && !sfSessions.length" class="info-box">No sessions yet.</div>
+      <div style="display:grid;grid-template-columns:1fr 80px 60px 50px;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+        <span>Question</span><span>Domain</span><span>Conf</span><span>Date</span>
+      </div>
+      <template x-for="s in sfSessions" :key="s.session_id||s.id">
+        <div>
+          <div class="sess-row" @click="ssExpanded=ssExpanded===s.session_id?null:s.session_id">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="s.question||''"></span>
+            <span class="hmu" x-text="s.domain||'—'"></span>
+            <span :class="confCls(s.consensus_confidence)" x-text="pct(s.consensus_confidence)"></span>
+            <span class="hmu" x-text="(s.created_at||'').slice(5,10)"></span>
+          </div>
+          <div x-show="ssExpanded===s.session_id" class="sess-detail">
+            <div style="font-weight:500;margin-bottom:6px" x-text="s.question||''"></div>
+            <div x-show="s.operator_brief" style="margin-bottom:4px"><span class="ds-ai-label">Operator brief</span></div>
+            <div x-show="s.operator_brief" x-text="s.operator_brief||''" class="ds-ai-content"
+                 style="color:var(--ds-text-secondary);line-height:1.6;margin-bottom:8px;padding:8px 12px;white-space:pre-wrap"></div>
+            <div x-show="s.outcome" style="display:flex;align-items:center;gap:8px">
+              <span class="hmu">Outcome:</span>
+              <span class="pill" :class="s.outcome==='correct'?'pill-ok':'pill-err'" x-text="s.outcome||''"></span>
+            </div>
+            <div x-show="!s.outcome" style="display:flex;gap:6px;margin-top:6px">
+              <button class="btn btn-ok" @click="sfOutcome(s.session_id||s.id, true)">✓ Correct</button>
+              <button class="btn btn-err" @click="sfOutcome(s.session_id||s.id, false)">✕ Wrong</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Pending Resolutions -->
+    <div x-show="sfTab==='pending'">
+      <div x-show="pendingL" class="hmu">Loading pending resolutions…</div>
+      <div x-show="!pendingL && !pending.length" class="info-box">No pending resolutions. Committee is fully scored.</div>
+      <div x-show="pendingMsg" class="info-box" x-text="pendingMsg"></div>
+      <div x-show="pending.length" style="display:grid;grid-template-columns:18px 1fr 80px 60px 70px 50px;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+        <span></span><span>Question</span><span>Domain</span><span>Conf</span><span>Unscored</span><span>Age</span>
+      </div>
+      <template x-for="p in pending" :key="p.id">
+        <div>
+          <div class="sess-row" @click="pendingExpanded=pendingExpanded===p.id?null:p.id"
+               style="display:grid;grid-template-columns:18px 1fr 80px 60px 70px 50px;gap:8px">
+            <span :title="p.proposal ? 'Resolver proposal: ' + p.proposal.verdict : 'No proposal yet'"
+                  x-text="p.proposal ? verdictGlyph(p.proposal.verdict) : '·'"></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="p.question||''"></span>
+            <span class="hmu" x-text="p.domain||'—'"></span>
+            <span :class="confCls(p.consensus_confidence)" x-text="pct(p.consensus_confidence)"></span>
+            <span class="hmu" x-text="p.unscored_count + '/' + p.total_count"></span>
+            <span class="hmu" x-text="ageOf(p.created_at)"></span>
+          </div>
+          <div x-show="pendingExpanded===p.id" class="sess-detail">
+            <div style="font-weight:500;margin-bottom:5px" x-text="p.question||''"></div>
+            <div class="hmu" style="font-size:10px;margin-bottom:6px">
+              <span x-text="'Meta: ' + (p.meta_confidence||'?')"></span> ·
+              <span x-text="'Disagreement: ' + (p.disagreement_level||'?')"></span> ·
+              <span x-text="'Range: ' + (p.consensus_range_low!=null ? Math.round(p.consensus_range_low*100)+'–'+Math.round(p.consensus_range_high*100)+'%' : '?')"></span>
+            </div>
+            <div x-show="p.operator_brief" x-text="p.operator_brief||''" class="ds-ai-content"
+                 style="color:var(--ds-text-secondary);line-height:1.6;margin-bottom:8px;white-space:pre-wrap;font-size:11px;max-height:200px;overflow-y:auto;padding:8px 12px"></div>
+
+            <!-- AUTONOMOUS RESOLVER PROPOSAL — LLM-generated content (carbon AI aura pattern) -->
+            <div x-show="p.proposal" class="ds-ai-content" style="margin:8px 0;padding:10px 12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span class="ds-ai-label">Resolver Proposal</span>
+                <span :class="verdictCls(p.proposal && p.proposal.verdict)"
+                      x-text="p.proposal ? p.proposal.verdict.toUpperCase().replace('_',' ') : ''"></span>
+                <span class="hmu"
+                      x-text="p.proposal ? Math.round(p.proposal.resolver_confidence*100) + '% confidence' : ''"></span>
+                <span class="hmu" style="margin-left:auto"
+                      x-text="p.proposal ? (p.proposal.cited_claims.length + ' cited / ' + p.proposal.claims_considered_count + ' reviewed') : ''"></span>
+              </div>
+              <div x-show="p.proposal" style="font-size:11px;line-height:1.5;color:var(--mu);margin-bottom:6px"
+                   x-text="p.proposal && p.proposal.reasoning"></div>
+              <template x-for="c in (p.proposal ? p.proposal.cited_claims : [])" :key="c.claim_id">
+                <div style="font-size:10px;padding:3px 6px;margin:2px 0;background:var(--bg4);border-radius:3px">
+                  <span class="hmu" x-text="'#' + c.claim_id + ' · ' + (c.source||'?') + ' · ' + (c.date||'?')"></span>
+                  <div x-text="c.text_excerpt||''"></div>
+                </div>
+              </template>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="btn btn-p" @click="acceptProposal(p)" :disabled="pendingBusy">
+                  Accept as-is
+                </button>
+                <span style="font-size:10px;color:var(--ds-text-helper);align-self:center;padding-left:4px">
+                  (pre-fills outcome text below for you to review)
+                </span>
+              </div>
+            </div>
+
+            <div x-show="!p.proposal" style="margin:8px 0">
+              <button class="btn" @click="runResolver(p.id)" :disabled="pendingBusy || resolverRunning[p.id]">
+                <span :class="resolverRunning[p.id]?'spin':''">⚙</span>
+                <span x-text="resolverRunning[p.id] ? 'Resolver running…' : 'Run autonomous resolver'"></span>
+              </button>
+              <span style="font-size:10px;color:var(--ds-text-helper);margin-left:8px">
+                Fetches new OSS claims since prediction, runs evaluator, stores advisory verdict
+              </span>
+            </div>
+
+            <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mu);margin:8px 0 4px">Record Outcome</div>
+            <textarea class="inp" rows="3" style="width:100%;resize:vertical;margin-bottom:6px"
+                      placeholder="What actually happened? (required — one or two sentences)"
+                      x-model="pendingOutcomes[p.id]"></textarea>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ok" @click="scorePending(p.id, true)"
+                      :disabled="!(pendingOutcomes[p.id]||'').trim() || pendingBusy">
+                ✓ Correct
+              </button>
+              <button class="btn btn-err" @click="scorePending(p.id, false)"
+                      :disabled="!(pendingOutcomes[p.id]||'').trim() || pendingBusy">
+                ✕ Wrong
+              </button>
+              <span class="hmu" style="margin-left:8px;align-self:center" x-show="pendingBusy">Scoring…</span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Calibration -->
+    <div x-show="sfTab==='calibration'">
+      <div x-show="ssL" class="hmu">Loading calibration data…</div>
+      <div x-show="!ssL && !sfCalibration.length" class="info-box">
+        No calibration data yet. Once you resolve predictions via the Pending tab,
+        per-profile Brier scores and calibration bias will appear here.
+      </div>
+      <div x-show="sfCalibration.length" style="display:grid;grid-template-columns:1.4fr 1fr 40px 60px 60px 60px 70px;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+        <span>Profile</span><span>Domain</span><span>n</span><span>Brier</span><span>Conf</span><span>Acc</span><span>Bias</span>
+      </div>
+      <template x-for="c in sfCalibration" :key="(c.profile_name||'?')+'::'+(c.domain||'?')">
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 40px 60px 60px 60px 70px;gap:8px;padding:3px 8px;border-bottom:1px solid var(--bdr);font-size:11px">
+          <span x-text="c.profile_name||'?'" style="font-weight:500"></span>
+          <span class="hmu" x-text="c.domain||'?'"></span>
+          <span class="hmu" x-text="c.n_predictions||0"></span>
+          <span :class="brierCls(c.avg_brier)" x-text="c.avg_brier!=null ? Number(c.avg_brier).toFixed(3) : '—'"></span>
+          <span x-text="c.avg_confidence!=null ? Math.round(Number(c.avg_confidence)*100)+'%' : '—'"></span>
+          <span x-text="c.avg_accuracy!=null ? Math.round(Number(c.avg_accuracy)*100)+'%' : '—'"></span>
+          <span :class="biasCls(c.avg_accuracy, c.avg_confidence)"
+                x-text="biasLabel(c.avg_accuracy, c.avg_confidence)"></span>
+        </div>
+      </template>
+      <div x-show="sfCalibration.length" class="hmu" style="padding:8px;font-size:10px;line-height:1.5">
+        Brier score: 0.0 perfect · 0.25 random · &gt;0.25 worse than random.
+        Bias: positive = underconfident · negative = overconfident.
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE AGENT -->
+  <div class="panel" :class="view==='live'?'panel-on':''">
+
+    <!-- Mission Board -->
+    <div class="lv-mission">
+      <div class="lv-mission-head">
+        <div class="lv-mission-title">
+          Mission
+          <span class="lv-chip" :class="liveStatus==='live' ? 'lv-chip-live' : liveStatus==='complete' ? 'lv-chip-done' : 'lv-chip-idle'"
+                style="margin-left:8px"
+                x-text="liveStatus==='live' ? 'LIVE' : liveStatus==='complete' ? 'COMPLETE' : 'IDLE'"></span>
+        </div>
+        <div class="lv-mission-q" x-text="liveSession?.question || 'No active session. Waiting for next prediction cycle…'"></div>
+        <div class="lv-mission-meta" x-show="liveSession">
+          <span>domain <strong x-text="liveSession?.domain || '—'"></strong></span>
+          <span>elapsed <strong x-text="liveElapsed"></strong></span>
+          <span>profiles <strong x-text="liveCompletedCount + '/' + liveProfileCount"></strong></span>
+          <span x-show="liveSession?.consensus_confidence !== null && liveSession?.consensus_confidence !== undefined">
+            meta <strong x-text="liveSession?.meta_confidence || '—'"></strong>
+          </span>
+        </div>
+      </div>
+      <div class="lv-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="lv-ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="lv-ring-fg"
+                  :class="liveFailedCount > 0 ? (liveStatus==='complete' ? 'lv-warn' : '') : ''"
+                  cx="50" cy="50" r="42"
+                  :stroke-dasharray="264"
+                  :stroke-dashoffset="264 - (264 * liveRingFraction)"
+                  transform="rotate(-90 50 50)"/>
+          <text class="lv-ring-label" x="50" y="46"
+                x-text="liveSession?.consensus_confidence != null
+                         ? Math.round(liveSession.consensus_confidence*100)+'%'
+                         : (liveCompletedCount + '/' + liveProfileCount)"></text>
+          <text class="lv-ring-meta" x="50" y="62"
+                x-text="liveSession?.consensus_confidence != null ? 'consensus' : 'progress'"></text>
+        </svg>
+        <div class="lv-ring-sub" x-text="liveStatus==='live' ? 'committee working' : liveStatus==='complete' ? 'session finalized' : 'no session'"></div>
+      </div>
+    </div>
+
+    <!-- Committee Section -->
+    <div class="lv-sec" x-show="liveSession">Committee</div>
+    <div class="lv-grid" x-show="liveSession">
+      <template x-for="p in liveCommittee" :key="p.profile_name">
+        <div class="lv-station" :class="'lv-'+p.status+(p.confidence_capped?' lv-capped':'')"
+             :title="p.confidence_capped ? (p.confidence_cap_reason||'') : ''">
+          <div class="lv-st-head">
+            <div class="lv-st-name" x-text="p.profile_name"></div>
+            <div class="lv-st-status" :class="'lv-'+(p.confidence_capped?'capped':p.status)"
+                 x-text="p.confidence_capped ? 'CAPPED' : p.status"></div>
+          </div>
+          <div>
+            <span class="lv-st-conf" :class="p.confidence == null ? 'lv-muted' : ''"
+                  x-text="p.confidence != null ? Math.round(p.confidence*100)+'%' : '—'"></span>
+            <span class="lv-dots" x-show="p.status==='running'"><span></span><span></span><span></span></span>
+          </div>
+          <div class="lv-st-method" x-text="profileTag(p.profile_name)"></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Devil's Inquisitor adversarial panel -->
+    <div class="lv-sec" x-show="liveSession">Adversarial Observer</div>
+    <div class="lv-di" :class="liveDIAlert ? 'lv-alert' : ''" x-show="liveSession">
+      <div class="lv-di-title">
+        <span>⚠ DEVIL'S INQUISITOR</span>
+        <span class="lv-st-status" :class="'lv-'+(liveDI?.status || 'waiting')"
+              x-text="liveDI?.status || 'waiting'"></span>
+        <span style="margin-left:auto;font-weight:400;color:var(--ds-text-tertiary);font-size:9px"
+              x-text="liveDI?.confidence != null ? 'confidence ' + Math.round(liveDI.confidence*100)+'%' : ''"></span>
+      </div>
+      <div x-show="liveDI?.status === 'waiting'" style="font-size:11px;color:var(--ds-text-tertiary);font-style:italic">
+        Waiting for Devil's Inquisitor to produce output…
+      </div>
+      <div x-show="liveDI?.status === 'running'" style="font-size:11px;color:var(--ds-accent-cyan)">
+        Examining the input for surprising facts
+        <span class="lv-dots"><span></span><span></span><span></span></span>
+      </div>
+      <div x-show="liveDI?.status === 'failed'" style="font-size:11px;color:var(--ds-signal-negative)">
+        <strong>FAILED</strong> — <span x-text="(liveDI?.error || 'timeout').slice(0,200)"></span>
+      </div>
+      <template x-if="liveDI?.status === 'complete'">
+        <div>
+          <div class="lv-di-warning" x-show="liveDIWarning" x-text="liveDIWarning"></div>
+          <div x-show="liveDISurprisingFacts.length > 0">
+            <div style="font-size:9px;color:var(--ds-text-tertiary);text-transform:uppercase;letter-spacing:.08em;margin-top:6px">Surprising Facts</div>
+            <ul class="lv-di-facts">
+              <template x-for="f in liveDISurprisingFacts" :key="f">
+                <li x-text="f"></li>
+              </template>
+            </ul>
+          </div>
+          <div x-show="liveDI?.prediction" style="font-size:11px;color:var(--ds-text-secondary);margin-top:6px;line-height:1.5"
+               x-text="liveDI?.prediction"></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Event Log -->
+    <div class="lv-sec" x-show="liveSession">Event Log</div>
+    <div class="lv-log" x-ref="lvLog" x-show="liveSession">
+      <div class="lv-log-empty" x-show="liveEvents.length === 0">No events yet. Events will appear as profiles complete.</div>
+      <template x-for="(ev, i) in liveEvents" :key="ev.key">
+        <div class="lv-log-row" :class="'lv-'+ev.kind + (i === liveEvents.length-1 && ev.fresh ? ' lv-new' : '')">
+          <span class="lv-log-ts" x-text="ev.ts"></span>
+          <span class="lv-log-icon" x-text="ev.icon"></span>
+          <span class="lv-log-msg" x-html="ev.msg"></span>
+        </div>
+      </template>
+    </div>
+
+    <div x-show="!liveSession" class="info-box" style="margin-top:16px">
+      No prediction session has been recorded yet. Trigger one from the SWARMFISH tab
+      or wait for the autonomous monitor's next cycle.
+    </div>
+  </div>
+
+  <!-- ARCHIVE -->
+  <div class="panel" :class="view==='archive'?'panel-on':''">
+
+    <!-- Filter bar -->
+    <div class="ar-filter">
+      <span class="hmu" style="margin-right:auto">Past predictions — what they thought vs how it played out</span>
+      <input type="text" placeholder="topic filter (e.g. Hormuz)" x-model="arTopic"
+             @input.debounce.500ms="loadArchive()" style="width:200px">
+      <select x-model="arOutcome" @change="loadArchive()">
+        <option value="all">All outcomes</option>
+        <option value="unscored">Unscored</option>
+        <option value="scored">Scored</option>
+        <option value="falsified">Falsified</option>
+        <option value="confirmed">Confirmed</option>
+      </select>
+      <button class="btn" @click="loadArchive()" :disabled="arL">
+        <span :class="arL?'spin':''">↻</span>
+      </button>
+    </div>
+
+    <!-- Trajectory mini-chart — visible when a topic filter is set -->
+    <div class="ar-traj" x-show="arTopic && arTrajectory.length >= 2">
+      <div class="ar-traj-title">
+        <span>Consensus trajectory: <strong x-text="arTopic"></strong></span>
+        <span class="hmu" style="margin-left:auto" x-text="arTrajectory.length + ' sessions'"></span>
+      </div>
+      <svg :viewBox="'0 0 ' + arTrajWidth + ' 90'" preserveAspectRatio="none">
+        <!-- Horizontal grid lines at 25%, 50%, 75% -->
+        <line class="ar-traj-grid" x1="0" y1="22" :x2="arTrajWidth" y2="22"/>
+        <line class="ar-traj-grid" x1="0" y1="45" :x2="arTrajWidth" y2="45"/>
+        <line class="ar-traj-grid" x1="0" y1="68" :x2="arTrajWidth" y2="68"/>
+        <text class="ar-traj-label" x="2" y="24">75%</text>
+        <text class="ar-traj-label" x="2" y="47">50%</text>
+        <text class="ar-traj-label" x="2" y="70">25%</text>
+        <!-- Range band (low to high) -->
+        <polyline class="ar-traj-line ar-range" :points="arTrajRangePoints"/>
+        <!-- Consensus line -->
+        <polyline class="ar-traj-line" :points="arTrajConsensusPoints"/>
+        <!-- Dots per session -->
+        <template x-for="(pt, i) in arTrajectory" :key="pt.id">
+          <circle :cx="arTrajX(i)" :cy="90 - (pt.consensus_confidence * 90)" r="3"
+                  :class="'ar-traj-dot ' + (pt.meta_confidence === 'LOW' ? 'lv-err' : pt.meta_confidence === 'MEDIUM' ? 'lv-capped' : '')"
+                  :title="(pt.created_at||'').slice(0,10) + ' · ' + Math.round(pt.consensus_confidence*100) + '% · meta ' + pt.meta_confidence"></circle>
+        </template>
+      </svg>
+      <div class="hmu" style="font-size:9px;margin-top:4px">
+        cyan = HIGH meta · yellow = MEDIUM · red = LOW (P4.2 override fired)
+      </div>
+    </div>
+
+    <!-- Session list -->
+    <div x-show="arL" class="hmu" style="padding:20px;text-align:center">Loading archive…</div>
+    <div x-show="!arL && arSessions.length === 0" class="info-box">
+      No sessions match the current filter.
+    </div>
+
+    <div x-show="!arL && arSessions.length > 0" style="display:grid;grid-template-columns:16px 1fr 80px 60px 60px 60px;gap:8px;padding:6px 10px;font-size:9px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.06em">
+      <span></span><span>Question</span><span>Domain</span><span>Consensus</span><span>Meta</span><span>Date</span>
+    </div>
+
+    <template x-for="s in arSessions" :key="s.id">
+      <div>
+        <div class="ar-row" @click="arExpanded = arExpanded === s.id ? null : s.id">
+          <span class="ar-row-verdict" :title="arVerdictTitle(s)"
+                x-text="arVerdictGlyph(s)"></span>
+          <span class="ar-row-q" x-text="s.question || ''"></span>
+          <span class="ar-row-meta" x-text="s.domain || '—'"></span>
+          <span class="ar-row-meta"
+                :style="s.consensus_confidence >= 0.7 ? 'color:var(--ds-signal-positive)' : s.consensus_confidence >= 0.5 ? 'color:var(--ds-signal-warning)' : 'color:var(--ds-signal-negative)'"
+                x-text="s.consensus_confidence != null ? Math.round(s.consensus_confidence*100)+'%' : '—'"></span>
+          <span class="ar-row-meta"
+                :style="s.meta_confidence === 'LOW' ? 'color:var(--ds-signal-negative)' : s.meta_confidence === 'MEDIUM' ? 'color:var(--ds-signal-warning)' : 'color:var(--ds-text-tertiary)'"
+                x-text="s.meta_confidence || '—'"></span>
+          <span class="ar-row-meta" x-text="(s.created_at||'').slice(5,10)"></span>
+        </div>
+
+        <!-- Three-pane expand -->
+        <div x-show="arExpanded === s.id" class="ar-detail">
+
+          <!-- PANE 1: What the committee thought -->
+          <div class="ar-pane">
+            <div class="ar-pane-head">
+              <div class="ar-pane-num">1</div>
+              <div class="ar-pane-title">What the committee thought</div>
+              <div class="ar-pane-subtitle" x-text="(s.created_at || '').slice(0,16).replace('T',' ')"></div>
+            </div>
+            <div class="ar-brief" x-text="s.operator_brief || '(no operator brief)'"></div>
+
+            <div class="ar-profile-list">
+              <template x-for="p in (s.profiles || [])" :key="p.id">
+                <div>
+                  <div class="ar-profile-row">
+                    <div>
+                      <div class="ar-profile-name" x-text="p.profile_name"></div>
+                      <div class="ar-profile-pred" x-text="(p.prediction || p.error || '(no prediction)').slice(0,200)"></div>
+                    </div>
+                    <div class="ar-profile-conf"
+                         :style="p.confidence != null ? (p.confidence >= 0.7 ? 'color:var(--ds-signal-positive)' : 'color:var(--ds-text-primary)') : 'color:var(--ds-text-tertiary)'"
+                         x-text="p.confidence != null ? Math.round(p.confidence*100)+'%' : 'ERR'"></div>
+                  </div>
+                  <!-- Self-reflection if present in profile_extra_data -->
+                  <div class="ar-profile-reflect" x-show="arProfileReflection(p)" x-text="arProfileReflection(p)"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- PANE 2: How new evidence updated the picture -->
+          <div class="ar-pane">
+            <div class="ar-pane-head">
+              <div class="ar-pane-num">2</div>
+              <div class="ar-pane-title">How new evidence updated the picture</div>
+              <div class="ar-pane-subtitle" x-show="s.resolutions && s.resolutions.length" x-text="s.resolutions.length + ' resolver verdict(s)'"></div>
+            </div>
+            <div x-show="!s.resolutions || s.resolutions.length === 0" class="hmu" style="font-size:10px;font-style:italic">
+              No resolver verdict yet. Sessions are evaluated by the autonomous resolver after 7+ days, or manually via /acp/resolve.
+            </div>
+            <template x-for="r in (s.resolutions || [])" :key="r.id">
+              <div class="ar-resolution" :class="'ar-'+r.verdict">
+                <span class="ar-verdict-chip" :class="'ar-'+r.verdict" x-text="r.verdict.replace('_',' ')"></span>
+                <span class="hmu" style="font-size:9px;margin-left:8px" x-text="'resolver confidence ' + Math.round((r.resolver_confidence||0)*100)+'% · ' + (r.created_at||'').slice(0,10)"></span>
+                <div style="font-size:11px;line-height:1.5;margin-top:6px;color:var(--ds-text-primary)" x-show="r.outcome_text" x-text="r.outcome_text"></div>
+                <div style="font-size:10px;line-height:1.5;margin-top:6px;color:var(--ds-text-secondary);font-style:italic" x-show="r.reasoning" x-text="r.reasoning"></div>
+                <div x-show="r.cited_claims && r.cited_claims.length" style="margin-top:6px">
+                  <div class="hmu" style="font-size:9px;text-transform:uppercase;letter-spacing:.08em">Cited claims (<span x-text="r.cited_claims.length"></span>):</div>
+                  <template x-for="c in (r.cited_claims || []).slice(0,5)">
+                    <div class="ar-cited-claim">
+                      <strong x-text="'#' + (c.claim_id || '?') + ' [' + (c.source || '?') + ']'"></strong>
+                      <span x-text="' ' + (c.text_excerpt || '').slice(0,200)"></span>
+                    </div>
+                  </template>
+                </div>
+                <div x-show="r.operator_action" class="hmu" style="font-size:10px;margin-top:6px">
+                  operator action: <strong x-text="r.operator_action"></strong>
+                  <span x-show="r.operator_action_at" x-text="' at ' + (r.operator_action_at||'').slice(0,16).replace('T',' ')"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- PANE 3: Final outcome + analyst note -->
+          <div class="ar-pane">
+            <div class="ar-pane-head">
+              <div class="ar-pane-num">3</div>
+              <div class="ar-pane-title">Final outcome + analyst note</div>
+              <div class="ar-pane-subtitle" x-show="s.outcomes && s.outcomes.length" x-text="s.outcomes.length + ' scored prediction(s)'"></div>
+            </div>
+            <div x-show="!s.outcomes || s.outcomes.length === 0" class="hmu" style="font-size:10px;font-style:italic">
+              No final outcomes scored yet. Outcomes are created when the operator accepts a resolver verdict.
+            </div>
+            <template x-for="o in (s.outcomes || [])" :key="o.id">
+              <div class="ar-resolution" :class="o.was_correct ? 'ar-confirmed' : 'ar-falsified'" style="margin-bottom:6px">
+                <span class="ar-verdict-chip" :class="o.was_correct ? 'ar-confirmed' : 'ar-falsified'"
+                      x-text="o.was_correct ? 'correct' : 'incorrect'"></span>
+                <span class="hmu" style="font-size:9px;margin-left:8px"
+                      x-text="'Brier ' + (o.brier_score != null ? o.brier_score.toFixed(3) : '—')"></span>
+                <div style="font-size:11px;line-height:1.5;margin-top:4px" x-show="o.outcome" x-text="o.outcome"></div>
+                <div style="font-size:10px;margin-top:4px;color:var(--ds-text-tertiary);font-style:italic" x-show="o.post_mortem_note" x-text="'Post-mortem: ' + o.post_mortem_note"></div>
+              </div>
+            </template>
+
+            <!-- Analyst note textarea -->
+            <div class="ar-note-box">
+              <div class="hmu" style="font-size:9px;text-transform:uppercase;letter-spacing:.08em">Analyst note</div>
+              <textarea placeholder="Your commentary on this session. 'I disagree with consensus because X', 'DI's warning landed', 'In retrospect the committee missed Y'. Saved automatically when you click Save."
+                        x-model="arNotes[s.id]"></textarea>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn" @click="saveArchiveNote(s.id)" :disabled="arNoteSaving[s.id]">
+                  <span :class="arNoteSaving[s.id] ? 'spin' : ''">💾</span> Save note
+                </button>
+                <span class="ar-note-saved" :class="arNoteSavedFlag[s.id] ? 'visible' : ''">saved</span>
+                <span class="hmu" style="font-size:9px;margin-left:auto" x-show="s.analyst_note_updated_at" x-text="'updated ' + (s.analyst_note_updated_at || '').slice(0,16).replace('T',' ')"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- HYPOTHESES -->
+  <div class="panel" :class="view==='hypotheses'?'panel-on':''">
+    <div class="sec sec-first" style="display:flex;align-items:center;gap:8px">
+      <span>Hypothesis Lifecycle</span>
+      <span class="hmu" style="margin-left:auto;font-weight:normal" x-text="hypotheses.length + ' total'"></span>
+      <button class="btn" @click="loadHypotheses()" :disabled="hypothesesL">
+        <span :class="hypothesesL?'spin':''">↻</span>
+      </button>
+    </div>
+
+    <div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1px solid var(--bdr)">
+      <button class="btn" :class="hypothesesFilter==='ALL'?'btn-p':''" @click="hypothesesFilter='ALL'">All</button>
+      <button class="btn" :class="hypothesesFilter==='ACTIVE'?'btn-p':''" @click="hypothesesFilter='ACTIVE'">Active</button>
+      <button class="btn" :class="hypothesesFilter==='PROMOTED'?'btn-p':''" @click="hypothesesFilter='PROMOTED'">Promoted</button>
+      <button class="btn" :class="hypothesesFilter==='FALSIFIED'?'btn-p':''" @click="hypothesesFilter='FALSIFIED'">Falsified</button>
+    </div>
+
+    <div x-show="hypothesesL && !hypotheses.length" class="hmu" style="padding:8px">Loading hypotheses…</div>
+    <div x-show="!hypothesesL && !filteredHypotheses.length" class="info-box">
+      No hypotheses match the current filter.
+    </div>
+    <div x-show="hypothesesMsg" class="info-box" x-text="hypothesesMsg"></div>
+
+    <div x-show="filteredHypotheses.length" style="display:grid;grid-template-columns:40px 1fr 90px 70px 90px 60px;gap:8px;padding:3px 8px;font-size:10px;color:var(--mu);border-bottom:1px solid var(--bdr);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+      <span>#</span><span>Observation</span><span>Status</span><span>Conf</span><span>Predictions</span><span>Age</span>
+    </div>
+
+    <template x-for="h in filteredHypotheses" :key="h.id">
+      <div>
+        <div class="sess-row" @click="hypothesesExpanded=hypothesesExpanded===h.id?null:h.id"
+             style="display:grid;grid-template-columns:40px 1fr 90px 70px 90px 60px;gap:8px">
+          <span class="hmu" x-text="'#' + h.id"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="h.observation_label || '(unlabeled)'"></span>
+          <span :class="statusCls(h.status)" x-text="h.status || '?'"></span>
+          <span :class="confCls(h.current_confidence || h.initial_confidence)"
+                x-text="pct(h.current_confidence ?? h.initial_confidence)"></span>
+          <span class="hmu" x-text="predsSummary(h)"></span>
+          <span class="hmu" x-text="ageOf(h.created_at)"></span>
+        </div>
+
+        <div x-show="hypothesesExpanded===h.id" class="sess-detail">
+          <div class="hmu" style="font-size:10px;margin-bottom:6px">
+            <span x-show="h.swarmfish_session_id"
+                  x-text="'swarmfish session: ' + (h.swarmfish_session_id||'').slice(0,8)"></span>
+            <span x-show="h.observation_id"> · </span>
+            <span x-show="h.observation_id" x-text="'observation: ' + h.observation_id"></span>
+            <span x-show="h.auto_generated"> · auto-generated</span>
+          </div>
+
+          <div x-show="h.explanation || h.candidate_explanation" style="margin-bottom:4px">
+            <span class="ds-ai-label">Hypothesis explanation</span>
+          </div>
+          <div x-show="h.explanation || h.candidate_explanation" class="ds-ai-content"
+               style="color:var(--ds-text-secondary);line-height:1.5;margin-bottom:8px;white-space:pre-wrap;font-size:11px;max-height:240px;overflow-y:auto;padding:8px 12px"
+               x-text="h.explanation || h.candidate_explanation || ''"></div>
+
+          <div x-show="(h.predictions||[]).length" style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mu);margin:8px 0 4px">
+            Falsification Checklist
+          </div>
+          <template x-for="(p, idx) in (h.predictions || [])" :key="idx">
+            <div class="prow" style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;align-items:start;padding:4px 0;border-top:1px solid var(--bdr)">
+              <span x-text="predState(h, idx)" style="width:18px"></span>
+              <div style="font-size:11px;line-height:1.4">
+                <div x-text="predText(p)"></div>
+                <div class="hmu" style="font-size:10px;margin-top:2px"
+                     x-text="predFromProfile(p)"></div>
+              </div>
+              <div style="display:flex;gap:4px" x-show="!predResolved(h, idx) && h.status==='ACTIVE'">
+                <button class="btn btn-ok" style="padding:2px 6px;font-size:10px"
+                        @click.stop="confirmPred(h, idx)" :disabled="hypothesesBusy">✓</button>
+              </div>
+            </div>
+          </template>
+
+          <div x-show="h.status==='ACTIVE'" style="display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)">
+            <button class="btn btn-ok" @click="promoteHyp(h)" :disabled="hypothesesBusy">Promote</button>
+            <button class="btn btn-err" @click="falsifyHyp(h)" :disabled="hypothesesBusy">Falsify</button>
+            <span class="hmu" x-show="hypothesesBusy" style="align-self:center">Working…</span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+</div><!-- /body -->
+
+<script>
+const OSS = '';
+const SF = 'http://localhost:__SF_PORT__';
+const TOKEN = '__TOKEN__';
+
+async function api(base, path, data) {
+  const opts = {
+    method: data !== undefined ? 'POST' : 'GET',
+    headers: {'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN}
+  };
+  if (data !== undefined) opts.body = JSON.stringify(data);
+  try {
+    const r = await fetch(base + path, opts);
+    return await r.json();
+  } catch(e) {
+    return {ok: false, error: e.message};
+  }
+}
+
+/* Tick-flash helper — Bloomberg pattern from Phase 4 research.
+   Per-element previous value tracked via WeakMap (GCs with the DOM node).
+   On first render (prev undefined), prime without flashing. On change,
+   flash up or down, then restart the animation cleanly for rapid successive
+   changes by removing and re-adding the class after a reflow. */
+const _tickPrev = new WeakMap();
+function flashTickOnChange(el, val) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return;
+  const prev = _tickPrev.get(el);
+  _tickPrev.set(el, n);
+  if (prev === undefined || prev === n) return;
+  const cls = n > prev ? 'tick-up' : 'tick-down';
+  el.classList.remove('tick-up', 'tick-down');
+  void el.offsetWidth;  // force reflow so the animation restarts
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 650);
+}
+window.flashTickOnChange = flashTickOnChange;
+
+function app() {
+  return {
+    view: 'status',
+    _loaded: {},
+    health: null, hL: false,
+    cClaims: [], cL: false, cE: '', cTopic: '', cTopics: [], cSel: null,
+    sSrcs: [], sL: false, sSaved: {},
+    xPaused: false, xL: false, xToggleL: false, xSprintL: false, xMsg: '', xTopics: [],
+    sfMonitorStatus: null, sfMonitorL: false, sfMonitorMsg: '',
+    ctrlDaemon: {reachable: false, authed: false, services: []},
+    ctrlDaemonL: false, ctrlBusy: {}, ctrlMsg: '', ctrlToken: '',
+    ctrlDaemonUrl: 'http://localhost:9900',
+    xNewTopic: '', xTopicTag: '', xTopicDesc: '', xTopicMsg: '',
+    sfTab: 'predict',
+    prQ: '', prDomain: '', prL: false, prResult: null, prE: '', prExpanded: null, prElapsed: 0, prTimer: null,
+    prProfiles: [], prDone: {}, prCurrent: null,
+    sfSessions: [], sfCalibration: [], ssL: false, ssExpanded: null,
+    pending: [], pendingL: false, pendingCount: 0, pendingFalsifiedCount: 0, pendingExpanded: null,
+    pendingOutcomes: {}, pendingBusy: false, pendingMsg: '',
+    resolverRunning: {},
+    hypotheses: [], hypothesesL: false, hypothesesExpanded: null,
+    hypothesesFilter: 'ALL', hypothesesMsg: '', hypothesesBusy: false,
+    hypothesesActiveCount: 0,
+
+    // ---- Archive view state (2026-04-14 Archive build) ----
+    arSessions: [], arL: false, arExpanded: null,
+    arTopic: '', arOutcome: 'all',
+    arTrajectory: [], arTrajWidth: 600,
+    arNotes: {}, arNoteSaving: {}, arNoteSavedFlag: {},
+
+    // ---- Live Agent view state (P4 UI build, 2026-04-14) ----
+    liveSession: null,
+    liveCommittee: [],      // the 8 core profiles, ordered
+    liveDI: null,           // Devil's Inquisitor state object
+    liveEvents: [],         // append-bottom event log rows
+    liveStatus: 'idle',     // 'idle' | 'live' | 'complete'
+    liveProfileCount: 9,
+    liveCompletedCount: 0,
+    liveFailedCount: 0,
+    liveRingFraction: 0,    // 0..1 fill for consensus ring
+    liveElapsed: '—',
+    liveDIAlert: false,     // true when DI just produced a warning
+    liveDIWarning: '',
+    liveDISurprisingFacts: [],
+    _liveSeenProfiles: {},  // keyed by profile_name → last status, for event-log diffing
+    _liveLastSessionId: null,
+    _liveElapsedTimer: null,
+
+    async init() {
+      // Restore persisted predict input so questions survive page reloads
+      try {
+        this.prQ = localStorage.getItem('oss_panel_prQ') || '';
+        this.prDomain = localStorage.getItem('oss_panel_prDomain') || '';
+        // Host control daemon token — persisted separately
+        this.ctrlToken = localStorage.getItem('host_control_token') || 'dev_control_token';
+      } catch(e) { /* localStorage disabled — ignore */ }
+      this.$watch('prQ', (v) => {
+        try { localStorage.setItem('oss_panel_prQ', v || ''); } catch(e) {}
+      });
+      this.$watch('prDomain', (v) => {
+        try { localStorage.setItem('oss_panel_prDomain', v || ''); } catch(e) {}
+      });
+
+      await this.loadHealth();
+      // Fetch the pending-resolution count so the Pending tab badge is accurate
+      // on first load without requiring the operator to visit the tab.
+      this.loadPending().catch(() => {});
+      // Same for hypotheses active count badge
+      this.loadHypotheses().catch(() => {});
+      // Auto-refresh health every 10s while tab is visible — keeps LIVE/PAUSED
+      // badge and claim counts in sync without requiring manual refresh clicks.
+      setInterval(() => {
+        if (!document.hidden) this.loadHealth();
+      }, 10000);
+      // SFA-001 P0.1 — auto-refresh pending resolutions every 30s so the
+      // header badge stays current. Longer interval than health because
+      // resolver verdicts don't arrive at 10s granularity. This closes the
+      // attention-layer loop identified in the silent-failure audit: the
+      // autonomous resolver was already correctly diagnosing errors for
+      // weeks, but the signal wasn't reaching the analyst because nobody
+      // navigated to the Pending tab. Now the header shows it by default.
+      setInterval(() => {
+        if (!document.hidden) this.loadPending().catch(() => {});
+      }, 30000);
+      // Live Agent view — poll /acp/live every 2s while the tab is visible
+      // AND the user is on the live tab. Cheap query (two DB selects) so
+      // the granularity can be aggressive without harming performance.
+      setInterval(() => {
+        if (!document.hidden && this.view === 'live') {
+          this.loadLive().catch(() => {});
+        }
+      }, 2000);
+    },
+
+    go(v) {
+      this.view = v;
+      if (!this._loaded[v]) {
+        this._loaded[v] = true;
+        if (v === 'claims') this.loadClaims();
+        if (v === 'sources') this.loadSources();
+        if (v === 'control') this.loadControl();
+        if (v === 'swarmfish') { this.loadSFSessions(); }
+        if (v === 'hypotheses') { this.loadHypotheses(); }
+        if (v === 'live') { this.loadLive(); }
+        if (v === 'archive') { this.loadArchive(); }
+      }
+      // When navigating TO live, restart polling immediately (even if
+      // previously loaded) so the view refreshes on tab return.
+      if (v === 'live') this.loadLive();
+      if (v === 'archive') this.loadArchive();
+    },
+
+    // ============================================================
+    // Live Agent view — polls /acp/live and renders organizational state
+    // ============================================================
+
+    profileTag(name) {
+      // Short methodology tagline for each profile station. Hand-written
+      // one-liners; the full profile docs live in the backend.
+      const tags = {
+        'Base Rate Analyst': 'anchors on historical frequency',
+        'Contrarian': 'stress-tests the consensus',
+        'Historian': 'finds the closest analogue',
+        'Reflexivity Modeler': 'traces self-reinforcing loops',
+        'Decomposer': 'Fermi decomposition of components',
+        'Network Analyst': 'tracks transmission channels',
+        'Sentiment Decoder': 'narrative vs observable data',
+        'Risk Manager': "Taleb's extremistan + tail focus",
+        "Devil's Inquisitor": 'adversarial dissent against consensus',
+      };
+      return tags[name] || '';
+    },
+
+    async loadLive() {
+      try {
+        const d = await api(SF, '/acp/live');
+        if (!d || d.error) return;
+        this._applyLive(d);
+      } catch(e) {
+        // Silent on transient network errors — polling will retry
+      }
+    },
+
+    _applyLive(d) {
+      const session = d.session || null;
+      const profiles = d.profiles || [];
+      const liveStatus = d.status || 'idle';
+      const prevSessionId = this._liveLastSessionId;
+      const sessionId = session ? session.id : null;
+
+      // New session detected → reset event log and seen-profiles map
+      if (sessionId !== prevSessionId) {
+        this.liveEvents = [];
+        this._liveSeenProfiles = {};
+        if (session) {
+          this._pushLiveEvent('info', '◆', 'Session started: <strong>' + (session.question || '').slice(0, 80) + '</strong>');
+        }
+        this._liveLastSessionId = sessionId;
+      }
+
+      this.liveSession = session;
+      this.liveStatus = liveStatus;
+      this.liveProfileCount = d.profile_count || 9;
+      this.liveCompletedCount = d.completed_count || 0;
+      this.liveFailedCount = profiles.filter(p => p.status === 'failed').length;
+
+      // Split profiles into committee (8) + Devil's Inquisitor (1)
+      this.liveCommittee = profiles.filter(p => p.profile_name !== "Devil's Inquisitor");
+      this.liveDI = profiles.find(p => p.profile_name === "Devil's Inquisitor") || null;
+
+      // Compute consensus ring fraction. If consensus_confidence is set,
+      // show it as a percentage. Otherwise show completion progress.
+      if (session && session.consensus_confidence != null) {
+        this.liveRingFraction = Math.max(0, Math.min(1, session.consensus_confidence));
+      } else {
+        this.liveRingFraction = this.liveProfileCount > 0
+          ? this.liveCompletedCount / this.liveProfileCount
+          : 0;
+      }
+
+      // Extract DI warning + surprising_facts from profile_extra_data
+      if (this.liveDI && this.liveDI.profile_extra_data) {
+        let extra = this.liveDI.profile_extra_data;
+        if (typeof extra === 'string') {
+          try { extra = JSON.parse(extra); } catch(e) { extra = {}; }
+        }
+        this.liveDIWarning = (extra && extra.consensus_warning) || '';
+        this.liveDISurprisingFacts = (extra && Array.isArray(extra.surprising_facts))
+          ? extra.surprising_facts : [];
+        // Trigger alert animation when DI has warning + >= 3 surprising facts
+        this.liveDIAlert = !!this.liveDIWarning && this.liveDISurprisingFacts.length >= 3;
+      } else {
+        this.liveDIWarning = '';
+        this.liveDISurprisingFacts = [];
+        this.liveDIAlert = false;
+      }
+
+      // Emit events for any profile whose status transitioned since last poll
+      for (const p of profiles) {
+        const prev = this._liveSeenProfiles[p.profile_name];
+        const current = p.status;
+        if (prev !== current) {
+          if (current === 'complete') {
+            const conf = p.confidence != null ? Math.round(p.confidence*100) + '%' : '?';
+            const cap = p.confidence_capped ? ' <span style="color:var(--ds-signal-warning)">[CAPPED]</span>' : '';
+            this._pushLiveEvent('ok', '✓', '<strong>' + p.profile_name + '</strong>: ' + conf + cap);
+          } else if (current === 'failed') {
+            const err = (p.error || 'unknown error').slice(0, 120);
+            this._pushLiveEvent('err', '⚠', '<strong>' + p.profile_name + '</strong> FAILED — ' + err);
+          } else if (current === 'running' && prev === 'waiting') {
+            this._pushLiveEvent('info', '◌', '<strong>' + p.profile_name + '</strong> running');
+          }
+          this._liveSeenProfiles[p.profile_name] = current;
+        }
+      }
+
+      // Aggregate complete event
+      if (liveStatus === 'complete' && session && session.consensus_confidence != null) {
+        const key = 'final-' + sessionId;
+        if (!this.liveEvents.find(e => e.key === key)) {
+          const meta = session.meta_confidence || '?';
+          const cons = Math.round(session.consensus_confidence*100) + '%';
+          this._pushLiveEvent('info', '◆', 'Session finalized — consensus <strong>' + cons + '</strong> · meta_confidence ' + meta, key);
+        }
+      }
+
+      // Update elapsed timer
+      this._updateLiveElapsed();
+      // Start ticking the elapsed display once per second while live
+      if (liveStatus === 'live' && !this._liveElapsedTimer) {
+        this._liveElapsedTimer = setInterval(() => this._updateLiveElapsed(), 1000);
+      } else if (liveStatus !== 'live' && this._liveElapsedTimer) {
+        clearInterval(this._liveElapsedTimer);
+        this._liveElapsedTimer = null;
+      }
+    },
+
+    _pushLiveEvent(kind, icon, msg, key) {
+      const now = new Date();
+      const ts = now.toTimeString().slice(0, 8);
+      this.liveEvents.push({
+        key: key || (ts + '-' + kind + '-' + Math.random().toString(36).slice(2, 8)),
+        ts, kind, icon, msg, fresh: true
+      });
+      // Mark previous events as not-fresh so only the latest animates
+      if (this.liveEvents.length > 1) {
+        this.liveEvents[this.liveEvents.length - 2].fresh = false;
+      }
+      // Auto-scroll to bottom
+      this.$nextTick(() => {
+        if (this.$refs.lvLog) this.$refs.lvLog.scrollTop = this.$refs.lvLog.scrollHeight;
+      });
+    },
+
+    _updateLiveElapsed() {
+      if (!this.liveSession || !this.liveSession.created_at) {
+        this.liveElapsed = '—';
+        return;
+      }
+      const start = new Date(this.liveSession.created_at).getTime();
+      let end;
+      if (this.liveStatus === 'complete' && this.liveSession.closed_at) {
+        end = new Date(this.liveSession.closed_at).getTime();
+      } else if (this.liveStatus === 'complete') {
+        // Find the latest profile completion timestamp
+        end = Math.max(
+          start,
+          ...this.liveCommittee.concat(this.liveDI ? [this.liveDI] : [])
+            .filter(p => p.completed_at)
+            .map(p => new Date(p.completed_at).getTime())
+        );
+      } else {
+        end = Date.now();
+      }
+      const sec = Math.max(0, Math.floor((end - start) / 1000));
+      const m = String(Math.floor(sec / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      this.liveElapsed = m + ':' + s;
+    },
+
+    // ============================================================
+    // Archive view — past predictions with three-pane expand
+    // ============================================================
+
+    async loadArchive() {
+      this.arL = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.arTopic) params.set('topic', this.arTopic);
+        if (this.arOutcome && this.arOutcome !== 'all') params.set('outcome', this.arOutcome);
+        params.set('limit', '30');
+        const d = await api(SF, '/acp/archive?' + params.toString());
+        if (d && d.sessions) {
+          this.arSessions = d.sessions;
+          // Seed the notes cache from server state
+          for (const s of d.sessions) {
+            if (!(s.id in this.arNotes)) {
+              this.arNotes[s.id] = s.analyst_note || '';
+            }
+          }
+        }
+        // Load trajectory if a topic filter is set
+        if (this.arTopic) {
+          await this.loadTrajectory();
+        } else {
+          this.arTrajectory = [];
+        }
+      } catch(e) {
+        // Silent — UI shows "no sessions" state
+      } finally {
+        this.arL = false;
+      }
+    },
+
+    async loadTrajectory() {
+      try {
+        const params = new URLSearchParams({topic: this.arTopic, limit: '15'});
+        const d = await api(SF, '/acp/topic_trajectory?' + params.toString());
+        if (d && d.points) {
+          this.arTrajectory = d.points;
+        }
+      } catch(e) {
+        this.arTrajectory = [];
+      }
+    },
+
+    // Chart geometry helpers
+    arTrajX(i) {
+      if (this.arTrajectory.length <= 1) return 30;
+      const usable = this.arTrajWidth - 40;
+      return 30 + (i / (this.arTrajectory.length - 1)) * usable;
+    },
+
+    get arTrajConsensusPoints() {
+      return this.arTrajectory
+        .map((p, i) => this.arTrajX(i) + ',' + (90 - (p.consensus_confidence * 90)))
+        .join(' ');
+    },
+
+    get arTrajRangePoints() {
+      // Envelope of range_low → range_high as two polylines drawn as one
+      const low = this.arTrajectory.map((p, i) =>
+        this.arTrajX(i) + ',' + (90 - ((p.consensus_range_low || p.consensus_confidence) * 90))
+      );
+      const high = this.arTrajectory.slice().reverse().map((p, ri) => {
+        const i = this.arTrajectory.length - 1 - ri;
+        return this.arTrajX(i) + ',' + (90 - ((p.consensus_range_high || p.consensus_confidence) * 90));
+      });
+      return low.concat(high).join(' ');
+    },
+
+    // Verdict glyph + title for the row verdict column
+    arVerdictGlyph(s) {
+      const res = (s.resolutions || [])[0];
+      if (!res) {
+        if ((s.outcomes || []).length > 0) {
+          return (s.outcomes[0].was_correct === true) ? '✓' : '✗';
+        }
+        return '·';
+      }
+      if (res.verdict === 'falsified') return '✗';
+      if (res.verdict === 'confirmed') return '✓';
+      if (res.verdict === 'still_pending') return '?';
+      return '·';
+    },
+
+    arVerdictTitle(s) {
+      const res = (s.resolutions || [])[0];
+      if (!res) return (s.outcomes || []).length ? 'scored: ' + (s.outcomes[0].was_correct ? 'correct' : 'incorrect') : 'no verdict yet';
+      return 'resolver: ' + res.verdict.replace('_',' ') + ' (' + Math.round((res.resolver_confidence||0)*100) + '%)';
+    },
+
+    // Self-reflection extraction from a profile's extra data
+    arProfileReflection(p) {
+      if (!p) return '';
+      let extra = p.profile_extra_data;
+      if (!extra) return '';
+      if (typeof extra === 'string') {
+        try { extra = JSON.parse(extra); } catch(e) { return ''; }
+      }
+      return extra.prior_assessment_reflection || '';
+    },
+
+    async saveArchiveNote(sessionId) {
+      this.arNoteSaving[sessionId] = true;
+      try {
+        const note = this.arNotes[sessionId] || '';
+        const r = await api(SF, '/acp/session/' + sessionId + '/note', {note});
+        if (r && r.status === 'saved') {
+          this.arNoteSavedFlag[sessionId] = true;
+          setTimeout(() => { this.arNoteSavedFlag[sessionId] = false; }, 2000);
+          // Reload the specific session's analyst_note_updated_at
+          const s = this.arSessions.find(x => x.id === sessionId);
+          if (s) s.analyst_note_updated_at = new Date().toISOString();
+        }
+      } finally {
+        this.arNoteSaving[sessionId] = false;
+      }
+    },
+
+    async loadHealth() {
+      this.hL = true;
+      try {
+        this.health = await api(OSS, '/api/health');
+        this.xPaused = this.health?.ingest_paused ?? false;
+      } finally { this.hL = false; }
+    },
+
+    hCls(s) {
+      if (!s) return 'hbadge';
+      if (s === 'NOMINAL') return 'hbadge hbadge-ok';
+      if (s === 'COMPROMISED') return 'hbadge hbadge-err';
+      return 'hbadge hbadge-warn';
+    },
+
+    // Claims
+    async loadClaims() {
+      this.cL = true; this.cE = '';
+      try {
+        const url = '/api/staging' + (this.cTopic ? '?topic=' + encodeURIComponent(this.cTopic) : '');
+        const r = await api(OSS, url);
+        this.cClaims = r.ok ? r.result : [];
+        if (!r.ok) this.cE = r.error || 'Failed';
+        if (!this.cTopics.length) {
+          const tr = await api(OSS, '/api/topics_list');
+          if (tr.ok) this.cTopics = tr.topics || [];
+        }
+      } finally { this.cL = false; }
+    },
+
+    async cPromote(c) {
+      const r = await api(OSS, '/admin/quick_promote', {claim_id: c.id});
+      if (r.ok) {
+        this.cClaims = this.cClaims.filter(x => x.id !== c.id);
+        this.loadHealth();
+      }
+    },
+
+    async cDiscard(c) {
+      const r = await api(OSS, '/admin/mark_irrelevant', {claim_id: c.id, reason: 'analyst_panel_discard'});
+      if (r.ok || r.status === 'ok') this.cClaims = this.cClaims.filter(x => x.id !== c.id);
+    },
+
+    async cPromoteAll() {
+      const ids = [...this.cClaims.map(c => c.id)];
+      await Promise.all(ids.map(id => api(OSS, '/admin/quick_promote', {claim_id: id})));
+      this.cClaims = [];
+      this.loadHealth();
+    },
+
+    async cDiscardAll() {
+      const ids = [...this.cClaims.map(c => c.id)];
+      await Promise.all(ids.map(id => api(OSS, '/admin/mark_irrelevant', {claim_id: id, reason: 'analyst_panel_discard'})));
+      this.cClaims = [];
+    },
+
+    // Sources
+    async loadSources() {
+      this.sL = true;
+      try {
+        const r = await api(OSS, '/api/sources_list');
+        if (r.ok) this.sSrcs = r.result || [];
+      } finally { this.sL = false; }
+    },
+
+    async sSave(s) {
+      const r = await api(OSS, '/admin/source_credibility', {source_id: s.source_id, overall: parseFloat(s._c)});
+      if (r.ok) {
+        this.sSaved[s.source_id] = true;
+        setTimeout(() => { this.sSaved[s.source_id] = false; }, 1500);
+      }
+    },
+
+    // Control
+    async loadControl() {
+      this.xL = true;
+      try {
+        const tr = await api(OSS, '/api/topics_list');
+        if (tr.ok) this.xTopics = tr.topics || [];
+        const h = await api(OSS, '/api/health');
+        this.xPaused = h?.ingest_paused ?? false;
+      } finally { this.xL = false; }
+      // Load swarmfish monitor status via the OSS-side proxy (bypasses CORS
+      // and uses the single analyst token we already have)
+      this.loadSFMonitor().catch(() => {});
+      // Load host control daemon status — direct from browser to localhost:9900
+      this.loadDaemonStatus().catch(() => {});
+    },
+
+    // ---- Host Control Daemon ----
+
+    async _daemonFetch(path, method='GET') {
+      const opts = {
+        method,
+        headers: {'X-Control-Token': this.ctrlToken || ''},
+      };
+      try {
+        const r = await fetch(this.ctrlDaemonUrl + path, opts);
+        const body = await r.json();
+        return {status: r.status, body};
+      } catch(e) {
+        return {status: 0, body: {error: String(e)}, unreachable: true};
+      }
+    },
+
+    async loadDaemonStatus() {
+      this.ctrlDaemonL = true;
+      try {
+        // First a no-auth health ping to determine reachability
+        const h = await this._daemonFetch('/health');
+        if (h.unreachable) {
+          this.ctrlDaemon = {reachable: false, authed: false, services: []};
+          return;
+        }
+        // Daemon is up — try authenticated status
+        const s = await this._daemonFetch('/services');
+        if (s.status === 200 && s.body && s.body.services) {
+          this.ctrlDaemon = {
+            reachable: true,
+            authed: true,
+            services: s.body.services,
+          };
+        } else if (s.status === 401) {
+          this.ctrlDaemon = {reachable: true, authed: false, services: []};
+        } else {
+          this.ctrlDaemon = {reachable: true, authed: false, services: []};
+        }
+      } finally {
+        this.ctrlDaemonL = false;
+      }
+    },
+
+    saveDaemonToken() {
+      try { localStorage.setItem('host_control_token', this.ctrlToken || ''); } catch(e) {}
+      this.loadDaemonStatus();
+    },
+
+    async svcAction(service, action) {
+      this.ctrlBusy = {...this.ctrlBusy, [service]: true};
+      this.ctrlMsg = '';
+      try {
+        const r = await this._daemonFetch('/services/' + service + '/' + action, 'POST');
+        if (r.unreachable) {
+          this.ctrlMsg = 'Daemon unreachable.';
+        } else if (r.status !== 200) {
+          this.ctrlMsg = action + ' failed: ' + (r.body && r.body.error || 'HTTP ' + r.status);
+        } else if (r.body && r.body.ok === false) {
+          const ops = r.body.operations || (r.body.start && r.body.start.operations) || [];
+          const failed = ops.filter(o => !o.ok).map(o => o.name + ': ' + (o.stderr || 'failed'));
+          this.ctrlMsg = service + ' ' + action + ' had failures — ' + (failed.join('; ') || 'unknown');
+        } else {
+          this.ctrlMsg = service + ' ' + action + ' OK';
+        }
+        // Always refresh after an action so the status cards reflect reality
+        await this.loadDaemonStatus();
+        setTimeout(() => { this.ctrlMsg = ''; }, 5000);
+      } finally {
+        const nb = {...this.ctrlBusy};
+        delete nb[service];
+        this.ctrlBusy = nb;
+      }
+    },
+
+    async loadSFMonitor() {
+      this.sfMonitorL = true;
+      try {
+        const r = await api(OSS, '/admin/swarmfish/status');
+        if (r && (r.active !== undefined || r.unavailable)) {
+          this.sfMonitorStatus = r;
+        } else if (r && r.error) {
+          this.sfMonitorStatus = {unavailable: true, error: r.error};
+        }
+      } catch(e) {
+        this.sfMonitorStatus = {unavailable: true, error: String(e)};
+      } finally {
+        this.sfMonitorL = false;
+      }
+    },
+
+    async toggleSFMonitor() {
+      this.sfMonitorL = true;
+      this.sfMonitorMsg = '';
+      try {
+        const r = await api(OSS, '/admin/swarmfish/monitor/toggle', {});
+        if (r && r.error) {
+          this.sfMonitorMsg = 'Toggle failed: ' + r.error;
+        } else {
+          this.sfMonitorStatus = r;
+          this.sfMonitorMsg = r.active ? 'Monitor resumed.' : 'Monitor paused.';
+          setTimeout(() => { this.sfMonitorMsg = ''; }, 3000);
+        }
+      } catch(e) {
+        this.sfMonitorMsg = 'Toggle failed: ' + String(e);
+      } finally {
+        this.sfMonitorL = false;
+      }
+    },
+
+    async runSFMonitorNow() {
+      this.sfMonitorL = true;
+      this.sfMonitorMsg = 'Triggering cycle…';
+      try {
+        const r = await api(OSS, '/admin/swarmfish/monitor/run_now', {});
+        if (r && r.status === 'started') {
+          this.sfMonitorMsg = 'Cycle started in background. Refresh to see progress.';
+        } else if (r && r.status === 'already_running') {
+          this.sfMonitorMsg = 'Cycle already running — no new cycle triggered.';
+        } else if (r && r.error) {
+          this.sfMonitorMsg = 'Run Now failed: ' + r.error;
+        }
+        // Give it a moment then refresh status so "running" badge appears
+        setTimeout(() => { this.loadSFMonitor(); }, 1500);
+      } catch(e) {
+        this.sfMonitorMsg = 'Run Now failed: ' + String(e);
+      } finally {
+        this.sfMonitorL = false;
+      }
+    },
+
+    async xToggle() {
+      this.xToggleL = true;
+      try {
+        const ep = this.xPaused ? '/admin/ingest/resume' : '/admin/ingest/pause';
+        const r = await api(OSS, ep, {});
+        if (r.ingest_paused !== undefined) {
+          this.xPaused = r.ingest_paused;
+          this.xMsg = this.xPaused
+            ? (this.xSprintL ? 'Pause requested — stopping sprint at next LLM boundary…' : 'Ingestion paused.')
+            : 'Ingestion resumed.';
+          // Refresh health so the header LIVE/PAUSED badge reflects new state
+          await this.loadHealth();
+        } else {
+          this.xMsg = 'Toggle failed: ' + (r.error || r.status || 'unknown error');
+        }
+      } catch(e) {
+        this.xMsg = 'Toggle failed: ' + String(e);
+      } finally { this.xToggleL = false; }
+    },
+
+    async xSprint() {
+      this.xSprintL = true; this.xMsg = 'Running sprint…';
+      try {
+        const r = await api(OSS, '/admin/ingest', {});
+        if (r.status === 'ok') {
+          this.xMsg = 'Sprint done — ' + (r.claims_inserted||0) + ' new claims.';
+        } else if (r.status === 'deferred') {
+          this.xMsg = '⏸ ' + (r.message || 'Sprint deferred (swarmfish busy).');
+        } else {
+          this.xMsg = 'Error: ' + (r.error||r.status||'failed');
+        }
+        this.loadHealth();
+      } finally { this.xSprintL = false; }
+    },
+
+    async xAddTopic() {
+      if (!this.xNewTopic.trim()) return;
+      const tag = this.xTopicTag.trim() || this.xNewTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const r = await api(OSS, '/admin/add_topic', {
+        tag, display_name: this.xNewTopic,
+        description: this.xTopicDesc || ''
+      });
+      if (r.ok || r.status === 'ok') {
+        this.xNewTopic = ''; this.xTopicTag = ''; this.xTopicDesc = '';
+        this.xTopicMsg = 'Topic added.';
+        const tr = await api(OSS, '/api/topics_list');
+        if (tr.ok) this.xTopics = tr.topics || [];
+        setTimeout(() => { this.xTopicMsg = ''; }, 2000);
+      }
+    },
+
+    // SWARMFISH
+    async loadSFSessions() {
+      this.ssL = true;
+      try {
+        const r = await api(SF, '/acp/status');
+        // /acp/status returns recent_sessions (plus calibration); keep legacy fallbacks
+        this.sfSessions = r.recent_sessions || r.sessions || r.history || [];
+        this.sfCalibration = r.calibration || [];
+      } catch(e) {} finally { this.ssL = false; }
+    },
+
+    async prPredict() {
+      if (!this.prQ.trim()) return;
+      this.prL = true; this.prResult = null; this.prE = '';
+      this.prElapsed = 0;
+      this.prProfiles = []; this.prDone = {}; this.prCurrent = null;
+      this.prTimer = setInterval(() => { this.prElapsed++; }, 1000);
+      try {
+        const resp = await fetch(SF + '/acp/predict/stream', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN},
+          body: JSON.stringify({
+            question: this.prQ,
+            domain: this.prDomain || undefined
+          })
+        });
+        if (!resp.ok) {
+          this.prE = 'HTTP ' + resp.status + ' ' + resp.statusText;
+          return;
+        }
+        // Parse Server-Sent Events: each message is "data: {json}\\n\\n"
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const DELIM = '\\n\\n';
+        while (true) {
+          const {value, done} = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, {stream: true});
+          const chunks = buffer.split(DELIM);
+          buffer = chunks.pop() || '';  // keep incomplete trailing chunk
+          for (const chunk of chunks) {
+            const line = chunk.trim();
+            if (!line.startsWith('data:')) continue;
+            let evt;
+            try { evt = JSON.parse(line.slice(5).trim()); }
+            catch(e) { continue; }
+            if (evt.type === 'profiles_loaded') {
+              this.prProfiles = evt.profiles || [];
+            } else if (evt.type === 'profile_start') {
+              this.prCurrent = evt.profile;
+            } else if (evt.type === 'profile_done') {
+              const name = evt.result && evt.result.profile_name;
+              if (name) this.prDone = {...this.prDone, [name]: evt.result};
+              this.prCurrent = null;
+            } else if (evt.type === 'done') {
+              this.prResult = evt.session;
+            } else if (evt.type === 'error') {
+              this.prE = evt.message || 'stream error';
+            }
+          }
+        }
+      } catch(e) {
+        this.prE = 'Stream error: ' + String(e);
+      } finally {
+        clearInterval(this.prTimer);
+        this.prTimer = null;
+        this.prL = false;
+      }
+    },
+
+    get prAllProfiles() {
+      if (!this.prResult) return [];
+      // finalize_session returns individual_predictions; fall back to legacy shapes
+      return this.prResult.individual_predictions
+          || this.prResult.profiles
+          || this.prResult.dissenters
+          || [];
+    },
+
+    get prConsensus() {
+      if (!this.prResult) return null;
+      return (this.prResult.consensus && this.prResult.consensus.consensus_confidence)
+          ?? this.prResult.consensus_confidence
+          ?? null;
+    },
+
+    get prMetaConf() {
+      if (!this.prResult) return '';
+      return (this.prResult.consensus && this.prResult.consensus.meta_confidence)
+          || this.prResult.meta_confidence
+          || '';
+    },
+
+    get prRangeLow() {
+      if (!this.prResult || !this.prResult.consensus) return null;
+      return this.prResult.consensus.range_low ?? null;
+    },
+
+    get prRangeHigh() {
+      if (!this.prResult || !this.prResult.consensus) return null;
+      return this.prResult.consensus.range_high ?? null;
+    },
+
+    get prDissenters() {
+      const consensus = this.prConsensus;
+      if (consensus == null) return [];
+      const threshold = 0.20;
+      return this.prAllProfiles.filter(p => {
+        if (p.error || p.confidence == null) return false;
+        return Math.abs(p.confidence - consensus) >= threshold;
+      });
+    },
+
+    async sfOutcome(session_id, was_correct, outcome_text) {
+      // Quick-resolve from the Sessions tab — generates a minimal outcome text
+      // if the operator didn't supply one.
+      const text = (outcome_text && outcome_text.trim())
+        || (was_correct ? 'Prediction confirmed (quick resolve from Sessions tab).'
+                        : 'Prediction falsified (quick resolve from Sessions tab).');
+      const r = await api(SF, '/acp/outcome', {
+        session_id,
+        was_correct,
+        outcome: text,
+      });
+      if (r && r.error) {
+        this.pendingMsg = 'Score failed: ' + r.error;
+      }
+      await this.loadSFSessions();
+      await this.loadPending();
+    },
+
+    // Pending Resolutions
+    async loadPending() {
+      this.pendingL = true;
+      this.pendingMsg = '';
+      try {
+        const r = await api(SF, '/acp/pending');
+        if (r && r.pending) {
+          this.pending = r.pending;
+          this.pendingCount = r.count || r.pending.length;
+          // SFA-001 P0.1 — count falsified verdicts separately so the header
+          // badge can show them prominently. A falsified verdict is the
+          // system telling itself a prior prediction was wrong; it is the
+          // highest-priority kind of pending review.
+          const prevFalsified = this.pendingFalsifiedCount || 0;
+          this.pendingFalsifiedCount = r.pending.filter(p =>
+            p && p.proposal && p.proposal.verdict === 'falsified'
+          ).length;
+          // Pulse the header badge when the falsified count INCREASES — fresh
+          // bad news. We retrigger the animation by removing and re-adding
+          // the class. (Alpine re-renders on data change, so this is handled
+          // by the :class binding automatically.)
+          if (this.pendingFalsifiedCount > prevFalsified) {
+            console.log('[pending] new falsified verdict(s) — ' +
+                        prevFalsified + ' → ' + this.pendingFalsifiedCount);
+          }
+        } else if (r && r.error) {
+          this.pendingMsg = 'Load failed: ' + r.error;
+        }
+      } catch(e) {
+        // Don't surface transient network errors on the background poll.
+        // If the panel is mounted and the user navigates to the tab, the
+        // tab load will retry and surface the error there.
+      } finally {
+        this.pendingL = false;
+      }
+    },
+
+    async runResolver(session_id) {
+      this.resolverRunning = {...this.resolverRunning, [session_id]: true};
+      this.pendingMsg = '';
+      try {
+        const r = await api(SF, '/acp/resolve/' + session_id, {});
+        if (r && r.error) {
+          this.pendingMsg = 'Resolver failed: ' + r.error;
+        } else if (r && r.verdict) {
+          this.pendingMsg = 'Resolver proposed: ' + r.verdict.toUpperCase().replace('_',' ')
+                          + ' (' + Math.round(r.resolver_confidence*100) + '% confidence)';
+          await this.loadPending();
+          setTimeout(() => { this.pendingMsg = ''; }, 5000);
+        }
+      } catch(e) {
+        this.pendingMsg = 'Resolver failed: ' + String(e);
+      } finally {
+        const nr = {...this.resolverRunning};
+        delete nr[session_id];
+        this.resolverRunning = nr;
+      }
+    },
+
+    acceptProposal(p) {
+      // Pre-fill the outcome textarea with the proposal's draft outcome text.
+      // Operator still clicks Correct/Wrong to actually score — this gives them
+      // a final chance to review before committing to calibration.
+      if (!p || !p.proposal) return;
+      this.pendingOutcomes = {...this.pendingOutcomes, [p.id]: p.proposal.outcome_text || ''};
+      // Scroll the textarea into view and flash a hint so the operator knows
+      // what happened.
+      this.pendingMsg = 'Proposal text loaded into outcome field — review and click '
+                      + (p.proposal.verdict === 'confirmed' ? '✓ Correct' :
+                         p.proposal.verdict === 'falsified' ? '✕ Wrong' :
+                         'Correct or Wrong based on your judgement');
+      setTimeout(() => { this.pendingMsg = ''; }, 6000);
+    },
+
+    verdictGlyph(v) {
+      if (v === 'confirmed')    return '✓';
+      if (v === 'falsified')    return '✕';
+      if (v === 'still_pending') return '○';
+      return '·';
+    },
+
+    verdictCls(v) {
+      if (v === 'confirmed')     return 'pill pill-ok';
+      if (v === 'falsified')     return 'pill pill-err';
+      // still_pending uses Carbon's caution-undefined (purple) — semantically
+      // honest: "I don't know yet" rather than "neutral information"
+      if (v === 'still_pending') return 'pill pill-undefined';
+      return 'pill pill-mu';
+    },
+
+    async scorePending(session_id, was_correct) {
+      const text = (this.pendingOutcomes[session_id] || '').trim();
+      if (!text) return;
+      this.pendingBusy = true;
+      this.pendingMsg = '';
+      try {
+        const r = await api(SF, '/acp/outcome', {
+          session_id,
+          was_correct,
+          outcome: text,
+        });
+        if (r && r.error) {
+          this.pendingMsg = 'Score failed: ' + r.error;
+        } else {
+          this.pendingMsg = 'Scored — ' + (was_correct ? 'correct' : 'wrong');
+          // Clear the outcome draft and collapse the row
+          delete this.pendingOutcomes[session_id];
+          this.pendingOutcomes = {...this.pendingOutcomes};
+          this.pendingExpanded = null;
+          await this.loadPending();
+          setTimeout(() => { this.pendingMsg = ''; }, 3000);
+        }
+      } catch(e) {
+        this.pendingMsg = 'Score failed: ' + String(e);
+      } finally {
+        this.pendingBusy = false;
+      }
+    },
+
+    ageOf(iso) {
+      if (!iso) return '—';
+      const then = new Date(iso).getTime();
+      if (isNaN(then)) return '—';
+      const days = Math.floor((Date.now() - then) / 86400000);
+      if (days < 1) return 'today';
+      if (days < 2) return '1d';
+      if (days < 30) return days + 'd';
+      const months = Math.floor(days / 30);
+      return months + 'mo';
+    },
+
+    // Hypothesis Lifecycle
+    async loadHypotheses() {
+      this.hypothesesL = true;
+      this.hypothesesMsg = '';
+      try {
+        const r = await api(OSS, '/api/hypotheses?limit=200');
+        if (r && r.hypotheses) {
+          this.hypotheses = r.hypotheses;
+          this.hypothesesActiveCount = r.hypotheses.filter(h => h.status === 'ACTIVE').length;
+        } else if (r && r.error) {
+          this.hypothesesMsg = 'Load failed: ' + r.error;
+        }
+      } catch(e) {
+        this.hypothesesMsg = 'Load failed: ' + String(e);
+      } finally {
+        this.hypothesesL = false;
+      }
+    },
+
+    get filteredHypotheses() {
+      if (this.hypothesesFilter === 'ALL') return this.hypotheses;
+      return this.hypotheses.filter(h => h.status === this.hypothesesFilter);
+    },
+
+    statusCls(s) {
+      if (s === 'ACTIVE')    return 'pill pill-staged';
+      if (s === 'PROMOTED')  return 'pill pill-ok';
+      if (s === 'FALSIFIED') return 'pill pill-err';
+      return 'pill pill-mu';
+    },
+
+    predsSummary(h) {
+      // predictions_confirmed and predictions_falsified are counts (ints), not arrays
+      const total = (h.predictions || []).length;
+      const conf  = Number(h.predictions_confirmed || 0);
+      const fals  = Number(h.predictions_falsified || 0);
+      if (total === 0) return '—';
+      return conf + '✓ ' + fals + '✕ / ' + total;
+    },
+
+    predState(h, idx) {
+      // Backend tracks counts, not which specific indices resolved — always show pending
+      return '○';
+    },
+
+    predResolved(h, idx) {
+      // Backend doesn't track per-index resolution state; always allow clicking confirm
+      return false;
+    },
+
+    predText(p) {
+      if (!p) return '';
+      // Prediction shape can be either a plain string or {prediction: {condition, impact, ...}}
+      if (typeof p === 'string') return p;
+      if (typeof p.prediction === 'string') return p.prediction;
+      if (p.prediction && typeof p.prediction === 'object') {
+        return p.prediction.condition || p.prediction.prediction || JSON.stringify(p.prediction).slice(0, 200);
+      }
+      return p.condition || p.text || '';
+    },
+
+    predFromProfile(p) {
+      if (!p || typeof p !== 'object') return '';
+      if (p.prediction && p.prediction.from_profile) {
+        const impact = p.prediction.impact ? ' — impact: ' + p.prediction.impact : '';
+        return 'via ' + p.prediction.from_profile + impact;
+      }
+      return '';
+    },
+
+    async confirmPred(h, idx) {
+      this.hypothesesBusy = true;
+      this.hypothesesMsg = '';
+      try {
+        const r = await api(OSS, '/api/hypothesis/' + h.id + '/confirm_prediction', {
+          prediction_idx: idx,
+        });
+        if (r && r.status === 'confirmed') {
+          this.hypothesesMsg = 'Prediction #' + idx + ' confirmed for hypothesis #' + h.id;
+          await this.loadHypotheses();
+          setTimeout(() => { this.hypothesesMsg = ''; }, 3000);
+        } else if (r && r.error) {
+          this.hypothesesMsg = 'Confirm failed: ' + r.error;
+        }
+      } catch(e) {
+        this.hypothesesMsg = 'Confirm failed: ' + String(e);
+      } finally {
+        this.hypothesesBusy = false;
+      }
+    },
+
+    async promoteHyp(h) {
+      if (!confirm('Promote hypothesis #' + h.id + '? This marks it as validated.')) return;
+      this.hypothesesBusy = true;
+      this.hypothesesMsg = '';
+      try {
+        const r = await api(OSS, '/api/hypothesis/' + h.id + '/promote', {});
+        if (r && r.status) {
+          this.hypothesesMsg = 'Hypothesis #' + h.id + ' promoted.';
+          await this.loadHypotheses();
+          setTimeout(() => { this.hypothesesMsg = ''; }, 3000);
+        } else if (r && r.error) {
+          this.hypothesesMsg = 'Promote failed: ' + r.error;
+        }
+      } catch(e) {
+        this.hypothesesMsg = 'Promote failed: ' + String(e);
+      } finally {
+        this.hypothesesBusy = false;
+      }
+    },
+
+    async falsifyHyp(h) {
+      if (!confirm('Falsify hypothesis #' + h.id + '? This marks it as refuted.')) return;
+      this.hypothesesBusy = true;
+      this.hypothesesMsg = '';
+      try {
+        const r = await api(OSS, '/api/hypothesis/' + h.id + '/falsify', {});
+        if (r && r.status) {
+          this.hypothesesMsg = 'Hypothesis #' + h.id + ' falsified.';
+          await this.loadHypotheses();
+          setTimeout(() => { this.hypothesesMsg = ''; }, 3000);
+        } else if (r && r.error) {
+          this.hypothesesMsg = 'Falsify failed: ' + r.error;
+        }
+      } catch(e) {
+        this.hypothesesMsg = 'Falsify failed: ' + String(e);
+      } finally {
+        this.hypothesesBusy = false;
+      }
+    },
+
+    confCls(c) {
+      if (c == null) return 'hmu';
+      if (c >= 0.65) return 'conf-high';
+      if (c >= 0.4) return 'conf-mid';
+      return 'conf-low';
+    },
+
+    brierCls(b) {
+      if (b == null) return 'hmu';
+      const n = Number(b);
+      if (n <= 0.10) return 'conf-high';  // well calibrated
+      if (n <= 0.20) return 'conf-mid';   // acceptable
+      return 'conf-low';                  // worse than random territory
+    },
+
+    biasCls(acc, conf) {
+      if (acc == null || conf == null) return 'hmu';
+      const bias = Number(acc) - Number(conf);
+      if (Math.abs(bias) <= 0.05) return 'conf-high';  // well calibrated
+      if (Math.abs(bias) <= 0.15) return 'conf-mid';
+      return 'conf-low';
+    },
+
+    biasLabel(acc, conf) {
+      if (acc == null || conf == null) return '—';
+      const bias = Number(acc) - Number(conf);
+      const pts = Math.round(bias * 100);
+      if (pts === 0) return 'calibrated';
+      return (pts > 0 ? '+' : '') + pts + ' pts';
+    },
+
+    pct(c) { return c == null ? '—' : Math.round(c * 100) + '%'; }
+  };
+}
+</script>
+</body>
+</html>"""
+
+
+@app.route('/panel', methods=['GET'])
+def control_panel():
+    """Standalone analyst control panel — always accessible at /panel."""
+    html = _CONTROL_PANEL_HTML.replace('__SF_PORT__', _SF_PORT).replace('__TOKEN__', _PANEL_TOKEN)
+    from flask import Response as FlaskResponse
+    return FlaskResponse(html, mimetype='text/html')
 
 
 # ---------------------------------------------------------------------------

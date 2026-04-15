@@ -1,0 +1,325 @@
+/* ============================================================
+ * Tufte CSS Design Tokens — Curated Extract
+ * Source: https://github.com/edwardtufte/tufte-css
+ *         tufte.css (single 9.4KB file, 451 lines)
+ * Extracted: 2026-04-14
+ *
+ * Tufte CSS is the philosophical opposite of every other reference
+ * in our library. Where OpenGridWorks is dense radar-screen UI with
+ * motion and glow, Tufte CSS is calm long-form reading with
+ * marginal annotations. Where Carbon ships AI tokens for Watson
+ * dashboards, Tufte ships ET Book typography for handouts.
+ *
+ * The whole library is 451 lines. There are NO custom properties,
+ * NO transitions, NO shadows, NO gradients, NO backdrop-filters.
+ * It is print-aesthetic translated to web.
+ *
+ * What this file captures:
+ *   - The reading column constraint (55% width)
+ *   - The sidenote pattern (CSS-only marginal annotations)
+ *   - The numeral distinction (old-style vs lining figures)
+ *   - The newthought small-caps section break
+ *   - The minimal color palette (5 colors total)
+ *   - The print-paper background (#fffff8 — slightly cream)
+ *   - The font stack (ET Book + Palatino fallback)
+ *   - The dark mode adaptation
+ *
+ * What this file does NOT capture:
+ *   - The ET Book font files themselves (they're not free for
+ *     all uses; we use Palatino fallback)
+ *   - The figure/figcaption layout (we don't have figures)
+ *   - The mobile checkbox-toggle pattern (we don't target mobile)
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+/* ============================================================
+ * THE TUFTE PHILOSOPHY (encoded as comments, not tokens)
+ *
+ * 1. READING WIDTH IS BOUNDED.
+ *    Long lines of text are hard to read. Cap reading width to
+ *    ~55% of available space, ~60-70 characters per line.
+ *    Even on a 4K monitor, body text shouldn't span 1500px.
+ *
+ * 2. SIDENOTES > FOOTNOTES.
+ *    Supporting information goes in the MARGIN next to the text
+ *    that references it, not at the bottom of the page (or worse,
+ *    in a modal overlay). The reader's eye doesn't have to leave
+ *    the main flow to consult a reference.
+ *
+ * 3. OLD-STYLE NUMERALS FOR PROSE, LINING NUMERALS FOR DATA.
+ *    Numbers in body text should descend below the baseline
+ *    (look like part of the lowercase text). Numbers in tables
+ *    should align uniformly (full-height with capital letters).
+ *    Most web frameworks ignore this distinction; Tufte makes
+ *    it explicit.
+ *
+ * 4. SMALL CAPS AS A SECTION BREAK.
+ *    Lighter than a heading, more meaningful than a paragraph
+ *    break. Useful when content is organized by theme but
+ *    doesn't need explicit headers. The "newthought" pattern.
+ *
+ * 5. CALM IS A FEATURE.
+ *    No animations. No glows. No transitions. Information IS
+ *    the visual signal. Five colors total in the entire library.
+ *    Generous leading. Comfortable reading.
+ *
+ * For Exocortex these principles are mostly the OPPOSITE of what
+ * we want for a dashboard panel. But for any LONG-FORM CONTENT
+ * VIEW (analyst notes, hypothesis lineage essays, calibration
+ * narratives, post-mortem write-ups) Tufte's principles are the
+ * right model.
+ * ============================================================ */
+
+[data-tufte-theme] {
+
+  /* ============================================================
+   * COLOR PALETTE — five colors total
+   *
+   * Tufte CSS has the most minimal color palette of any reference
+   * in our library. Five values:
+   *
+   *   #fffff8 — cream-white background (light mode)
+   *   #111    — near-black text (light mode)
+   *   #ccc    — subtle horizontal rule
+   *   red     — .danger class for emphasized warnings
+   *   inherit — links use the same color as text (no link blue)
+   *
+   * Plus dark-mode equivalents:
+   *   #151515 — dim near-black background
+   *   #ddd    — dim near-white text
+   *
+   * That's it. No gradients. No accents. No status colors. The
+   * information IS the visual signal. When everything is the same
+   * color, the words have to do the work.
+   *
+   * For Exocortex this is the opposite of what we want — but the
+   * lesson is worth knowing: when you reduce color to nearly
+   * nothing, the reader's attention focuses on content, not chrome.
+   * ============================================================ */
+  --tufte-bg-light:        #fffff8;     /** cream-white, NOT pure white */
+  --tufte-text-light:      #111;
+  --tufte-rule-light:      #ccc;
+  --tufte-bg-dark:         #151515;     /** dim near-black */
+  --tufte-text-dark:       #ddd;        /** dim near-white */
+  --tufte-danger:          red;         /** the only accent color */
+
+  /* ============================================================
+   * TYPOGRAPHY — the ET Book stack
+   *
+   * Tufte ships its own font (ET Book) with FOUR variants:
+   *   - Roman line figures (regular)
+   *   - Display italic old-style figures (italic)
+   *   - Bold line figures (bold)
+   *   - Roman old-style figures (for inline numerals)
+   *
+   * "Line figures" are uniform-height numerals (full cap-height,
+   * like 1234567890). Used in tables and contexts where alignment
+   * matters.
+   *
+   * "Old-style figures" are numerals with descenders (the 3, 4,
+   * 5, 7, 9 hang below the baseline). Used in body text so
+   * numbers blend with lowercase letters instead of standing out.
+   *
+   * Most web frameworks don't make this distinction — they use
+   * one numeral style everywhere. Tufte is rigorous about
+   * choosing the right one for each context.
+   *
+   * For Exocortex: we already use tabular-nums (line figures) for
+   * stat displays. Adding old-style nums for any inline body text
+   * would be a refinement worth knowing. CSS:
+   *
+   *   font-variant-numeric: oldstyle-nums;  // for prose
+   *   font-variant-numeric: tabular-nums;   // for tables/stats
+   * ============================================================ */
+  --tufte-font-body:    et-book, Palatino, "Palatino Linotype",
+                        "Palatino LT STD", "Book Antiqua", Georgia, serif;
+  --tufte-font-numeral: "et-book-roman-old-style", Palatino, Georgia, serif;
+  --tufte-font-mono:    Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  --tufte-font-sans:    "Gill Sans", "Gill Sans MT", Calibri, sans-serif;
+
+  /* Font sizes (rem-based, 15px root) */
+  --tufte-text-h1:        3.2rem;     /** ~48px */
+  --tufte-text-h2:        2.2rem;     /** ~33px, italicized */
+  --tufte-text-h3:        1.7rem;     /** ~25px, italicized */
+  --tufte-text-subtitle:  1.8rem;     /** ~27px, italicized */
+  --tufte-text-body:      1.4rem;     /** ~21px, generous */
+  --tufte-text-blockquote: 1.4rem;
+  --tufte-text-sidenote:  1.1rem;     /** ~16px, smaller than body */
+  --tufte-text-figcaption: 1.1rem;
+  --tufte-text-code:      1.0rem;     /** mono uses smaller size */
+
+  /* Line heights */
+  --tufte-leading-body: 2rem;          /** ~30px on 21px text — generous */
+  --tufte-leading-sidenote: 1.3;       /** tighter for marginal notes */
+  --tufte-leading-tight: 1;            /** for headings */
+
+  /* ============================================================
+   * READING COLUMN — 55% width
+   *
+   * The defining Tufte layout choice: body text is constrained
+   * to 55% of the page width. The remaining 45% is reserved for
+   * sidenotes/margin notes that float in the right margin.
+   *
+   * Why 55%? It's roughly 60-70 characters per line at typical
+   * font sizes — the comfortable reading width established by
+   * decades of typography research. Wider lines force the eye
+   * to track too far between line breaks.
+   *
+   * For Exocortex: not directly applicable to dashboard UI, but
+   * essential for any long-form text view we add. If we ever
+   * build a "full hypothesis lineage essay" view or "post-mortem
+   * narrative" view, body text should respect this constraint.
+   * ============================================================ */
+  --tufte-reading-width:    55%;
+  --tufte-sidenote-margin:  -60%;     /** how far the sidenote floats into the margin */
+  --tufte-sidenote-width:   50%;
+  --tufte-blockquote-width: 55%;
+  --tufte-figure-width:     55%;      /** figures match reading width */
+  --tufte-fullwidth-width:  90%;      /** breakout for code blocks, fullwidth tables */
+}
+
+/* ============================================================
+ * THE SIDENOTE PATTERN — CSS-only marginal annotations
+ *
+ * The signature Tufte layout. Each sidenote floats in the right
+ * margin next to the text that references it.
+ *
+ * Implementation:
+ *   1. body has counter-reset: sidenote-counter
+ *   2. .sidenote-number has counter-increment + ::after content
+ *      that renders the counter value as a superscript
+ *   3. .sidenote element floats right with negative margin to
+ *      push it into the unused margin space
+ *   4. .sidenote::before renders the same counter value as a
+ *      prefix in the margin note
+ *
+ * The counter ties the inline marker to the marginal note
+ * automatically. No JavaScript. No manual numbering. CSS counter
+ * does the work.
+ *
+ * For Exocortex this is HIGHLY relevant to any future feature
+ * where we want "the resolver said X with citations [1] [2] [3]"
+ * to render as inline numbers with the citations themselves
+ * appearing in the margin. Currently we render citations inline
+ * as bullet points, which clutters the main text.
+ * ============================================================ */
+
+.tufte-sidenote-host {
+  counter-reset: sidenote-counter;
+}
+
+.tufte-sidenote-number {
+  counter-increment: sidenote-counter;
+}
+
+.tufte-sidenote-number::after {
+  content: counter(sidenote-counter);
+  font-size: 0.75em;
+  vertical-align: super;
+  font-family: var(--tufte-font-numeral);
+}
+
+.tufte-sidenote {
+  float: right;
+  clear: right;
+  margin-right: var(--tufte-sidenote-margin);
+  width: var(--tufte-sidenote-width);
+  margin-top: 0.3rem;
+  margin-bottom: 0;
+  font-size: var(--tufte-text-sidenote);
+  line-height: var(--tufte-leading-sidenote);
+  vertical-align: baseline;
+  position: relative;
+}
+
+.tufte-sidenote::before {
+  content: counter(sidenote-counter) " ";
+  font-size: 1rem;
+  vertical-align: super;
+  font-family: var(--tufte-font-numeral);
+}
+
+/* Margin note — same as sidenote but unnumbered */
+.tufte-marginnote {
+  float: right;
+  clear: right;
+  margin-right: var(--tufte-sidenote-margin);
+  width: var(--tufte-sidenote-width);
+  margin-top: 0.3rem;
+  margin-bottom: 0;
+  font-size: var(--tufte-text-sidenote);
+  line-height: var(--tufte-leading-sidenote);
+  vertical-align: baseline;
+}
+
+/* ============================================================
+ * THE NEWTHOUGHT PATTERN — small-caps section break
+ *
+ * A paragraph that begins a new thought starts with a few words
+ * in small caps. Lighter than a heading, more meaningful than a
+ * paragraph break. The Tufte signature.
+ *
+ * Use when content is organized by theme but doesn't need
+ * explicit headings. Examples: a long resolver verdict that
+ * walks through multiple lines of reasoning; a hypothesis
+ * explanation that has natural topic shifts.
+ * ============================================================ */
+.tufte-newthought {
+  font-variant: small-caps;
+  font-size: 1.2em;
+  letter-spacing: 0.05em;
+}
+
+/* ============================================================
+ * THE NUMERAL PATTERN — old-style figures for prose
+ *
+ * Apply this class to inline numbers in body text. Switches the
+ * font to render numerals in old-style (descending) form, so
+ * numbers blend with lowercase letters.
+ *
+ * Use --tufte-font-numeral or font-variant-numeric: oldstyle-nums
+ * depending on whether the font supports old-style figures.
+ * ============================================================ */
+.tufte-numeral {
+  font-family: var(--tufte-font-numeral);
+  font-variant-numeric: oldstyle-nums;
+}
+
+/* ============================================================
+ * READING COLUMN — apply to long-form content containers
+ * ============================================================ */
+.tufte-reading-column {
+  width: var(--tufte-reading-width);
+  font-family: var(--tufte-font-body);
+  font-size: var(--tufte-text-body);
+  line-height: var(--tufte-leading-body);
+}
+
+/* ============================================================
+ * EPIGRAPH BLOCK — italicized quote at section opening
+ *
+ * Used by Tufte at the start of every chapter. An italicized
+ * blockquote with the cited author at the bottom-right. Frames
+ * the section thematically without using a heading.
+ *
+ * For Exocortex: useful for opening any long-form view with a
+ * relevant quote (e.g., "The committee saw 30 claims and could
+ * not determine — Resolver, April 2026" at the top of a session
+ * detail view).
+ * ============================================================ */
+.tufte-epigraph {
+  margin: 5em 0;
+}
+.tufte-epigraph blockquote {
+  font-style: italic;
+  margin-top: 3em;
+  margin-bottom: 3em;
+  width: var(--tufte-blockquote-width);
+}
+.tufte-epigraph blockquote footer {
+  font-style: normal;
+  text-align: right;
+  font-size: 1.1rem;
+}

@@ -72,19 +72,22 @@ REGISTER_SHIFT_DOMAINS = {"orientation", "meta_cognitive", "philosophical"}
 REGISTER_SHIFT_MIN_CONFIDENCE = 1  # Minimum signals to trigger register shift
 
 # Priority order for tiebreaking when two domains have identical scores.
-# Lower number = higher priority. Favours higher-stakes, harder-to-recover domains.
+# v3.2: investigation demoted to fallback (priority 10). It only wins when
+# nothing more specific fires. Specific domains (coding, bugfix, planning)
+# win tiebreaks because narrow signals carry more information than broad ones.
 DOMAIN_PRIORITY = {
-    "investigation":      1,
-    "analysis":           2,
-    "bugfix":             3,
-    "coding":             4,
-    "testing":            4,
-    "planning":           5,
-    "system_admin":       6,
-    "config_edit":        7,
-    "prompt_engineering": 8,
-    "git_ops":            9,
-    "file_ops":          10,
+    "bugfix":             1,
+    "coding":             2,
+    "testing":            2,
+    "planning":           3,
+    "analysis":           4,
+    "system_admin":       5,
+    "config_edit":        6,
+    "prompt_engineering": 7,
+    "git_ops":            8,
+    "file_ops":           9,
+    "financial":         10,
+    "investigation":     11,   # fallback — wins only when nothing specific fires
     "orientation":        0,
     "meta_cognitive":     0,
     "philosophical":      0,
@@ -99,17 +102,18 @@ DOMAIN_PRIORITY = {
 #   brief_description:   single-line hint for secondary enrichment
 DOMAIN_CONFIGS: dict = {
     "investigation": {
+        # v3.2: narrowed to entity/OSINT-specific signals only.
+        # "verify", "find", "look at" removed -- they fire in every context.
+        # investigation is now a fallback (priority=11), not a default.
         "signals": [
             r"\binvestigat",
-            r"\bresearch\b",
-            r"\bwho\s+(?:is|are|owns?|controls?|runs?)\b",
-            r"\bfind\s+(?:out|information|data)\b",
-            r"\bbackground\s+on\b",
+            r"\bosint\b",
             r"\bdue\s+diligence\b",
             r"\bcredit\s+risk\b",
-            r"\bosint\b",
-            r"\blook\s+(?:into|up|at)\b",
-            r"\bverif",
+            r"\bwho\s+(?:is|are|owns?|controls?|runs?)\b",
+            r"\bbackground\s+on\b",
+            r"\bopen[- ]source\s+intel",
+            r"\bentity\s+(?:research|profile|lookup)\b",
         ],
         "enrichment_template": (
             "Entity research methodology: verify primary sources, "
@@ -119,18 +123,22 @@ DOMAIN_CONFIGS: dict = {
         "brief_description": "Entity research methodology -- verify sources, cross-reference data, flag gaps.",
     },
     "coding": {
+        # v3.2: added \bbuild\b for "build a project/tool/script",
+        # loosened language-adjective regex to match "write a Python script".
         "signals": [
-            r"\bwrite\s+(?:a\s+)?(?:function|class|script|module|code)\b",
+            r"\bwrite\b.{0,30}\b(?:function|class|script|module|code|tool)\b",
+            r"\bbuild\b.{0,40}\b(?:script|tool|project|file|module|class|function|extension)\b",
             r"\bimplement\b",
             r"\bcode\s+(?:a|the|this)\b",
-            r"\bgenerat\w+\s+(?:a\s+)?(?:function|class|code)\b",
+            r"\bgenerat\w+\s+(?:a\s+)?(?:function|class|code|script)\b",
             r"\bscaffold\b",
-            r"\bcreate\s+(?:a\s+)?(?:function|class|script|module)\b",
-            r"\bpython\b.{0,30}\bwrite\b|\bwrite\b.{0,30}\bpython\b",
+            r"\bcreate\s+(?:a\s+)?(?:\w+\s+)?(?:function|class|script|module|tool)\b",
+            r"\bpython\b.{0,40}\b(?:script|function|module|code)\b",
         ],
         "enrichment_template": (
             "Code generation context: state the language and target file explicitly. "
-            "Produce complete, runnable code only -- no placeholders or stubs."
+            "Produce complete, runnable code only -- no placeholders or stubs. "
+            "For multi-file projects, use design-buildplan before writing code."
         ),
         "brief_description": "Tool syntax precision and parameter accuracy matter for this task.",
     },
@@ -156,19 +164,20 @@ DOMAIN_CONFIGS: dict = {
         "brief_description": "Isolate the failure point before attempting fixes. Check logs first.",
     },
     "analysis": {
+        # v3.2: removed \breview\b (fires on "review logs" = bugfix) and
+        # \bperformance\b (fires on "check performance" = testing/bugfix).
         "signals": [
             r"\banalyz",
             r"\banalysi",
-            r"\bexamin",
             r"\bevaluat",
             r"\bassess",
             r"\bcompar",
-            r"\breview\b",
             r"\bmetric",
             r"\bstatistic",
             r"\btrend\b",
-            r"\bperformance\b",
             r"\bbenchmark",
+            r"\bquantif",
+            r"\bcorrelat",
         ],
         "enrichment_template": (
             "Analytical methodology: quantitative rigor required -- cite specific "
@@ -198,6 +207,8 @@ DOMAIN_CONFIGS: dict = {
         "brief_description": "System configuration context -- check paths, permissions, and service status.",
     },
     "planning": {
+        # v3.2: added natural-language planning phrases that capture
+        # how planning is actually expressed in conversation.
         "signals": [
             r"\bplan\b",
             r"\bstrateg",
@@ -210,10 +221,18 @@ DOMAIN_CONFIGS: dict = {
             r"\bbest\s+(?:way|approach|practice)\b",
             r"\bsprint\b",
             r"\bbacklog\b",
+            r"\bfigure\s+out\s+how\b",
+            r"\bbreak\s+(?:it|this|down)\b",
+            r"\bmap\s+(?:it|this|out)\b",
+            r"\boutline\b",
+            r"\bstep[- ]by[- ]step\b",
+            r"\bbefore\s+(?:we|I)\s+(?:start|begin|build|code|write)\b",
+            r"\bwhat(?:'s|\s+is)\s+the\s+(?:best|right)\s+way\b",
         ],
         "enrichment_template": (
             "Planning context: sequence dependencies and resource constraints before "
-            "committing to a plan. Identify blockers and critical path."
+            "committing to a plan. Identify blockers and critical path. "
+            "Use design-buildplan for multi-phase builds."
         ),
         "brief_description": "Sequence dependencies and resource constraints before committing to a plan.",
     },
@@ -271,6 +290,9 @@ DOMAIN_CONFIGS: dict = {
             r"\bmv\b|\bmove\s+(?:the\s+)?file\b",
             r"\brm\b|\bdelete\s+(?:the\s+)?file\b",
             r"\blist\s+(?:the\s+)?(?:files|directory|dir)\b",
+            r"\bcreate\s+(?:a\s+)?(?:file|directory|dir|folder)\b",
+            r"\bwrite\s+(?:to\s+)?(?:a\s+)?file\b",
+            r"\btouch\b",
         ],
         "enrichment_template": (
             "File operations context: verify paths exist before operations. "
@@ -363,6 +385,34 @@ DOMAIN_CONFIGS: dict = {
             "Do not fabricate passing results."
         ),
         "brief_description": "Execute tests -- do not predict. Report failures with exact errors. Test edge cases.",
+    },
+    "financial": {
+        # v3.2: new domain. Surfaces financial-research and real-time-data skills.
+        # Covers market data, portfolio analysis, macro research, and OSS economic signals.
+        "signals": [
+            r"\bstock\s+(?:price|market|ticker)\b",
+            r"\bmarket\s+(?:data|cap|analysis|conditions)\b",
+            r"\bportfolio\b",
+            r"\bequit(?:y|ies)\b",
+            r"\btrading\b",
+            r"\bearnings\b",
+            r"\bbalance\s+sheet\b|\bincome\s+statement\b|\bcash\s+flow\b",
+            r"\bfinancial\s+(?:data|model|analysis|research|statement)\b",
+            r"\b(?:ETF|S&P|NASDAQ|NYSE|Dow)\b",
+            r"\binterest\s+rate\b|\byield\b|\binflation\b",
+            r"\bcredit\s+(?:spread|rating|default)\b",
+            r"\bmacro(?:economic)?\b",
+            r"\bGDP\b|\bCPI\b|\bFed\b|\bFOMC\b",
+            r"\bprice[- ]to[- ]earnings\b|\bP/E\s+ratio\b",
+            r"\bsanction\w*\s+(?:economic|financial|trade)\b",
+        ],
+        "enrichment_template": (
+            "Financial research context: use real-time-data skill for live prices, "
+            "financial-research skill for fundamentals and filings. "
+            "Cite sources and timestamps for all data -- financial data is time-sensitive. "
+            "Distinguish reported vs estimated vs real-time figures."
+        ),
+        "brief_description": "Financial research -- cite data sources and timestamps. Use real-time-data and financial-research skills.",
     },
     "conversation": {
         "signals": [
@@ -635,12 +685,54 @@ def _generate_enrichment(classification: "CompoundClassification") -> str:
 
 
 def _load_model_profile(agent) -> dict | None:
-    """Load eval profile for current model. Returns None if not found (permissive default)."""
+    """Load eval profile for current model. Returns None if not found (permissive default).
+
+    Tries three sources in order:
+    1. agent.config.chat_model.name  (v1.7 / legacy)
+    2. agent.get_chat_model()        (v1.9 extensible method)
+    3. _model_config plugin file     (v1.9 plugin-based config)
+    """
+    def _resolve_name() -> str:
+        # Source 1: legacy config attribute
+        try:
+            config         = getattr(agent, "config", None)
+            chat_model_cfg = getattr(config, "chat_model", None) if config else None
+            name           = getattr(chat_model_cfg, "name", "") if chat_model_cfg else ""
+            if name:
+                return name
+        except Exception:
+            pass
+
+        # Source 2: v1.9 extensible get_chat_model()
+        try:
+            model_obj = agent.get_chat_model()
+            if model_obj:
+                name = getattr(model_obj, "name", "") or getattr(model_obj, "model", "")
+                if name:
+                    return name
+        except Exception:
+            pass
+
+        # Source 3: _model_config plugin config.json (v1.9 profile-path install)
+        try:
+            profile    = getattr(getattr(agent, "config", None), "profile", "") or ""
+            agent_slug = profile.split("/")[-1] if profile else "agent0"
+            plugin_cfg = Path(f"/a0/usr/agents/{agent_slug}/plugins/_model_config/config.json")
+            if not plugin_cfg.exists():
+                plugin_cfg = Path("/a0/usr/agents/agent0/plugins/_model_config/config.json")
+            if plugin_cfg.exists():
+                with open(plugin_cfg) as f:
+                    cfg = json.load(f)
+                name = cfg.get("chat_model", {}).get("name", "")
+                if name:
+                    return name
+        except Exception:
+            pass
+
+        return ""
+
     try:
-        config           = getattr(agent, "config", None)
-        chat_model_cfg   = getattr(config, "chat_model", None) if config else None
-        # chat_model is a ModelConfig object -- name is at .name
-        model_name       = getattr(chat_model_cfg, "name", "") if chat_model_cfg else ""
+        model_name = _resolve_name()
         if not model_name:
             return None
         # Normalize: strip quantization suffix (@q4_k_m, @q8_0, etc.)
@@ -747,12 +839,42 @@ class BeliefStateTracker(Extension):
 
             # ── Complexity classification ─────────────────────────────────────
             # Additive slot — used by _57_orchestration_mode to gate delegation mode.
+            #
+            # v3.2 fix: _COMPLEX_BUILD_RX is now evaluated REGARDLESS of domain.
+            # Previously gated behind COMPLEX_ELIGIBLE_DOMAINS, so tasks that fell
+            # through to "conversation" (e.g. "build a two-file Python project") never
+            # got complexity=complex_build. Per Opus architectural recommendation:
+            # if _COMPLEX_BUILD_RX fires and domain is unclassified/conversation,
+            # promote domain to coding — complex build IS a domain signal.
             complexity = "simple"
-            if final_primary["domain"] in COMPLEX_ELIGIBLE_DOMAINS:
-                if _COMPLEX_BUILD_RX.search(message):
-                    complexity = "complex_build"
-                elif _MULTI_STEP_RX.search(message):
-                    complexity = "multi_step"
+            if _COMPLEX_BUILD_RX.search(message):
+                complexity = "complex_build"
+                # Auto-promote unclassified tasks to coding when complex build fires
+                if final_primary["domain"] in ("conversation",) and final_primary["confidence"] == 0:
+                    promoted_domain = {
+                        "domain":          "coding",
+                        "confidence":      1,
+                        "matched_signals": ["_COMPLEX_BUILD_RX"],
+                    }
+                    final_primary   = promoted_domain
+                    final_secondary = final_secondary  # keep any secondary
+                    final_signature = _format_signature(final_primary, final_secondary)
+                    final_momentum  = 1
+                    model_profile   = _load_model_profile(self.agent)
+                    enrichment_plan = _build_enrichment_plan(final_primary, final_secondary, model_profile)
+                    compound_cls = CompoundClassification(
+                        primary_domain       = final_primary["domain"],
+                        primary_confidence   = final_primary["confidence"],
+                        primary_signals      = final_primary["matched_signals"],
+                        secondary_domain     = final_secondary["domain"]          if final_secondary else None,
+                        secondary_confidence = final_secondary["confidence"]      if final_secondary else None,
+                        secondary_signals    = final_secondary["matched_signals"] if final_secondary else None,
+                        compound_signature   = final_signature,
+                        momentum_turns       = final_momentum,
+                        enrichment_plan      = enrichment_plan,
+                    )
+            elif _MULTI_STEP_RX.search(message) and final_primary["domain"] in COMPLEX_ELIGIBLE_DOMAINS:
+                complexity = "multi_step"
 
             # Persist compound momentum state and user message count
             if not hasattr(self.agent, "_bst_store") or self.agent._bst_store is None:
@@ -851,8 +973,11 @@ class BeliefStateTracker(Extension):
             elif _anti_pattern_text:
                 compound_enrichment = _anti_pattern_text
 
-            # ── Slot resolution (unchanged) ───────────────────────────────────
-            tracker = _BSTEngine(self.agent)
+            # ── Slot resolution ───────────────────────────────────────────────
+            # v3.2: pass compound domain to slot resolver so both systems agree.
+            # When compound BST classifies a specific domain, slot resolver defers
+            # rather than independently re-classifying as "conversational".
+            tracker = _BSTEngine(self.agent, compound_domain=compound_cls.primary_domain)
             result  = tracker.process(message)
 
             # ── Apply enrichment ──────────────────────────────────────────────
@@ -965,6 +1090,19 @@ def _get_last_user_message(history_output: list):
     return None
 
 
+_THINK_BLOCK_RX = re.compile(r'<think>.*?</think>', re.DOTALL | re.IGNORECASE)
+
+def _strip_think_blocks(text: str) -> str:
+    """Remove <think>...</think> blocks from reasoning model output.
+
+    For reasoning models (Qwen3.5-distilled, DeepSeek-R1, etc.), the first
+    N characters of output are internal reasoning chain — metacognitive preamble
+    with no domain signal value. Stripping it leaves tool calls, file paths,
+    error messages, and task-relevant content.
+    """
+    return _THINK_BLOCK_RX.sub("", text).strip()
+
+
 def _get_last_agent_output(history_output: list) -> str:
     """Extract text from the most recent agent output for autonomous loop classification.
 
@@ -972,6 +1110,11 @@ def _get_last_agent_output(history_output: list) -> str:
     The agent's output contains domain-rich text: error messages, tool call
     reasoning, and headings like "Fixing Select widget error" that the user
     message lacks.
+
+    v3.2: strips <think>...</think> blocks before taking the 4000-char window.
+    Reasoning models output thinking tokens first — the first 2000 chars were
+    entirely metacognitive preamble with no domain signals. Stripping think
+    blocks and increasing cap to 4000 gets to the domain-rich content.
     """
     if not history_output:
         return ""
@@ -987,7 +1130,8 @@ def _get_last_agent_output(history_output: list) -> str:
         content = msg.get("content", "")
 
         if isinstance(content, str) and len(content.strip()) > 20:
-            return content.strip()[:2000]
+            cleaned = _strip_think_blocks(content.strip())
+            return cleaned[:4000] if cleaned else content.strip()[:4000]
 
         if isinstance(content, dict):
             parts = []
@@ -1013,10 +1157,14 @@ def _get_last_agent_output(history_output: list) -> str:
 class _BSTEngine:
     """Core belief state tracking logic."""
 
-    def __init__(self, agent):
-        self.agent    = agent
-        self.taxonomy = self._load_taxonomy()
-        self.globs    = self.taxonomy.get("global", {})
+    def __init__(self, agent, compound_domain: str | None = None):
+        self.agent          = agent
+        self.taxonomy       = self._load_taxonomy()
+        self.globs          = self.taxonomy.get("global", {})
+        # v3.2: compound domain hint from upstream classifier.
+        # When set and non-trivial, slot resolver defers to compound classification
+        # rather than re-classifying independently.
+        self.compound_domain = compound_domain if compound_domain not in (None, "conversation") else None
 
     def process(self, message: str) -> dict:
         """Main entry point -- classify and resolve slots."""
@@ -1027,8 +1175,16 @@ class _BSTEngine:
             if belief:
                 return self._handle_underspecified(message, belief)
 
-        # Classify domain
+        # Classify domain.
+        # v3.2: if compound BST upstream already classified a specific domain,
+        # try to use that first. Falls back to internal _classify if the compound
+        # domain has no slot definitions in the taxonomy.
         domain_name, confidence = self._classify(message)
+
+        if self.compound_domain and self.compound_domain in self.taxonomy.get("domains", {}):
+            # Defer to compound classification — use its domain if taxonomy has slots for it
+            domain_name = self.compound_domain
+            confidence  = max(confidence, 0.7)  # floor confidence to avoid clarify loop
 
         if domain_name == "conversational" or not domain_name:
             self._clear_belief()

@@ -1,0 +1,190 @@
+/* ============================================================
+ * 98.css Design Tokens — Curated Extract
+ * Source: https://unpkg.com/98.css@0.1.20/dist/98.css (~24KB, minified)
+ * Extracted: 2026-04-14
+ *
+ * 98.css recreates Windows 98 interfaces. The entire library is
+ * ~24KB minified. It uses ZERO CSS custom properties — every
+ * color, shadow, and border is hardcoded inline. That's not
+ * sloppy; it's the honest shape of a system with a fixed
+ * aesthetic that can't be themed.
+ *
+ * The signature technique is the four-layer beveled border
+ * implemented via four inset box-shadows. That one pattern
+ * carries most of the Windows 98 visual identity.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-win98-theme="classic"] {
+
+  /* ============================================================
+   * 7-COLOR PALETTE (reconstructed — 98.css has no :root block)
+   *
+   * These are the ONLY colors in the entire library. Every
+   * bevel, border, button face, and title bar uses this set.
+   * ============================================================ */
+  --win98-color-body:        silver;   /* #c0c0c0 — the iconic Win98 face color */
+  --win98-color-light:       #fff;     /* outer light bevel */
+  --win98-color-light-face:  #dfdfdf;  /* inner light bevel (button face highlight) */
+  --win98-color-mid:         grey;     /* #808080 — inner dark bevel */
+  --win98-color-dark:        #0a0a0a;  /* outer dark bevel (near black, NOT pure black) */
+  --win98-color-title:       navy;     /* #000080 — active title bar left stop */
+  --win98-color-title-end:   #1084d0;  /* active title bar right stop */
+  --win98-color-title-inactive:     grey;
+  --win98-color-title-inactive-end: #b5b5b5;
+
+  /* Semantic text colors */
+  --win98-text:              #222;     /* body text — not pure black */
+  --win98-text-on-title:     #fff;
+  --win98-text-disabled:     grey;
+
+  /* ============================================================
+   * THE FOUR-LAYER BEVEL — Windows 98's signature technique
+   *
+   * Every raised element (window, button, panel) uses the same
+   * four inset box-shadows stacked:
+   *
+   *   outer: -1px -1px darkest  (bottom-right outer edge)
+   *   outer: +1px +1px lightest (top-left outer edge)
+   *   inner: -2px -2px mid      (bottom-right inner face)
+   *   inner: +2px +2px light    (top-left inner face)
+   *
+   * The contrast between outer and inner creates the "chiseled"
+   * 3D look without any gradients or images. Reverse the four
+   * colors and you get a sunken/pressed look — this is how
+   * button "pressed" state and input "sunken" state work.
+   *
+   * For Exocortex: directly portable as a technique with the
+   * colors swapped for dark theme. A two-layer bevel built from
+   * inset shadows is one of the cheapest ways to add depth to
+   * a panel without backdrop-filter or images.
+   * ============================================================ */
+  --win98-bevel-raised:
+    inset -1px -1px #0a0a0a,
+    inset  1px  1px #fff,
+    inset -2px -2px grey,
+    inset  2px  2px #dfdfdf;
+
+  /* Pressed / active state — colors inverted */
+  --win98-bevel-pressed:
+    inset -1px -1px #fff,
+    inset  1px  1px grey,
+    inset -2px -2px #dfdfdf,
+    inset  2px  2px #0a0a0a;
+
+  /* Sunken input field — slightly different inner contrast */
+  --win98-bevel-sunken-field:
+    inset -1px -1px #fff,
+    inset  1px  1px grey,
+    inset -2px -2px #dfdfdf,
+    inset  2px  2px #0a0a0a;
+
+  /* Thin single-layer bevel — status bars, group boxes */
+  --win98-bevel-thin-raised:
+    inset -1px -1px #dfdfdf,
+    inset  1px  1px grey;
+
+  /* Default-button cue — extra 1px black ring around a button,
+     used for "this is the Enter-key default action" */
+  --win98-default-ring:
+    0 0 0 1px #0a0a0a;
+
+  /* ============================================================
+   * TITLE-BAR GRADIENTS
+   *
+   * The iconic Windows 98 blue title bar is a horizontal
+   * linear-gradient from navy (#000080) to #1084d0 — a darker
+   * blue sliding into a brighter blue left-to-right. Inactive
+   * windows use a desaturated grey gradient with the same
+   * direction and stops.
+   *
+   * 90deg here means "gradient angle 90deg from vertical" =
+   * horizontal left-to-right.
+   * ============================================================ */
+  --win98-title-active:
+    linear-gradient(90deg, navy, #1084d0);
+  --win98-title-inactive:
+    linear-gradient(90deg, grey, #b5b5b5);
+
+  /* ============================================================
+   * FOCUS OUTLINE — the dotted rectangle
+   *
+   * Windows 98 keyboard focus is a 1px dotted black rectangle
+   * drawn INSIDE the element with a negative offset. Unmistakable
+   * and period-authentic. Unfortunate on modern high-DPI displays
+   * because 1px dotted renders differently per device.
+   *
+   * For Exocortex: don't port this directly. Use the focus ring
+   * we already have. But note the trick: outline-offset:-4px
+   * draws the outline INSIDE the element instead of around it,
+   * which is occasionally useful.
+   * ============================================================ */
+  --win98-focus-outline: 1px dotted #000;
+  --win98-focus-offset:  -4px;
+
+  /* ============================================================
+   * ENGRAVED DISABLED TEXT
+   *
+   * Disabled labels in Windows 98 aren't dimmed — they're
+   * "engraved" into the silver background via a 1px offset
+   * white highlight shadow. The text becomes grey and the
+   * highlight catches the upper-left edge, creating a
+   * pressed-into-metal look.
+   *
+   * This trick only works on a light mid-grey background
+   * (silver). On a dark theme the effect reverses and you'd
+   * need a dark highlight offset up-left instead.
+   * ============================================================ */
+  --win98-disabled-text-color:  grey;
+  --win98-disabled-text-shadow: 1px 1px 0 #fff;
+
+  /* ============================================================
+   * TYPOGRAPHY
+   *
+   * 98.css ships a bitmap recreation of "Pixelated MS Sans Serif"
+   * in two weights. Falls back to Arial at 12px, color #222.
+   *
+   * For Exocortex: don't port the bitmap font. The 12px base
+   * size is worth noting — Windows 98 UI is information-dense
+   * because the entire chrome is small. Our IBM Plex Mono at
+   * 13-14px is already in this territory.
+   * ============================================================ */
+  --win98-font:      "Pixelated MS Sans Serif", Arial, sans-serif;
+  --win98-font-size: 12px;
+  --win98-line:      color: #222; font-size: 12px;
+}
+
+/* ============================================================
+ * USAGE EXAMPLES — how the tokens compose
+ *
+ * A raised button:
+ *   button {
+ *     background: silver;
+ *     border: none;
+ *     box-shadow: var(--win98-bevel-raised);
+ *     padding: 0 12px;
+ *   }
+ *   button:active {
+ *     box-shadow: var(--win98-bevel-pressed);
+ *   }
+ *
+ * A sunken input field:
+ *   input {
+ *     background: #fff;
+ *     border: none;
+ *     box-shadow: var(--win98-bevel-sunken-field);
+ *     padding: 3px 4px;
+ *   }
+ *
+ * A title bar:
+ *   .title-bar {
+ *     background: var(--win98-title-active);
+ *     color: #fff;
+ *     padding: 3px 2px 3px 3px;
+ *   }
+ *   .title-bar.inactive {
+ *     background: var(--win98-title-inactive);
+ *   }
+ * ============================================================ */

@@ -1,0 +1,255 @@
+/* ============================================================
+ * Primer (GitHub) Design Tokens — Curated Extract
+ * Source: https://github.com/primer/primitives
+ *         https://unpkg.com/@primer/primitives/dist/css/functional/themes/dark.css
+ * Extracted: 2026-04-14
+ *
+ * Primer is GitHub's design system. The Primitives package ships
+ * 900 unique custom properties across 41 prefix groups in just the
+ * dark theme, distributed across 8 dark theme variants:
+ *   dark.css                              (canonical)
+ *   dark-dimmed.css                       (softer black, GitHub's "Dimmed")
+ *   dark-high-contrast.css                (accessibility)
+ *   dark-colorblind{,-high-contrast}.css  (deuteranopia / protanopia)
+ *   dark-tritanopia{,-high-contrast}.css  (tritanopia)
+ *
+ * That's just dark mode — there are equivalent light themes too.
+ * Total token surface: thousands. This is the largest design system
+ * we've referenced, and the most rigorously organized.
+ *
+ * What this file extracts: the UNIVERSAL semantic token layer
+ * (bgColor, fgColor, borderColor, shadow, focus). The remaining
+ * groups are GitHub-internal: --label-* (133, issue/PR labels),
+ * --display-* (285, markdown rendering), --button-* (68, GitHub's
+ * specific button system), --diffBlob-*, --codeMirror-*,
+ * --contribution-* (the green squares calendar), etc.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ *
+ * SPEC NOTE from upstream:
+ *   "Never use raw values (hex/px). Use semantic tokens ONLY."
+ *
+ * That's the philosophy. Application code should never reference
+ * raw colors — only the semantic tokens defined here.
+ * ============================================================ */
+
+[data-color-mode="dark"] {
+
+  /* ============================================================
+   * BACKGROUND COLORS — the core semantic palette
+   *
+   * Naming convention: --bgColor-<category>-<state>
+   *
+   * Categories:
+   *   default       — base page/content background
+   *   muted         — secondary content, subtle grouping
+   *   emphasis      — high-contrast, strong visual weight
+   *   inset         — recessed/sunken content
+   *   inverse       — flips with theme (white in dark, dark in light)
+   *   transparent   — fully transparent
+   *   accent        — primary action/link color (blue in GitHub)
+   *   success       — positive feedback (green)
+   *   attention     — warnings (yellow)
+   *   severe        — high-priority warnings (orange)
+   *   danger        — errors, destructive actions (red)
+   *   done          — completed state (purple)
+   *   neutral       — gray / muted neutral
+   *   sponsors      — GitHub Sponsors brand (pink)
+   *
+   * State suffixes:
+   *   -emphasis     — strong, saturated (use for prominent UI)
+   *   -muted        — translucent, ~10-15% alpha (use for backgrounds/fills)
+   *
+   * Aliasing pattern (CRUCIAL):
+   *   --bgColor-closed-emphasis: var(--bgColor-danger-emphasis);
+   *   --bgColor-open-emphasis: var(--bgColor-success-emphasis);
+   *   --bgColor-draft-emphasis: var(--bgColor-neutral-emphasis);
+   *
+   * Components reference the SEMANTIC alias (`closed`, `open`, `draft`),
+   * not the visual alias (`danger`, `success`, `neutral`). This means
+   * if GitHub ever decided closed PRs should be a different color,
+   * they could change ONE alias without touching component code.
+   * This is the most important pattern in the entire system.
+   * ============================================================ */
+  --bgColor-default:           #0d1117;     /** page / main content */
+  --bgColor-muted:             #151b23;     /** secondary content, subtle grouping */
+  --bgColor-emphasis:          #3d444d;     /** strong visual weight */
+  --bgColor-inset:             #010409;     /** recessed wells, sunken panels */
+  --bgColor-disabled:          #212830;     /** disabled interactive elements */
+  --bgColor-inverse:           #ffffff;     /** flips with theme */
+  --bgColor-black:             #010409;
+  --bgColor-white:             #ffffff;
+  --bgColor-transparent:       #00000000;
+
+  --bgColor-accent-emphasis:   #1f6feb;     /** strong accent (active/focused) */
+  --bgColor-accent-muted:      #388bfd1a;   /** subtle accent (informational/selected) */
+  --bgColor-success-emphasis:  #238636;     /** strong success */
+  --bgColor-success-muted:     #2ea04326;   /** subtle success */
+  --bgColor-attention-emphasis: #9e6a03;    /** strong warning */
+  --bgColor-attention-muted:   #bb800926;   /** subtle warning */
+  --bgColor-severe-emphasis:   #bd561d;     /** strong high-priority warning */
+  --bgColor-severe-muted:      #db6d281a;   /** subtle high-priority warning */
+  --bgColor-danger-emphasis:   #da3633;     /** strong error/destructive */
+  --bgColor-danger-muted:      #f851491a;   /** subtle error context */
+  --bgColor-done-emphasis:     #8957e5;     /** strong completed state */
+  --bgColor-done-muted:        #ab7df826;   /** subtle completed state */
+  --bgColor-neutral-emphasis:  #656c76;     /** strong neutral */
+  --bgColor-neutral-muted:     #656c7633;   /** subtle neutral (tags, labels) */
+  --bgColor-sponsors-emphasis: #bf4b8a;     /** strong sponsors */
+  --bgColor-sponsors-muted:    #db61a21a;   /** subtle sponsors */
+
+  /* Semantic aliases — components reference THESE, not the visual versions */
+  --bgColor-closed-emphasis:   var(--bgColor-danger-emphasis);
+  --bgColor-closed-muted:      var(--bgColor-danger-muted);
+  --bgColor-open-emphasis:     var(--bgColor-success-emphasis);
+  --bgColor-open-muted:        var(--bgColor-success-muted);
+  --bgColor-draft-emphasis:    var(--bgColor-neutral-emphasis);
+  --bgColor-draft-muted:       var(--bgColor-neutral-muted);
+  --bgColor-upsell-emphasis:   var(--bgColor-done-emphasis);
+  --bgColor-upsell-muted:      var(--bgColor-done-muted);
+
+  /* ============================================================
+   * FOREGROUND COLORS — text and icons
+   *
+   * Note the special tokens for "text on emphasis backgrounds":
+   *   --fgColor-onEmphasis    — white text for use ON colored backgrounds
+   *   --fgColor-onInverse     — dark text for use ON inverse backgrounds
+   *
+   * This solves the contrast pairing problem at the token level.
+   * Don't put `color: white` directly on a button — use
+   * `color: var(--fgColor-onEmphasis)`. If the contrast rule
+   * changes, every component updates without touching components.
+   * ============================================================ */
+  --fgColor-default:    #f0f6fc;             /** primary content, headings */
+  --fgColor-muted:      #9198a1;             /** secondary content */
+  --fgColor-disabled:   #656c76;             /** disabled text */
+  --fgColor-onEmphasis: #ffffff;             /** text ON emphasis bg */
+  --fgColor-onInverse:  #010409;             /** text ON inverse bg */
+  --fgColor-black:      #010409;
+  --fgColor-white:      #ffffff;
+
+  --fgColor-accent:     #4493f8;             /** links, interactive */
+  --fgColor-success:    #3fb950;             /** positive feedback */
+  --fgColor-attention:  #d29922;             /** warning */
+  --fgColor-severe:     #db6d28;             /** high-priority warning */
+  --fgColor-danger:     #f85149;             /** error */
+  --fgColor-done:       #ab7df8;             /** completed */
+  --fgColor-neutral:    #9198a1;             /** neutral icons */
+  --fgColor-sponsors:   #db61a2;             /** sponsors brand */
+
+  /* Aliases */
+  --fgColor-link:       var(--fgColor-accent);
+  --fgColor-closed:     var(--fgColor-danger);
+  --fgColor-open:       var(--fgColor-success);
+  --fgColor-draft:      var(--fgColor-neutral);
+  --fgColor-upsell:     var(--fgColor-done);
+
+  /* ============================================================
+   * BORDER COLORS
+   *
+   * Note: --borderColor-translucent is exclusive to borders —
+   * there's no equivalent --bgColor-translucent. The comment in
+   * upstream specifically calls this out. Use it for layered
+   * overlay elements where a hard border would clip.
+   * ============================================================ */
+  --borderColor-default:           #3d444d;
+  --borderColor-muted:             #3d444db3;     /** subtle separator */
+  --borderColor-emphasis:          #656c76;       /** strong, weighted */
+  --borderColor-disabled:          #656c761a;     /** disabled */
+  --borderColor-translucent:       #ffffff26;     /** overlays — border-only token */
+  --borderColor-transparent:       #00000000;
+
+  --borderColor-accent-emphasis:   #1f6feb;
+  --borderColor-accent-muted:      #388bfd66;
+  --borderColor-success-emphasis:  #238636;
+  --borderColor-success-muted:     #2ea04366;
+  --borderColor-attention-emphasis: #9e6a03;
+  --borderColor-attention-muted:   #bb800966;
+  --borderColor-severe-emphasis:   #bd561d;
+  --borderColor-severe-muted:      #db6d2866;
+  --borderColor-danger-emphasis:   #da3633;
+  --borderColor-danger-muted:      #f8514966;
+  --borderColor-done-emphasis:     #8957e5;
+  --borderColor-done-muted:        #ab7df866;
+  --borderColor-neutral-emphasis:  var(--borderColor-emphasis);
+  --borderColor-neutral-muted:     var(--borderColor-muted);
+  --borderColor-sponsors-emphasis: #bf4b8a;
+  --borderColor-sponsors-muted:    #db61a266;
+
+  /* Aliases */
+  --borderColor-closed-emphasis:   var(--borderColor-danger-emphasis);
+  --borderColor-closed-muted:      var(--borderColor-danger-muted);
+  --borderColor-open-emphasis:     var(--borderColor-success-emphasis);
+  --borderColor-open-muted:        var(--borderColor-success-muted);
+  --borderColor-draft-emphasis:    var(--borderColor-neutral-emphasis);
+  --borderColor-draft-muted:       var(--borderColor-neutral-muted);
+  --borderColor-upsell-emphasis:   var(--borderColor-done-emphasis);
+  --borderColor-upsell-muted:      var(--borderColor-done-muted);
+
+  /* ============================================================
+   * SHADOWS — by ROLE, not by SIZE
+   *
+   * This is the most important architectural lesson. Most design
+   * systems name shadows --shadow-1, --shadow-2, --shadow-3 by
+   * dimension. Primer names them by what the element IS doing:
+   *
+   *   resting     — element is at rest, sitting on the surface
+   *                 (cards, buttons, tiles)
+   *   floating    — element is floating above other content
+   *                 (dropdowns, popovers, modals, tooltips)
+   *   inset       — element is recessed below the surface
+   *                 (sunken inputs, wells)
+   *
+   * Each role has size variants (xsmall/small/medium/large/xlarge)
+   * but you choose the role first, then the size. This communicates
+   * intent better than a numeric scale.
+   *
+   * Note also that every floating shadow includes a 1px hairline
+   * border drawn via box-shadow:
+   *   "0 0 0 1px #3d444d, 0 8px 16px ..."
+   *                 ^^^^^ — this is a 1px border!
+   * Floating elements get a clean edge for free without needing
+   * an actual border declaration.
+   * ============================================================ */
+  --shadow-resting-xsmall: 0 1px 1px 0 #010409cc;
+  --shadow-resting-small:  0 1px 1px 0 #01040999, 0 1px 3px 0 #01040999;
+  --shadow-resting-medium: 0 1px 1px 0 #01040966, 0 3px 6px 0 #010409cc;
+
+  --shadow-floating-small:  0 0 0 1px #3d444d, 0 6px 12px -3px #01040966, 0 6px 18px 0 #01040966;
+  --shadow-floating-medium: 0 0 0 1px #3d444d, 0 8px 16px -4px #01040966, 0 4px 32px -4px #01040966, 0 24px 48px -12px #01040966;
+  --shadow-floating-large:  0 0 0 1px #3d444d, 0 24px 48px 0 #010409;
+  --shadow-floating-xlarge: 0 0 0 1px #3d444d, 0 32px 64px 0 #010409;
+
+  --shadow-inset: inset 0 1px 0 0 #0104093d;
+
+  /* ============================================================
+   * FOCUS
+   *
+   * Two tokens: one for the color, one for the full shorthand.
+   * Use the shorthand on most elements; reach for the color when
+   * you need it as a CSS variable inside a more complex declaration.
+   * ============================================================ */
+  --focus-outline:      2px solid #1f6feb;
+  --focus-outlineColor: var(--borderColor-accent-emphasis);
+}
+
+/* ============================================================
+ * THEME SWITCHING — the "swap one file for another" pattern
+ *
+ * GitHub ships 8 dark theme variants (regular, dimmed, high-contrast,
+ * 3 colorblindness modes) and 5 light variants. Each is a separate
+ * CSS file with the SAME token names but different values.
+ *
+ * Application code never changes — it always references
+ * `var(--bgColor-default)`. Swapping themes = loading a different
+ * CSS file at runtime via [data-color-mode] attribute.
+ *
+ * Example: dark-dimmed.css overrides --bgColor-default from
+ * #0d1117 (true black) to #212830 (softer "dimmed" black). All
+ * components automatically adapt because they reference the
+ * variable, not the value.
+ *
+ * THIS IS HOW YOU BUILD THEMING. Variables are the abstraction
+ * layer between visual values and component code.
+ * ============================================================ */

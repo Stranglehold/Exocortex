@@ -1,0 +1,212 @@
+/* ============================================================
+ * 7.css Design Tokens
+ * Source: https://github.com/khang-nd/7.css
+ * Files extracted: gui/_variables.scss, _window.scss, _button.scss
+ * Extracted: 2026-04-14
+ *
+ * 7.css recreates Windows 7 (Aero) UI in pure CSS. The signature
+ * effect is "Aero glass" — translucent panels with subtle highlights
+ * — implemented entirely with layered CSS gradients and box-shadows.
+ * NO backdrop-filter is used. Aero shipped on hardware that couldn't
+ * do real-time blur, so the glass is faked with carefully placed
+ * white highlights and stripe overlays.
+ *
+ * This is the MOST IMPORTANT finding from this analysis: there are
+ * two valid approaches to "glass" in CSS, and 7.css is the one we
+ * don't have. OpenGridWorks uses backdrop-filter (modern, expensive,
+ * real). 7.css uses layered gradients (period-authentic, cheap,
+ * static). For Exocortex, having both means we can fall back to the
+ * 7.css approach on browsers/hardware where backdrop-filter is poor.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ *
+ * Naming convention from upstream:
+ *   --w7-<component>-<property>-<state>
+ *   <component> = el (element), li (list item), w (window),
+ *                 wct (window control), etc.
+ *   <property> = bg (background), bd (border), c (color),
+ *                sd (shadow), bdr (border radius), grad (gradient)
+ *   <state> = d (disabled), h (hovered), a (active),
+ *             hl (highlighted), s-N (shade N)
+ * ============================================================ */
+
+:root {
+
+  /* ============================================================
+   * BASE TYPOGRAPHY
+   * ============================================================ */
+  --w7-font: 9pt "Segoe UI", "SegoeUI", "Noto Sans", sans-serif;
+
+  /* ============================================================
+   * SURFACE COLORS (light theme — Aero is fundamentally light)
+   * ============================================================ */
+  --w7-surface:    #f0f0f0;       /* base app background */
+  --w7-el-bg:      #f2f2f2;       /* element default background */
+  --w7-el-bg-d:    #f4f4f4;       /* disabled element background */
+  --w7-el-bg-s-1:  #ebebeb;       /* shade 1 — slightly darker */
+  --w7-el-bg-s-2:  #cfcfcf;       /* shade 2 — darker */
+
+  /* ============================================================
+   * BORDERS
+   * ============================================================ */
+  --w7-el-bd:    #8e8f8f;         /* default — neutral gray */
+  --w7-el-bd-h:  #3c7fb1;         /* hover — Aero blue */
+  --w7-el-bd-a:  #6d91ab;         /* active/pressed — muted blue */
+  --w7-el-bd-d:  #adb2b5;         /* disabled — light gray */
+  --w7-el-bdr:   3px;             /* element border radius — gentle */
+
+  /* Window borders are different (window chrome) */
+  --w7-w-bd:     #000000b3;       /* window border — 70% black */
+  --w7-w-bdr:    6px;             /* window border radius */
+  --w7-wct-bd:   #0000004d;       /* window control border — 30% black */
+  --w7-wct-bdr:  5px;
+
+  /* ============================================================
+   * TEXT COLORS
+   * ============================================================ */
+  --w7-el-c:      #000000;
+  --w7-el-c-d:    #838383;        /* disabled text */
+  --w7-link-c:    #0066cc;
+  --w7-link-c-h:  #3399ff;
+  --w7-title-c:   #003399;        /* "primary instruction" / heading text */
+
+  /* ============================================================
+   * INSET SHADOWS — the bevel/glow technique
+   *
+   * 7.css uses inset box-shadows instead of border-style: ridge/groove
+   * for the 3D bevel effect. Each shadow is a single semi-transparent
+   * white or black inset, layered to create the appearance of a raised
+   * or pressed surface.
+   * ============================================================ */
+  --w7-el-sd:    inset 0 0 0 1px rgba(255,255,255,0.8);   /* default — subtle highlight ring */
+  --w7-el-sd-a:  inset 1px 1px 0 rgba(0,0,0,0.2),
+                 inset -1px 1px 0 rgba(0,0,0,0.07);        /* pressed — directional shading */
+
+  --w7-wct-sd:   inset 0 0 0 1px rgba(255,255,255,0.67);   /* window control highlight */
+
+  /* ============================================================
+   * AERO GRADIENTS — the signature "two-tone surface" effect
+   *
+   * The defining Aero look. Each gradient has a HARD STOP at 45%,
+   * creating a sharp transition from light upper half to slightly
+   * darker lower half. This implies a curved surface caught in
+   * raking light, even though the gradient is mathematically flat.
+   *
+   * Three states: default (gray), hover (blue), active (darker blue).
+   * ============================================================ */
+  --w7-el-grad:    linear-gradient(#f2f2f2 45%, #ebebeb 45%, #cfcfcf);
+  --w7-el-grad-h:  linear-gradient(#eaf6fd 45%, #bee6fd 45%, #a7d9f5);
+  --w7-el-grad-a:  linear-gradient(#e5f4fc, #c4e5f6 30% 50%, #98d1ef 50%, #68b3db);
+
+  /* ============================================================
+   * HIGHLIGHTED LIST ITEM — the Windows Explorer "selected row"
+   *
+   * The signature pale-cyan gradient with white edges that defines
+   * "this row is selected" in Aero.
+   * ============================================================ */
+  --w7-li-bd-hl:  #aaddfa;
+  --w7-li-bg-hl:  linear-gradient(rgba(255,255,255,0.6),
+                                   rgba(230,236,245,0.8) 90%,
+                                   rgba(255,255,255,0.8));
+
+  /* ============================================================
+   * WINDOW BACKGROUND — the "real" Aero glass
+   *
+   * The full Aero window background is constructed as multiple
+   * stacked layers:
+   *   1. Base color (--w7-w-bg, blue)
+   *   2. Three-stop horizontal gradient (--w7-w-grad) for left/mid/right sheen
+   *   3. A horizontal "glass highlight band" at 40% from the top
+   *   4. Optional stripe pattern (--w7-w-glass) for wallpaper sheen
+   *
+   * NO backdrop-filter is used. The "translucent" feel comes entirely
+   * from the gradient layering. This is period-authentic to Windows 7
+   * (which couldn't do real-time blur on the hardware of the era).
+   * ============================================================ */
+  --w7-w-space:  6px;
+  --w7-w-bg:     #4580c4;
+  --w7-w-grad:   linear-gradient(to right,
+                                  rgba(255,255,255,0.4),
+                                  rgba(0,0,0,0.1),
+                                  rgba(255,255,255,0.2)),
+                 #4580c4;
+}
+
+/* ============================================================
+ * THE AERO BUTTON PATTERN (worth porting wholesale)
+ *
+ * 7.css buttons use stacked pseudo-elements for state layers:
+ *   - Default state: var(--w7-el-grad) background on element itself
+ *   - Hover state: ::before with var(--w7-el-grad-h), opacity 0→1 on hover
+ *   - Active state: ::after with var(--w7-el-grad-a), opacity 0→1 on click
+ *
+ * The fade timings are ASYMMETRIC:
+ *   - Hover-in:  opacity 0→1 over 0.3s ease (fast acknowledgment)
+ *   - Hover-out: opacity 1→0 over 1s linear (slow fade, button "remembers")
+ *
+ * This creates the feeling that the button noticed you and is
+ * lingering after you've moved on. Different from OpenGridWorks's
+ * symmetric 150ms transitions.
+ * ============================================================ */
+.w7-button {
+  font: var(--w7-font);
+  border: 1px solid var(--w7-el-bd);
+  border-radius: var(--w7-el-bdr);
+  box-shadow: var(--w7-el-sd);
+  color: #222;
+  padding: 0 12px;
+  background: var(--w7-el-grad);
+  position: relative;
+  z-index: 0;
+}
+.w7-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--w7-el-bdr);
+  background: var(--w7-el-grad-h);
+  box-shadow: var(--w7-el-sd);
+  opacity: 0;
+  transition: opacity 1s linear;     /* slow fade-out */
+  z-index: -1;
+}
+.w7-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--w7-el-grad-a);
+  box-shadow: var(--w7-el-sd-a);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+.w7-button:hover {
+  border-color: var(--w7-el-bd-h);
+  transition: border-color 0.3s;
+}
+.w7-button:hover::before {
+  opacity: 1;
+  transition: opacity 0.3s;          /* fast fade-in */
+}
+.w7-button:active::after {
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+/* ============================================================
+ * THE PULSE-DEFAULT-BUTTON ANIMATION
+ *
+ * Aero's "this is the default action, press Enter" affordance —
+ * a gentle cyan inner glow that alternates blur radius. Subtle
+ * but unmistakable. Reserve for the primary action button on
+ * any form/dialog where Enter does something.
+ * ============================================================ */
+@keyframes w7-pulse-anim {
+  from { box-shadow: inset 0 0 3px 1px rgba(52, 222, 255, 0.87); }
+  to   { box-shadow: inset 0 0 1px 1px rgba(52, 222, 255, 0.87); }
+}
+.w7-default-button {
+  animation: 1s ease infinite alternate w7-pulse-anim;
+}

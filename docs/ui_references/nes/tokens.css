@@ -1,0 +1,179 @@
+/* ============================================================
+ * NES.css Design Tokens — Curated Extract
+ * Source: https://unpkg.com/nes.css/css/nes.css (~308KB)
+ * Extracted: 2026-04-14
+ *
+ * NES.css recreates NES (Nintendo Entertainment System, 1985)
+ * 8-bit UI aesthetics. The file is huge (~308KB) mostly because
+ * it contains hand-drawn 8-bit sprite characters (Mario, Boo,
+ * Kirby, etc.) implemented as massive box-shadow declarations
+ * with dozens of pixel offsets each. Strip those out and the
+ * actual UI vocabulary is small.
+ *
+ * Zero CSS custom properties. Zero transitions. The core
+ * technique is a pseudo-element inset shadow that visualizes
+ * "depth" without affecting layout.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-nes-theme="classic"] {
+
+  /* ============================================================
+   * CATEGORICAL 8-BIT PALETTE (reconstructed — no :root block)
+   *
+   * NES.css uses a saturated categorical palette lifted from
+   * actual NES games. Each state has a base color and a darker
+   * variant used as the "depth shadow." The darker variant is
+   * computed roughly as "take the base and shift to 60% luminance
+   * in the same hue." Not algorithmic — hand-picked to match
+   * original NES sprite palettes.
+   *
+   * This is the same categorical pattern as traffic lights:
+   * one color per meaning, memorized at the palette level.
+   * ============================================================ */
+
+  /* Primary (blue) — button color + darker depth color */
+  --nes-color-primary:        #209cee;
+  --nes-color-primary-shadow: #006bb3;
+
+  /* Success (green) */
+  --nes-color-success:        #92cc41;
+  --nes-color-success-shadow: #4aa52e;
+
+  /* Warning (yellow/orange) */
+  --nes-color-warning:        #f7d51d;
+  --nes-color-warning-shadow: #e59400;
+
+  /* Error (red) */
+  --nes-color-error:          #e76e55;
+  --nes-color-error-shadow:   #8c2022;
+
+  /* Neutrals — body text, surface, disabled */
+  --nes-color-text:           #212529;
+  --nes-color-bg:             #fff;
+  --nes-color-disabled-bg:    #d3d3d3;
+  --nes-color-disabled-shadow:#adafbc;
+
+  /* Extended sprite palette (partial — there are ~20 more used
+     for the character sprites but these are the UI-relevant ones) */
+  --nes-color-mario-red:      #fd2b2b;
+  --nes-color-mario-brown:    #65352b;
+  --nes-color-skin:           #ffbb8e;
+  --nes-color-fire-yellow:    #ebe527;
+
+  /* ============================================================
+   * THE 4px PSEUDO-PIXEL UNIT
+   *
+   * Every dimension in NES.css is a multiple of 4px. Border
+   * widths, padding, button offsets, sprite pixels — all 4px
+   * units. This makes everything look like it's drawn on an
+   * 8-bit pixel grid even though modern displays are much
+   * higher resolution.
+   *
+   * For Exocortex: we don't want an 8-bit grid, but the lesson
+   * of "commit to one base unit and snap everything to it" is
+   * a useful discipline. Our spacing scale uses 4px steps
+   * (4/8/12/16/24/32) — same principle, modernized.
+   * ============================================================ */
+  --nes-pixel-unit:     4px;
+  --nes-border-width:   4px;
+
+  /* ============================================================
+   * THE DEPTH-PSEUDO-ELEMENT PATTERN
+   *
+   * NES.css buttons DON'T change box-shadow on hover/active.
+   * Instead, every button has a `::after` pseudo-element
+   * positioned -4px on all sides (so it extends beyond the
+   * button's box). That ::after carries an inset box-shadow
+   * on only the bottom-right (-4px -4px) in the darker variant
+   * of the button's color.
+   *
+   * The result is a "depth shadow" that looks like the NES
+   * sprite is raised off the page. On hover, the inset shadow
+   * deepens to -6px (stronger). On active, it INVERTS to +4px
+   * (showing the depth on top-left — the button is pushed in).
+   *
+   * The button itself never moves. The depth cue is entirely
+   * in the pseudo-element. Layout is stable.
+   *
+   * For Exocortex: reserved as a technique. Any element where
+   * a hover/active state shouldn't cause translation or resize
+   * can use this pattern. The pseudo-element carries the state
+   * animation, the main element stays put.
+   * ============================================================ */
+
+  /* Default depth (resting state) */
+  --nes-depth-rest:    inset -4px -4px var(--nes-color-primary-shadow);
+
+  /* Hover depth (deeper shadow, same color) */
+  --nes-depth-hover:   inset -6px -6px var(--nes-color-primary-shadow);
+
+  /* Active depth (inverted to top-left = pushed in) */
+  --nes-depth-active:  inset  4px  4px var(--nes-color-primary-shadow);
+
+  /* Focus ring (a 6px outer glow at 30% alpha of the shadow color) */
+  --nes-focus-ring:    0 0 0 6px rgba(0, 107, 179, 0.3);
+
+  /* Disabled state (no hover/active, opacity fallback) */
+  --nes-disabled-opacity: 0.6;
+
+  /* ============================================================
+   * BORDER-IMAGE CHUNKY PIXEL BORDER
+   *
+   * NES.css uses an SVG border-image-source (embedded as data
+   * URI) to draw a pixelated chunky border on containers.
+   * Border-width: 4px. Slice: 2. Repeat: stretch.
+   *
+   * The SVG is a 5x5 pixel grid with corner pixels filled, used
+   * as a 9-slice border. This gives containers a "drawn with
+   * fat pixels" look that no amount of regular border styling
+   * can replicate.
+   *
+   * For Exocortex: not directly portable (our dark aesthetic
+   * uses subtle 1px borders with glow). But the technique
+   * itself — using an SVG 9-slice for chunky pseudo-pixel
+   * borders — is worth knowing for any retro mode.
+   * ============================================================ */
+  --nes-border-style:         solid;
+  --nes-border-width-value:   4px;
+  --nes-border-image-slice:   2;
+  --nes-border-image-repeat:  stretch;
+
+  /* ============================================================
+   * TYPOGRAPHY — "Press Start 2P"
+   *
+   * Every element in NES.css uses Google Fonts' "Press Start 2P"
+   * — a bitmap recreation of the NES in-game text font. It's
+   * monospaced, uppercase-biased, and renders crisply only at
+   * specific sizes (16px and multiples).
+   *
+   * For Exocortex: don't port. Press Start 2P at dashboard
+   * density (dozens of rows of data) would be painful. IBM Plex
+   * Mono does the same monospace-terminal job while scaling
+   * better.
+   * ============================================================ */
+  --nes-font: "Press Start 2P", monospace;
+  --nes-font-size-base: 16px;
+
+  /* ============================================================
+   * ZERO TRANSITIONS
+   *
+   * NES.css contains exactly zero `transition:` declarations.
+   * Only two @keyframes rules exist (blink and wave) and they
+   * animate sprite characters, not UI elements. Every state
+   * change in the UI is instantaneous.
+   *
+   * This is the same philosophy as TuiCss and System.css —
+   * three Phase 3 references in a row converging on "instant
+   * state changes" as a deliberate aesthetic. The NES had no
+   * transitions; authenticity means matching that constraint.
+   *
+   * For Exocortex: we don't want zero transitions (our target
+   * is 80-150ms ease-out), but the consistency across retro
+   * references is worth noting — the "calm mode" / "instant
+   * mode" utility we vendored from Tufte/TuiCss is validated
+   * a third time here.
+   * ============================================================ */
+}

@@ -89,13 +89,61 @@ def aggregate_predictions(predictions: list, profiles: dict) -> dict:
     else:
         meta_confidence = "HIGH"
 
+    # SFA-001 P4.2 / Phase 2.5 — Devil's Inquisitor consensus-override.
+    # When DI is confident that the consensus is missing a load-bearing fact
+    # (DI confidence >= 0.70 AND DI has >= 3 surprising_facts), force the
+    # meta_confidence down regardless of how tightly the other profiles
+    # agree. Tight consensus on a missed-fact situation is the failure mode
+    # ST-007 documented; averaging DI's structured dissent in as one vote
+    # of nine was the Phase 2 validation gap. This fix treats DI's warning
+    # as a structural signal, not a numeric contribution.
+    di_pred = next(
+        (p for p in predictions
+         if p.get("profile_name") == "Devil's Inquisitor" and p.get("error") is None),
+        None,
+    )
+    di_override = None
+    if di_pred:
+        di_conf = float(di_pred.get("confidence") or 0.0)
+        di_extra = di_pred.get("profile_extra_data") or {}
+        surprising = di_extra.get("surprising_facts") or []
+        if not isinstance(surprising, list):
+            surprising = []
+        di_warning = di_extra.get("consensus_warning") or ""
+
+        if di_conf >= 0.85 and len(surprising) >= 3:
+            # DI is highly confident the consensus is missing something.
+            # Force meta_confidence to LOW — strongest dissent signal.
+            original_meta = meta_confidence
+            meta_confidence = "LOW"
+            di_override = {
+                "severity": "high",
+                "original_meta": original_meta,
+                "di_confidence": di_conf,
+                "surprising_facts_count": len(surprising),
+                "consensus_warning": di_warning[:500] if isinstance(di_warning, str) else "",
+            }
+        elif di_conf >= 0.70 and len(surprising) >= 3:
+            # DI is moderately confident. Cap at MEDIUM — can't be HIGH
+            # when a profile is actively flagging a consensus blind spot.
+            if meta_confidence == "HIGH":
+                original_meta = meta_confidence
+                meta_confidence = "MEDIUM"
+                di_override = {
+                    "severity": "medium",
+                    "original_meta": original_meta,
+                    "di_confidence": di_conf,
+                    "surprising_facts_count": len(surprising),
+                    "consensus_warning": di_warning[:500] if isinstance(di_warning, str) else "",
+                }
+
     # High-confidence dissenters: profiles that diverge >0.20 from consensus
     dissenters = [
         wp for wp in weighted_preds
         if abs(wp["confidence"] - consensus) > 0.20
     ]
 
-    return {
+    result = {
         "consensus_confidence": round(consensus, 3),
         "range_low":  round(range_low, 3),
         "range_high": round(range_high, 3),
@@ -104,6 +152,9 @@ def aggregate_predictions(predictions: list, profiles: dict) -> dict:
         "individual_predictions": weighted_preds,
         "high_confidence_dissenters": dissenters,
     }
+    if di_override:
+        result["di_override"] = di_override
+    return result
 
 
 # ============================================================
@@ -172,6 +223,32 @@ def format_brief(question: str, domain: str, consensus: dict,
         f"Range: {range_str}",
         f"Confidence: {meta} ({conf_note})",
     ]
+
+    # SFA-001 P4.2 — Devil's Inquisitor consensus-override banner.
+    # When DI has flagged a consensus blind spot strongly enough to have
+    # forced the meta_confidence down in aggregate_predictions(), surface
+    # that warning prominently in the brief header so the analyst cannot
+    # miss it. This is the operator-attention closure for the Phase 2.5 fix.
+    di_override = consensus.get("di_override")
+    if di_override:
+        lines += [
+            "",
+            "━" * 54,
+            "⚠ DEVIL'S INQUISITOR CONSENSUS OVERRIDE",
+            f"   meta_confidence forced from {di_override.get('original_meta','?')} → {meta}",
+            f"   DI confidence: {format_pct(di_override.get('di_confidence', 0))} "
+            f"({di_override.get('surprising_facts_count', 0)} surprising facts identified)",
+        ]
+        warning_text = di_override.get("consensus_warning") or ""
+        if warning_text:
+            # Wrap the warning at ~70 chars for readability
+            lines.append(f"   warning: {warning_text[:350]}")
+        lines += [
+            "   → The committee's numeric consensus may be missing a load-bearing",
+            "     fact surfaced by Devil's Inquisitor. Read DI's output before",
+            "     acting on the headline confidence.",
+            "━" * 54,
+        ]
 
     # KEY DISAGREEMENT — only when MEDIUM or LOW
     if meta in ("MEDIUM", "LOW") and len(consensus["individual_predictions"]) >= 2:

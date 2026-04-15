@@ -33,10 +33,15 @@ services:
       OSS_APP_DB_PASSWORD: ${OSS_APP_DB_PASSWORD:-oss_app_dev_password}
       OSS_LLM_URL: ${OSS_LLM_URL:-http://host.docker.internal:1234/v1}
       OSS_LLM_MODEL: ${OSS_LLM_MODEL:-qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m}
+      # Ingest LLM — uses the Agent Zero utility model (lighter/faster than main chat model).
+      # Keep this in sync with util_model_name in Agent Zero's settings.json.
+      OSS_LLM_URL_INGEST: ${OSS_LLM_URL_INGEST:-http://host.docker.internal:1234/v1}
+      OSS_LLM_MODEL_INGEST: ${OSS_LLM_MODEL_INGEST:-qwen/qwen3-4b-2507}
+      OSS_INGEST_WORKERS: ${OSS_INGEST_WORKERS:-3}
       OSS_ANALYST_TOKEN: ${OSS_ANALYST_TOKEN:-dev_analyst_token}
       OSS_EMBEDDING_MODEL: ${OSS_EMBEDDING_MODEL:-all-MiniLM-L6-v2}
       OSS_INGEST_INTERVAL_MINUTES: ${OSS_INGEST_INTERVAL_MINUTES:-30}
-      OSS_INGEST_PAUSED: ${OSS_INGEST_PAUSED:-false}
+      OSS_INGEST_PAUSED: ${OSS_INGEST_PAUSED:-true}
       # SWARMFISH bridge
       SWARMFISH_BASE_URL: ${SWARMFISH_BASE_URL:-http://host.docker.internal:7732}
       SWARMFISH_ANALYST_TOKEN: ${SWARMFISH_ANALYST_TOKEN:-dev_analyst_token}

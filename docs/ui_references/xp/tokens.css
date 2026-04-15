@@ -1,0 +1,231 @@
+/* ============================================================
+ * XP.css Design Tokens — Curated Extract
+ * Source: https://unpkg.com/xp.css/dist/XP.css (~256KB)
+ * Extracted: 2026-04-14
+ *
+ * XP.css recreates the Windows XP Luna theme (2001). It's
+ * built on top of 98.css's bevel vocabulary and extends it
+ * with multi-stop vertical gradients to simulate "wet plastic"
+ * surfaces — XP's signature aesthetic.
+ *
+ * Zero CSS custom properties (inherits 98.css's no-variables
+ * philosophy). Contains exactly ONE transition declaration
+ * (background, 100ms). One keyframe (`sliding` — the XP
+ * progress bar marquee).
+ *
+ * The key insight: XP replaced 98's solid colors with
+ * multi-stop vertical gradients (4-8 color stops each)
+ * to create the appearance of curved, glossy plastic
+ * surfaces. This is peak skeuomorphic surface styling
+ * before the flat-design rejection.
+ *
+ * Raw extract — do not edit. Curation belongs in
+ * docs/ui_references/exocortex.css.
+ * ============================================================ */
+
+[data-xp-theme="luna"] {
+
+  /* ============================================================
+   * LUNA BLUE PALETTE (reconstructed — no :root block)
+   *
+   * XP.css uses ~20 distinct colors, most of them part of
+   * larger multi-stop gradients. These are the anchor colors;
+   * the intermediate stops interpolate between them.
+   * ============================================================ */
+
+  /* The XP title-bar blue gradient anchor colors */
+  --xp-blue-highlight:    #0997ff;  /* top highlight band */
+  --xp-blue-light:        #0053ee;
+  --xp-blue-mid:          #0050ee;
+  --xp-blue-primary:      #06f;     /* the famous XP blue */
+  --xp-blue-dark:         #005bff;
+  --xp-blue-shadow:       #003dd7;  /* bottom shadow band */
+
+  /* Luna surface gradient (the "button face" XP look) */
+  --xp-surface-top:       #cdcac3;  /* top edge of button */
+  --xp-surface-light:     #e3e3db;  /* 8% down */
+  --xp-surface-mid:       #e5e5de;  /* 94% down */
+  --xp-surface-bottom:    #f2f2f1;  /* bottom edge */
+
+  /* XP system neutrals */
+  --xp-bg:                #ece9d8;  /* the iconic XP dialog beige */
+  --xp-text:              #222;
+  --xp-text-on-title:     #fff;
+  --xp-border-outer:      #0a0a0a;
+  --xp-border-light:      #fff;
+  --xp-border-mid:        grey;
+  --xp-border-light-mid:  #dfdfdf;
+
+  /* Luna green (Start button + taskbar) */
+  --xp-green-highlight:   #acedad;
+  --xp-green-light:       #7be47d;
+  --xp-green-mid:         #4cda50;
+  --xp-green-dark:        #2ed330;
+  --xp-green-shadow:      #42d845;
+  --xp-green-soft:        #76e275;
+  --xp-green-soft2:       #8fe791;
+
+  /* ============================================================
+   * THE LUNA TITLE-BAR GRADIENT
+   *
+   * XP's most iconic UI element. An 8-stop vertical gradient
+   * (180deg = top-to-bottom) producing the "wet plastic blue"
+   * look. Note the intentional tight bands near 88-93% — those
+   * are the highlight and shadow "reflection lines" that give
+   * XP chrome its glossy appearance.
+   *
+   * Compare to 98.css's 2-stop gradient: XP uses 8 stops to
+   * achieve a fundamentally different visual effect. More
+   * stops = smoother falloff but with discrete "reflection"
+   * bands that 2-stop linear can't produce.
+   * ============================================================ */
+  --xp-title-active: linear-gradient(
+    180deg,
+    #0997ff,
+    #0053ee 8%,
+    #0050ee 40%,
+    #06f    88%,
+    #06f    93%,
+    #005bff 95%,
+    #003dd7 96%,
+    #003dd7
+  );
+
+  /* ============================================================
+   * THE LUNA SURFACE GRADIENT
+   *
+   * Buttons and panels in XP have a subtle top-to-bottom
+   * gradient with four stops, producing a slightly curved
+   * "plastic button" appearance. The variation is small
+   * (#cdcac3 → #f2f2f1) but the multi-stop produces the
+   * subtle gloss.
+   * ============================================================ */
+  --xp-surface-gradient: linear-gradient(
+    180deg,
+    #cdcac3,
+    #e3e3db 8%,
+    #e5e5de 94%,
+    #f2f2f1
+  );
+
+  /* ============================================================
+   * THE START BUTTON GREEN GRADIENT
+   *
+   * The XP Start button uses an 8-stop green gradient with
+   * a highlight band at the top, a dark band in the middle,
+   * and a fade back to white at the bottom. This is the
+   * "glossy 3D button" template — the same technique applied
+   * to any color would produce the same glossy effect.
+   * ============================================================ */
+  --xp-start-gradient: linear-gradient(
+    180deg,
+    #acedad   0,
+    #7be47d 14%,
+    #4cda50 28%,
+    #2ed330 42%,
+    #42d845 57%,
+    #76e275 71%,
+    #8fe791 85%,
+    #fff
+  );
+
+  /* ============================================================
+   * PROGRESS BAR STRIPES — the sliding marquee
+   *
+   * XP progress bars are made of:
+   *   1. A blue background (the fill color)
+   *   2. A repeating white stripe pattern overlay
+   *   3. A @keyframes sliding animation that translates the
+   *      stripes continuously right
+   *
+   * The stripes themselves are pure CSS — a repeating
+   * linear-gradient with sharp 0% stops creating vertical
+   * white bars 2px wide with 8px gaps.
+   * ============================================================ */
+  --xp-progress-stripes: linear-gradient(
+    90deg,
+    #fff 0, #fff 2px,
+    transparent 0, transparent 10px
+  );
+
+  /* ============================================================
+   * THE SIX-LAYER CHUNKY BEVEL
+   *
+   * Where 98.css uses 4 inset-shadow layers for button depth,
+   * XP.css uses 6 layers for its "chunkier plastic" buttons
+   * (primarily the taskbar Start button and the big blue OK
+   * buttons). The extra 2 layers double the apparent border
+   * thickness.
+   * ============================================================ */
+  --xp-bevel-chunky:
+    inset -1px -1px #00138c,
+    inset  1px  1px #0831d9,
+    inset -2px -2px #001ea0,
+    inset  2px  2px #166aee,
+    inset -3px -3px #003bda,
+    inset  3px  3px #0855dd;
+
+  /* ============================================================
+   * THE ONE TRANSITION
+   *
+   * XP.css ships exactly ONE `transition:` declaration in the
+   * entire 256KB file: `transition: background .1s`. It's used
+   * on buttons for hover color changes.
+   *
+   * This is the minimum viable motion language: animate the
+   * one thing users most want feedback on (color change under
+   * cursor), ignore everything else.
+   *
+   * Compare to 98.css (0 transitions), NES.css (0 transitions),
+   * System.css (0 transitions), and TuiCss (0 transitions).
+   * XP is the ONLY retro reference in our library with any
+   * transition at all — and it's a single 100ms background
+   * transition.
+   * ============================================================ */
+  --xp-transition: background .1s;
+
+  /* ============================================================
+   * THE ONE KEYFRAME
+   *
+   * The XP progress bar marquee — translates stripes from
+   * -30px to 100% continuously. Pair with --xp-progress-stripes
+   * for the classic XP loading bar effect.
+   * ============================================================ */
+}
+
+@keyframes xp-sliding {
+  0%   { transform: translateX(-30px); }
+  100% { transform: translateX(100%);  }
+}
+
+/* ============================================================
+ * USAGE EXAMPLES
+ *
+ * A Luna title bar:
+ *   .title-bar {
+ *     background: var(--xp-title-active);
+ *     color: var(--xp-text-on-title);
+ *     padding: 3px 2px 3px 3px;
+ *   }
+ *
+ * A Luna plastic button:
+ *   button {
+ *     background: var(--xp-surface-gradient);
+ *     border: 1px solid #003c74;
+ *     border-radius: 3px;
+ *     transition: var(--xp-transition);
+ *   }
+ *
+ * A progress bar:
+ *   .progress {
+ *     background: #06f;  <- base color
+ *     position: relative;
+ *     overflow: hidden;
+ *   }
+ *   .progress::before {
+ *     content: "";
+ *     position: absolute; inset: 0;
+ *     background: var(--xp-progress-stripes);
+ *     animation: xp-sliding 1s linear infinite;
+ *   }
+ * ============================================================ */

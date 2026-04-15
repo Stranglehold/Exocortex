@@ -6,10 +6,18 @@ Renders an interactive HTML panel ("artifact") directly in the Agent Zero
 chat interface. The panel supports Alpine.js directives and the ExoArtifact
 runtime for live data fetching and agent callbacks.
 
-When to use:
-  - Displaying a dashboard or control panel (stack status, OSS summary, etc.)
-  - Showing live-updating data that the user can interact with
-  - Any output that benefits from structured UI rather than plain text
+IMPORTANT — use dedicated panel tools first:
+  - For OSS intelligence data: use oss_panel (NOT emit_artifact with custom HTML)
+  - For SWARMFISH predictions: use swarmfish_panel (NOT emit_artifact with custom HTML)
+  - For stack/system status: use stack_status (NOT emit_artifact with custom HTML)
+
+Never generate static HTML that presents fabricated or estimated data as real system
+output. If the data must come from an API, use the tool that already calls that API
+(oss_panel, swarmfish_panel) rather than writing custom HTML with hardcoded numbers.
+
+When emit_artifact IS appropriate:
+  - Bespoke one-off visualisations not covered by any dedicated panel tool
+  - The HTML must fetch live data via ExoArtifact.fetchJson() — never hardcode values
 
 The HTML content may use:
   - Alpine.js: x-data, x-text, x-show, x-for, @click, :class, etc.
