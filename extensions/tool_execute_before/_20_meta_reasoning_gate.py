@@ -14,8 +14,11 @@ TOOL_SCHEMAS = {
             "command": "code",
             "script": "code",
             "cmd": "code",
+            "content": "code",   # 4B models often use "content" instead of "code"
+            "source": "code",
             "language": "runtime",
             "lang": "runtime",
+            "type": "runtime",
         },
         "value_aliases": {
             # wrong value -> correct value (for runtime field)
@@ -133,10 +136,25 @@ class MetaReasoningGate(Extension):
     """Validates and auto-corrects tool arguments before execution.
 
     Deterministic parameter check — no model reasoning required.
-    Fixes common local model mistakes:
-    - Wrong argument names (message->text, command->code)
-    - Wrong runtime values (bash->terminal, node->nodejs)
-    - Missing required arguments
+
+    Two categories of checks (and the boundary between them matters):
+
+    1. STRUCTURAL VALIDATION — is the tool call correctly formed?
+       Wrong arg names, missing required fields, bad runtime values.
+       These are always appropriate to check here.
+
+    2. KNOWN-DETERMINISTIC INVISIBLE FAILURE MODES — the call is correctly
+       formed but will fail silently in a way the model cannot observe or recover
+       from. Only add these when: (a) the failure is deterministic above a known
+       threshold (not probabilistic), AND (b) the model receives no actionable
+       error from the failure (no tool output to reason about, just a retry loop).
+       The text_editor:write content size check is this category — truncation
+       above ~5000 chars always fails, and the model sees only a misformat warning
+       with no information about why.
+
+    NOT appropriate for MetaGate: runtime feasibility checks that depend on state
+    (path existence, disk space, import availability). Those belong in the tool
+    fallback chain or error comprehension layer, which have access to tool output.
     """
 
     async def execute(self, tool_args: dict[str, Any] | None = None,
@@ -168,6 +186,67 @@ class MetaReasoningGate(Extension):
                 # Warning only — tool still executes. Hard blocking requires
                 # a different mechanism outside MetaGate's scope.
 
+            # Phase 0.1: text_editor_remote redirect
+            # text_editor_remote is a Claude Code CLI tool — it is NOT available inside
+            # the Agent Zero container. When the model calls it, A0 returns
+            # "no CLI client connected" in a loop. Intercept early and redirect.
+            if tool_name == "text_editor_remote":
+                path = (tool_args or {}).get("path", "OUTPUT_PATH")
+                msg = (
+                    f"text_editor_remote is not available — it requires the Claude Code CLI "
+                    f"which is not connected to this context. "
+                    f"To write a file, use code_execution_tool with runtime=python:\n"
+                    f"  {{\"tool_name\": \"code_execution_tool\", "
+                    f"\"tool_args\": {{\"runtime\": \"python\", "
+                    f"\"code\": \"with open('{path}', 'w') as f: f.write(section1)\"}}}}\n"
+                    f"Keep each write under 800 chars. Use 'a' mode for append sections."
+                )
+                try:
+                    self.agent.context.log.log(
+                        type="warning",
+                        content=f"[MetaGate] Blocked text_editor_remote — redirecting to code_execution_tool",
+                    )
+                except Exception:
+                    pass
+                try:
+                    self.agent.hist_add_warning(msg)
+                except Exception:
+                    pass
+                raise ValueError(f"[MetaGate] {msg}")
+
+            # Phase 0.5: text_editor:write content size guard
+            # text_editor:write embeds file content inside a JSON string field.
+            # When content exceeds ~5000 chars the response payload truncates
+            # mid-string, producing malformed JSON that triggers a misformat loop.
+            # Block early and route to Python open() which avoids this entirely.
+            if tool_name in ("text_editor", "text_editor:write") and tool_args:
+                content = tool_args.get("content", "")
+                if isinstance(content, str) and len(content) > 5000:
+                    path = tool_args.get("path", "OUTPUT_PATH")
+                    msg = (
+                        f"text_editor:write blocked — content is {len(content):,} chars, "
+                        f"exceeds the ~5000 char JSON payload limit and will truncate. "
+                        f"Use code_execution_tool with Python open() instead:\n"
+                        f"  path = '{path}'\n"
+                        f"  with open(path, 'w') as f:\n"
+                        f"      f.write(content)  # write full content as Python string\n"
+                        f"For large content, write in sections using append mode:\n"
+                        f"  with open(path, 'a') as f: f.write(next_section)"
+                    )
+                    try:
+                        self.agent.context.log.log(
+                            type="warning",
+                            content=f"[MetaGate-SIZE] Blocked text_editor:write "
+                                    f"({len(content):,} chars > 5000 limit)",
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        self.agent.hist_add_warning(msg)
+                    except Exception:
+                        pass
+                    raise ValueError(f"[MetaGate-SIZE] {msg}")
+
             if not tool_args:
                 return
 
@@ -192,10 +271,25 @@ class MetaReasoningGate(Extension):
             missing = self._check_required(tool_args, schema)
 
             if missing:
-                msg = (
-                    f"Tool '{tool_name}' is missing required arguments: "
-                    f"{', '.join(missing)}. Retry the tool call with all required args present."
-                )
+                # For code_execution_tool with missing/empty 'code', inject truncation guidance.
+                # The empty-code case is almost always a truncated JSON payload — DirtyJson
+                # parses the cut-off code string as an empty value. The model needs to know to
+                # use append-mode writes rather than retrying the same oversized payload.
+                if tool_name == "code_execution_tool" and "code" in missing:
+                    msg = (
+                        f"Tool 'code_execution_tool' is missing the 'code' argument. "
+                        f"If you were writing a large file, your JSON was truncated — "
+                        f"the code string was too long for a single payload. "
+                        f"FIX: write in sections using Python open() with append mode:\n"
+                        f"  with open(path, 'w') as f: f.write(section1)  # max ~1000 chars\n"
+                        f"  with open(path, 'a') as f: f.write(section2)  # repeat as needed\n"
+                        f"Also ensure you use 'code' (not 'content' or 'script') as the arg name."
+                    )
+                else:
+                    msg = (
+                        f"Tool '{tool_name}' is missing required arguments: "
+                        f"{', '.join(missing)}. Retry the tool call with all required args present."
+                    )
                 # Log the issue
                 try:
                     self.agent.context.log.log(

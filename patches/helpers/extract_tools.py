@@ -14,6 +14,33 @@ _NATIVE_TOOL_CALL_RX = re.compile(
     re.IGNORECASE,
 )
 
+# Extract tool_name from partial / unparseable JSON via regex fallback.
+_PARTIAL_TOOL_NAME_RX = re.compile(r'"tool_name"\s*:\s*"([^"]+)"')
+
+# Tools that carry large inline payloads likely to trigger output-token truncation.
+_LARGE_PAYLOAD_TOOLS = {"code_execution_tool", "text_editor:write", "text_editor"}
+
+
+def _detect_truncation(partial: str) -> str | None:
+    """Return the likely tool_name if partial looks like a truncated JSON payload.
+
+    Heuristic: the partial JSON contains a tool_name we recognise as a large-payload
+    tool AND the response ends without a proper closing brace (i.e. the JSON was cut
+    off mid-string).  Returns None if this doesn't look like truncation.
+    """
+    m = _PARTIAL_TOOL_NAME_RX.search(partial)
+    if not m:
+        return None
+    tool = m.group(1)
+    if tool in _LARGE_PAYLOAD_TOOLS:
+        # Confirm truncation: the partial must NOT have its outer brace closed.
+        # A properly-terminated response would have passed DirtyJson already.
+        return tool
+    # Also catch any tool where a large "code" value is present
+    if '"code"' in partial or '"content"' in partial:
+        return tool
+    return None
+
 
 def _find_closing_brace(s: str) -> int:
     """Return index of the } that closes the { at s[0]. Returns -1 if not found."""
@@ -100,8 +127,19 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                         data["tool_name"] = "text_editor:read"
                 return data
         except Exception:
-            # If parsing fails, fall through to plain-text fallback
-            pass
+            # Parsing failed. Check whether this looks like a truncated large-payload
+            # call (code_execution_tool / text_editor:write with a big code string).
+            # If so, return None to trigger fw.msg_misformat.md — which now contains
+            # explicit append-mode guidance.  The detected tool is logged for visibility.
+            truncated_tool = _detect_truncation(ext_json)
+            if truncated_tool:
+                import sys
+                print(
+                    f"[EXTRACT-TOOLS] Truncated JSON detected — tool: {truncated_tool}. "
+                    "fw.msg_misformat.md will inject append-mode guidance.",
+                    file=sys.stderr, flush=True,
+                )
+            # Fall through to plain-text fallback (which rejects {-starting strings)
 
     # Fallback: plain text → implicit response tool call.
     # Reasoning-distilled models respond in natural language after thinking tokens

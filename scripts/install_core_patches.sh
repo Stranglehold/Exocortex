@@ -18,6 +18,11 @@
 #     → replaces verbose 3-option loop message with: "call a subagent"
 #     → eliminates the option menu that lets the agent keep spinning
 #
+#   patches/prompts/fw.msg_misformat.md (NEW)
+#     → replaces generic "you have misformatted" with truncation guidance
+#     → explains output-token truncation and append-mode file writes
+#     → breaks the infinite misformat loop caused by oversized code payloads
+#
 #   patches/prompts/agent.system.main.communication.md
 #     → clarifies that plain text is accepted for conversational replies
 #
@@ -117,6 +122,20 @@ if [ -f "$REPEAT_SRC" ]; then
   echo "[PATCH] prompts/fw.msg_repeat.md deployed."
 else
   echo "[PATCH] WARNING: $REPEAT_SRC not found — skipped."
+fi
+
+# ── 2a. Prompt: fw.msg_misformat.md (truncated payload + format guidance) ────
+# Replaces generic "you have misformatted" with actionable guidance explaining
+# output-token truncation and how to write large files using append mode.
+
+MISFORMAT_SRC="$PATCH_DIR/prompts/fw.msg_misformat.md"
+MISFORMAT_DST="/a0/prompts/fw.msg_misformat.md"
+
+if [ -f "$MISFORMAT_SRC" ]; then
+  docker cp "$MISFORMAT_SRC" "$CONTAINER:$MISFORMAT_DST"
+  echo "[PATCH] prompts/fw.msg_misformat.md deployed (truncation guidance)."
+else
+  echo "[PATCH] WARNING: $MISFORMAT_SRC not found — skipped."
 fi
 
 # ── 2b. Prompt: agent.system.main.communication.md ───────────────────────────
@@ -265,5 +284,35 @@ elif new in content:
 else:
     print('[PATCH] WARNING: agent.py pattern not found — manual check required.')
 "
+
+# ── 8. Extension: _20_meta_reasoning_gate.py ─────────────────────────────────
+# Deploys to all known active profile paths. Active path confirmed:
+#   /a0/usr/agents/agent0/extensions/python/tool_execute_before/
+# Other paths deployed as fallback. pycache cleared at each location.
+# Changes: content->code alias, text_editor_remote intercept,
+#          truncation-specific message for missing code arg, strip_unknown_args.
+
+GATE_SRC="$REPO_ROOT/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
+
+GATE_PATHS=(
+  "/a0/usr/plugins/exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
+  "/a0/usr/Exocortex/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
+  "/a0/usr/agents/agent0/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
+  "/a0/usr/agents/agent0/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
+)
+
+if [ -f "$GATE_SRC" ]; then
+  for DST in "${GATE_PATHS[@]}"; do
+    DIR=$(dirname "$DST")
+    _exec "$CONTAINER" mkdir -p "$DIR"
+    docker cp "$GATE_SRC" "$CONTAINER:$DST"
+    CACHE="$DIR/__pycache__"
+    _exec "$CONTAINER" bash -c "rm -rf '$CACHE'" 2>/dev/null || true
+  done
+  _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '${GATE_PATHS[3]}' && echo '[PATCH] _20_meta_reasoning_gate.py OK'"
+  echo "[PATCH] extensions/tool_execute_before/_20_meta_reasoning_gate.py deployed (all 4 profile paths)."
+else
+  echo "[PATCH] WARNING: $GATE_SRC not found — skipped."
+fi
 
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
