@@ -222,6 +222,16 @@ LOOP_ALTERNATIVES = {
         "Verify dependencies are installed (pip list, import check)",
         "Check permissions or environment state first",
     ],
+    "text_editor": [
+        # text_editor:write loops almost always mean content is too large for JSON payload.
+        # The file content gets truncated mid-string, A0 sees malformed JSON, model retries.
+        "The content is too large for text_editor:write — it exceeds the JSON payload limit and truncates.",
+        "Switch to code_execution_tool with Python open() — content goes in a Python string, not JSON:",
+        "  with open(path, 'w') as f: f.write(content)   # new file",
+        "  with open(path, 'a') as f: f.write(section)   # append to existing file",
+        "Check what already exists before writing: text_editor:read or cat — append the missing sections only.",
+        "Split large content at natural section boundaries — write each section separately in append mode.",
+    ],
     "call_subordinate": [
         "Handle the subtask directly rather than delegating",
         "Decompose the task differently before re-delegating",

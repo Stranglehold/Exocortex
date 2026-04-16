@@ -138,7 +138,10 @@ DOMAIN_CONFIGS: dict = {
         "enrichment_template": (
             "Code generation context: state the language and target file explicitly. "
             "Produce complete, runnable code only -- no placeholders or stubs. "
-            "For multi-file projects, use design-buildplan before writing code."
+            "For multi-file projects, use design-buildplan before writing code. "
+            "For large file content (>50 lines): write using Python open() in code_execution_tool "
+            "-- do NOT use base64 encoding or text_editor:write for long content. "
+            "Base64 produces larger payloads and causes JSON truncation errors."
         ),
         "brief_description": "Tool syntax precision and parameter accuracy matter for this task.",
     },

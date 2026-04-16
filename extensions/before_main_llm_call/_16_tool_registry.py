@@ -62,12 +62,14 @@ DOMAIN_SKILL_MAP = {
     "planning": [
         ("design-buildplan",  "Separates planning from execution for complex builds"),
         ("execute-buildplan", "Executes a build plan step-by-step with verification"),
+        ("extract-and-adapt", "Build Exocortex-native artifacts from external references (repos, papers, APIs)"),
     ],
     "investigation": [
         ("intelligence-briefing",     "Parallel research synthesis with sourced, structured output"),
         ("architecture-investigation","Systematic framework analysis and capability mapping"),
         ("web-research-macro",        "Clean text extraction from websites via browser + sanitizer"),
         ("academic-research",         "Structured literature search via Semantic Scholar API"),
+        ("extract-and-adapt",         "Adapt external patterns into native Exocortex skills/tools/specs"),
     ],
     "analysis": [
         ("context-schema-comparison", "Compare context management approaches across agent systems"),
