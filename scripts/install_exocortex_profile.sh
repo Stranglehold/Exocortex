@@ -62,23 +62,20 @@ docker cp "$SCRIPT_DIR/plugin/plugin.yaml"        "$CONTAINER:$PLUGIN_BASE/plugi
 docker cp "$SCRIPT_DIR/plugin/default_config.yaml" "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
 
 # ── Deploy model config (LM Studio override) ──────────────────────────────────
-# The _model_config plugin reads from /a0/plugins/_model_config/config.json first.
-# default_config.yaml points to OpenRouter — config.json overrides it to LM Studio.
-# Without this, any fresh container routes all LLM calls to OpenRouter and fails.
-GLOBAL_MODEL_CONFIG="$CONTAINER:/a0/plugins/_model_config/config.json"
-PROFILE_MODEL_CONFIG="$CONTAINER:$PLUGIN_BASE/plugins/_model_config/config.json"
-# If a profile-specific config exists, promote it to the global path
-docker exec "${CONTAINER}" sh -c "
-  GLOBAL='/a0/plugins/_model_config/config.json'
-  PROFILE='$PLUGIN_BASE/plugins/_model_config/config.json'
-  if [ -f \"\$PROFILE\" ] && [ ! -f \"\$GLOBAL\" ]; then
-    cp \"\$PROFILE\" \"\$GLOBAL\" && echo '[install] Model config promoted: profile -> global'
-  elif [ -f \"\$GLOBAL\" ]; then
-    echo '[install] Model config already at global path, skipping'
-  else
-    echo '[install] WARNING: No model config found at profile or global path. Agent will default to OpenRouter.'
-  fi
-" 2>/dev/null || true
+# plugin/_model_config/config.json is the source of truth for chat/utility/embedding
+# model selection. Deployed to both the profile path AND the global path so A0
+# picks it up regardless of which path wins in get_paths() resolution order.
+# This overwrites whatever was in the container — the repo config is authoritative.
+MODEL_CFG_SRC="$SCRIPT_DIR/plugin/_model_config/config.json"
+if [ -f "$MODEL_CFG_SRC" ]; then
+  _exec "$CONTAINER" mkdir -p /a0/plugins/_model_config
+  _exec "$CONTAINER" mkdir -p "$PLUGIN_BASE/plugins/_model_config"
+  docker cp "$MODEL_CFG_SRC" "$CONTAINER:/a0/plugins/_model_config/config.json"
+  docker cp "$MODEL_CFG_SRC" "$CONTAINER:$PLUGIN_BASE/plugins/_model_config/config.json"
+  echo "[install] Model config deployed (chat: $(python3 -c "import json; d=json.load(open('$MODEL_CFG_SRC')); print(d['chat_model']['name'])" 2>/dev/null || echo '?'))"
+else
+  echo "[install] WARNING: plugin/_model_config/config.json not found — agent will default to OpenRouter."
+fi
 
 # ── Deploy webui assets (theme system) ───────────────────────────────────────
 
