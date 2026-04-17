@@ -1,10 +1,5 @@
 {
   "chat_model": {
-    "provider": "lm_studio",
-    "name": "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m",
-    "api_base": "http://host.docker.internal:1234/v1",
-    "ctx_length": 32000,
-    "ctx_history": 0.7,
     "kwargs": {
       "max_tokens": 16384
     }

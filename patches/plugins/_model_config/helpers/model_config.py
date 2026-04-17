@@ -91,32 +91,73 @@ def _resolve_override(agent) -> dict | None:
     return override
 
 
+def _get_global_config() -> dict:
+    """Return the global (non-agent-scoped) plugin config — the web UI config."""
+    return get_config() or {}
+
+
 def get_chat_model_config(agent=None) -> dict:
-    """Get chat model config, with per-chat override if active."""
+    """Get chat model config, with per-chat override if active.
+
+    Variable model architecture: if the agent-scoped config has no name/provider,
+    model identity comes from the global (web UI) config. The agent config acts as
+    a kwargs overlay only (e.g. max_tokens, ctx_length). This means changing the
+    model in the A0 web UI is the single point of control — no config file edits needed.
+    """
     override = _resolve_override(agent)
     if override:
-        # Preset has a nested 'chat' key; raw override is flat
         chat_cfg = override.get("chat", override)
         if chat_cfg.get("provider") or chat_cfg.get("name"):
             return chat_cfg
+
     cfg = get_config(agent)
-    return cfg.get("chat_model", {})
+    chat_cfg = cfg.get("chat_model", {})
+
+    # If agent-scoped config has no model identity, use global config as base
+    # and apply agent config as a non-identity overlay (kwargs, ctx overrides, etc.)
+    if agent is not None and not chat_cfg.get("name") and not chat_cfg.get("provider"):
+        global_chat = _get_global_config().get("chat_model", {})
+        if global_chat:
+            merged = dict(global_chat)
+            # Overlay agent-scoped kwargs on top of global kwargs
+            if "kwargs" in chat_cfg:
+                merged["kwargs"] = {**merged.get("kwargs", {}), **chat_cfg["kwargs"]}
+            # Overlay any other non-identity keys (ctx_length, ctx_history, etc.)
+            for k, v in chat_cfg.items():
+                if k not in ("name", "provider", "api_base", "api_key"):
+                    merged[k] = v
+            return merged
+
+    return chat_cfg
 
 
 def get_utility_model_config(agent=None) -> dict:
     """Get utility model config, with per-chat override if active.
-    Falls back to chat model config if utility_model has no name/provider set.
-    This allows the web UI model selection to drive all model usage."""
+
+    Variable model architecture: if utility_model has no name/provider, inherits
+    the chat model config (which itself falls back to the web UI config if needed).
+    The utility_model section only needs ctx_input and similar non-identity keys.
+    Single model for everything — web UI selection drives all model usage.
+    """
     override = _resolve_override(agent)
     if override:
         util_cfg = override.get("utility", {})
         if util_cfg.get("provider") or util_cfg.get("name"):
             return util_cfg
+
     cfg = get_config(agent)
     util_cfg = cfg.get("utility_model", {})
+
     if not util_cfg.get("name") and not util_cfg.get("provider"):
-        chat_cfg = cfg.get("chat_model", {})
-        return {**chat_cfg, **{k: v for k, v in util_cfg.items() if k not in ("name", "provider", "api_base", "api_key")}}
+        # Inherit chat model config (already handles variable architecture)
+        chat_cfg = get_chat_model_config(agent)
+        merged = dict(chat_cfg)
+        # Apply utility-specific overrides (ctx_input, etc.) without identity fields
+        for k, v in util_cfg.items():
+            if k not in ("name", "provider", "api_base", "api_key"):
+                merged[k] = v
+        return merged
+
     return util_cfg
 
 
