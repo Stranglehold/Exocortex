@@ -58,8 +58,9 @@ _exec "$CONTAINER" mkdir -p \
 
 # ── Deploy plugin manifest ────────────────────────────────────────────────────
 
-docker cp "$SCRIPT_DIR/plugin/plugin.yaml"        "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
-docker cp "$SCRIPT_DIR/plugin/default_config.yaml" "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
+docker cp "$SCRIPT_DIR/plugin/plugin.yaml"          "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
+docker cp "$SCRIPT_DIR/plugin/default_config.yaml"  "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
+docker cp "$SCRIPT_DIR/plugin/tool_domains.json"    "$CONTAINER:$PLUGIN_BASE/tool_domains.json"
 
 # ── Model config: intentionally not deployed ──────────────────────────────────
 # Model selection is configured through the Agent Zero UI (Settings → Models).
@@ -140,8 +141,9 @@ docker cp "$EXT_SRC/monologue_end/_59_ontology_maintenance.py" "$EXT_DEST/monolo
 # reasoning_stream — Proactive Reasoning Supervisor buffer hook
 docker cp "$EXT_SRC/python/reasoning_stream/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream/"
 
-# reasoning_stream_end — Proactive Reasoning Supervisor analysis hook
+# reasoning_stream_end — Proactive Reasoning Supervisor analysis hook + thinking token logger
 docker cp "$EXT_SRC/python/reasoning_stream_end/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream_end/"
+docker cp "$EXT_SRC/reasoning_stream_end/_14_thinking_token_logger.py"        "$EXT_DEST/reasoning_stream_end/"
 
 # response_stream_chunk
 docker cp "$EXT_SRC/response_stream_chunk/_21_plain_text_response.py" "$EXT_DEST/response_stream_chunk/"
@@ -154,6 +156,7 @@ docker cp "$EXT_SRC/tool_execute_after/_20_error_comprehension.py"      "$EXT_DE
 docker cp "$EXT_SRC/tool_execute_after/_20_reset_failure_counter.py"    "$EXT_DEST/tool_execute_after/"
 docker cp "$EXT_SRC/tool_execute_after/_22_response_finalizer.py"       "$EXT_DEST/tool_execute_after/"
 docker cp "$EXT_SRC/tool_execute_after/_25_evidence_ledger_recorder.py" "$EXT_DEST/tool_execute_after/"
+docker cp "$EXT_SRC/tool_execute_after/_28_output_compressor.py"        "$EXT_DEST/tool_execute_after/"
 docker cp "$EXT_SRC/tool_execute_after/_30_tool_fallback_logger.py"     "$EXT_DEST/tool_execute_after/"
 docker cp "$EXT_SRC/tool_execute_after/_60_sleep_trigger.py"            "$EXT_DEST/tool_execute_after/"
 

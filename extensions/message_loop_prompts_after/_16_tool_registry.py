@@ -15,6 +15,12 @@ The model explores the filesystem or reimplements tools it could just call.
 Grows automatically: as new tools are added (docker cp, skill installs, or
 agent-installed programs), they appear in the next turn without config changes.
 
+BST-gated injection: reads BST domain from agent._bst_store and injects only
+tools relevant to the current domain (from tool_domains.json). Always injects
+tools marked with "*". Falls back to full list when domain is unknown or
+tool_domains.json is absent. On domain transition, injects the union of the
+current and previous domain's tools for one turn.
+
 Tool name derivation: CamelCase class name → snake_case (matches A0 dispatch).
 Example: OssHealth → oss_health, SwarmfishPredict → swarmfish_predict
 
@@ -50,6 +56,9 @@ USER_PLUGIN_ROOT = "/a0/usr/plugins"
 # Manifest for agent-installed programs (nmap, etc.)
 TOOL_MANIFEST_PATH = "/a0/usr/Exocortex/tool_manifest.json"
 
+# Domain-to-tool mapping config (Opus design: human-editable, version-controlled)
+TOOL_DOMAINS_PATH = "/a0/usr/plugins/exocortex/tool_domains.json"
+
 # Agent Zero native tools — skip files that match these names.
 # These are documented in A0 prompts already; we only add custom ones.
 NATIVE_TOOLS = frozenset({
@@ -63,6 +72,9 @@ NATIVE_TOOLS = frozenset({
     "self_questioning_tool",
 })
 
+# Domains that skip filtering and inject all tools (too broad to narrow usefully)
+UNFILTERED_DOMAINS = frozenset({"conversation", "orientation", "meta_cognitive", "philosophical"})
+
 # Max description length per file entry
 DESC_MAX_LEN = 90
 
@@ -74,11 +86,13 @@ LOG_TAG = "[TOOL-REG]"
 class DynamicToolRegistry(Extension):
     """Inject [CUSTOM TOOLS] block into per-turn context.
 
-    Smart injection: full block on turn 1, after context surgery, or when tools
-    change. Compact one-liner (~20 tokens) on all other turns.
+    BST-gated: only domain-relevant tools injected per turn.
+    Smart injection: full block when tools change, domain changes, or surgery
+    fires. Compact one-liner (~20 tokens) on all other turns.
 
-    Cache key: mtime+name hash of tool directories. Re-scan only when files
-    change — avoids 13 ast.parse() calls per turn when nothing has changed.
+    Cache: mtime+name hash of tool dirs. Re-scan only when files change.
+    Domain filtering: reads agent._bst_store for current domain (set by BST
+    on the previous turn — bst_store persists on the agent across turns).
     """
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
@@ -90,8 +104,14 @@ class DynamicToolRegistry(Extension):
             # ── Cache layer: avoid re-scanning unchanged tool dirs ──────────
             cache = getattr(self.agent, "_tool_reg_cache", None)
             if cache is None:
-                cache = {"dir_hash": None, "block": None, "total": 0,
-                         "programs": {}, "history_len": 0}
+                cache = {
+                    "dir_hash":     None,
+                    "tool_entries": [],
+                    "total":        0,
+                    "programs":     {},
+                    "history_len":  0,
+                    "prev_domain":  None,  # domain from last turn (for transition)
+                }
                 self.agent._tool_reg_cache = cache
 
             current_hash = _dir_hash()
@@ -100,28 +120,69 @@ class DynamicToolRegistry(Extension):
             if tools_changed:
                 tool_entries = _scan_tool_dirs()
                 programs     = _load_manifest()
-                block        = _build_block(tool_entries, programs)
                 total_tools  = sum(len(e["names"]) for e in tool_entries)
-                cache["dir_hash"]  = current_hash
-                cache["block"]     = block
-                cache["total"]     = total_tools
-                cache["programs"]  = programs
+                cache["dir_hash"]     = current_hash
+                cache["tool_entries"] = tool_entries
+                cache["total"]        = total_tools
+                cache["programs"]     = programs
             else:
-                block       = cache["block"]
-                total_tools = cache["total"]
+                tool_entries = cache["tool_entries"]
+                total_tools  = cache["total"]
 
+            if not tool_entries and not cache["programs"]:
+                return
+
+            # ── BST domain detection ─────────────────────────────────────────
+            # _bst_store is written by BST (before_main_llm_call) and persists
+            # on the agent across turns. At message_loop_prompts_after we see
+            # the previous turn's domain — correct behavior for continuity.
+            # Compound sigs like "coding+analysis" → expand to both domains.
+            bst_store     = getattr(self.agent, "_bst_store", {}) or {}
+            compound_sig  = bst_store.get("_compound_sig", "conversation")
+            active_domains = _parse_domains(compound_sig)
+
+            prev_domain    = cache["prev_domain"]
+            domain_changed = (compound_sig != prev_domain)
+            cache["prev_domain"] = compound_sig
+
+            # Load domain mapping (cached separately — rarely changes)
+            domain_map = _load_domains(self.agent)
+
+            # ── Filter entries to active domains ─────────────────────────────
+            # unfiltered_domains (conversation, orientation, etc.): inject all
+            # domain_changed: inject union of current + previous for one turn
+            is_unfiltered = bool(active_domains & UNFILTERED_DOMAINS)
+            prev_domains  = _parse_domains(prev_domain) if prev_domain else set()
+
+            if is_unfiltered or not domain_map:
+                # No filtering — show everything
+                filtered_entries = tool_entries
+                domain_label = compound_sig
+            elif domain_changed and prev_domains:
+                # Transition turn: inject union of current + previous domains
+                inject_domains = active_domains | prev_domains
+                filtered_entries = _filter_entries(tool_entries, inject_domains, domain_map)
+                domain_label = f"{compound_sig}+transition"
+            else:
+                filtered_entries = _filter_entries(tool_entries, active_domains, domain_map)
+                domain_label = compound_sig
+
+            filtered_total = sum(len(e["names"]) for e in filtered_entries)
+
+            block = _build_block(filtered_entries, cache["programs"])
             if not block:
                 return
 
             # ── Injection policy ────────────────────────────────────────────
             # Full block when:
             #   (a) tools changed (new deploy or first run)
-            #   (b) history is shorter than last turn → surgery fired, prior
+            #   (b) domain changed (different tool subset)
+            #   (c) history shorter than last turn → surgery fired, prior
             #       tool blocks may have been removed
             # Compact one-liner otherwise (full block already in context).
-            history_len     = len(getattr(loop_data, "history_output", []))
-            surgery_likely  = (history_len < cache["history_len"])
-            inject_full     = tools_changed or surgery_likely
+            history_len    = len(getattr(loop_data, "history_output", []))
+            surgery_likely = (history_len < cache["history_len"])
+            inject_full    = tools_changed or domain_changed or surgery_likely
             cache["history_len"] = history_len
 
             if inject_full:
@@ -129,7 +190,7 @@ class DynamicToolRegistry(Extension):
                 mode = "full"
             else:
                 compact = (
-                    f"[CUSTOM TOOLS: {total_tools} tools available — "
+                    f"[CUSTOM TOOLS: {filtered_total} tools available for {domain_label} — "
                     f"full list shown earlier this conversation. "
                     f"Use stack_status to list, or name the tool directly.]"
                 )
@@ -137,8 +198,8 @@ class DynamicToolRegistry(Extension):
                 mode = "compact"
 
             msg = (
-                f"{LOG_TAG} Injected {total_tools} custom tool(s) "
-                f"from {len(cache.get('programs', {}))} program(s) "
+                f"{LOG_TAG} Injected {filtered_total}/{total_tools} tool(s) "
+                f"domain={domain_label} "
                 f"[{mode}]"
             )
             print(msg, flush=True)
@@ -156,6 +217,73 @@ class DynamicToolRegistry(Extension):
                 )
             except Exception:
                 pass
+
+
+# ── Domain helpers ────────────────────────────────────────────────────────────
+
+def _parse_domains(signature: Optional[str]) -> set[str]:
+    """Parse BST compound signature into set of domain strings.
+    'coding+analysis' → {'coding', 'analysis'}, 'coding' → {'coding'}.
+    """
+    if not signature:
+        return set()
+    return set(signature.split("+"))
+
+
+def _load_domains(agent) -> dict[str, list[str]]:
+    """Load tool→domains mapping from tool_domains.json.
+
+    Returns {tool_name: [domain, ...]} where "*" means always inject.
+    Cached on agent._tool_domains_cache. Returns {} on error (triggers
+    unfiltered fallback — safe default).
+    """
+    cached = getattr(agent, "_tool_domains_cache", None)
+    if cached is not None:
+        return cached
+
+    try:
+        if os.path.exists(TOOL_DOMAINS_PATH):
+            data = json.loads(open(TOOL_DOMAINS_PATH, encoding="utf-8").read())
+            result = data.get("tools", {})
+            agent._tool_domains_cache = result
+            return result
+    except Exception:
+        pass
+
+    agent._tool_domains_cache = {}
+    return {}
+
+
+def _filter_entries(
+    entries: list[dict],
+    active_domains: set[str],
+    domain_map: dict[str, list[str]],
+) -> list[dict]:
+    """Return entries whose tools are relevant to active_domains.
+
+    An entry is included if ANY of its tool names:
+    - Maps to ["*"] in domain_map (always inject)
+    - Has any domain in common with active_domains
+    - Has NO entry in domain_map (unknown tool → inject in all domains)
+    """
+    result = []
+    for entry in entries:
+        include = False
+        for tool_name in entry["names"]:
+            domains = domain_map.get(tool_name)
+            if domains is None:
+                # Not in config → inject everywhere (conservative default)
+                include = True
+                break
+            if "*" in domains:
+                include = True
+                break
+            if active_domains & set(domains):
+                include = True
+                break
+        if include:
+            result.append(entry)
+    return result
 
 
 # ── Directory hash ───────────────────────────────────────────────────────────
@@ -317,6 +445,9 @@ def _build_block(entries: list[dict], programs: dict[str, str]) -> str:
       nmap — Network scanner (use via code_execution_tool)
       [/CUSTOM TOOLS]
     """
+    if not entries and not programs:
+        return ""
+
     lines = ["[CUSTOM TOOLS — call by tool_name]"]
 
     for entry in entries:

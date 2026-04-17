@@ -146,7 +146,8 @@ DOMAIN_CONFIGS: dict = {
             "MULTI-STEP FILE PROTOCOL: (1) cat the target file first to see current state, "
             "(2) append only missing sections, (3) verify each write with cat before continuing. "
             "Never re-write a section that already exists. "
-            "Do NOT use base64, triple-quoted strings, or text_editor:write for file content."
+            "Do NOT use base64, triple-quoted strings, or text_editor:write for file content. "
+            "Reasoning budget: ~200 tokens. Execute. One key insight per step — no narration."
         ),
         "brief_description": "Tool syntax precision and parameter accuracy matter for this task.",
     },
@@ -167,7 +168,8 @@ DOMAIN_CONFIGS: dict = {
         "enrichment_template": (
             "Bug isolation methodology: reproduce the failure, read error messages "
             "and tracebacks completely, isolate the failure point before attempting "
-            "fixes. Check logs first."
+            "fixes. Check logs first. "
+            "Reasoning budget: ~200 tokens. One key insight per step — no narration."
         ),
         "brief_description": "Isolate the failure point before attempting fixes. Check logs first.",
     },
@@ -210,7 +212,8 @@ DOMAIN_CONFIGS: dict = {
         ],
         "enrichment_template": (
             "System configuration context: check paths, permissions, and service "
-            "status before making changes. Verify changes don't affect running services."
+            "status before making changes. Verify changes don't affect running services. "
+            "Reasoning budget: ~200 tokens. One key insight per step — no narration."
         ),
         "brief_description": "System configuration context -- check paths, permissions, and service status.",
     },
@@ -240,7 +243,8 @@ DOMAIN_CONFIGS: dict = {
         "enrichment_template": (
             "Planning context: sequence dependencies and resource constraints before "
             "committing to a plan. Identify blockers and critical path. "
-            "Use design-buildplan for multi-phase builds."
+            "Use design-buildplan for multi-phase builds. "
+            "Reasoning budget: ~500 tokens. Plan concisely. One key insight per step — no narration."
         ),
         "brief_description": "Sequence dependencies and resource constraints before committing to a plan.",
     },
@@ -286,7 +290,8 @@ DOMAIN_CONFIGS: dict = {
         ],
         "enrichment_template": (
             "Git operations context: verify current branch and status before "
-            "destructive operations."
+            "destructive operations. "
+            "Reasoning budget: ~200 tokens. One key insight per step — no narration."
         ),
         "brief_description": "Verify current branch and status before destructive operations.",
     },
