@@ -1,26 +1,24 @@
 """
 Thinking Token Logger — Agent-Zero Exocortex
 =============================================
-Hook: reasoning_stream_end (_14_)
+Hook: reasoning_stream_end (_11_)
 
 Logs thinking token counts per BST domain. Required measurement
 infrastructure before TALE reasoning budget hints can be verified.
+
+ORDERING: Must run at _11_ (before _12_proactive_supervisor which clears
+the reasoning buffer at RS_BUF_KEY). Reads from the same agent data key
+the proactive supervisor uses.
 
 Per Opus review of TOKEN_ECONOMICS_FIELD_NOTE.md:
   "Measurement is mandatory before deployment. Deploy the hints. Run the
    same tasks. Compare thinking token counts. If the budget is being
    ignored or if accuracy drops measurably, adjust."
 
-This extension runs BEFORE the TALE budget hints are active (deploy it
-first, collect baseline, then enable reasoning_budget in BST enrichment).
-
 Output format (grep-able):
   [THINK-LOG] domain=coding tokens=1847 budget=200 over_budget=True
   [THINK-LOG] domain=analysis tokens=3201 budget=none
   [THINK-LOG] domain=conversation tokens=412 budget=none
-
-Log accumulates on agent._think_log for the session. Summary injected
-into stack_status output if stack_status is imported (best-effort).
 
 Config (config.json → "thinking_logger"):
   enabled: bool (default True)
@@ -69,12 +67,16 @@ class ThinkingTokenLogger(Extension):
             if not cfg.get("enabled", True):
                 return
 
-            # reasoning_stream_end receives the full reasoning text
-            # Try multiple kwargs keys (A0 version-dependent)
+            # Read from the reasoning buffer accumulated by reasoning_stream
+            # hook. Same key as _12_proactive_supervisor (RS_BUF_KEY = "_ps_rs_buf").
+            # This extension runs at _11_ — before _12_ clears the buffer.
+            # Fallback: try kwargs keys for any future A0 version that passes text directly.
             reasoning = (
-                kwargs.get("reasoning")
+                self.agent.get_data("_ps_rs_buf")
+                or kwargs.get("reasoning")
                 or kwargs.get("reasoning_text")
                 or kwargs.get("content")
+                or kwargs.get("text")
                 or ""
             )
             if not reasoning:

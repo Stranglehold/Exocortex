@@ -143,7 +143,7 @@ docker cp "$EXT_SRC/python/reasoning_stream/_12_proactive_supervisor.py" "$EXT_D
 
 # reasoning_stream_end — Proactive Reasoning Supervisor analysis hook + thinking token logger
 docker cp "$EXT_SRC/python/reasoning_stream_end/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream_end/"
-docker cp "$EXT_SRC/reasoning_stream_end/_14_thinking_token_logger.py"        "$EXT_DEST/reasoning_stream_end/"
+docker cp "$EXT_SRC/reasoning_stream_end/_11_thinking_token_logger.py"        "$EXT_DEST/reasoning_stream_end/"
 
 # response_stream_chunk
 docker cp "$EXT_SRC/response_stream_chunk/_21_plain_text_response.py" "$EXT_DEST/response_stream_chunk/"
