@@ -62,6 +62,16 @@ _MULTI_STEP_RX = re.compile(
     re.IGNORECASE,
 )
 
+# Detects explicitly-numbered sequential instruction lists (5+ items).
+# Matches lines starting with "1.", "2.", "Step 1:", "Step 2:", etc.
+# When 5+ numbered steps are present, a persistence instruction is injected
+# to prevent the model from shortcutting to a verbal synthesis after step 3-4.
+_NUMBERED_STEP_LINE_RX = re.compile(
+    r'^\s*(?:\d+[\.\)]\s|\bstep\s+\d+\b)',
+    re.IGNORECASE | re.MULTILINE,
+)
+NUMBERED_STEPS_THRESHOLD = 5  # Minimum numbered items to trigger persistence enrichment
+
 # ── Compound classification constants ─────────────────────────────────────────
 SECONDARY_MIN_SIGNALS = 1   # Secondary must match at least 1 signal
 MOMENTUM_THRESHOLD    = 3   # Turns before momentum resists reclassification
@@ -69,7 +79,12 @@ MOMENTUM_THRESHOLD    = 3   # Turns before momentum resists reclassification
 # Register-shift domains: genuine mode changes (not topic variations).
 # Break momentum regardless of compound membership when confidently matched.
 REGISTER_SHIFT_DOMAINS = {"orientation", "meta_cognitive", "philosophical"}
-REGISTER_SHIFT_MIN_CONFIDENCE = 1  # Minimum signals to trigger register shift
+# v3.3: minimum 2 signals required for a register-shift domain to win primary
+# classification. Single-signal matches (e.g. \bdesign\b alone triggering
+# philosophical during a PEP discussion) are too noisy to justify a full mode
+# change. Two corroborating signals give higher confidence the shift is genuine.
+# Register-shift domains can still appear as secondary with 1 signal.
+REGISTER_SHIFT_MIN_CONFIDENCE = 2
 
 # Priority order for tiebreaking when two domains have identical scores.
 # v3.2: investigation demoted to fallback (priority 10). It only wins when
@@ -143,6 +158,10 @@ DOMAIN_CONFIGS: dict = {
             "write_file accepts content as a direct JSON string (no Python escaping layer). "
             "Single quotes in content need no escaping. One method or section per call. "
             "Mode 'w' creates/overwrites, mode 'a' appends. "
+            "LARGE FILES — write in sections: if the file will exceed 20 lines, "
+            "write the first 15-20 lines with mode='w', then append subsequent sections "
+            "with mode='a'. Never attempt to write a complete class or module in one call — "
+            "the output token limit will truncate mid-content. "
             "MULTI-STEP FILE PROTOCOL: (1) cat the target file first to see current state, "
             "(2) append only missing sections, (3) verify each write with cat before continuing. "
             "Never re-write a section that already exists. "
@@ -508,22 +527,69 @@ def _extract_compound(scores: list) -> tuple:
 
     Primary = highest scoring domain. Always present (defaults to conversation).
     Secondary = second highest, IF score >= SECONDARY_MIN_SIGNALS.
+
+    v3.3: register-shift domains (orientation, meta_cognitive, philosophical)
+    require REGISTER_SHIFT_MIN_CONFIDENCE signals to win primary classification.
+    A single matching signal (e.g. \\bdesign\\b triggering philosophical during
+    a technical PEP discussion) is not sufficient to justify a full mode change.
+    If the top-scoring register-shift domain has < REGISTER_SHIFT_MIN_CONFIDENCE
+    signals, the next non-register-shift domain is promoted to primary and the
+    register-shift domain is demoted to secondary (if it still meets
+    SECONDARY_MIN_SIGNALS). This prevents PEP/language-design content from
+    stealing the execution budget hint via a single broad-signal match.
     """
     if not scores:
         return {"domain": "conversation", "confidence": 0, "matched_signals": []}, None
 
+    # Determine the winning primary index, enforcing register-shift min signals
+    primary_idx = 0
+    register_shift_secondary = None
+
+    if (scores[0][0] in REGISTER_SHIFT_DOMAINS
+            and scores[0][1] < REGISTER_SHIFT_MIN_CONFIDENCE):
+        # Top scorer is a register-shift domain with insufficient signals.
+        # Capture it as a potential secondary, then find next non-register-shift.
+        register_shift_secondary = scores[0]
+        fallback_idx = next(
+            (i for i, s in enumerate(scores[1:], start=1)
+             if s[0] not in REGISTER_SHIFT_DOMAINS),
+            None,
+        )
+        if fallback_idx is not None:
+            primary_idx = fallback_idx
+        # else: only register-shift domains scored — keep primary_idx=0
+        # (all-register-shift is rare; prefer keeping the domain over defaulting)
+
     primary = {
-        "domain":          scores[0][0],
-        "confidence":      scores[0][1],
-        "matched_signals": scores[0][2],
+        "domain":          scores[primary_idx][0],
+        "confidence":      scores[primary_idx][1],
+        "matched_signals": scores[primary_idx][2],
     }
+
+    # Select secondary: iterate remaining entries (skip primary_idx)
     secondary = None
-    if len(scores) > 1 and scores[1][1] >= SECONDARY_MIN_SIGNALS:
-        secondary = {
-            "domain":          scores[1][0],
-            "confidence":      scores[1][1],
-            "matched_signals": scores[1][2],
-        }
+    for i, (domain, score, signals) in enumerate(scores):
+        if i == primary_idx:
+            continue
+        if score >= SECONDARY_MIN_SIGNALS:
+            secondary = {
+                "domain":          domain,
+                "confidence":      score,
+                "matched_signals": signals,
+            }
+            break
+
+    # If we demoted a register-shift domain and no secondary was found yet,
+    # use the demoted domain as secondary (keeps the signal visible in compound)
+    if secondary is None and register_shift_secondary is not None:
+        rs_score = register_shift_secondary[1]
+        if rs_score >= SECONDARY_MIN_SIGNALS:
+            secondary = {
+                "domain":          register_shift_secondary[0],
+                "confidence":      rs_score,
+                "matched_signals": register_shift_secondary[2],
+            }
+
     return primary, secondary
 
 
@@ -605,9 +671,14 @@ def _apply_compound_momentum(
     """
     new_signature = _format_signature(new_primary, new_secondary)
 
-    # Rule 0: Register-shift domains always break momentum immediately.
-    # These represent genuine conversational register changes.
-    if new_primary["domain"] in REGISTER_SHIFT_DOMAINS:
+    # Rule 0: Register-shift domains break momentum immediately — but only
+    # when confidently matched (>= REGISTER_SHIFT_MIN_CONFIDENCE signals).
+    # Single-signal register-shift wins are already demoted in _extract_compound,
+    # but this guard also protects the momentum layer if the primary somehow
+    # carries a register-shift domain with low confidence (e.g. all-register-shift
+    # case where _extract_compound kept it).
+    if (new_primary["domain"] in REGISTER_SHIFT_DOMAINS
+            and new_primary["confidence"] >= REGISTER_SHIFT_MIN_CONFIDENCE):
         return new_primary, new_secondary, new_signature, 1
 
     if new_signature == current_signature:
@@ -978,6 +1049,57 @@ class BeliefStateTracker(Extension):
 
             # Generate compound enrichment text
             compound_enrichment = _generate_enrichment(compound_cls)
+
+            # ── Multi-step persistence enrichment (P3) ────────────────────────
+            # When the user message contains 5+ explicitly-numbered steps, inject
+            # a continuation instruction. This prevents the model from shortcutting
+            # to verbal synthesis after completing only 3-4 steps (T5 failure mode).
+            # Fires on first user message only (not autonomous loop turns).
+            if not is_autonomous:
+                # Extract raw user text for step detection. Earlier extensions
+                # (e.g. _10_session_init) may have modified user_msg['content']
+                # to a string that embeds the original user text as a Python dict
+                # repr: {'user_message': 'Step 1\nStep 2'}. In that repr the
+                # newlines are escaped as \n literals, so re.MULTILINE won't see
+                # line starts. Extract and unescape them first.
+                _raw_content = user_msg.get('content', '')
+                if isinstance(_raw_content, dict):
+                    _raw_text = (
+                        _raw_content.get('user_message', '')
+                        or _raw_content.get('message', '')
+                        or ''
+                    )
+                else:
+                    _um_match = re.search(
+                        r"'user_message':\s*'((?:[^'\\]|\\.)*)'",
+                        str(_raw_content),
+                    )
+                    if _um_match:
+                        _raw_text = (
+                            _um_match.group(1)
+                            .replace('\\n', '\n')
+                            .replace("\\'", "'")
+                        )
+                    else:
+                        _raw_text = message  # fallback: use full message as-is
+                step_matches = _NUMBERED_STEP_LINE_RX.findall(_raw_text)
+                if len(step_matches) >= NUMBERED_STEPS_THRESHOLD:
+                    persistence_note = (
+                        "[MULTI-STEP TASK] Complete all numbered steps before synthesizing. "
+                        "Continue execution sequentially through all steps. "
+                        "Do not produce analysis or summary until the final step is complete."
+                    )
+                    compound_enrichment = (
+                        persistence_note + "\n\n" + compound_enrichment
+                        if compound_enrichment else persistence_note
+                    )
+                    self.agent.context.log.log(
+                        type="util",
+                        content=(
+                            f"[BST] Multi-step persistence injected "
+                            f"({len(step_matches)} numbered steps detected)"
+                        ),
+                    )
 
             # Anti-pattern retrieval -- higher priority than generic enrichment
             _anti_pattern_text = _retrieve_anti_patterns(self.agent, compound_cls.primary_domain)
