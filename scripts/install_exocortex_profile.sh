@@ -62,11 +62,21 @@ docker cp "$SCRIPT_DIR/plugin/plugin.yaml"          "$CONTAINER:$PLUGIN_BASE/plu
 docker cp "$SCRIPT_DIR/plugin/default_config.yaml"  "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
 docker cp "$SCRIPT_DIR/plugin/tool_domains.json"    "$CONTAINER:$PLUGIN_BASE/tool_domains.json"
 
-# ── Model config: intentionally not deployed ──────────────────────────────────
-# Model selection is configured through the Agent Zero UI (Settings → Models).
-# A0 persists those choices in its own settings layer. Deploying a _model_config
-# plugin config.json here would override whatever the user set in the UI, which
-# is the wrong behaviour. Leave model config alone.
+# ── Model config: deploy for max_tokens + utility fallback ────────────────────
+# We deploy _model_config/config.json for two reasons:
+#   1. max_tokens: 16384 on the chat model — not settable through the A0 web UI.
+#   2. utility_model only contains ctx_input (no name/provider), so it inherits
+#      the chat model via the patched get_utility_model_config() fallback.
+#      Changing the model in the web UI only requires updating chat_model.name
+#      here — utility follows automatically. No second model loads.
+# NOTE: chat_model.name in this config MUST match what LM Studio has loaded.
+#       Update it here when switching models, not in the A0 web UI.
+MODEL_CONFIG_SRC="$SCRIPT_DIR/../patches/plugins/_model_config"
+MODEL_CONFIG_PLUGIN_DEST="$CONTAINER:/a0/usr/agents/agent0/plugins/_model_config"
+MODEL_CONFIG_CODE_DEST="$CONTAINER:/a0/plugins/_model_config/helpers"
+
+docker cp "$MODEL_CONFIG_SRC/config.json"                     "$MODEL_CONFIG_PLUGIN_DEST/config.json"
+docker cp "$MODEL_CONFIG_SRC/helpers/model_config.py"         "$MODEL_CONFIG_CODE_DEST/model_config.py"
 
 # ── Deploy webui assets (theme system) ───────────────────────────────────────
 

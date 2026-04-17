@@ -1,0 +1,21 @@
+{
+  "chat_model": {
+    "provider": "lm_studio",
+    "name": "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m",
+    "api_base": "http://host.docker.internal:1234/v1",
+    "ctx_length": 32000,
+    "ctx_history": 0.7,
+    "kwargs": {
+      "max_tokens": 16384
+    }
+  },
+  "utility_model": {
+    "ctx_input": 0.7
+  },
+  "embedding_model": {
+    "provider": "huggingface",
+    "name": "sentence-transformers/all-MiniLM-L6-v2",
+    "api_base": "",
+    "ctx_length": 512
+  }
+}
