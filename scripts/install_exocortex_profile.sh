@@ -185,6 +185,7 @@ docker cp "$TOOLS_SRC/staging_note.py"        "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/swarmfish.py"           "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/tla_check.py"           "$TOOLS_DEST/"
 docker cp "$TOOLS_SRC/theme_author.py"        "$TOOLS_DEST/"
+docker cp "$TOOLS_SRC/write_file.py"          "$TOOLS_DEST/"
 
 # ── Deploy prompt files ───────────────────────────────────────────────────────
 # These replace per-turn dynamic injection of static content.

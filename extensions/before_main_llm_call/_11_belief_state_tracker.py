@@ -139,9 +139,14 @@ DOMAIN_CONFIGS: dict = {
             "Code generation context: state the language and target file explicitly. "
             "Produce complete, runnable code only -- no placeholders or stubs. "
             "For multi-file projects, use design-buildplan before writing code. "
-            "For large file content (>50 lines): write using Python open() in code_execution_tool "
-            "-- do NOT use base64 encoding or text_editor:write for long content. "
-            "Base64 produces larger payloads and causes JSON truncation errors."
+            "WRITING FILES — use write_file tool, NOT code_execution_tool: "
+            "write_file accepts content as a direct JSON string (no Python escaping layer). "
+            "Single quotes in content need no escaping. One method or section per call. "
+            "Mode 'w' creates/overwrites, mode 'a' appends. "
+            "MULTI-STEP FILE PROTOCOL: (1) cat the target file first to see current state, "
+            "(2) append only missing sections, (3) verify each write with cat before continuing. "
+            "Never re-write a section that already exists. "
+            "Do NOT use base64, triple-quoted strings, or text_editor:write for file content."
         ),
         "brief_description": "Tool syntax precision and parameter accuracy matter for this task.",
     },

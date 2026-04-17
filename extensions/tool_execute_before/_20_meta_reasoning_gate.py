@@ -129,6 +129,24 @@ TOOL_SCHEMAS = {
         # tool itself — MetaGate only needs to suppress the false method-missing warning.
         "colon_dispatch": True,
     },
+    "write_file": {
+        "required": ["path", "content"],
+        "arg_aliases": {
+            "file": "path",
+            "filename": "path",
+            "filepath": "path",
+            "file_path": "path",
+            "text": "content",
+            "data": "content",
+            "body": "content",
+            "code": "content",
+        },
+        "defaults": {
+            "mode": "w",
+        },
+        "known_args": {"path", "content", "mode"},
+        "strip_unknown_args": True,
+    },
 }
 
 

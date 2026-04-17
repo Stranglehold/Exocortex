@@ -72,7 +72,14 @@ LOG_TAG = "[TOOL-REG]"
 # ── Extension ────────────────────────────────────────────────────────────────
 
 class DynamicToolRegistry(Extension):
-    """Inject [CUSTOM TOOLS] block into per-turn context."""
+    """Inject [CUSTOM TOOLS] block into per-turn context.
+
+    Smart injection: full block on turn 1, after context surgery, or when tools
+    change. Compact one-liner (~20 tokens) on all other turns.
+
+    Cache key: mtime+name hash of tool directories. Re-scan only when files
+    change — avoids 13 ast.parse() calls per turn when nothing has changed.
+    """
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
@@ -80,26 +87,59 @@ class DynamicToolRegistry(Extension):
             if not cfg.get("enabled", True):
                 return
 
-            # Scan tool files
-            tool_entries = _scan_tool_dirs()
+            # ── Cache layer: avoid re-scanning unchanged tool dirs ──────────
+            cache = getattr(self.agent, "_tool_reg_cache", None)
+            if cache is None:
+                cache = {"dir_hash": None, "block": None, "total": 0,
+                         "programs": {}, "history_len": 0}
+                self.agent._tool_reg_cache = cache
 
-            # Load manifest programs
-            programs = _load_manifest()
+            current_hash = _dir_hash()
+            tools_changed = (current_hash != cache["dir_hash"])
 
-            if not tool_entries and not programs:
+            if tools_changed:
+                tool_entries = _scan_tool_dirs()
+                programs     = _load_manifest()
+                block        = _build_block(tool_entries, programs)
+                total_tools  = sum(len(e["names"]) for e in tool_entries)
+                cache["dir_hash"]  = current_hash
+                cache["block"]     = block
+                cache["total"]     = total_tools
+                cache["programs"]  = programs
+            else:
+                block       = cache["block"]
+                total_tools = cache["total"]
+
+            if not block:
                 return
 
-            # Build block
-            block = _build_block(tool_entries, programs)
+            # ── Injection policy ────────────────────────────────────────────
+            # Full block when:
+            #   (a) tools changed (new deploy or first run)
+            #   (b) history is shorter than last turn → surgery fired, prior
+            #       tool blocks may have been removed
+            # Compact one-liner otherwise (full block already in context).
+            history_len     = len(getattr(loop_data, "history_output", []))
+            surgery_likely  = (history_len < cache["history_len"])
+            inject_full     = tools_changed or surgery_likely
+            cache["history_len"] = history_len
 
-            # Inject into last user message
-            _inject(loop_data, block)
+            if inject_full:
+                _inject(loop_data, block)
+                mode = "full"
+            else:
+                compact = (
+                    f"[CUSTOM TOOLS: {total_tools} tools available — "
+                    f"full list shown earlier this conversation. "
+                    f"Use stack_status to list, or name the tool directly.]"
+                )
+                _inject(loop_data, compact)
+                mode = "compact"
 
-            total_tools = sum(len(e["names"]) for e in tool_entries)
             msg = (
                 f"{LOG_TAG} Injected {total_tools} custom tool(s) "
-                f"from {len(tool_entries)} file(s), "
-                f"{len(programs)} program(s)"
+                f"from {len(cache.get('programs', {}))} program(s) "
+                f"[{mode}]"
             )
             print(msg, flush=True)
             try:
@@ -116,6 +156,32 @@ class DynamicToolRegistry(Extension):
                 )
             except Exception:
                 pass
+
+
+# ── Directory hash ───────────────────────────────────────────────────────────
+
+def _dir_hash() -> str:
+    """Fast hash of tool directory state: filenames + mtimes.
+    Changes only when files are added, removed, or modified — not on every call.
+    """
+    import hashlib
+    h = hashlib.md5()
+    dirs = [PRIMARY_TOOL_DIR]
+    if os.path.isdir(USER_PLUGIN_ROOT):
+        for name in sorted(os.listdir(USER_PLUGIN_ROOT)):
+            if name != "exocortex":
+                d = os.path.join(USER_PLUGIN_ROOT, name, "tools")
+                if os.path.isdir(d):
+                    dirs.append(d)
+    for d in dirs:
+        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+            if fn.endswith(".py") and not fn.startswith("_"):
+                try:
+                    mtime = os.path.getmtime(os.path.join(d, fn))
+                    h.update(f"{fn}:{mtime}".encode())
+                except OSError:
+                    pass
+    return h.hexdigest()
 
 
 # ── Scan ─────────────────────────────────────────────────────────────────────
