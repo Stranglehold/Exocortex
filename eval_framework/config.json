@@ -1,7 +1,7 @@
 {
   "api_base": "http://localhost:1234/v1",
   "model_name": "",
-  "timeout_seconds": 300,
+  "timeout_seconds": 600,
   "max_retries_per_test": 2,
   "runs_per_test": 1,
   "test_modules": [

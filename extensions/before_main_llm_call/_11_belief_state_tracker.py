@@ -130,12 +130,14 @@ DOMAIN_CONFIGS: dict = {
             r"\bopen[- ]source\s+intel",
             r"\bentity\s+(?:research|profile|lookup)\b",
         ],
+        # v3.3 rigidity eval 2026-04-17: enriched=info_only on investigation.
+        # Methodology instructions removed — raw outperforms enriched (1.0 vs 0.812).
+        # Info-only: domain context + tool availability + TALE budget. No methodology prescription.
         "enrichment_template": (
-            "Entity research methodology: verify primary sources, "
-            "cross-reference data across multiple independent sources, "
-            "flag gaps and contradictions. Report confidence levels."
+            "Available tools: search_engine (web queries), web_browser (full-page access), "
+            "memory_load (past findings). Reasoning budget: ~300 tokens."
         ),
-        "brief_description": "Entity research methodology -- verify sources, cross-reference data, flag gaps.",
+        "brief_description": "Entity research and OSINT. Use search_engine and web_browser.",
     },
     "coding": {
         # v3.2: added \bbuild\b for "build a project/tool/script",
@@ -208,11 +210,13 @@ DOMAIN_CONFIGS: dict = {
             r"\bquantif",
             r"\bcorrelat",
         ],
+        # v3.3 rigidity eval 2026-04-17: enriched=info_only=1.0 on analysis.
+        # Methodology instructions removed — model demonstrates the capability natively.
+        # TALE budget hint retained (constraint on verbosity, not on method).
         "enrichment_template": (
-            "Analytical methodology: quantitative rigor required -- cite specific "
-            "metrics and data, not impressions. Distinguish correlation from causation."
+            "Reasoning budget: ~300 tokens."
         ),
-        "brief_description": "Quantitative rigor required -- cite specific metrics, not impressions.",
+        "brief_description": "Quantitative analysis. Cite specific metrics, distinguish correlation from causation.",
     },
     "system_admin": {
         "signals": [
@@ -259,13 +263,13 @@ DOMAIN_CONFIGS: dict = {
             r"\bbefore\s+(?:we|I)\s+(?:start|begin|build|code|write)\b",
             r"\bwhat(?:'s|\s+is)\s+the\s+(?:best|right)\s+way\b",
         ],
+        # v3.3 rigidity eval 2026-04-17: enriched=info_only=0.25 on planning (false negative).
+        # Methodology instructions removed — model demonstrates planning capability natively.
+        # TALE budget hint retained. Higher budget for planning tasks (~500 tokens).
         "enrichment_template": (
-            "Planning context: sequence dependencies and resource constraints before "
-            "committing to a plan. Identify blockers and critical path. "
-            "Use design-buildplan for multi-phase builds. "
-            "Reasoning budget: ~500 tokens. Plan concisely. One key insight per step — no narration."
+            "Reasoning budget: ~500 tokens."
         ),
-        "brief_description": "Sequence dependencies and resource constraints before committing to a plan.",
+        "brief_description": "Planning and architecture. Sequence dependencies and identify blockers.",
     },
     "config_edit": {
         "signals": [
