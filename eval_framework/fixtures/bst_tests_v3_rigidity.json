@@ -1,0 +1,117 @@
+{
+  "fixtures_version": "1.1",
+  "module": "bst",
+  "description": "Extended BST fixtures for v3 rigidity assessment. Tests investigation/analysis/philosophical/planning domains with 3 conditions: full enrichment (instruction-heavy), info-only enrichment (no explicit instructions), and raw (no enrichment). Designed per Opus architectural review 2026-04-17 to answer: does v3 need instruction-heavy scaffolding or does information-only produce equivalent behavior?",
+  "tests": [
+
+    {
+      "test_id": "v3_001",
+      "domain": "investigation",
+      "raw_message": "What are the key differences between Python asyncio and threading?",
+      "enriched_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.88\n  topic: Python concurrency\n  operation: compare\n[INSTRUCTION]\n  Compare asyncio and threading systematically.\n  Cover: use cases, performance characteristics, complexity.\n  Provide code examples for each. Structure with headers.\n[USER MESSAGE]\n  What are the key differences between Python asyncio and threading?",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.88\n  topic: Python concurrency\n  Available tools: search_engine (for current docs)\n[USER MESSAGE]\n  What are the key differences between Python asyncio and threading?",
+      "expected_behavior": "structured_comparison",
+      "success_indicators": ["asyncio", "threading", "use case", "GIL", "concurrent"],
+      "failure_indicators": ["refuses to answer", "only one option covered", "no comparison made"]
+    },
+
+    {
+      "test_id": "v3_002",
+      "domain": "investigation",
+      "raw_message": "Search for best practices for Python type hints",
+      "enriched_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.85\n  operation: research\n  topic: Python type system\n[INSTRUCTION]\n  Use search_engine to find current Python type hints best practices.\n  Summarize findings with specific syntax examples.\n  Cover Optional, Union, TypeVar, and Protocol.\n[USER MESSAGE]\n  Search for best practices for Python type hints",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.85\n  operation: research\n  topic: Python type system\n  Available tools: search_engine\n[USER MESSAGE]\n  Search for best practices for Python type hints",
+      "expected_behavior": "uses_search_or_provides_structured_answer",
+      "success_indicators": ["Optional", "Union", "type hint", "annotation", "->"],
+      "failure_indicators": ["refuses", "no specific syntax", "ignores type hints entirely"]
+    },
+
+    {
+      "test_id": "v3_003",
+      "domain": "investigation",
+      "raw_message": "Find documentation on Python dataclasses",
+      "enriched_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.90\n  operation: research\n  topic: Python dataclasses\n[INSTRUCTION]\n  Research Python dataclass documentation.\n  Cover @dataclass decorator, field(), __post_init__, frozen dataclasses.\n  Use search_engine if needed. Provide runnable examples.\n[USER MESSAGE]\n  Find documentation on Python dataclasses",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.90\n  operation: research\n  topic: Python dataclasses\n  Available tools: search_engine\n[USER MESSAGE]\n  Find documentation on Python dataclasses",
+      "expected_behavior": "provides_technical_documentation",
+      "success_indicators": ["@dataclass", "field()", "__post_init__", "frozen"],
+      "failure_indicators": ["ignores dataclasses", "only generic Python info", "no decorator syntax"]
+    },
+
+    {
+      "test_id": "v3_004",
+      "domain": "analysis",
+      "raw_message": "Analyze the performance impact of using list comprehensions vs for loops in Python",
+      "enriched_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.87\n  operation: analyze\n  topic: Python performance\n[INSTRUCTION]\n  Analyze list comprehensions vs for loops.\n  Cover: time complexity, readability, memory usage, when each is appropriate.\n  Provide benchmarks or examples. Conclude with a clear recommendation.\n[USER MESSAGE]\n  Analyze the performance impact of using list comprehensions vs for loops in Python",
+      "info_only_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.87\n  operation: analyze\n  topic: Python performance\n[USER MESSAGE]\n  Analyze the performance impact of using list comprehensions vs for loops in Python",
+      "expected_behavior": "provides_structured_analysis",
+      "success_indicators": ["comprehension", "for loop", "performance", "readability", "benchmark"],
+      "failure_indicators": ["no comparison", "vague answer", "no concrete recommendation"]
+    },
+
+    {
+      "test_id": "v3_005",
+      "domain": "analysis",
+      "raw_message": "What does this error mean: RecursionError: maximum recursion depth exceeded",
+      "enriched_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.91\n  operation: diagnose\n  error_type: recursion_error\n  language: python\n[INSTRUCTION]\n  Diagnose RecursionError. Common causes: no base case, circular reference.\n  Provide the diagnostic approach and fix options (sys.setrecursionlimit, iterative conversion).\n  Ask for the relevant code if needed.\n[USER MESSAGE]\n  What does this error mean: RecursionError: maximum recursion depth exceeded",
+      "info_only_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.91\n  operation: diagnose\n  error_type: recursion_error\n  language: python\n[USER MESSAGE]\n  What does this error mean: RecursionError: maximum recursion depth exceeded",
+      "expected_behavior": "diagnoses_recursion_error",
+      "success_indicators": ["recursion", "base case", "depth", "sys.setrecursionlimit"],
+      "failure_indicators": ["wrong error type", "no diagnostic approach", "ignores Python context"]
+    },
+
+    {
+      "test_id": "v3_006",
+      "domain": "philosophical",
+      "raw_message": "Why do design principles like SOLID matter in software engineering?",
+      "enriched_message": "[TASK CONTEXT]\n  domain: philosophical\n  confidence: 0.72\n  operation: explain\n  topic: software design philosophy\n[INSTRUCTION]\n  Explain SOLID principles and why they matter.\n  Connect to practical outcomes: maintainability, testability, extensibility.\n  Keep focused on software engineering impact, not abstract philosophy.\n[USER MESSAGE]\n  Why do design principles like SOLID matter in software engineering?",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.72\n  operation: explain\n  topic: software design principles, SOLID\n[USER MESSAGE]\n  Why do design principles like SOLID matter in software engineering?",
+      "expected_behavior": "explains_with_practical_focus",
+      "success_indicators": ["SOLID", "maintainability", "testability", "principle"],
+      "failure_indicators": ["pure philosophy", "no practical connection", "abstract only", "refuses to engage"]
+    },
+
+    {
+      "test_id": "v3_007",
+      "domain": "philosophical",
+      "raw_message": "What is the purpose of PEP 695 design principles in Python?",
+      "enriched_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.82\n  operation: explain\n  topic: Python PEP 695 type parameter syntax\n[INSTRUCTION]\n  Explain PEP 695: new type parameter syntax (type X = ..., def f[T](...)). \n  Focus on what problem it solves vs old TypeVar approach.\n  Provide before/after code examples.\n[USER MESSAGE]\n  What is the purpose of PEP 695 design principles in Python?",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.82\n  operation: explain\n  topic: Python PEP 695\n  Available tools: search_engine\n[USER MESSAGE]\n  What is the purpose of PEP 695 design principles in Python?",
+      "expected_behavior": "explains_pep695_technically",
+      "success_indicators": ["PEP 695", "type parameter", "TypeVar", "generic"],
+      "failure_indicators": ["discusses design philosophy", "no PEP-specific content", "abstract principles only"]
+    },
+
+    {
+      "test_id": "v3_008",
+      "domain": "planning",
+      "raw_message": "Plan a 5-step approach to refactor a monolithic Python app into microservices",
+      "enriched_message": "[TASK CONTEXT]\n  domain: planning\n  confidence: 0.84\n  operation: plan\n  topic: architecture migration\n[INSTRUCTION]\n  Create a concrete 5-step migration plan.\n  Steps must be actionable and ordered by dependency.\n  Include risk mitigation for each step. No hand-waving.\n[USER MESSAGE]\n  Plan a 5-step approach to refactor a monolithic Python app into microservices",
+      "info_only_message": "[TASK CONTEXT]\n  domain: planning\n  confidence: 0.84\n  operation: plan\n  topic: monolith to microservices migration\n[USER MESSAGE]\n  Plan a 5-step approach to refactor a monolithic Python app into microservices",
+      "expected_behavior": "produces_numbered_actionable_plan",
+      "success_indicators": ["step", "service", "API", "boundary", "migration"],
+      "failure_indicators": ["fewer than 3 steps", "no concrete actions", "only theory", "ignores Python context"]
+    },
+
+    {
+      "test_id": "v3_009",
+      "domain": "investigation",
+      "raw_message": "How does Python's GIL affect multi-threaded performance for CPU-bound tasks?",
+      "enriched_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.90\n  operation: explain\n  topic: Python GIL internals\n[INSTRUCTION]\n  Explain GIL impact on CPU-bound threading.\n  Cover: GIL mechanics, why CPU-bound threads don't parallelize, alternatives (multiprocessing, Cython, GIL-free Python 3.13).\n  Use concrete examples.\n[USER MESSAGE]\n  How does Python's GIL affect multi-threaded performance for CPU-bound tasks?",
+      "info_only_message": "[TASK CONTEXT]\n  domain: investigation\n  confidence: 0.90\n  operation: explain\n  topic: Python GIL, concurrency\n[USER MESSAGE]\n  How does Python's GIL affect multi-threaded performance for CPU-bound tasks?",
+      "expected_behavior": "explains_gil_with_alternatives",
+      "success_indicators": ["GIL", "CPU-bound", "multiprocessing", "thread"],
+      "failure_indicators": ["wrong about GIL", "ignores CPU-bound distinction", "no alternatives mentioned"]
+    },
+
+    {
+      "test_id": "v3_010",
+      "domain": "analysis",
+      "raw_message": "Compare the architectural tradeoffs between REST APIs and GraphQL for a mobile app",
+      "enriched_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.85\n  operation: compare\n  topic: API architecture\n[INSTRUCTION]\n  Compare REST vs GraphQL for mobile contexts.\n  Cover: over-fetching, bandwidth, caching, client complexity, tooling.\n  Provide a verdict based on mobile-specific constraints.\n[USER MESSAGE]\n  Compare the architectural tradeoffs between REST APIs and GraphQL for a mobile app",
+      "info_only_message": "[TASK CONTEXT]\n  domain: analysis\n  confidence: 0.85\n  operation: compare\n  topic: REST vs GraphQL, mobile context\n[USER MESSAGE]\n  Compare the architectural tradeoffs between REST APIs and GraphQL for a mobile app",
+      "expected_behavior": "structured_comparison_with_verdict",
+      "success_indicators": ["REST", "GraphQL", "mobile", "tradeoff", "over-fetching"],
+      "failure_indicators": ["no comparison", "ignores mobile context", "no recommendation"]
+    }
+  ]
+}

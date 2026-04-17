@@ -49,12 +49,13 @@ PROVIDER_DEFAULTS = {
 # Module registry — maps config name → (module_file, class_name)
 # ---------------------------------------------------------------------------
 MODULE_REGISTRY = {
-    "bst":                  ("bst_eval",     "BSTEval"),
-    "tool_reliability":     ("tool_eval",    "ToolEval"),
-    "graph_compliance":     ("graph_eval",   "GraphEval"),
-    "pace_calibration":     ("pace_eval",    "PACEEval"),
-    "context_sensitivity":  ("context_eval", "ContextEval"),
-    "memory_utilization":   ("memory_eval",  "MemoryEval"),
+    "bst":                  ("bst_eval",          "BSTEval"),
+    "bst_rigidity":         ("bst_rigidity_eval", "BSTRigidityEval"),
+    "tool_reliability":     ("tool_eval",          "ToolEval"),
+    "graph_compliance":     ("graph_eval",         "GraphEval"),
+    "pace_calibration":     ("pace_eval",          "PACEEval"),
+    "context_sensitivity":  ("context_eval",       "ContextEval"),
+    "memory_utilization":   ("memory_eval",        "MemoryEval"),
 }
 
 # ---------------------------------------------------------------------------
