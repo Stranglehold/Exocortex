@@ -14,6 +14,10 @@ _NATIVE_TOOL_CALL_RX = re.compile(
     re.IGNORECASE,
 )
 
+# Strip thinking-token blocks that leak from reasoning-distilled models before JSON parse.
+# Pattern: <think>...</think> or <thinking>...</thinking>, may span multiple lines.
+_THINK_TAG_RX = re.compile(r'<think(?:ing)?>\s*.*?\s*</think(?:ing)?>', re.DOTALL | re.IGNORECASE)
+
 # Extract tool_name from partial / unparseable JSON via regex fallback.
 _PARTIAL_TOOL_NAME_RX = re.compile(r'"tool_name"\s*:\s*"([^"]+)"')
 
@@ -76,6 +80,12 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
 
     stripped = json.strip()
 
+    # Strip thinking tokens — reasoning-distilled models (Qwen, DeepSeek-R1) sometimes
+    # leak <think>...</think> blocks containing {braces} that confuse the JSON finder below.
+    stripped = _THINK_TAG_RX.sub('', stripped).strip()
+    if not stripped:
+        return None
+
     # ── Native tool call format (Gemma 4, etc.) ───────────────────────────
     # Pattern: <|tool_call>call:TOOL_NAME{arg: "val", ...}<tool_call|>
     # Detect before standard JSON path — args dict has no tool_name key.
@@ -98,14 +108,21 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
         return {"tool_name": tool_name, "tool_args": tool_args}
 
     # ── Standard JSON path ────────────────────────────────────────────────
-    ext_json = extract_json_object_string(stripped)
-    if ext_json:
-        # Without a closing '}' the object is guaranteed incomplete at the stream
-        # level. DirtyJson will still "parse" partial input (e.g. '{\n    "' → {'': None}),
-        # producing garbage that triggers stop_response after only a few tokens.
-        # Skip parse entirely until the response contains at least one '}'.
-        if '}' not in ext_json:
+    _start = stripped.find('{')
+    if _start != -1:
+        # Use bracket-aware brace matching to find the real closing '}'.
+        # The naive rfind('}') approach used by extract_json_object_string would
+        # find any '}' in the string — including ones inside JSON string values
+        # (e.g. Python f-strings like f"{timestamp}" or f"{filename}").  When
+        # those patterns arrive mid-stream, rfind returns their '}' as the outer
+        # closing brace, causing DirtyJson to parse a truncated object and
+        # stop_response to fire early, cutting the code write at the variable name.
+        # _find_closing_brace tracks in-string state and ignores '}' inside quotes.
+        _end_idx = _find_closing_brace(stripped[_start:])
+        if _end_idx == -1:
+            # Outer brace not yet closed — stream still in progress, keep buffering.
             return None
+        ext_json = stripped[_start : _start + _end_idx + 1]
         try:
             data = DirtyJson.parse_string(ext_json)
             if isinstance(data, dict):
