@@ -1,0 +1,35 @@
+{
+    "model": {
+        "model_path": "D:/LMStudio/Models/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF/Qwen3.5-27B.Q4_K_M.gguf",
+        "chat_format": "qwen",
+        "n_ctx": 32768,
+        "n_gpu_layers": -1,
+        "n_threads": 8,
+        "n_batch": 512,
+        "logits_all": false,
+        "verbose": false
+    },
+    "server": {
+        "host": "0.0.0.0",
+        "port": 8080,
+        "model_alias": "qwen3.5-27b"
+    },
+    "entropy_monitoring": {
+        "enabled": true,
+        "log_per_token": false,
+        "log_summary": true,
+        "log_file": "logs/entropy_trace.jsonl"
+    },
+    "kv_slots": {
+        "enabled": false,
+        "slot_directory": "kv_slots/",
+        "preload": []
+    },
+    "notes": {
+        "_comment": "Exocortex Inference Wrapper — Layer B of the two-layer architecture",
+        "_model_path": "Update model_path to point to your GGUF file",
+        "_chat_format": "CRITICAL: must match the model's expected template. 'qwen' for Qwen family.",
+        "_logits_all": "Set to true to enable per-token entropy monitoring. Increases VRAM usage.",
+        "_kv_slots": "Future: pre-computed KV caches for zero-token BST enrichment (Knowledge Packs)"
+    }
+}
