@@ -139,7 +139,32 @@ STAGNATION_MAX_UNIQUE = 2      # Max unique output hashes before stagnation is d
 # The LLM advises. The deterministic tier system enforces.
 
 PHASE4_LM_ENDPOINT = "http://host.docker.internal:1234/v1/chat/completions"
-PHASE4_MODEL = "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m"
+# PHASE4_MODEL is NOT hardcoded — read from Agent Zero's live model config at call time
+# so Phase 4 always uses whatever model the user has selected, not a stale constant.
+_MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
+_MODEL_CONFIG_FALLBACK = "qwopus3.5-27b-v3"
+
+def _get_phase4_model(agent=None) -> str:
+    """Read the current chat model name from Agent Zero's model config file."""
+    import json as _json
+    try:
+        with open(_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = _json.load(f)
+        name = cfg.get("chat_model", {}).get("name", "")
+        if name:
+            return name
+    except Exception:
+        pass
+    # Fallback: try to read from agent config if available
+    try:
+        if agent is not None:
+            name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
+            if name:
+                return name
+    except Exception:
+        pass
+    return _MODEL_CONFIG_FALLBACK
+
 PHASE4_MAX_TOKENS = 200
 PHASE4_TEMPERATURE = 0.0
 PHASE4_TIMEOUT = 10.0                  # hard timeout — never block the agent
@@ -394,10 +419,20 @@ class SupervisorLoop(Extension):
                 injected = True
 
             # Tier 2 — context surgery (second priority, no cooldown)
+            # _29_stuck_delivery.py sets _suppress_surgery_this_turn when the agent is
+            # in a delivery loop — surgery removes completion evidence and makes it worse.
             elif new_loop_tier == "summarize" and not state.get(LOOP_SURGERY_DONE_KEY):
-                _execute_tier2(self.agent, failing_tool, consecutive, state)
-                state[LOOP_SURGERY_DONE_KEY] = True
-                injected = True
+                suppress = getattr(self.agent, "_suppress_surgery_this_turn", False)
+                setattr(self.agent, "_suppress_surgery_this_turn", False)  # clear always
+                if suppress:
+                    print(
+                        "[SUPERVISOR] Tier 2 surgery suppressed by stuck-delivery extension.",
+                        flush=True,
+                    )
+                else:
+                    _execute_tier2(self.agent, failing_tool, consecutive, state)
+                    state[LOOP_SURGERY_DONE_KEY] = True
+                    injected = True
 
             # 1. PACE escalation response (org-dependent, emergency exempt from cooldown)
             if org_active:
@@ -454,7 +489,8 @@ class SupervisorLoop(Extension):
                     compressed = _build_phase4_context(
                         self.agent, ctx, effective_domain, state
                     )
-                    p4_rec = await _call_phase4_supervisor(compressed)
+                    p4_model = _get_phase4_model(self.agent)
+                    p4_rec = await _call_phase4_supervisor(compressed, p4_model)
                     _log_phase4_decision(self.agent, compressed, p4_rec)
                     _update_phase4_strategy_hashes(self.agent, state)
                     if p4_rec.get("action") == "ESCALATE":
@@ -1561,7 +1597,7 @@ def _detect_cascade(ctx: dict) -> bool:
 # ── Steering Injection ──────────────────────────────────────────
 
 def _inject_stall(agent, ctx: dict, role: dict, state: dict):
-    """Inject stall warning with task-specific context."""
+    """Inject stall warning with task-specific context and PACE next-tier guidance."""
     task_info = ""
     if ctx["htn_plan_name"]:
         task_info = f" on plan '{ctx['htn_plan_name']}' (step {ctx['htn_current_step'] + 1}/{ctx['htn_total_steps']})"
@@ -1581,6 +1617,16 @@ def _inject_stall(agent, ctx: dict, role: dict, state: dict):
             msg += f" [{error_class}]"
         if suggested:
             msg += f" Suggested: {suggested[0]}."
+
+    # Append PACE next-tier action if a task plan is active
+    pace_action = _get_pace_task_action(agent, "alternate")
+    if pace_action:
+        msg += f"\n[PACE] Your plan's Alternate approach: {pace_action}"
+        try:
+            agent.set_data("_pace_advance_tier", True)
+        except Exception:
+            pass
+
     _emit(agent, msg, ANOMALY_STALL, state)
 
 
@@ -1742,25 +1788,103 @@ def _inject_cascade(agent, state: dict):
     _emit(agent, msg, ANOMALY_CASCADE, state)
 
 
+def _get_pace_task_action(agent, tier: str) -> str:
+    """
+    Return the specific action for the current PACE plan step at the given tier.
+    Calls the public API exported by _14_pace_plan_generator.
+    Returns empty string if no plan active or import fails.
+    """
+    try:
+        import importlib.util, sys as _sys
+        _MOD = "_14_pace_plan_generator"
+        _PATH = "/a0/usr/agents/agent0/extensions/before_main_llm_call/_14_pace_plan_generator.py"
+        if _MOD not in _sys.modules:
+            spec = importlib.util.spec_from_file_location(_MOD, _PATH)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _sys.modules[_MOD] = mod
+        return _sys.modules[_MOD].get_current_step_action(agent, tier)
+    except Exception:
+        return ""
+
+
 def _inject_pace_contingent(agent, role: dict, ctx: dict, state: dict):
-    """Inject PACE contingent-level guidance."""
-    pace_desc = role.get("pace_plan", {}).get("contingent", {}).get("description", "")
-    hint = f" Role guidance: {pace_desc}" if pace_desc else ""
-    msg = (
-        f"[SUPERVISOR] PACE level is CONTINGENT — your current approach has failed repeatedly.{hint} "
-        f"Try a fundamentally different method or ask the user for guidance."
-    )
+    """
+    Inject PACE contingent-level guidance.
+    Uses task-level PACE plan (specific action for current step) when available;
+    falls back to role-level description from org dispatcher.
+    Also sets _pace_advance_tier so the plan generator escalates next turn.
+    """
+    task_action = _get_pace_task_action(agent, "contingency")
+    if task_action:
+        try:
+            plan_ctx = {}
+            import sys as _sys
+            mod = _sys.modules.get("_14_pace_plan_generator")
+            if mod:
+                plan_ctx = mod.get_plan_context(agent)
+        except Exception:
+            plan_ctx = {}
+        step = plan_ctx.get("current_step", "?")
+        total = plan_ctx.get("total_steps", "?")
+        msg = (
+            f"[SUPERVISOR] PACE CONTINGENT — Primary and Alternate approaches failed.\n"
+            f"Your task PACE plan: Step {step}/{total}, escalating to Contingency.\n"
+            f"Execute: {task_action}\n"
+            f"Complete this step at Contingency tier before moving forward."
+        )
+    else:
+        pace_desc = role.get("pace_plan", {}).get("contingent", {}).get("description", "")
+        hint = f" Role guidance: {pace_desc}" if pace_desc else ""
+        msg = (
+            f"[SUPERVISOR] PACE level is CONTINGENT — your current approach has failed repeatedly.{hint} "
+            f"Try a fundamentally different method or ask the user for guidance."
+        )
+    # Signal PACE tier advance to plan generator
+    try:
+        agent.set_data("_pace_advance_tier", True)
+    except Exception:
+        pass
     _emit(agent, msg, ANOMALY_PACE, state)
 
 
 def _inject_pace_emergency(agent, role: dict, ctx: dict, state: dict):
-    """Inject PACE emergency-level guidance. Always fires (no cooldown)."""
-    pace_desc = role.get("pace_plan", {}).get("emergency", {}).get("description", "")
-    hint = f" Role guidance: {pace_desc}" if pace_desc else ""
-    msg = (
-        f"[SUPERVISOR] PACE level is EMERGENCY — stop all work immediately.{hint} "
-        f"Preserve any partial results and report what you've accomplished and where you're stuck."
-    )
+    """
+    Inject PACE emergency-level guidance. Always fires (no cooldown).
+    Uses task-level PACE plan when available; falls back to role-level description.
+    Also sets _pace_advance_tier and clears _pace_new_task for next plan cycle.
+    """
+    task_action = _get_pace_task_action(agent, "emergency")
+    if task_action:
+        try:
+            import sys as _sys
+            plan_ctx = {}
+            mod = _sys.modules.get("_14_pace_plan_generator")
+            if mod:
+                plan_ctx = mod.get_plan_context(agent)
+        except Exception:
+            plan_ctx = {}
+        step = plan_ctx.get("current_step", "?")
+        total = plan_ctx.get("total_steps", "?")
+        msg = (
+            f"[SUPERVISOR] PACE EMERGENCY — all standard approaches exhausted for Step {step}/{total}.\n"
+            f"Execute Emergency protocol: {task_action}\n"
+            f"CRITICAL: Preserve all partial results. Do NOT fabricate missing data. "
+            f"Acknowledge the failure explicitly and stop."
+        )
+    else:
+        pace_desc = role.get("pace_plan", {}).get("emergency", {}).get("description", "")
+        hint = f" Role guidance: {pace_desc}" if pace_desc else ""
+        msg = (
+            f"[SUPERVISOR] PACE level is EMERGENCY — stop all work immediately.{hint} "
+            f"Preserve any partial results and report what you've accomplished and where you're stuck."
+        )
+    # Signal tier advance + mark plan for reset on next task start
+    try:
+        agent.set_data("_pace_advance_tier", True)
+        agent.set_data("_pace_new_task", True)  # Emergency = task cycle complete
+    except Exception:
+        pass
     # Emergency is exempt from cooldown — always inject
     try:
         agent.hist_add_warning(msg)
@@ -1950,10 +2074,11 @@ def _should_trigger_phase4(ctx: dict, state: dict, agent) -> bool:
     return False
 
 
-async def _call_phase4_supervisor(compressed_context: str) -> dict:
+async def _call_phase4_supervisor(compressed_context: str, model: str) -> dict:
     """
     Fire the parallel LLM supervisor with compressed context only.
     Returns structured recommendation dict. Never raises — HOLD on any failure.
+    model is passed in from the call site (resolved via _get_phase4_model).
     """
     import re as _re
     import json as _json
@@ -1964,7 +2089,7 @@ async def _call_phase4_supervisor(compressed_context: str) -> dict:
         return {"action": "HOLD", "reason": "aiohttp_unavailable"}
 
     payload = {
-        "model": PHASE4_MODEL,
+        "model": model,
         "messages": [
             {"role": "system", "content": PHASE4_SYSTEM_PROMPT},
             {"role": "user", "content": compressed_context},

@@ -7,12 +7,15 @@
         "n_threads": 8,
         "n_batch": 512,
         "logits_all": false,
-        "verbose": false
+        "verbose": false,
+        "type_k": null,
+        "type_v": null
     },
     "server": {
         "host": "0.0.0.0",
         "port": 8080,
-        "model_alias": "qwen3.5-27b"
+        "model_alias": "qwen3.5-27b",
+        "max_tokens_cap": 16384
     },
     "entropy_monitoring": {
         "enabled": true,
@@ -30,6 +33,8 @@
         "_model_path": "Update model_path to point to your GGUF file",
         "_chat_format": "CRITICAL: must match the model's expected template. 'qwen' for Qwen family.",
         "_logits_all": "Set to true to enable per-token entropy monitoring. Increases VRAM usage.",
+        "_type_k_v": "KV cache quantization. 1=f16 (default), 8=q8_0 (50% savings), 2=q4_0 (75% savings, LOSSLESS on Qwen3.5). Use 8 as safe default.",
+        "_model_management": "POST /v1/model/unload to free VRAM before gaming. POST /v1/model/load to reload.",
         "_kv_slots": "Future: pre-computed KV caches for zero-token BST enrichment (Knowledge Packs)"
     }
 }
