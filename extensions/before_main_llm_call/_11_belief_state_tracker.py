@@ -32,6 +32,15 @@ from agent import LoopData
 from helpers.extension import Extension
 
 TAXONOMY_PATH          = Path(__file__).parent / "slot_taxonomy.json"
+
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    """Log estimated token count for an injection block. ~4 chars/token."""
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
 BELIEF_KEY             = "__bst_belief_state__"
 MAX_HISTORY_SCAN_TURNS = 8
 
@@ -120,6 +129,8 @@ DOMAIN_CONFIGS: dict = {
         # v3.2: narrowed to entity/OSINT-specific signals only.
         # "verify", "find", "look at" removed -- they fire in every context.
         # investigation is now a fallback (priority=11), not a default.
+        # v3.4: geopolitical/intelligence signals added (2026-04-24).
+        # Audit confirmed BST classified geopolitical tasks as "coding" (6+ turns).
         "signals": [
             r"\binvestigat",
             r"\bosint\b",
@@ -129,6 +140,18 @@ DOMAIN_CONFIGS: dict = {
             r"\bbackground\s+on\b",
             r"\bopen[- ]source\s+intel",
             r"\bentity\s+(?:research|profile|lookup)\b",
+            # Geopolitical / intelligence signals (v3.4)
+            r"\bgeopolit",
+            r"\bmaritime\b",
+            r"\bescalat",
+            r"\bmilitary\b.{0,30}\b(?:action|movement|force|operation|threat)\b",
+            r"\bintelligence\s+(?:briefing|assessment|report|analysis)\b",
+            r"\bthreat\s+(?:assessment|analysis|level|vector)\b",
+            r"\bsanction\w*\b.{0,20}\b(?:regime|iran|russia|china|korea|imposed)\b",
+            r"\bsovereignty\b",
+            r"\bterritorial\s+(?:dispute|waters|integrity|claim)\b",
+            r"\bstrait\s+of\b|\bstrait\s+(?:closure|blockade|transit)\b",
+            r"\bgeopolitical\s+(?:risk|tension|situation|analysis)\b",
         ],
         # v3.3 rigidity eval 2026-04-17: enriched=info_only on investigation.
         # Methodology instructions removed — raw outperforms enriched (1.0 vs 0.812).
@@ -886,6 +909,29 @@ class BeliefStateTracker(Extension):
             # Capture raw signature before momentum for hold/break logging
             raw_signature = _format_signature(new_primary, new_secondary)
 
+            # ── Zero-signal momentum reset (v3.4) ────────────────────────────
+            # If the current domain has zero matching signals in the new message,
+            # the task has genuinely changed. Clear momentum so it doesn't block
+            # reclassification. Prevents stale domain (e.g. "coding") persisting
+            # through unrelated tasks (e.g. geopolitical investigation).
+            if current_momentum >= MOMENTUM_THRESHOLD and current_signature != "conversation":
+                current_domains = _parse_signature(current_signature)
+                scored_domains  = {d for d, score, _ in scores if score > 0}
+                if not current_domains.intersection(scored_domains):
+                    print(
+                        f"[BST] Zero-signal reset: {current_signature} ({current_momentum} turns) "
+                        f"had no signals in new message. Clearing momentum.",
+                        flush=True,
+                    )
+                    self.agent.context.log.log(
+                        type="util",
+                        content=(
+                            f"[BST] Zero-signal reset: {current_signature} ({current_momentum} turns) "
+                            f"→ momentum cleared, forcing reclassification"
+                        ),
+                    )
+                    current_momentum = 0
+
             # Apply compound momentum
             final_primary, final_secondary, final_signature, final_momentum = \
                 _apply_compound_momentum(
@@ -1122,30 +1168,36 @@ class BeliefStateTracker(Extension):
             # ── Apply enrichment ──────────────────────────────────────────────
             if result["action"] == "enrich":
                 slot_message = result["enriched_message"]
-                user_msg['content'] = (
+                injected = (
                     compound_enrichment + "\n\n" + slot_message
                     if compound_enrichment else slot_message
                 )
+                user_msg['content'] = injected
                 self.agent.context.log.log(
                     type="util",
                     content=f"[BST] Slots: {result['filled_slots']}",
                 )
+                _log_injection_tokens(self.agent, "bst", injected)
 
             elif result["action"] == "clarify":
-                user_msg['content'] = (
+                injected = (
                     f"[CLARIFICATION NEEDED]\n"
                     f"Original: {message}\n\n"
                     f"Ask user: \"{result['question']}\"\n"
                     f"Wait for answer before proceeding."
                 )
+                user_msg['content'] = injected
                 self.agent.context.log.log(
                     type="util",
                     content=f"[BST] Clarifying - Domain: {result['domain']} | Missing: {result['missing_slot']}",
                 )
+                _log_injection_tokens(self.agent, "bst", injected)
 
             elif compound_enrichment:
                 # Slot resolver returned passthrough but compound has enrichment
-                user_msg['content'] = compound_enrichment + "\n\n[USER MESSAGE]\n" + message
+                injected = compound_enrichment + "\n\n[USER MESSAGE]\n" + message
+                user_msg['content'] = injected
+                _log_injection_tokens(self.agent, "bst", injected)
 
         except Exception as e:
             try:

@@ -36,6 +36,14 @@ from typing import Optional
 from agent import LoopData
 from helpers.extension import Extension
 
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
+
 TOOLS_GLOB    = "/a0/usr/plugins/*/tools/*.py"
 MANIFEST_PATH = "/a0/usr/Exocortex/tool_manifest.json"
 SKILLS_BASE   = "/a0/usr/skills"
@@ -272,6 +280,7 @@ class ToolRegistry(Extension):
 
             existing = user_msg.get("content", "")
             user_msg["content"] = block + "\n\n" + str(existing)
+            _log_injection_tokens(self.agent, "tool_registry", block)
 
             stems     = [s for s, _, _ in tool_files]
             all_names = [n for _, names, _ in tool_files for n in names]

@@ -33,6 +33,14 @@ from typing import Any, Optional
 from agent import LoopData
 from helpers.extension import Extension
 
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 MAX_HISTORY_TOOLS = 5    # Max completed actions to show
@@ -71,6 +79,7 @@ class CompletionTracker(Extension):
                 if user_msg:
                     existing = user_msg.get("content", "")
                     user_msg["content"] = block + "\n\n" + str(existing)
+                    _log_injection_tokens(self.agent, "completion_tracker", block)
                 else:
                     # Fallback: extras_temporary if no user message found
                     loop_data.extras_temporary[COMPLETION_KEY] = block

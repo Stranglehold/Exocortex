@@ -54,6 +54,14 @@ from typing import Optional
 from agent import LoopData
 from helpers.extension import Extension
 
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
+
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 # Domains where delegation is appropriate
@@ -131,6 +139,7 @@ class OrchestrationGate(Extension):
 
             existing = user_msg.get("content", "")
             user_msg["content"] = block + "\n\n" + str(existing)
+            _log_injection_tokens(self.agent, "orchestration_gate", block)
 
             print(
                 f"[ORCH-GATE] Fired: domain={domain} conf={confidence:.0%} "

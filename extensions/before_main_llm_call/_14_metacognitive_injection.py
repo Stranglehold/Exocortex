@@ -32,6 +32,14 @@ from typing import Optional
 from agent import LoopData
 from helpers.extension import Extension
 
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
+
 SETTINGS_PATH  = "/a0/usr/settings.json"
 PROFILE_ROOT   = "/a0/usr/Exocortex/eval/model_profiles"
 CONFIG_KEY     = "metacognitive_injection"
@@ -94,6 +102,7 @@ class MetacognitiveInjection(Extension):
 
             existing = user_msg.get("content", "")
             user_msg["content"] = block + "\n\n" + str(existing)
+            _log_injection_tokens(self.agent, "metacognitive", block)
 
             print(
                 f"[META] Injected model config note. "

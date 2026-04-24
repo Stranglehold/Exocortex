@@ -39,6 +39,14 @@ from typing import Dict, Optional
 from agent import LoopData
 from helpers.extension import Extension
 
+
+def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
+    tok = len(text) // 4
+    counts = getattr(agent, "_injection_token_counts", {})
+    counts[ext_name] = counts.get(ext_name, 0) + tok
+    agent._injection_token_counts = counts
+    print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
+
 APPROVED_PATH = "/a0/usr/Exocortex/operator_profile_approved.json"
 VERSIONS_DIR  = "/a0/usr/Exocortex/operator_profile_versions"
 
@@ -80,6 +88,7 @@ class OperatorProfile(Extension):
             # Prepend to user message content (BST enrichment may already be there)
             existing = user_msg.get("content", "")
             user_msg["content"] = block + "\n\n" + str(existing)
+            _log_injection_tokens(self.agent, "operator_profile", block)
 
             # Persist floor-given signal for downstream use
             ep = getattr(loop_data, "extras_persistent", None)
