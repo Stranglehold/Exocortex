@@ -909,24 +909,47 @@ class BeliefStateTracker(Extension):
             # Capture raw signature before momentum for hold/break logging
             raw_signature = _format_signature(new_primary, new_secondary)
 
-            # ── Zero-signal momentum reset (v3.4) ────────────────────────────
-            # If the current domain has zero matching signals in the new message,
-            # the task has genuinely changed. Clear momentum so it doesn't block
-            # reclassification. Prevents stale domain (e.g. "coding") persisting
-            # through unrelated tasks (e.g. geopolitical investigation).
+            # ── Zero-signal momentum reset (v3.5) ────────────────────────────
+            # Two conditions that each independently break compound momentum:
+            #
+            # Condition A (all-silent): ALL compound domains have zero signals.
+            # Classic case: coding task → file ops, no coding/planning signals.
+            #
+            # Condition B (domain-shift): The top-scoring new domain is NOT in
+            # the current compound AND scores >= 2 signals. Catches the case
+            # where e.g. "investigation" scores 3+ on a geopolitical task but
+            # "planning" still scores 1 from the word "strategy" — the compound
+            # would otherwise hold because planning is in current_domains.
+            # Threshold of 2 prevents single-signal noise from breaking momentum.
             if current_momentum >= MOMENTUM_THRESHOLD and current_signature != "conversation":
                 current_domains = _parse_signature(current_signature)
                 scored_domains  = {d for d, score, _ in scores if score > 0}
-                if not current_domains.intersection(scored_domains):
+
+                all_silent = not current_domains.intersection(scored_domains)
+
+                dominant_domain = scores[0][0] if scores else ""
+                dominant_score  = scores[0][1] if scores else 0
+                domain_shift = (
+                    bool(dominant_domain)
+                    and dominant_domain not in current_domains
+                    and dominant_score >= 2
+                )
+
+                if all_silent or domain_shift:
+                    reason = (
+                        "all-silent" if all_silent
+                        else f"domain-shift ({dominant_domain} score={dominant_score})"
+                    )
                     print(
-                        f"[BST] Zero-signal reset: {current_signature} ({current_momentum} turns) "
-                        f"had no signals in new message. Clearing momentum.",
+                        f"[BST] Zero-signal reset [{reason}]: {current_signature} "
+                        f"({current_momentum} turns) → clearing momentum.",
                         flush=True,
                     )
                     self.agent.context.log.log(
                         type="util",
                         content=(
-                            f"[BST] Zero-signal reset: {current_signature} ({current_momentum} turns) "
+                            f"[BST] Zero-signal reset [{reason}]: "
+                            f"{current_signature} ({current_momentum} turns) "
                             f"→ momentum cleared, forcing reclassification"
                         ),
                     )
