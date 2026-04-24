@@ -281,6 +281,24 @@ async def _run_deduplication(
             if sim_cls.get("validity") == "deprecated":
                 continue
 
+            # Skip chunks from the same source document.
+            # Knowledge-base imports chunk a single file into multiple FAISS
+            # entries.  Chunks from the same file can have >0.90 cosine
+            # similarity and MUST NOT be deduplicated — they are complementary
+            # parts of the same text, not duplicates.  Without this guard the
+            # dedup loop cascades false deprecation across the knowledge base.
+            # Mirrors the identical guard in _55_memory_classifier.py line 435.
+            def _src(meta):
+                return (
+                    meta.get("source_file")
+                    or meta.get("source_path")
+                    or meta.get("source")
+                )
+            if _src(doc.metadata) and _src(sim_doc.metadata) and (
+                _src(doc.metadata) == _src(sim_doc.metadata)
+            ):
+                continue
+
             doc_cls = doc.metadata.get(CLS_KEY, {})
 
             action = _determine_resolution(
@@ -312,6 +330,12 @@ def _determine_resolution(
     utility_b = cls_b.get("utility", "tactical")
     validity_a = cls_a.get("validity", "inferred")
     validity_b = cls_b.get("validity", "inferred")
+
+    # relationship_defining: structurally load-bearing regardless of recency
+    relational_a = cls_a.get("relational_salience", "")
+    relational_b = cls_b.get("relational_salience", "")
+    if relational_a == "relationship_defining" or relational_b == "relationship_defining":
+        return "flag_only"
 
     # load_bearing: never auto-deprecate
     if utility_a == "load_bearing" or utility_b == "load_bearing":
@@ -586,6 +610,8 @@ def _check_dormancy(
         if cls.get("relevance") == "dormant":
             continue
         if cls.get("utility") == "load_bearing":
+            continue
+        if cls.get("relational_salience") == "relationship_defining":
             continue
 
         # Already flagged

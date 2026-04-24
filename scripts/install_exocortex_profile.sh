@@ -114,9 +114,11 @@ EXT_SRC="$SCRIPT_DIR/extensions"
 EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/python"
 
 # before_main_llm_call
+docker cp "$EXT_SRC/before_main_llm_call/_01_backend_standby_gate.py" "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_11_belief_state_tracker.py" "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/slot_taxonomy.json"          "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_15_htn_plan_selector.py"    "$EXT_DEST/before_main_llm_call/"
+docker cp "$EXT_SRC/before_main_llm_call/htn_plan_library.json"       "$EXT_DEST/before_main_llm_call/"
 docker cp "$EXT_SRC/before_main_llm_call/_20_context_watchdog.py"     "$EXT_DEST/before_main_llm_call/"
 # Proactive Reasoning Supervisor — injection hook (v1.6 source path)
 docker cp "$EXT_SRC/python/before_main_llm_call/_12_proactive_supervisor.py" "$EXT_DEST/before_main_llm_call/"
@@ -129,7 +131,9 @@ docker cp "$EXT_SRC/error_format/_30_failure_tracker.py"   "$EXT_DEST/error_form
 docker cp "$EXT_SRC/hist_add_before/_11_working_memory.py" "$EXT_DEST/hist_add_before/"
 
 # message_loop_end
-docker cp "$EXT_SRC/message_loop_end/_50_supervisor_loop.py" "$EXT_DEST/message_loop_end/"
+docker cp "$EXT_SRC/message_loop_end/_28_backend_standby.py"  "$EXT_DEST/message_loop_end/"
+docker cp "$EXT_SRC/message_loop_end/_29_stuck_delivery.py"   "$EXT_DEST/message_loop_end/"
+docker cp "$EXT_SRC/message_loop_end/_50_supervisor_loop.py"  "$EXT_DEST/message_loop_end/"
 
 # message_loop_prompts_after
 docker cp "$EXT_SRC/message_loop_prompts_after/_16_tool_registry.py"           "$EXT_DEST/message_loop_prompts_after/"
