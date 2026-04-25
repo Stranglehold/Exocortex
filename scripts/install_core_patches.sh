@@ -315,4 +315,26 @@ else
   echo "[PATCH] WARNING: $GATE_SRC not found — skipped."
 fi
 
+# ── 9. Memory consolidation: timeout + UI noise fix ──────────────────────────
+# A0's default memory_consolidation.py uses PrintStyle().error() for timeout
+# and exception paths, surfacing background-task failures into the agent's
+# visible UI. Also uses a 60-second timeout that is too short when the local
+# model is busy during inference.
+#
+# Fix: 60s → 180s timeout, PrintStyle().error() → logging.warning() for the
+# two timeout/exception handlers in process_new_memory().
+
+MEM_CON_SRC="$PATCH_DIR/plugins/_memory/helpers/memory_consolidation.py"
+MEM_CON_DST="/a0/plugins/_memory/helpers/memory_consolidation.py"
+MEM_CON_PYCACHE="/a0/plugins/_memory/helpers/__pycache__"
+
+if [ -f "$MEM_CON_SRC" ]; then
+  docker cp "$MEM_CON_SRC" "$CONTAINER:$MEM_CON_DST"
+  _exec "$CONTAINER" bash -c "rm -rf '$MEM_CON_PYCACHE'" 2>/dev/null || true
+  _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$MEM_CON_DST' && echo '[PATCH] memory_consolidation.py OK'"
+  echo "[PATCH] plugins/_memory/helpers/memory_consolidation.py deployed (timeout 180s, errors silent)."
+else
+  echo "[PATCH] WARNING: $MEM_CON_SRC not found — skipped."
+fi
+
 echo "[PATCH] Done. Restart agent-zero or start a fresh chat to load changes."
