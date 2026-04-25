@@ -27,7 +27,8 @@ log.setLevel(logging.INFO)
 
 DB_URL      = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
 LLM_URL     = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL   = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+from llm_config import get_llm_model as _get_llm_model
+LLM_MODEL   = _get_llm_model()
 FAISS_PATH  = os.environ.get("OSS_FAISS_PATH", "/app/data/faiss/claims.index")
 
 # Cosine similarity threshold: above this, two claims are semantically close

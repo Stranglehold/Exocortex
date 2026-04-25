@@ -33,7 +33,8 @@ log.setLevel(logging.INFO)
 
 DB_URL    = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
 LLM_URL   = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+from llm_config import get_llm_model as _get_llm_model
+LLM_MODEL = _get_llm_model()
 EMB_MODEL = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # Two elements are treated as the same element if their embedding cosine >= this

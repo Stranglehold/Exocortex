@@ -95,6 +95,35 @@ REGISTER_SHIFT_DOMAINS = {"orientation", "meta_cognitive", "philosophical"}
 # Register-shift domains can still appear as secondary with 1 signal.
 REGISTER_SHIFT_MIN_CONFIDENCE = 2
 
+# ── Anti-signal suppression ────────────────────────────────────────────────────
+# Reflective and strategic keywords suppress technical domain scores to prevent
+# BST from classifying reflective questions ("what do you think?") as bugfix or
+# coding because those words happened to appear in the context.
+#
+# Suppression is domain-pair aware: only technical execution domains are
+# suppressed, not research/investigation/analysis — a reflective question CAN
+# legitimately route to those.
+ANTI_SIGNAL_MAP: dict = {
+    "strategic": [
+        "perspective", "assessment", "how do you feel", "what do you think",
+        "overall", "biggest difference", "ranking", "priority",
+        "trade-off", "trade off", "vision", "direction", "roadmap",
+    ],
+    "reflective": [
+        "felt", "noticed", "experience", "lived", "from where you sit",
+        "what do you see", "how does it feel", "observation",
+        "looking back", "stepping back", "pausing",
+    ],
+}
+ANTI_SIGNAL_SUPPRESSED_DOMAINS: frozenset = frozenset({
+    "bugfix", "coding", "planning", "system_admin",
+})
+ANTI_SIGNAL_MULTIPLIER = 0.5
+
+# Confidence decay: after this many consecutive turns with no reinforcing
+# signals for the current compound, halve momentum each additional turn.
+CONFIDENCE_DECAY_AFTER_TURNS = 3
+
 # Priority order for tiebreaking when two domains have identical scores.
 # v3.2: investigation demoted to fallback (priority 10). It only wins when
 # nothing more specific fires. Specific domains (coding, bugfix, planning)
@@ -899,47 +928,84 @@ class BeliefStateTracker(Extension):
 
             # ── Compound classification ───────────────────────────────────────
             scores      = _score_all_domains(classification_text)
+
+            # ── Anti-signal suppression ───────────────────────────────────────
+            # Applied BEFORE compound extraction so they can break momentum.
+            # One hit per category is enough to trigger suppression.
+            _anti_hits = 0
+            for _cat_patterns in ANTI_SIGNAL_MAP.values():
+                for _pat in _cat_patterns:
+                    if _pat.lower() in classification_text.lower():
+                        _anti_hits += 1
+                        break
+
+            if _anti_hits > 0:
+                scores = [
+                    (d, int(s * ANTI_SIGNAL_MULTIPLIER), p)
+                    if d in ANTI_SIGNAL_SUPPRESSED_DOMAINS else (d, s, p)
+                    for d, s, p in scores
+                ]
+                # Remove domains that suppression zeroed out
+                scores = [(d, s, p) for d, s, p in scores if s > 0]
+                scores.sort(key=lambda x: (-x[1], DOMAIN_PRIORITY.get(x[0], 99)))
+                print(
+                    f"[BST] Anti-signal ({_anti_hits} cat): suppressed "
+                    f"{[d for d in ANTI_SIGNAL_SUPPRESSED_DOMAINS]}",
+                    flush=True,
+                )
+
             new_primary, new_secondary = _extract_compound(scores)
 
             # Load compound momentum state from agent store
             bst_store         = getattr(self.agent, "_bst_store", {}) or {}
             current_signature = bst_store.get("_compound_sig", "conversation")
             current_momentum  = bst_store.get("_compound_turns", 0)
+            _twr              = bst_store.get("_turns_without_reinforcement", 0)
 
             # Capture raw signature before momentum for hold/break logging
             raw_signature = _format_signature(new_primary, new_secondary)
 
-            # ── Zero-signal momentum reset (v3.5) ────────────────────────────
+            # ── Zero-signal momentum reset (v3.6) ────────────────────────────
             # Two conditions that each independently break compound momentum:
             #
             # Condition A (all-silent): ALL compound domains have zero signals.
             # Classic case: coding task → file ops, no coding/planning signals.
             #
-            # Condition B (domain-shift): The top-scoring new domain is NOT in
-            # the current compound AND scores >= 2 signals. Catches the case
-            # where e.g. "investigation" scores 3+ on a geopolitical task but
-            # "planning" still scores 1 from the word "strategy" — the compound
-            # would otherwise hold because planning is in current_domains.
-            # Threshold of 2 prevents single-signal noise from breaking momentum.
+            # Condition B (domain-shift): Challenger-beats-champion model.
+            # The top-scoring domain OUTSIDE the current compound scores >= 1
+            # AND scores >= the top domain INSIDE the compound. Ties go to the
+            # challenger — momentum already provides inertia for the current
+            # compound, so equal evidence should yield to the incoming domain.
+            #
+            # Fixes the v3.5 failure case: a geopolitical message scores
+            # analysis=1 ("analyze") and planning=1 ("strategy"). Planning wins
+            # the priority tiebreaker and IS in the current compound, so neither
+            # v3.5 condition fired. With v3.6, analysis(1) >= planning(1) →
+            # outside challenger matches incumbent → reset fires.
             if current_momentum >= MOMENTUM_THRESHOLD and current_signature != "conversation":
                 current_domains = _parse_signature(current_signature)
                 scored_domains  = {d for d, score, _ in scores if score > 0}
 
                 all_silent = not current_domains.intersection(scored_domains)
 
-                dominant_domain = scores[0][0] if scores else ""
-                dominant_score  = scores[0][1] if scores else 0
+                non_compound = [(d, s) for d, s, _ in scores if d not in current_domains]
+                in_compound  = [(d, s) for d, s, _ in scores if d in current_domains]
+                top_outside  = non_compound[0][1] if non_compound else 0
+                top_inside   = in_compound[0][1]  if in_compound  else 0
+                top_outside_domain = non_compound[0][0] if non_compound else ""
                 domain_shift = (
-                    bool(dominant_domain)
-                    and dominant_domain not in current_domains
-                    and dominant_score >= 2
+                    top_outside >= 1
+                    and top_outside >= top_inside
                 )
 
                 if all_silent or domain_shift:
-                    reason = (
-                        "all-silent" if all_silent
-                        else f"domain-shift ({dominant_domain} score={dominant_score})"
-                    )
+                    if all_silent:
+                        reason = "all-silent"
+                    else:
+                        reason = (
+                            f"domain-shift ({top_outside_domain} outside={top_outside}"
+                            f" vs in-compound={top_inside})"
+                        )
                     print(
                         f"[BST] Zero-signal reset [{reason}]: {current_signature} "
                         f"({current_momentum} turns) → clearing momentum.",
@@ -954,6 +1020,31 @@ class BeliefStateTracker(Extension):
                         ),
                     )
                     current_momentum = 0
+
+            # ── Confidence decay ──────────────────────────────────────────────
+            # After CONFIDENCE_DECAY_AFTER_TURNS consecutive turns with no signals
+            # for the active compound, halve momentum each turn. Decays stale
+            # domain lock without fully resetting on the first quiet turn.
+            if current_signature != "conversation" and current_momentum > 0:
+                _current_domains = _parse_signature(current_signature)
+                _scored_set      = {d for d, s, _ in scores if s > 0}
+                _domain_hits     = len(_current_domains & _scored_set)
+
+                if _domain_hits == 0:
+                    _twr += 1
+                else:
+                    _twr = 0
+
+                if _twr >= CONFIDENCE_DECAY_AFTER_TURNS:
+                    _before = current_momentum
+                    current_momentum = max(0, current_momentum // 2)
+                    print(
+                        f"[BST] Confidence decay: {_twr} turns no reinforcement, "
+                        f"momentum {_before}→{current_momentum}",
+                        flush=True,
+                    )
+            else:
+                _twr = 0
 
             # Apply compound momentum
             final_primary, final_secondary, final_signature, final_momentum = \
@@ -1036,10 +1127,11 @@ class BeliefStateTracker(Extension):
             # Persist compound momentum state and user message count
             if not hasattr(self.agent, "_bst_store") or self.agent._bst_store is None:
                 self.agent._bst_store = {}
-            self.agent._bst_store["_compound_sig"]   = final_signature
-            self.agent._bst_store["_compound_turns"] = final_momentum
-            self.agent._bst_store["_user_msg_count"] = user_msg_count
-            self.agent._bst_store["_complexity"]      = complexity
+            self.agent._bst_store["_compound_sig"]               = final_signature
+            self.agent._bst_store["_compound_turns"]             = final_momentum
+            self.agent._bst_store["_user_msg_count"]             = user_msg_count
+            self.agent._bst_store["_complexity"]                  = complexity
+            self.agent._bst_store["_turns_without_reinforcement"] = _twr
 
             # Write to extras_persistent (backward-compat key + new compound key)
             ep = getattr(loop_data, "extras_persistent", None)

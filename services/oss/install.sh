@@ -16,7 +16,7 @@ cd "$SCRIPT_DIR"
 export OSS_DB_PASSWORD="${OSS_DB_PASSWORD:-oss_admin_dev_password}"
 export OSS_ANALYST_TOKEN="${OSS_ANALYST_TOKEN:-dev_analyst_token}"
 export OSS_LLM_URL="${OSS_LLM_URL:-http://host.docker.internal:1234/v1}"
-export OSS_LLM_MODEL="${OSS_LLM_MODEL:-qwen2.5-14b-instruct}"
+export OSS_LLM_MODEL="${OSS_LLM_MODEL:-}"
 export OSS_EMBEDDING_MODEL="${OSS_EMBEDDING_MODEL:-all-MiniLM-L6-v2}"
 export OSS_INGEST_INTERVAL_MINUTES="${OSS_INGEST_INTERVAL_MINUTES:-30}"
 

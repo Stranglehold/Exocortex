@@ -42,7 +42,8 @@ def _strip_thinking(raw: str) -> str:
 
 DB_URL        = os.environ.get("OSS_DB_URL", "postgresql://oss_admin:oss_admin_dev_password@localhost:5433/oss")
 LLM_URL       = os.environ.get("OSS_LLM_URL", "http://localhost:1234/v1")
-LLM_MODEL     = os.environ.get("OSS_LLM_MODEL", "qwen2.5-14b-instruct")
+from llm_config import get_llm_model as _get_llm_model
+LLM_MODEL     = _get_llm_model()
 # Separate LLM config for ingestion tasks — point at a lighter/faster model.
 # Defaults to same as main LLM_URL/MODEL if not set.
 INGEST_LLM_URL   = os.environ.get("OSS_LLM_URL_INGEST",   LLM_URL)
