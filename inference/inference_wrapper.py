@@ -420,10 +420,15 @@ def create_app(config: dict) -> FastAPI:
             len(llm.tokenize((m.get("content", "") or "").encode())) + 8
             for m in messages
         ) + 16  # global template overhead
-        if prompt_tokens > ctx_size - 256:
+        # Reserve headroom for the full max_tokens output budget plus a small
+        # structural margin.  The original 256-token margin was far too small —
+        # a 50k-token prompt with max_tokens=16384 and ctx=65536 would pass the
+        # check but then truncate mid-generation when output + prompt > ctx.
+        _output_budget = max_tokens + 256
+        if prompt_tokens > ctx_size - _output_budget:
             print(
                 f"[WRAPPER] Context window pre-check failed: ~{prompt_tokens} prompt tokens, "
-                f"context is {ctx_size}. Returning 400.",
+                f"context is {ctx_size}, output budget is {_output_budget}. Returning 400.",
                 flush=True,
             )
             return JSONResponse(
@@ -431,8 +436,8 @@ def create_app(config: dict) -> FastAPI:
                 content={
                     "error": {
                         "message": (
-                            f"Prompt too long: ~{prompt_tokens} tokens exceeds "
-                            f"context window of {ctx_size}. "
+                            f"Prompt too long: ~{prompt_tokens} tokens leaves only "
+                            f"{ctx_size - prompt_tokens} for output (need {_output_budget}). "
                             "Agent Zero should compress history before retrying."
                         ),
                         "type": "context_length_exceeded",

@@ -142,6 +142,25 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                         data["tool_name"] = "text_editor:patch"
                     else:
                         data["tool_name"] = "text_editor:read"
+                # Detect response text truncation: text field ends with ':' or ':\n'
+                # which means the model was about to continue (file path, list, etc.)
+                # but the response was cut off by the max_tokens limit.
+                # Append a visible marker so the agent sees it on the next turn.
+                if data.get("tool_name") == "response":
+                    text = data.get("tool_args", {}).get("text", "")
+                    if text.rstrip().endswith(":"):
+                        import sys
+                        print(
+                            "[EXTRACT-TOOLS] Response text ends with ':' — likely truncated "
+                            "by max_tokens. Appending truncation notice.",
+                            file=sys.stderr, flush=True,
+                        )
+                        data["tool_args"]["text"] = (
+                            text.rstrip()
+                            + "\n\n[SYSTEM NOTICE: Response appears truncated at this point. "
+                            "If you intended to write a file, use write_file first, then call "
+                            "response with the file path.]"
+                        )
                 return data
         except Exception:
             # Parsing failed. Check whether this looks like a truncated large-payload
