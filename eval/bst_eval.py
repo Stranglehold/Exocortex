@@ -44,8 +44,8 @@ import importlib.util
 def _bst_path_default() -> str:
     """Auto-detect BST path: inside container or on Windows host."""
     if os.path.exists("/a0"):
-        # Running inside Agent Zero container
-        return "/a0/python/extensions/before_main_llm_call/_11_belief_state_tracker.py"
+        # Running inside Agent Zero container — profile path (Option 3, highest priority)
+        return "/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_11_belief_state_tracker.py"
     else:
         # Running on Windows host — path relative to this file's parent
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,11 +67,14 @@ def _load_bst(bst_path: str):
     """
     # Mock Agent Zero framework imports before loading the module.
     # The BST uses: from agent import LoopData
-    #               from python.helpers.extension import Extension
+    #               from helpers.extension import Extension
     # Neither is needed for the pure classification functions.
     mock_agent = MagicMock()
     mock_agent.LoopData = MagicMock  # type: ignore
     sys.modules.setdefault("agent", mock_agent)
+    sys.modules.setdefault("helpers", MagicMock())
+    sys.modules.setdefault("helpers.extension", MagicMock())
+    # Legacy: keep python.helpers mocks in case older BST versions are loaded
     sys.modules.setdefault("python", MagicMock())
     sys.modules.setdefault("python.helpers", MagicMock())
     sys.modules.setdefault("python.helpers.extension", MagicMock())
@@ -194,17 +197,33 @@ TEST_CASES = [
     (
         "install the service and configure the firewall rules",
         "system_admin", None,
-        "system_admin: install + service + firewall"
+        "system_admin: install + firewall (service narrowed to verb-phrase v3.8)"
     ),
     (
         "check the permissions on the mount point and fix with chmod",
         "system_admin", None,
-        "system_admin: permission + mount + chmod"
+        "system_admin: permission + mount_point + chmod"
     ),
     (
         "the daemon won't start, check systemctl status",
         "system_admin", None,
         "system_admin: daemon + systemctl"
+    ),
+    # v3.8 false-positive guards: narrowed service/network/mount prevent coding false secondary
+    (
+        "build a service class that wraps the REST API calls",
+        "coding", None,
+        "v3.8: 'service class' → service no longer bare signal; coding wins cleanly"
+    ),
+    (
+        "implement a neural network with three hidden layers",
+        "coding", None,
+        "v3.8: 'neural network' → network phrase doesn't match; coding only, no sysadmin secondary"
+    ),
+    (
+        "check network connectivity before the service restart",
+        "system_admin", None,
+        "v3.8: network connectivity + service restart both match narrowed phrases; sysadmin correct"
     ),
 
     # ── planning ──────────────────────────────────────────────────────────────
@@ -279,8 +298,7 @@ TEST_CASES = [
     (
         "list the files in the extensions directory",
         "file_ops", None,
-        "KNOWN GAP: signal is r'\\blist\\s+(?:files|dir...)\\b' -- 'the' breaks it. "
-        "Fix: add (?:the\\s+)? to signal. Currently classifies as conversation."
+        "file_ops: list the files — signal has (?:the\\s+)? so this should pass"
     ),
     (
         "read the file and display the output",
@@ -370,8 +388,8 @@ TEST_CASES = [
     ),
     (
         "review the progress and plan the next steps",
-        "analysis", "planning",
-        "compound: tie(analysis=1,planning=1), priority: analysis=2 wins"
+        "planning", "analysis",
+        "compound: tie(analysis=1,planning=1), priority: planning=3 wins over analysis=4"
     ),
     (
         "commit the benchmark results to the repo",

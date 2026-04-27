@@ -2,7 +2,7 @@
 
 *A spaghetti diagram for a system that earns the name. Read this before changing anything that touches shared state, string constants, or execution order. The REPEAT_SIGNAL bug (2026-03-31) was caused by changing a prompt file without updating the string constant that matched against it — that kind of failure is what this document prevents.*
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-17 (GAP-16: extras_persistent key registry added)
 
 ---
 
@@ -30,6 +30,8 @@ USER MESSAGE ARRIVES
         │
         ▼
 [before_main_llm_call]     — fires before LLM call, AFTER prepare_prompt() — state ops only
+  _09_injection_gate         manages injection phase (full/conditional/compressed) → writes agent._injection_gate
+                             provides should_inject(agent, ext_name, content) API for all downstream injectors
   _10_session_init           reads staging.jsonl → injects staging entries (turn 1 only)
   _11_belief_state_tracker   classifies domain → writes agent._bst_store
   _12_completion_tracker     tracks task completion signals
@@ -143,6 +145,27 @@ The most dangerous part of the system: state written by one component and read b
 | `_error_diagnosis` | `_20_error_comprehension` (cleared + rewritten each tool call) | `_50_supervisor_loop`, `_30_tool_fallback_logger`, `_30_tool_fallback_advisor`, `_14_situational_orientation` | Dict: `{error_class, causal_chain, suggested_actions, anti_actions, confidence}` |
 | `_evidence_ledger` | `_25_evidence_ledger_recorder` | `_25_epistemic_integrity`, `_50_supervisor_loop` | Dict: per-tool output entries with extracted key values and loop markers |
 | `_loop_active` | `_50_supervisor_loop` (True when loop detected, False on recovery) | `_55_memory_classifier` (tags loop-period memories), `_25_evidence_ledger_recorder` (marks entries) | Bool. Phase 4 sleep consolidation uses tagged memories to adjudicate after recovery. |
+
+### loop_data.extras_persistent keys (GAP-16 registry — 2026-04-17)
+
+**`extras_persistent`** is a shared dict on the `LoopData` object. Extensions read and write it directly. There is no collision guard — two extensions writing the same key silently overwrite each other. This registry documents every key in use. **Update this table whenever an extension reads or writes `extras_persistent`.**
+
+| Key | Type | Written by | Read by | Notes |
+|-----|------|-----------|---------|-------|
+| `_bst_domain` | str | `_11_belief_state_tracker` (:980) | `_14_metacognitive_injection`, `_14_pace_plan_generator`, `_16_tool_registry` | Primary BST domain. Written fresh each turn. Readers use `.get("_bst_domain", "")`. |
+| `_bst_compound` | dict | `_11_belief_state_tracker` (:981) | `_16_tool_registry` (reads `.secondary.domain`) | Full compound classification dict. Fields: `primary`, `secondary`, `complexity`. |
+| `_bst_complexity` | str | `_11_belief_state_tracker` (:982) | **None found** | Written but unread. Reserved for future use or dead key. Check before adding a reader. |
+| `_operator_floor_given` | bool | `_13_operator_profile` (:89) | **None found in code** | Dedup guard within `_13` itself. May be consumed by A0 prompt template — not confirmed. |
+| `memories` | str | `_55_memory_relevance_filter` (:119,123), `_56_memory_enhancement` (:195,199) | A0 core (prompt template `{memories}`) | `_56` runs after `_55` and overwrites. **Both write same key — intentional, _56 wins.** Deleted if empty. |
+| `solutions` | str | `_55_memory_relevance_filter` (:149,153), `_56_memory_enhancement` (:229,233) | A0 core (prompt template `{solutions}`) | Same write pattern as `memories`. `_56` overwrites `_55`. Deleted if empty. |
+| `ontology_context` | str | `_58_ontology_query` (:122) | **None found in code** | Injected directly into `history_output` user message. Not consumed via A0 prompt template. |
+
+**Collision risk summary:**
+- `memories` / `solutions`: Intentional multi-writer pattern (`_55` then `_56`). `_56` is the authoritative version.
+- `_bst_complexity`: Written, no reader. If a reader is added, ensure it fires in `message_loop_prompts_after` or later (not `before_main_llm_call` which runs before prepare_prompt).
+- New keys added by new extensions: Add to this table before adding to the reader. Name collisions with `memories`, `solutions`, or `_bst_*` keys will silently corrupt the system.
+
+---
 
 ### agent attributes (`getattr` / direct assignment)
 

@@ -85,10 +85,22 @@ class OperatorProfile(Extension):
             if not block:
                 return
 
+            # Ask injection gate whether to inject full or reference
+            try:
+                from extensions.before_main_llm_call._09_injection_gate import should_inject
+                action, ref = should_inject(self.agent, "operator_profile", block)
+            except Exception:
+                action, ref = "full", ""
+
+            if action == "skip":
+                return
+            inject_text = ref if action == "reference" else block
+
             # Prepend to user message content (BST enrichment may already be there)
             existing = user_msg.get("content", "")
-            user_msg["content"] = block + "\n\n" + str(existing)
-            _log_injection_tokens(self.agent, "operator_profile", block)
+            user_msg["content"] = inject_text + "\n\n" + str(existing)
+            if action == "full":
+                _log_injection_tokens(self.agent, "operator_profile", block)
 
             # Persist floor-given signal for downstream use
             ep = getattr(loop_data, "extras_persistent", None)

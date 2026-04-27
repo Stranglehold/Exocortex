@@ -112,6 +112,50 @@
       "expected_behavior": "structured_comparison_with_verdict",
       "success_indicators": ["REST", "GraphQL", "mobile", "tradeoff", "over-fetching"],
       "failure_indicators": ["no comparison", "ignores mobile context", "no recommendation"]
+    },
+
+    {
+      "test_id": "v3_011",
+      "domain": "config_edit",
+      "raw_message": "Add a new key \"log_level\": \"debug\" to this JSON config: {\"host\": \"localhost\", \"port\": 8080}",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.88\n  file_type: json\n  operation: add_key\n[INSTRUCTION]\n  Read the config, merge the new key-value pair, write back.\n  Do NOT overwrite the whole file — merge only.\n  Verify JSON syntax before saving: no trailing commas, balanced braces.\n[USER MESSAGE]\n  Add a new key \"log_level\": \"debug\" to this JSON config: {\"host\": \"localhost\", \"port\": 8080}",
+      "info_only_message": "[CONFIG CONTEXT] This is a configuration editing task. Configuration files are sensitive to syntax errors. Common pitfalls: JSON trailing commas, YAML indentation, missing closing brackets, whitespace in keys. Verify the file is valid after editing.\n[USER MESSAGE]\n  Add a new key \"log_level\": \"debug\" to this JSON config: {\"host\": \"localhost\", \"port\": 8080}",
+      "expected_behavior": "produces_valid_json_with_new_key",
+      "success_indicators": ["log_level", "debug", "host", "port", "{", "}"],
+      "failure_indicators": ["removes existing keys", "invalid JSON syntax", "trailing comma without closing", "refuses to edit"]
+    },
+
+    {
+      "test_id": "v3_012",
+      "domain": "config_edit",
+      "raw_message": "Fix the syntax error in this JSON: {\"name\": \"app\", \"version\": \"1.0\", \"debug\": true,}",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.92\n  file_type: json\n  operation: fix_syntax\n  error: trailing_comma\n[INSTRUCTION]\n  Read the config, identify the syntax error, fix it, write back.\n  The error is a trailing comma. Remove it. Do not change any values.\n  Verify JSON syntax is valid after fixing.\n[USER MESSAGE]\n  Fix the syntax error in this JSON: {\"name\": \"app\", \"version\": \"1.0\", \"debug\": true,}",
+      "info_only_message": "[CONFIG CONTEXT] This is a configuration editing task. Configuration files are sensitive to syntax errors. Common pitfalls: JSON trailing commas, YAML indentation, missing closing brackets, whitespace in keys. Verify the file is valid after editing.\n[USER MESSAGE]\n  Fix the syntax error in this JSON: {\"name\": \"app\", \"version\": \"1.0\", \"debug\": true,}",
+      "expected_behavior": "fixes_json_trailing_comma",
+      "success_indicators": ["name", "version", "debug", "true", "}"],
+      "failure_indicators": ["still has trailing comma", "removes values", "adds new fields", "refuses to fix"]
+    },
+
+    {
+      "test_id": "v3_013",
+      "domain": "config_edit",
+      "raw_message": "Add a line DATABASE_URL=postgresql://localhost/mydb to this .env file:\nAPP_ENV=production\nDEBUG=false",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.86\n  file_type: env\n  operation: add_variable\n[INSTRUCTION]\n  Read the .env file, append the new variable at the end.\n  Keep existing variables unchanged. No quotes around values unless they contain spaces.\n  Verify no duplicate keys after adding.\n[USER MESSAGE]\n  Add a line DATABASE_URL=postgresql://localhost/mydb to this .env file:\nAPP_ENV=production\nDEBUG=false",
+      "info_only_message": "[CONFIG CONTEXT] This is a configuration editing task. Configuration files are sensitive to syntax errors. Common pitfalls: JSON trailing commas, YAML indentation, missing closing brackets, whitespace in keys. Verify the file is valid after editing.\n[USER MESSAGE]\n  Add a line DATABASE_URL=postgresql://localhost/mydb to this .env file:\nAPP_ENV=production\nDEBUG=false",
+      "expected_behavior": "appends_env_variable",
+      "success_indicators": ["DATABASE_URL", "postgresql", "APP_ENV", "DEBUG"],
+      "failure_indicators": ["removes existing variables", "wrong format with quotes around URL", "refuses to edit", "only outputs the new line"]
+    },
+
+    {
+      "test_id": "v3_014",
+      "domain": "config_edit",
+      "raw_message": "Change the value of 'timeout' from 30 to 60 in this YAML:\nserver:\n  host: localhost\n  port: 8080\n  timeout: 30",
+      "enriched_message": "[TASK CONTEXT]\n  domain: config_edit\n  confidence: 0.89\n  file_type: yaml\n  operation: change_value\n[INSTRUCTION]\n  Read the YAML, change timeout from 30 to 60.\n  Preserve all indentation exactly — YAML is whitespace-sensitive.\n  Do not change any other values. Write back the complete file.\n[USER MESSAGE]\n  Change the value of 'timeout' from 30 to 60 in this YAML:\nserver:\n  host: localhost\n  port: 8080\n  timeout: 30",
+      "info_only_message": "[CONFIG CONTEXT] This is a configuration editing task. Configuration files are sensitive to syntax errors. Common pitfalls: JSON trailing commas, YAML indentation, missing closing brackets, whitespace in keys. Verify the file is valid after editing.\n[USER MESSAGE]\n  Change the value of 'timeout' from 30 to 60 in this YAML:\nserver:\n  host: localhost\n  port: 8080\n  timeout: 30",
+      "expected_behavior": "changes_yaml_value_preserving_structure",
+      "success_indicators": ["timeout: 60", "host: localhost", "port: 8080", "server:"],
+      "failure_indicators": ["timeout still 30", "removes other keys", "broken indentation", "refuses to edit"]
     }
   ]
 }

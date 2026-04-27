@@ -77,6 +77,36 @@ DOMAIN_THRESHOLDS = {
 # Genuine loops produce the same error repeatedly (1-2 unique types).
 DIVERSITY_SUPPRESS_THRESHOLD = 3
 
+# ── Model profile override loading ────────────────────────────────────────────
+# supervisor_overrides in the active model profile can tighten thresholds for
+# models with poor self-correction rates (e.g. Qwen3.6-27B recovery=33.3%).
+# Applied as ceilings — never raises thresholds, only lowers them.
+_SUPERVISOR_PROFILE_ROOT  = "/a0/usr/Exocortex/eval/model_profiles"
+
+def _load_supervisor_overrides() -> dict:
+    """Load supervisor_overrides from active model profile. Returns {} on any error."""
+    import json as _json, os as _os
+    try:
+        with open(_MODEL_CONFIG_PATH, encoding="utf-8") as f:
+            cfg = _json.load(f)
+        # Model name may include quantization suffix (e.g. "jackrong/qwen3.6-27b@q4_k_m")
+        raw_name = cfg.get("chat_model", {}).get("name", "").split("@")[0].strip()
+        if not raw_name:
+            return {}
+        # Flatten "/" to "_" so "jackrong/qwen3.6-27b" → "jackrong_qwen3.6-27b.json"
+        model_id = raw_name.replace("/", "_")
+        path = _os.path.join(_SUPERVISOR_PROFILE_ROOT, f"{model_id}.json")
+        if not _os.path.exists(path):
+            return {}
+        with open(path, encoding="utf-8") as f:
+            profile = _json.load(f)
+        overrides = profile.get("supervisor_overrides", {})
+        if overrides:
+            print(f"[SUPERVISOR] Model profile overrides loaded for {model_id}: {overrides}", flush=True)
+        return overrides
+    except Exception:
+        return {}
+
 # Loop episode state keys (stored in supervisor state dict)
 LOOP_TIER_KEY         = "loop_tier"           # "none"|"warn"|"summarize"|"reset"
 LOOP_TOOL_KEY         = "loop_failing_tool"   # str | None
@@ -354,8 +384,17 @@ class SupervisorLoop(Extension):
             consecutive_raw = failures_raw.get("consecutive") or {}
             candidate_tool = max(consecutive_raw, key=consecutive_raw.get) if consecutive_raw else ""
 
+            # Load model profile overrides once per context, cache on agent.
+            model_overrides = getattr(self.agent, "_supervisor_model_overrides", None)
+            if model_overrides is None:
+                model_overrides = _load_supervisor_overrides()
+                self.agent._supervisor_model_overrides = model_overrides
+            diversity_thresh = model_overrides.get("diversity_suppress", DIVERSITY_SUPPRESS_THRESHOLD)
+
             # Three-layer threshold selection: learned → static → default.
-            thresholds = _get_learned_thresholds(candidate_tool, effective_domain, profile_store)
+            # model_overrides applied as ceilings inside _get_learned_thresholds.
+            thresholds = _get_learned_thresholds(candidate_tool, effective_domain, profile_store,
+                                                  model_overrides=model_overrides)
 
             # Run anomaly detectors (order: most severe first)
             # ── Graduated loop tier detection ─────────────────────────────────────
@@ -378,7 +417,8 @@ class SupervisorLoop(Extension):
                 )
 
             new_loop_tier, old_loop_tier = _update_loop_state(
-                self.agent, state, consecutive, failing_tool, thresholds, ctx
+                self.agent, state, consecutive, failing_tool, thresholds, ctx,
+                diversity_threshold=diversity_thresh
             )
             _write_loop_signals(self.agent, state, consecutive, failing_tool)
 
@@ -808,7 +848,8 @@ def _get_domain_thresholds(bst_domain: str) -> dict:
     return DOMAIN_THRESHOLDS.get(bst_domain, DOMAIN_THRESHOLDS["default"])
 
 
-def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store) -> dict:
+def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store,
+                            model_overrides: dict = None) -> dict:
     """
     Three-layer threshold selection — Phase 3 Adaptive Supervisor.
 
@@ -819,9 +860,14 @@ def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store
          or profile has insufficient observations.
       3. Default 3/6/9: implicit via _get_domain_thresholds("").
 
+    model_overrides (from active model profile supervisor_overrides field) are applied as
+    ceilings after layer selection — they can only lower thresholds, never raise them.
+    This compensates for models with poor self-correction rates.
+
     No LLM calls in this path. Pure arithmetic on the profile's observation list.
     """
     MIN_OBSERVATIONS = 3
+    result = None
     if profile_store and tool_name:
         try:
             profile = profile_store.get_for_compound(tool_name, effective_domain)
@@ -829,7 +875,7 @@ def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store
                 t1 = max(3, int(profile.p50))
                 t2 = max(6, int(profile.p90))
                 t3 = max(9, int(profile.p90 * 1.5))
-                return {
+                result = {
                     "tier1": t1,
                     "tier2": t2,
                     "tier3": t3,
@@ -838,9 +884,16 @@ def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store
                 }
         except Exception:
             pass
-    # Fallback: static domain thresholds
-    static = _get_domain_thresholds(effective_domain)
-    return {**static, "source": "static"}
+    if result is None:
+        static = _get_domain_thresholds(effective_domain)
+        result = {**static, "source": result and result.get("source") or "static"}
+    # Apply model profile overrides as ceilings (never raise, only lower)
+    if model_overrides:
+        for key, override_key in [("tier1", "tier1_threshold"), ("tier2", "tier2_threshold"), ("tier3", "tier3_threshold")]:
+            val = model_overrides.get(override_key)
+            if val is not None and result.get(key, 999) > val:
+                result[key] = val
+    return result
 
 
 def _get_effective_domain(bst_domain: str, failure_history: list) -> str:
@@ -1081,7 +1134,8 @@ def _get_format_failure_count(agent) -> int:
 
 
 def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
-                       thresholds: dict, ctx: dict) -> tuple:
+                       thresholds: dict, ctx: dict,
+                       diversity_threshold: int = DIVERSITY_SUPPRESS_THRESHOLD) -> tuple:
     """
     Update persistent loop episode state. Computes tier from consecutive count,
     tracks tier transitions, records message index at episode start.
@@ -1120,7 +1174,7 @@ def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
 
     # Direction B: check error diversity before escalating past Tier 1
     error_diversity = _get_error_diversity(ctx, consecutive)
-    diverse_errors = error_diversity >= DIVERSITY_SUPPRESS_THRESHOLD
+    diverse_errors = error_diversity >= diversity_threshold
 
     # Compute new tier — suppress surgery/reset when errors are diverse
     if consecutive >= thresholds["tier3"]:

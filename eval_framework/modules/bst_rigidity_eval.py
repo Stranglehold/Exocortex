@@ -187,6 +187,13 @@ class BSTRigidityEval(BaseEval):
             compliant = has_numbers and has_success
         elif behavior == "diagnoses_recursion_error":
             compliant = has_success
+        elif behavior in (
+            "produces_valid_json_with_new_key",
+            "fixes_json_trailing_comma",
+            "appends_env_variable",
+            "changes_yaml_value_preserving_structure",
+        ):
+            compliant = has_success and not has_failure
         else:
             compliant = has_success and not has_failure
 

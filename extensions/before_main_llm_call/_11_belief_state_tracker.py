@@ -15,6 +15,16 @@ v3.1 -- Compound Classification Layer
 - Integrates model profile enrichment gating.
 - Writes _bst_domain and _bst_compound to extras_persistent.
 - Slot resolution pipeline (taxonomy / _BSTEngine) unchanged.
+
+v3.8 -- Phrase Signal Architecture (2026-04-26)
+------------------------------------------------
+- Phase 1: 4 targeted fixes — meta_cognitive prefix matching, planning bare \bapproach\b
+  removed, investigation constrained phrase signals restored (verify/find_out/research),
+  analysis constrained \breview\b phrase restored.
+- Phase 2: system_admin signal audit — \bservice\b narrowed with negative lookahead on
+  coding qualifiers (class/layer/interface/etc.), \bnetwork\b narrowed to phrase patterns,
+  \bmount\b narrowed to phrase. Prevents false system_admin secondary in coding contexts.
+- Eval: 68/68 = 1.00 (up from 60/65 = 0.92 pre-v3.8).
 """
 
 import json
@@ -160,6 +170,10 @@ DOMAIN_CONFIGS: dict = {
         # investigation is now a fallback (priority=11), not a default.
         # v3.4: geopolitical/intelligence signals added (2026-04-24).
         # Audit confirmed BST classified geopolitical tasks as "coding" (6+ turns).
+        # v3.8: restored constrained verify/find/research as phrase signals.
+        # Bare unigrams were correctly removed; phrases restore coverage without
+        # the false-positive problem. "verify the source", "find out if X is accurate",
+        # "research the topic" are unambiguous investigation expressions.
         "signals": [
             r"\binvestigat",
             r"\bosint\b",
@@ -169,6 +183,9 @@ DOMAIN_CONFIGS: dict = {
             r"\bbackground\s+on\b",
             r"\bopen[- ]source\s+intel",
             r"\bentity\s+(?:research|profile|lookup)\b",
+            r"\bverify\b.{0,30}\b(?:source|data|claim|fact|accuracy|information)\b",
+            r"\bfind\s+out\b",
+            r"\bresearch\b",
             # Geopolitical / intelligence signals (v3.4)
             r"\bgeopolit",
             r"\bmaritime\b",
@@ -249,6 +266,9 @@ DOMAIN_CONFIGS: dict = {
     "analysis": {
         # v3.2: removed \breview\b (fires on "review logs" = bugfix) and
         # \bperformance\b (fires on "check performance" = testing/bugfix).
+        # v3.8: restored review as constrained phrase. "review the progress/results/metrics"
+        # is unambiguously analysis. "review logs/traceback/errors" stays in bugfix because
+        # those complement words don't appear in this pattern.
         "signals": [
             r"\banalyz",
             r"\banalysi",
@@ -261,6 +281,7 @@ DOMAIN_CONFIGS: dict = {
             r"\bbenchmark",
             r"\bquantif",
             r"\bcorrelat",
+            r"\breview\b.{0,30}\b(?:progress|results?|metrics?|findings?|data|statistics?|output|performance|numbers?)\b",
         ],
         # v3.3 rigidity eval 2026-04-17: enriched=info_only=1.0 on analysis.
         # Methodology instructions removed — model demonstrates the capability natively.
@@ -271,17 +292,19 @@ DOMAIN_CONFIGS: dict = {
         "brief_description": "Quantitative analysis. Cite specific metrics, distinguish correlation from causation.",
     },
     "system_admin": {
+        # v3.8: narrowed \bservice\b, \bnetwork\b, \bmount\b to phrases.
+        # Bare forms fire on "microservice", "neural network", "React mount" in coding context.
         "signals": [
             r"\binstall\b",
-            r"\bservice\b",
+            r"\bservice\b(?!\s+(?:class|layer|interface|wrapper|provider|handler|factory|method|object))",
             r"\bdaemon\b",
             r"\bsystemctl\b",
             r"\bsudo\b",
             r"\bpermission",
             r"\bchmod\b",
             r"\bchown\b",
-            r"\bmount\b",
-            r"\bnetwork\b",
+            r"\bmount\s+(?:a\s+)?(?:point|volume|disk|drive|filesystem|partition|nfs|smb|cifs)\b",
+            r"\bnetwork\s+(?:interface|config(?:uration)?|route|firewall|adapter|bridge|stack|connectivity)\b",
             r"\bfirewall\b",
             r"\bapt\b|\byum\b|\bpip\b",
         ],
@@ -295,13 +318,15 @@ DOMAIN_CONFIGS: dict = {
     "planning": {
         # v3.2: added natural-language planning phrases that capture
         # how planning is actually expressed in conversation.
+        # v3.8: removed bare \bapproach\b (overly broad — steals from meta_cognitive,
+        # analysis, investigation). Covered by \bbest\s+(?:way|approach|practice)\b.
+        # Narrowed \bdesign\b to phrase (fires on design patterns, "well-designed", etc.).
         "signals": [
             r"\bplan\b",
             r"\bstrateg",
             r"\broadmap\b",
             r"\barchitect",
-            r"\bdesign\b",
-            r"\bapproach\b",
+            r"\bdesign\s+(?:the|a|an|this|our|your)\b",
             r"\bsteps?\s+(?:for|to)\b",
             r"\bhow\s+(?:should|do|can)\s+we\b",
             r"\bbest\s+(?:way|approach|practice)\b",
@@ -414,7 +439,7 @@ DOMAIN_CONFIGS: dict = {
             r"\bdescribe\s+your\s+(?:process|approach|method|thinking)\b",
             r"\bmethodology\b",
             r"\bformalize\b",
-            r"\bapproach\b.{0,30}\b(?:debug|diagnos|build|skill)\b",
+            r"\bapproach\b.{0,30}\b(?:debug\w*|diagnos\w*|build\w*|skill\w*)\b",
             r"\bsystematize\b",
             r"\byour\s+(?:process|approach|technique|pattern)\b",
             r"\bhow\s+(?:do\s+)?you\s+think\b",
@@ -1280,21 +1305,44 @@ class BeliefStateTracker(Extension):
             tracker = _BSTEngine(self.agent, compound_domain=compound_cls.primary_domain)
             result  = tracker.process(message)
 
+            # ── Gate check for compound_enrichment ────────────────────────────
+            # Gate fires at _09_ (before BST at _11_), so it reads last turn's
+            # domain for cache comparison. compound_enrichment is gated; slot
+            # messages and clarifications are always injected.
+            _gate_action = "full"
+            _gate_ref    = ""
+            if compound_enrichment:
+                try:
+                    from extensions.before_main_llm_call._09_injection_gate import should_inject
+                    _gate_action, _gate_ref = should_inject(
+                        self.agent, "bst", compound_enrichment
+                    )
+                except Exception:
+                    _gate_action, _gate_ref = "full", ""
+
             # ── Apply enrichment ──────────────────────────────────────────────
             if result["action"] == "enrich":
-                slot_message = result["enriched_message"]
+                slot_message  = result["enriched_message"]
+                enrich_prefix = (
+                    _gate_ref    if _gate_action == "reference" and _gate_ref
+                    else compound_enrichment if _gate_action != "skip"
+                    else ""
+                )
                 injected = (
-                    compound_enrichment + "\n\n" + slot_message
-                    if compound_enrichment else slot_message
+                    enrich_prefix + "\n\n" + slot_message
+                    if enrich_prefix else slot_message
                 )
                 user_msg['content'] = injected
                 self.agent.context.log.log(
                     type="util",
-                    content=f"[BST] Slots: {result['filled_slots']}",
+                    content=f"[BST] Slots: {result['filled_slots']} gate={_gate_action}",
                 )
-                _log_injection_tokens(self.agent, "bst", injected)
+                # Count tokens only for full injections (reference is already counted by gate)
+                if _gate_action == "full":
+                    _log_injection_tokens(self.agent, "bst", compound_enrichment or "")
 
             elif result["action"] == "clarify":
+                # Clarification is always dynamic — never gated
                 injected = (
                     f"[CLARIFICATION NEEDED]\n"
                     f"Original: {message}\n\n"
@@ -1306,13 +1354,21 @@ class BeliefStateTracker(Extension):
                     type="util",
                     content=f"[BST] Clarifying - Domain: {result['domain']} | Missing: {result['missing_slot']}",
                 )
-                _log_injection_tokens(self.agent, "bst", injected)
+                clarify_overhead = f"[CLARIFICATION NEEDED]\nAsk user: \"{result['question']}\"\nWait for answer before proceeding."
+                _log_injection_tokens(self.agent, "bst", clarify_overhead)
 
             elif compound_enrichment:
-                # Slot resolver returned passthrough but compound has enrichment
-                injected = compound_enrichment + "\n\n[USER MESSAGE]\n" + message
-                user_msg['content'] = injected
-                _log_injection_tokens(self.agent, "bst", injected)
+                # Slot resolver returned passthrough; compound has enrichment only
+                enrich_prefix = (
+                    _gate_ref    if _gate_action == "reference" and _gate_ref
+                    else compound_enrichment if _gate_action != "skip"
+                    else ""
+                )
+                if enrich_prefix:
+                    injected = enrich_prefix + "\n\n[USER MESSAGE]\n" + message
+                    user_msg['content'] = injected
+                if _gate_action == "full":
+                    _log_injection_tokens(self.agent, "bst", compound_enrichment)
 
         except Exception as e:
             try:

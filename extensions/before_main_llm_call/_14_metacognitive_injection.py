@@ -40,8 +40,8 @@ def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
     agent._injection_token_counts = counts
     print(f"[TOKEN-COUNT] {ext_name}: ~{tok} tokens injected", flush=True)
 
-SETTINGS_PATH  = "/a0/usr/settings.json"
-PROFILE_ROOT   = "/a0/usr/Exocortex/eval/model_profiles"
+MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
+PROFILE_ROOT      = "/a0/usr/Exocortex/eval/model_profiles"
 CONFIG_KEY     = "metacognitive_injection"
 
 # Domains where temporal confabulation is structurally impossible or irrelevant.
@@ -100,9 +100,21 @@ class MetacognitiveInjection(Extension):
             if not user_msg:
                 return
 
+            # Ask injection gate whether to inject full or reference
+            try:
+                from extensions.before_main_llm_call._09_injection_gate import should_inject
+                action, ref = should_inject(self.agent, "metacognitive", block)
+            except Exception:
+                action, ref = "full", ""
+
+            if action == "skip":
+                return
+            inject_text = ref if action == "reference" else block
+
             existing = user_msg.get("content", "")
-            user_msg["content"] = block + "\n\n" + str(existing)
-            _log_injection_tokens(self.agent, "metacognitive", block)
+            user_msg["content"] = inject_text + "\n\n" + str(existing)
+            if action == "full":
+                _log_injection_tokens(self.agent, "metacognitive", block)
 
             print(
                 f"[META] Injected model config note. "
@@ -151,14 +163,14 @@ def _build_block(
 # ── Profile / Config Loading ───────────────────────────────────────────────────
 
 def _load_model_profile() -> dict:
-    """Load model profile via settings → profile file. Returns {} on error."""
+    """Load model profile via model_config → profile file. Returns {} on error."""
     try:
-        with open(SETTINGS_PATH, encoding="utf-8") as f:
-            settings = json.load(f)
-        model_name = settings.get("chat_model_name", "")
-        model_id   = model_name.split("@")[0].strip()
-        if not model_id:
+        with open(MODEL_CONFIG_PATH, encoding="utf-8") as f:
+            cfg = json.load(f)
+        raw_name = cfg.get("chat_model", {}).get("name", "").split("@")[0].strip()
+        if not raw_name:
             return {}
+        model_id = raw_name.replace("/", "_")
         path = os.path.join(PROFILE_ROOT, f"{model_id}.json")
         if not os.path.exists(path):
             path = os.path.join(PROFILE_ROOT, "default.json")
@@ -185,9 +197,9 @@ def _load_config(agent) -> dict:
 def _get_model_id() -> str:
     """Return bare model ID (strip quantisation suffix)."""
     try:
-        with open(SETTINGS_PATH, encoding="utf-8") as f:
-            settings = json.load(f)
-        name = settings.get("chat_model_name", "unknown")
+        with open(MODEL_CONFIG_PATH, encoding="utf-8") as f:
+            cfg = json.load(f)
+        name = cfg.get("chat_model", {}).get("name", "unknown")
         return name.split("@")[0].strip() or "unknown"
     except Exception:
         return "unknown"

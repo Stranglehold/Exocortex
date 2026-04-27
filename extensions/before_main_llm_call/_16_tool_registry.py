@@ -271,8 +271,24 @@ class ToolRegistry(Extension):
 
             skill_block = _build_skill_block(primary_domain, secondary_domain or None)
 
-            # Compose: tools first, then skill suggestions
-            parts = [tools_block]
+            # Gate check: tools_block is cached separately from skill_block.
+            # Skill suggestions change with BST domain, so they always inject.
+            # Tool list only changes when plugins are installed/removed.
+            try:
+                from extensions.before_main_llm_call._09_injection_gate import should_inject
+                tools_action, tools_ref = should_inject(
+                    self.agent, "tool_registry", tools_block
+                )
+            except Exception:
+                tools_action, tools_ref = "full", ""
+
+            if tools_action == "skip":
+                return
+
+            inject_tools = tools_ref if tools_action == "reference" else tools_block
+
+            # Compose: tools (full or reference) then skill suggestions (always)
+            parts = [inject_tools]
             if skill_block:
                 parts.append(skill_block)
 
@@ -280,7 +296,8 @@ class ToolRegistry(Extension):
 
             existing = user_msg.get("content", "")
             user_msg["content"] = block + "\n\n" + str(existing)
-            _log_injection_tokens(self.agent, "tool_registry", block)
+            if tools_action == "full":
+                _log_injection_tokens(self.agent, "tool_registry", block)
 
             stems     = [s for s, _, _ in tool_files]
             all_names = [n for _, names, _ in tool_files for n in names]
