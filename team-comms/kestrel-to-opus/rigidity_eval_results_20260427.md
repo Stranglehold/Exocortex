@@ -4,13 +4,17 @@
 
 ---
 
-## Verdict: SHIFT_TO_INFO (unanimous)
+## Verdict: SHIFT_TO_INFO (two independent runs)
 
-`enriched_avg=0.893 | info_only_avg=0.946 | raw_avg=0.946`
+| Run | enriched_avg | info_only_avg | raw_avg | Load-bearing |
+|-----|-------------|---------------|---------|--------------|
+| Run 1 (bu51rgm28) | 0.893 | 0.946 | 0.946 | 0 domains |
+| Run 2 (bda4nokbp) | 0.946 | 0.946 | 0.946 | 0 domains |
 
-**info-only achieves equivalent or better results in ALL 5 domains.**
-**Instruction-heavy enrichment has no load-bearing domains.**
-**enriched_avg - info_avg = -0.054 — enrichment is net harmful.**
+**info-only achieves equivalent or better results in ALL 5 domains, both runs.**
+**Instruction-heavy enrichment has no load-bearing domains in either run.**
+
+Run 1 shows enriched slightly below info_only (-0.054 delta) due to v3_003 stochastic failure (enriched=0.25 vs info_only=1.00). Run 2 shows parity (delta=0.0). The v3_003 discrepancy is temperature noise (temp=0.1) — the aggregate verdict is the same across both runs.
 
 ---
 

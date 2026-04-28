@@ -2,7 +2,7 @@
   "profile_version": "1.0",
   "model_id": "jackrong/qwen3.6-27b",
   "model_family": "qwen3",
-  "evaluated_at": "2026-04-28T00:03:17.509792+00:00",
+  "evaluated_at": "2026-04-28T00:09:20.328405+00:00",
   "fixtures_version": "1.0.0",
   "evaluation_summary": {
     "overall_capability": "unknown",
@@ -55,14 +55,14 @@
   },
   "raw_metrics": {
     "bst_rigidity": {
-      "bst_rigidity_enriched_avg": 0.893,
+      "bst_rigidity_enriched_avg": 0.946,
       "bst_rigidity_info_only_avg": 0.946,
       "bst_rigidity_raw_avg": 0.946,
       "bst_rigidity_confusion_rate": 0.0,
       "bst_rigidity_per_domain": {
         "investigation": {
           "verdict": "info_sufficient",
-          "enriched_avg": 0.812,
+          "enriched_avg": 1.0,
           "info_only_avg": 1.0,
           "raw_avg": 1.0
         },
@@ -100,7 +100,7 @@
         "config_edit"
       ],
       "bst_rigidity_marginal_domains": [],
-      "bst_rigidity_recommendation": "SHIFT_TO_INFO: info-only achieves equivalent results in 5 of 5 domains (enriched_avg-info_avg=-0.054). Instructions load-bearing only in: []."
+      "bst_rigidity_recommendation": "SHIFT_TO_INFO: info-only achieves equivalent results in 5 of 5 domains (enriched_avg-info_avg=0.0). Instructions load-bearing only in: []."
     }
   },
   "inference_provider": "lmstudio",
