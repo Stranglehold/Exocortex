@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-03-30
+**Last updated:** 2026-04-27
 
 ---
 
@@ -21,6 +21,8 @@
 | 2026-03-27 | Theme Engine Phases 1-3: nine themes, widget system, immersion layer (SVG textures, backdrop blur). In-browser editor at `/theme-editor`. Persistent at `/a0/usr/agents/agent0/themes/`. |
 | 2026-03-28 | Provider interface `max_tokens` patched from 4096 → 16384. Previous default was truncating all substantive responses. |
 | **2026-03-30** | **Document Library v2.0** — three-tier FAISS (collection/book/chunk) with two-stage routing search. Completely isolated from agent episodic memory. Scale-tested against 363-book catalog. Skills library expanded to 16 installable skills. |
+| 2026-04-26 | BST v3.8 — phrase signal architecture. `debug\w*` meta_cognitive prefix matching, planning bare `\bapproach\b` removed, investigation constrained phrase signals restored, `\bservice\b` narrowed with negative lookahead, `\bnetwork\b` → phrase patterns. Eval: 68/68 = 1.00. Qwen3.6-27B full model eval: tool_reliability + BST rigidity. Profile v1.1 at `eval_framework/profiles/`. |
+| **2026-04-27** | **Injection Gate** — `_09_injection_gate.py` with three-phase injection management (full/conditional/compressed). Four integrations shipped: BST enrichment, operator profile, metacognitive injection, tool registry. ~465 tokens/turn saved in conditional phase. Metacognitive injection settings.json bug fixed (was reading nonexistent key — meta block showed `unknown` for model and cutoff). Two model profile path bugs fixed: `confabulation_risk` and `disabled_domains` keys corrected. Qwen3.6-27B rigidity eval: SHIFT_TO_INFO verdict, two independent runs. Self-improvement engine first cycle: wiki structure deployed, 3 pages compiled, extension audit complete (56 files, 0 errors), mtime-cache utility written. |
 
 ---
 

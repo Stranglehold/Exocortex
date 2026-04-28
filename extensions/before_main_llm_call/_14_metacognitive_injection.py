@@ -81,8 +81,8 @@ class MetacognitiveInjection(Extension):
             profile  = _load_model_profile()
             temporal = profile.get("temporal", {})
             model_id = _get_model_id()
-            risk     = temporal.get("confabulation_risk", "unknown")
-            cutoff   = _format_cutoff(temporal.get("training_data_cutoff"))
+            risk     = profile.get("confabulation", {}).get("risk_level", "unknown")
+            cutoff   = _format_cutoff(profile.get("training_data_cutoff"))
 
             domain   = _get_bst_domain(loop_data, self.agent)
             skip_domains = set(cfg.get("skip_domains", list(STRUCTURAL_DOMAINS)))

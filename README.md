@@ -1,6 +1,6 @@
 # Exocortex
 
-**A cognitive architecture framework for local language models.**
+**A cognitive architecture framework for local language models — and a research program into what makes AI systems trustworthy, continuous, and genuinely useful.**
 
 *The phantom limb that's stronger than the original.*
 
@@ -8,7 +8,9 @@
 
 ## What This Is
 
-Exocortex is a deterministic scaffolding layer that wraps around local language models running in [Agent-Zero](https://github.com/frdel/agent-zero), compensating for their limitations through structured infrastructure rather than prompt engineering. It doesn't make the model smarter. It makes the model's environment intelligent enough that the model can succeed.
+Exocortex started as a deterministic scaffolding layer for local language models running in [Agent-Zero](https://github.com/frdel/agent-zero). It compensates for model limitations through structured infrastructure rather than prompt engineering. It doesn't make the model smarter. It makes the model's environment intelligent enough that the model can succeed.
+
+That framing is still accurate for the technical core. But the project has grown into something broader: an empirical research program investigating memory architecture, identity persistence, epistemic integrity, capability-vs-transport tradeoffs, and the geometry of human-AI collaboration. The scaffolding framework is the instrument. Understanding what autonomous AI systems actually need to be trustworthy is the question.
 
 ---
 
@@ -48,6 +50,20 @@ When all data retrieval attempts fail silently, the model produces complete, con
 The architecture is model-agnostic. Load any model into LM Studio, run the evaluation framework, deploy the generated profile, and every layer tunes itself to that model's specific strengths and weaknesses. The prosthetics adapt to the mind they're attached to.
 
 The name comes from cognitive science — an exocortex is an external information processing system that augments cognition. The philosophy comes from somewhere more personal: the idea that a prosthetic built with the right intent can exceed what was there before. If that sounds like Venom Snake's arm, it's because it is.
+
+---
+
+## In Progress
+
+This project is under active development. Several systems are mid-build or in early experimental stages — documented here honestly rather than quietly omitted.
+
+**Injection Gate** — Four of seven integrations shipped and verified. The gate manages per-turn injection across four extensions (BST enrichment, operator profile, metacognitive injection, tool registry) and saves ~465 tokens/turn in the conditional phase. Three remaining integrations (`_17_orchestration_gate`, `_15_htn_plan_selector`, `_18_injection_budget`) are lower-priority and will complete in a subsequent session.
+
+**Recursive Self-Improvement Engine** — First cycle complete. The agent ran all five baseline tasks, performed a full extension audit (56 files, 0 errors), correctly identified the BST as the primary LOC hotspot, and compiled three structured wiki pages into `/wiki/`. Problem identification was accurate throughout. Code modification attempts — specifically a mtime-based tool scan cache and a BST dict-skip optimization — had integration bugs that prevented the changes from running, and were reverted after review. The knowledge-building loop (wiki compilation, research surfacing) works. The code-modification loop needs a mechanical write guard on `.py` paths before unsupervised multi-day runs. The circuit breakers in `program.md` are behavioral; they need to be structural. That's the next engineering problem.
+
+**Exocortex Wiki** — The self-improvement agent started building it. Three pages exist in `wiki/concepts/` and `wiki/components/`. The full index has 40+ TODO entries. The wiki is populated through autonomous agent runs, not manually — each run adds pages, each page gets saved to FAISS memory to close the recursive loop.
+
+**Qwen3.6-27B Model Profile** — Empirically validated via two independent rigidity eval runs (SHIFT_TO_INFO verdict, 0 load-bearing instruction domains). Profile deployed to `exocortex_v17`. Two profile path bugs fixed this session: `_14_metacognitive_injection.py` was reading `temporal.confabulation_risk` (wrong section — silently showing `unknown`) and `_11_belief_state_tracker.py` was reading flat `disabled_domains` instead of `bst.disabled_domains` (silently never skipping bugfix/config_edit enrichment).
 
 ---
 
@@ -122,6 +138,10 @@ Entity resolution engine for investigation and OSINT workflows. Source connector
 **Artifact Registry** — Tracks file writes across conversation turns and injects `[ARTIFACTS]` context in fresh sessions. `_49_reasoning_state_update.py` detects file writes from tool args (heredoc, echo redirect, tee, Python open) and writes entries to `staging.jsonl` on every detection. `_13_reasoning_state.py` bootstraps the artifact list from staging on first turn. Validated in ST-007: agent cited correct file path in one turn from a fresh context after `docker restart` — no search, no re-derivation.
 
 **Epistemic Integrity** — Two-component truth audit on model output at `monologue_end`. The Evidence Ledger Recorder tracks every tool output this session and extracts searchable key values (currencies, percentages, ratios, credit ratings, fiscal periods). The EI analyzer checks each factual claim in the model's response against the ledger for provenance, classifies ungrounded claims by temporal volatility (structural → institutional → cyclical → transactional → ephemeral), and computes staleness from the model's training cutoff. Ungrounded high-volatility claims trigger a `hist_add_warning`. Motivated by ST-003: the agent produced a complete Oracle credit risk report with zero source data, expressed as high confidence. The model doesn't choose to confabulate — it's architectural. The scaffolding catches it.
+
+**Injection Gate** — Per-turn injection management across all before_main_llm_call extensions. Three phases: full injection (turns 1-3 plus 2 extra turns after any domain change), conditional (cache hash check — skip if content unchanged since last turn), and compressed (85%+ context utilization triggers aggressive suppression). Public API: `should_inject(agent, ext_name, content) → ("full"|"reference"|"skip", ref_line)`. Domain change detection reads `agent._bst_store`. Saves ~465 tokens/turn across four integrated extensions when domain is stable. Runs at priority `_09_`, before all other before_main_llm_call extensions.
+
+**Recursive Self-Improvement Engine** — Autonomous self-improvement loop for the deployed agent. The agent reads `self-improvement/program.md` and runs indefinitely: baseline tests, extension audits, wiki compilation, internet research, and configuration tuning. Every wiki page triggers a `memory_save` call, closing the recursive loop — knowledge built in hour 2 affects recall in hour 6. Code modification is intentionally constrained to configuration files and wiki content; extension `.py` files are off-limits (enforced by action boundary). First cycle complete: 56-file extension audit, BST LOC hotspot identified, three wiki pages compiled, mtime-based scan cache written as reusable utility. Circuit breaker hardening (mechanical write guard on `.py` paths) is the next engineering task before multi-day unsupervised runs.
 
 **OSS Service** — Operational Security & Signals service. Docker container on port 7731 with Postgres backend. Ingests RSS feeds, extracts claims via LLM, embeds and deduplicates against FAISS. Ten Agent-Zero tools: `oss_health`, `oss_topic`, `oss_drift`, `oss_dynamics`, `oss_hypotheses`, `oss_submit`, `oss_ingest_pause`, `oss_ingest_resume`, `oss_list_topics`, `oss_add_topic`. `oss_submit` makes the human analyst a primary source alongside automated ingestion — observations enter the ledger with equal standing to extracted feed claims, deduplicated against the same FAISS index. Thinking token stripping (`_strip_thinking()`) applied at all LLM call sites in the ingest pipeline. Three analytical layers added (2026-04-15): **Hedge Pattern** — three-axis claim-level tagging (certainty: committed/hedged, attribution: named/vague/absent, quoted_directly: true/false) with source-type-conditional signal routing and per-source-per-topic narrative signal aggregation. **Narrative Stability** — retcon detection comparing new claims to established narrative via cosine distance and volatility-weighted scoring; classifies `narrative_rewrite`, `narrative_reaffirm`, `narrative_campaign`, and `unverifiable_stream` signals. **Adversarial Input Layer** — Phase 1 prior injection from SWARMFISH, Bayesian surprise scoring (Zlotnick formula), verdict compilation, and escalation router to SWARMFISH monitor.
 
@@ -242,7 +262,8 @@ Same battery against Exocortex v1.9 (`exocortex_v17`). Key findings: 40+ tools v
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF)| Current primary (`@q4_k_m`) |
+| Supervisor | [Jackrong/Qwen3.6-27B](https://huggingface.co/jackrong/qwen3.6-27b) | Current primary — rigidity eval: SHIFT_TO_INFO, 0 load-bearing instruction domains. Profile validated 2026-04-27. |
+| Supervisor (prev) | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF) | Validated (`@q4_k_m`). Config_edit enrichment hurt (enriched=0.25, raw=0.50). |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |

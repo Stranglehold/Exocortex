@@ -790,7 +790,7 @@ def _build_enrichment_plan(
     """
     disabled: set = set()
     if model_profile:
-        disabled = set(model_profile.get("disabled_domains", []))
+        disabled = set(model_profile.get("bst", {}).get("disabled_domains", []))
 
     plan = {
         "primary_enrichment":       primary["domain"] not in disabled,
