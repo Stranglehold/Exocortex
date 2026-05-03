@@ -1,53 +1,58 @@
 #!/bin/bash
 # install_exocortex_profile.sh
-# Deploys Exocortex as a plugin to the persistent user plugin path.
+# Deploys Exocortex to the persistent profile path (Option 3 — profile-canonical).
 #
-# Target: /a0/usr/plugins/exocortex/
-#   extensions/python/{hook}/  — all Exocortex extensions
-#   extensions/webui/{slot}/   — webui injection components (theme picker)
-#   tools/                     — custom Agent Zero tools
-#   prompts/                   — system prompt files
-#   webui/                     — Alpine.js stores and theme assets
-#   plugin.yaml                — plugin manifest
-#   default_config.yaml        — configuration reference
+# Extension target:  /a0/usr/agents/agent0/extensions/python/{hook}/
+#   This path has the highest runtime priority (first in get_paths() order).
+#   All Python extensions deploy here. Profile path wins on filename collision.
 #
-# v1.6: Agent Zero discovers plugins at /a0/usr/plugins/ (user-priority).
-# get_paths() searches usr/plugins/*/extensions/python/<hook>/ and
-# usr/plugins/*/tools/ automatically for enabled plugins.
+# Plugin target: /a0/usr/plugins/exocortex/
+#   Infrastructure-only: tools, prompts, webui, manifests, default_config.
+#   Extensions are NOT deployed to the plugin path (Option 3 design).
 #
-# This path is persistent — survives A0 container image updates.
-# Plugin path has higher priority than any ephemeral /a0/ path.
+# Both paths are persistent — survive A0 container image updates.
+#
+# TOMBSTONE files (_19_context_pruner.py in before_main_llm_call) are skipped
+# automatically — they contain only a "MOVED:" comment with no Extension class.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTAINER="${CONTAINER:-exocortex_v16}"
+CONTAINER="${CONTAINER:-exocortex_v17}"
 PLUGIN_BASE="/a0/usr/plugins/exocortex"
+PROFILE_EXT="/a0/usr/agents/agent0/extensions/python"
 
 # On Windows Git Bash, docker exec arguments with Unix paths get translated by MSYS.
 # Prefix docker exec commands with MSYS_NO_PATHCONV=1 to suppress this.
 # docker cp is exempt — its "container:/path" format is not affected.
 _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 
-echo "  Deploying Exocortex plugin ($CONTAINER)"
-echo "  Source: $SCRIPT_DIR"
-echo "  Target: $PLUGIN_BASE"
+echo "  Deploying Exocortex ($CONTAINER)"
+echo "  Source:     $SCRIPT_DIR"
+echo "  Extensions: $PROFILE_EXT"
+echo "  Plugin:     $PLUGIN_BASE"
 
 # ── Create directory structure ────────────────────────────────────────────────
 
+# ── Create directory structure ────────────────────────────────────────────────
+
+# Profile path — Python extensions (highest priority in get_paths() order)
 _exec "$CONTAINER" mkdir -p \
-  "$PLUGIN_BASE/extensions/python/before_main_llm_call" \
-  "$PLUGIN_BASE/extensions/python/error_format" \
-  "$PLUGIN_BASE/extensions/python/hist_add_before" \
-  "$PLUGIN_BASE/extensions/python/message_loop_end" \
-  "$PLUGIN_BASE/extensions/python/message_loop_prompts_after" \
-  "$PLUGIN_BASE/extensions/python/monologue_end" \
-  "$PLUGIN_BASE/extensions/python/reasoning_stream" \
-  "$PLUGIN_BASE/extensions/python/reasoning_stream_end" \
-  "$PLUGIN_BASE/extensions/python/response_stream_chunk" \
-  "$PLUGIN_BASE/extensions/python/response_stream_end" \
-  "$PLUGIN_BASE/extensions/python/tool_execute_after" \
-  "$PLUGIN_BASE/extensions/python/tool_execute_before" \
+  "$PROFILE_EXT/before_main_llm_call" \
+  "$PROFILE_EXT/error_format" \
+  "$PROFILE_EXT/hist_add_before" \
+  "$PROFILE_EXT/message_loop_end" \
+  "$PROFILE_EXT/message_loop_prompts_after" \
+  "$PROFILE_EXT/monologue_end" \
+  "$PROFILE_EXT/reasoning_stream" \
+  "$PROFILE_EXT/reasoning_stream_end" \
+  "$PROFILE_EXT/response_stream_chunk" \
+  "$PROFILE_EXT/response_stream_end" \
+  "$PROFILE_EXT/tool_execute_after" \
+  "$PROFILE_EXT/tool_execute_before"
+
+# Plugin path — infrastructure only (tools, prompts, webui, manifests)
+_exec "$CONTAINER" mkdir -p \
   "$PLUGIN_BASE/extensions/webui/sidebar-bottom-wrapper-start" \
   "$PLUGIN_BASE/extensions/webui/get_message_handler" \
   "$PLUGIN_BASE/api" \
@@ -71,7 +76,7 @@ docker cp "$SCRIPT_DIR/plugin/tool_domains.json"    "$CONTAINER:$PLUGIN_BASE/too
 #      here — utility follows automatically. No second model loads.
 # NOTE: chat_model.name in this config MUST match what LM Studio has loaded.
 #       Update it here when switching models, not in the A0 web UI.
-MODEL_CONFIG_SRC="$SCRIPT_DIR/../patches/plugins/_model_config"
+MODEL_CONFIG_SRC="$SCRIPT_DIR/patches/plugins/_model_config"
 MODEL_CONFIG_PLUGIN_DEST="$CONTAINER:/a0/usr/agents/agent0/plugins/_model_config"
 MODEL_CONFIG_CODE_DEST="$CONTAINER:/a0/plugins/_model_config/helpers"
 
@@ -106,78 +111,68 @@ docker cp "$WEBUI_EXT_SRC/sidebar-bottom-wrapper-start/theme-picker.html" \
 docker cp "$WEBUI_EXT_SRC/get_message_handler/artifact-handler.js" \
   "$WEBUI_EXT_DEST/get_message_handler/"
 
-# ── Deploy extensions ─────────────────────────────────────────────────────────
-# Note: _12_org_dispatcher, _13_operator_profile, _14_metacognitive_injection
-# are intentionally excluded — replaced by prompt files below.
+# ── Deploy extensions → profile path (Option 3) ───────────────────────────────
+# Deploys ALL .py files from each hook directory in the repo.
+# Tombstone files (containing only "MOVED:" comments) are detected and skipped.
+# Data files (slot_taxonomy.json, htn_plan_library.json) are deployed alongside.
+#
+# The `extensions/python/<hook>/` subdirectory holds newer proactive_supervisor
+# hooks that were structured differently from the main extension source tree.
+# Those deploy to the same hook dirs in the profile path.
 
 EXT_SRC="$SCRIPT_DIR/extensions"
-EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/python"
+EXT_DEST="$CONTAINER:$PROFILE_EXT"
+deployed_ext=0
+skipped_ext=0
 
-# before_main_llm_call
-docker cp "$EXT_SRC/before_main_llm_call/_01_backend_standby_gate.py" "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/_11_belief_state_tracker.py" "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/slot_taxonomy.json"          "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/_15_htn_plan_selector.py"    "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/htn_plan_library.json"       "$EXT_DEST/before_main_llm_call/"
-docker cp "$EXT_SRC/before_main_llm_call/_20_context_watchdog.py"     "$EXT_DEST/before_main_llm_call/"
-# Proactive Reasoning Supervisor — injection hook (v1.6 source path)
-docker cp "$EXT_SRC/python/before_main_llm_call/_12_proactive_supervisor.py" "$EXT_DEST/before_main_llm_call/"
+for hook in \
+  before_main_llm_call \
+  error_format \
+  hist_add_before \
+  message_loop_end \
+  message_loop_prompts_after \
+  monologue_end \
+  reasoning_stream \
+  reasoning_stream_end \
+  response_stream_chunk \
+  response_stream_end \
+  tool_execute_after \
+  tool_execute_before
+do
+  src_dir="$EXT_SRC/$hook"
 
-# error_format
-docker cp "$EXT_SRC/error_format/_20_structured_retry.py"  "$EXT_DEST/error_format/"
-docker cp "$EXT_SRC/error_format/_30_failure_tracker.py"   "$EXT_DEST/error_format/"
+  if [ -d "$src_dir" ]; then
+    for f in "$src_dir"/*.py "$src_dir"/*.json; do
+      [ -f "$f" ] || continue
+      name=$(basename "$f")
 
-# hist_add_before
-docker cp "$EXT_SRC/hist_add_before/_11_working_memory.py" "$EXT_DEST/hist_add_before/"
+      # Skip tombstone .py files — they start with "MOVED:" and have no Extension class
+      if [[ "$name" == *.py ]]; then
+        first_line=$(head -2 "$f" | tail -1)
+        if [[ "$first_line" == MOVED:* ]]; then
+          echo "    ~ SKIP tombstone  $hook/$name"
+          skipped_ext=$((skipped_ext + 1))
+          continue
+        fi
+      fi
 
-# message_loop_end
-docker cp "$EXT_SRC/message_loop_end/_28_backend_standby.py"  "$EXT_DEST/message_loop_end/"
-docker cp "$EXT_SRC/message_loop_end/_29_stuck_delivery.py"   "$EXT_DEST/message_loop_end/"
-docker cp "$EXT_SRC/message_loop_end/_50_supervisor_loop.py"  "$EXT_DEST/message_loop_end/"
+      docker cp "$f" "$EXT_DEST/$hook/"
+      deployed_ext=$((deployed_ext + 1))
+    done
+  fi
 
-# message_loop_prompts_after
-docker cp "$EXT_SRC/message_loop_prompts_after/_16_tool_registry.py"           "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_18_memory_catalog.py"           "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_19_skill_suggester.py"           "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_55_memory_relevance_filter.py" "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_56_memory_enhancement.py"       "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_58_ontology_query.py"           "$EXT_DEST/message_loop_prompts_after/"
-docker cp "$EXT_SRC/message_loop_prompts_after/_95_tiered_tool_injection.py"    "$EXT_DEST/message_loop_prompts_after/"
+  # Also deploy from extensions/python/<hook>/ if it exists (proactive_supervisor etc.)
+  py_src_dir="$EXT_SRC/python/$hook"
+  if [ -d "$py_src_dir" ]; then
+    for f in "$py_src_dir"/*.py; do
+      [ -f "$f" ] || continue
+      docker cp "$f" "$EXT_DEST/$hook/"
+      deployed_ext=$((deployed_ext + 1))
+    done
+  fi
+done
 
-# monologue_end
-docker cp "$EXT_SRC/monologue_end/_25_epistemic_integrity.py"  "$EXT_DEST/monologue_end/"
-docker cp "$EXT_SRC/monologue_end/_52_selective_memorizer.py"  "$EXT_DEST/monologue_end/"
-docker cp "$EXT_SRC/monologue_end/_53_insight_capture.py"      "$EXT_DEST/monologue_end/"
-docker cp "$EXT_SRC/monologue_end/_55_memory_classifier.py"    "$EXT_DEST/monologue_end/"
-docker cp "$EXT_SRC/monologue_end/_57_memory_maintenance.py"   "$EXT_DEST/monologue_end/"
-docker cp "$EXT_SRC/monologue_end/_59_ontology_maintenance.py" "$EXT_DEST/monologue_end/"
-
-# reasoning_stream — Proactive Reasoning Supervisor buffer hook
-docker cp "$EXT_SRC/python/reasoning_stream/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream/"
-
-# reasoning_stream_end — Proactive Reasoning Supervisor analysis hook + thinking token logger
-docker cp "$EXT_SRC/python/reasoning_stream_end/_12_proactive_supervisor.py" "$EXT_DEST/reasoning_stream_end/"
-docker cp "$EXT_SRC/reasoning_stream_end/_11_thinking_token_logger.py"        "$EXT_DEST/reasoning_stream_end/"
-
-# response_stream_chunk
-docker cp "$EXT_SRC/response_stream_chunk/_21_plain_text_response.py" "$EXT_DEST/response_stream_chunk/"
-
-# response_stream_end
-docker cp "$EXT_SRC/response_stream_end/_20_clear_generating_content.py" "$EXT_DEST/response_stream_end/"
-
-# tool_execute_after
-docker cp "$EXT_SRC/tool_execute_after/_20_error_comprehension.py"      "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_20_reset_failure_counter.py"    "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_22_response_finalizer.py"       "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_25_evidence_ledger_recorder.py" "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_28_output_compressor.py"        "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_30_tool_fallback_logger.py"     "$EXT_DEST/tool_execute_after/"
-docker cp "$EXT_SRC/tool_execute_after/_60_sleep_trigger.py"            "$EXT_DEST/tool_execute_after/"
-
-# tool_execute_before
-docker cp "$EXT_SRC/tool_execute_before/_15_action_boundary.py"      "$EXT_DEST/tool_execute_before/"
-docker cp "$EXT_SRC/tool_execute_before/_20_meta_reasoning_gate.py"  "$EXT_DEST/tool_execute_before/"
-docker cp "$EXT_SRC/tool_execute_before/_30_tool_fallback_advisor.py" "$EXT_DEST/tool_execute_before/"
+echo "  Extensions: $deployed_ext deployed, $skipped_ext tombstones skipped"
 
 # ── Deploy plugin API handlers ────────────────────────────────────────────────
 # Loaded by A0 at /api/plugins/exocortex/<handler> — persistent in plugin dir.
@@ -220,15 +215,24 @@ for f in "$PLUGIN_PROMPT_SRC/"agent.system.tool.*.md; do
   [ -f "$f" ] && docker cp "$f" "$PROMPT_DEST/"
 done
 
-echo "  Plugin deployment complete."
-echo "  Extensions: $(_exec $CONTAINER find $PLUGIN_BASE/extensions -name '*.py' | wc -l) Python files"
-echo "  WebUI ext:  $(_exec $CONTAINER find $PLUGIN_BASE/extensions/webui -name '*.html' 2>/dev/null | wc -l) HTML components"
-echo "  API:        $(_exec $CONTAINER ls $PLUGIN_BASE/api | wc -l) handlers"
-echo "  Themes:     $(_exec $CONTAINER ls $PLUGIN_BASE/webui/themes | wc -l) files"
-echo "  Tools:      $(_exec $CONTAINER ls $PLUGIN_BASE/tools | wc -l) files"
-echo "  Prompts:    $(_exec $CONTAINER ls $PLUGIN_BASE/prompts | wc -l) files"
+# Create per-tool stub files so A0's single-file dispatcher can find multi-class tools
+# (oss.py has 13 classes, swarmfish.py has 5, investigation_tools.py has 5)
+STUBS_SCRIPT="$SCRIPT_DIR/scripts/create_tool_stubs.py"
+if [ -f "$STUBS_SCRIPT" ]; then
+  docker cp "$STUBS_SCRIPT" "$CONTAINER:/tmp/create_tool_stubs.py"
+  docker exec "$CONTAINER" /opt/venv-a0/bin/python3 /tmp/create_tool_stubs.py
+else
+  echo "  WARNING: scripts/create_tool_stubs.py not found — tool stubs not created"
+fi
+
+echo "  Deployment complete."
+echo "  Extensions (profile):  $(_exec $CONTAINER find $PROFILE_EXT -name '*.py' | wc -l) Python files → $PROFILE_EXT"
+echo "  WebUI ext (plugin):    $(_exec $CONTAINER find $PLUGIN_BASE/extensions/webui -name '*.html' 2>/dev/null | wc -l) HTML components"
+echo "  API (plugin):          $(_exec $CONTAINER ls $PLUGIN_BASE/api | wc -l) handlers"
+echo "  Themes (plugin):       $(_exec $CONTAINER ls $PLUGIN_BASE/webui/themes | wc -l) files"
+echo "  Tools (plugin):        $(_exec $CONTAINER ls $PLUGIN_BASE/tools | wc -l) files"
+echo "  Prompts (plugin):      $(_exec $CONTAINER ls $PLUGIN_BASE/prompts | wc -l) files"
 echo ""
+echo "  Restart agent-zero or start a fresh chat to load extension changes."
 echo "  Plugin visible at: Settings → Plugins → Exocortex"
-echo "  Theme picker appears in sidebar above Preferences section."
-echo "  Click ✏ next to Themes (with a theme active) to open the visual editor."
-echo "  Reload the browser tab to activate (no agent restart needed for webui changes)."
+echo "  Run scripts/verify_deployment.sh to confirm all extensions are at correct paths."
