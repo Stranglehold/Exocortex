@@ -6,7 +6,7 @@ import re
 import json
 
 # Marker that identifies the tools block in loop_data.system
-TOOLS_BLOCK_MARKER = "## Tools available:"
+TOOLS_BLOCK_MARKER = "## available tools"
 
 # Matches ### tool_name headings in tool spec files
 TOOL_HEADING_RE = re.compile(r'^###\s+(\w+)', re.MULTILINE)
@@ -14,8 +14,10 @@ TOOL_HEADING_RE = re.compile(r'^###\s+(\w+)', re.MULTILINE)
 # Cache key for tool registry stored on agent between iterations
 REGISTRY_CACHE_KEY = "_tiered_tools_registry"
 
-# Persistent set of tools the model has used in this session
+# Persistent LRU list of recently-used tools (capped to prevent spec bloat).
+# Stored as an ordered list: index 0 = most recently used.
 SEEN_TOOLS_KEY = "_tiered_tools_seen"
+SEEN_TOOLS_MAX = 2  # Keep last N used tools' full specs; beyond this causes context overflow
 
 # Tools always injected with full spec regardless of active tool
 # response: model must always know how to terminate
@@ -166,13 +168,18 @@ class TieredToolInjection(Extension):
         # ── Detect active tool from last response ────────────────────────
         active_tool = _extract_tool_name(loop_data.last_response)
 
-        # ── Seen-tools: persist across turns ────────────────────────────
-        # Once the model uses a tool, keep injecting its full spec so the
-        # model never regresses to compact-only on a revisit.
-        seen_tools: set = set(self.agent.get_data(SEEN_TOOLS_KEY) or [])
+        # ── Seen-tools: LRU-capped list ──────────────────────────────────
+        # Keep the N most recently used tools' full specs injected.
+        # Unbounded growth here causes context overflow — each added tool
+        # permanently adds ~500-2500 tokens to every subsequent turn.
+        seen_tools_list: list = list(self.agent.get_data(SEEN_TOOLS_KEY) or [])
         if active_tool and active_tool in full_specs and active_tool not in ALWAYS_FULL_SPEC:
-            seen_tools.add(active_tool)
-            self.agent.set_data(SEEN_TOOLS_KEY, list(seen_tools))
+            if active_tool in seen_tools_list:
+                seen_tools_list.remove(active_tool)
+            seen_tools_list.insert(0, active_tool)          # most-recent first
+            seen_tools_list = seen_tools_list[:SEEN_TOOLS_MAX]  # enforce cap
+            self.agent.set_data(SEEN_TOOLS_KEY, seen_tools_list)
+        seen_tools: set = set(seen_tools_list)
 
         # ── Intent pre-injection: first-turn proactive spec ──────────────
         # When there is no active tool (new task / first turn of a new tool),

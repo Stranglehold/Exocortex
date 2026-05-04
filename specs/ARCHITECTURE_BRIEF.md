@@ -123,6 +123,31 @@ The model's job is to follow the rails, not lay them.
 
 ---
 
+## ⚠️ Critical: Extension Loading Path (Post-DEC-030 Profile Migration)
+
+After the DEC-030 migration (Session 021, March 2026), the Exocortex extension stack lives in the
+**agent profile path**, not the default A0 path. There are two extension directory trees — only one
+is loaded by A0:
+
+| Directory | Status |
+|-----------|--------|
+| `/a0/usr/agents/agent0/extensions/python/<hook>/` | **ACTIVE** — loaded by A0 |
+| `/a0/usr/agents/agent0/extensions/<hook>/` | **STALE** — never loaded, do not edit |
+
+A0's `helpers/extension.py` loads via:
+```python
+paths = subagents.get_paths(agent, "extensions/python", extension_point)
+```
+
+The outer `extensions/<hook>/` directory exists as a legacy artifact and should be treated as
+read-only. All extension development, testing, and debugging must target the `python/` subdirectory.
+
+**Note:** This document's "Repo Location and Deployment" section references the pre-migration path
+`/a0/python/extensions/` — that path applied to the original Docker default profile, before the
+stack was moved to the persistent user profile. It is no longer the active deployment target.
+
+---
+
 ## Agent-Zero Extension Hook Points
 
 | Hook Directory | When It Fires | Key Extensions |
