@@ -25,8 +25,10 @@ from openai import OpenAI
 # ─────────────────────────────────────────────────────────────
 
 LLM_BASE_URL  = os.environ.get("SWARMFISH_LLM_URL",   "http://host.docker.internal:1234/v1")
-LLM_MODEL     = os.environ.get("SWARMFISH_LLM_MODEL",  "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m")
 LLM_API_KEY   = os.environ.get("SWARMFISH_LLM_API_KEY","lm-studio")
+
+from llm_config import get_llm_model as _get_llm_model
+LLM_MODEL     = _get_llm_model()
 LLM_MAX_TOKENS = int(os.environ.get("SWARMFISH_LLM_MAX_TOKENS", "4096"))
 LLM_TEMPERATURE = 0.1
 LLM_TIMEOUT   = int(os.environ.get("SWARMFISH_LLM_TIMEOUT", "120"))

@@ -1,5 +1,8 @@
 # Exocortex
 
+> **⚠️ Work in Progress — Current performance is below stock Agent Zero baseline.**
+> The extension stack is under active development. Benchmarks run against unmodified Agent Zero containers consistently show equal or better task completion in the stock build. Do not use this in production. Contributions and testing welcome.
+
 **A cognitive architecture framework for local language models — and a research program into what makes AI systems trustworthy, continuous, and genuinely useful.**
 
 *The phantom limb that's stronger than the original.*

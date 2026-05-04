@@ -33,10 +33,9 @@ services:
       OSS_APP_DB_PASSWORD: ${OSS_APP_DB_PASSWORD:-oss_app_dev_password}
       OSS_LLM_URL: ${OSS_LLM_URL:-http://host.docker.internal:1234/v1}
       OSS_LLM_MODEL: ${OSS_LLM_MODEL:-}
-      # Ingest LLM — uses the Agent Zero utility model (lighter/faster than main chat model).
-      # Keep this in sync with util_model_name in Agent Zero's settings.json.
+      # Ingest LLM — auto-discovers from LM Studio /v1/models if not set explicitly.
       OSS_LLM_URL_INGEST: ${OSS_LLM_URL_INGEST:-http://host.docker.internal:1234/v1}
-      OSS_LLM_MODEL_INGEST: ${OSS_LLM_MODEL_INGEST:-qwen/qwen3-4b-2507}
+      OSS_LLM_MODEL_INGEST: ${OSS_LLM_MODEL_INGEST:-}
       OSS_INGEST_WORKERS: ${OSS_INGEST_WORKERS:-3}
       OSS_ANALYST_TOKEN: ${OSS_ANALYST_TOKEN:-dev_analyst_token}
       OSS_EMBEDDING_MODEL: ${OSS_EMBEDDING_MODEL:-all-MiniLM-L6-v2}

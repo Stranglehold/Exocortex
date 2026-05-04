@@ -83,16 +83,25 @@ DIVERSITY_SUPPRESS_THRESHOLD = 3
 # Applied as ceilings — never raises thresholds, only lowers them.
 _SUPERVISOR_PROFILE_ROOT  = "/a0/usr/Exocortex/eval/model_profiles"
 
-def _load_supervisor_overrides() -> dict:
+def _load_supervisor_overrides(agent=None) -> dict:
     """Load supervisor_overrides from active model profile. Returns {} on any error."""
     import json as _json, os as _os
     try:
-        with open(_MODEL_CONFIG_PATH, encoding="utf-8") as f:
-            cfg = _json.load(f)
-        # Model name may include quantization suffix (e.g. "jackrong/qwen3.6-27b@q4_k_m")
-        raw_name = cfg.get("chat_model", {}).get("name", "").split("@")[0].strip()
+        # Prefer agent.config (live UI state) for model name; fall back to plugin config file.
+        raw_name = ""
+        try:
+            if agent is not None:
+                raw_name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
+        except Exception:
+            pass
+        if not raw_name:
+            with open(_MODEL_CONFIG_PATH, encoding="utf-8") as f:
+                cfg = _json.load(f)
+            raw_name = cfg.get("chat_model", {}).get("name", "")
         if not raw_name:
             return {}
+        # Model name may include quantization suffix (e.g. "jackrong/qwen3.6-27b@q4_k_m")
+        raw_name = raw_name.split("@")[0].strip()
         # Flatten "/" to "_" so "jackrong/qwen3.6-27b" → "jackrong_qwen3.6-27b.json"
         model_id = raw_name.replace("/", "_")
         path = _os.path.join(_SUPERVISOR_PROFILE_ROOT, f"{model_id}.json")
@@ -172,25 +181,27 @@ PHASE4_LM_ENDPOINT = "http://host.docker.internal:1234/v1/chat/completions"
 # PHASE4_MODEL is NOT hardcoded — read from Agent Zero's live model config at call time
 # so Phase 4 always uses whatever model the user has selected, not a stale constant.
 _MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
-_MODEL_CONFIG_FALLBACK = "qwopus3.5-27b-v3"
+_MODEL_CONFIG_FALLBACK = ""  # no fallback — Phase 4 skips if model cannot be resolved
 
 def _get_phase4_model(agent=None) -> str:
-    """Read the current chat model name from Agent Zero's model config file."""
+    """Read the current chat model name — agent.config (live UI state) takes priority."""
     import json as _json
+    # Agent config reflects whatever the user has set in the UI / settings.json.
+    # Try it first so model changes take effect immediately without editing plugin files.
+    try:
+        if agent is not None:
+            name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
+            if name:
+                return name
+    except Exception:
+        pass
+    # Fallback: plugin config file (stale if UI was used, but better than hardcoded)
     try:
         with open(_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
             cfg = _json.load(f)
         name = cfg.get("chat_model", {}).get("name", "")
         if name:
             return name
-    except Exception:
-        pass
-    # Fallback: try to read from agent config if available
-    try:
-        if agent is not None:
-            name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
-            if name:
-                return name
     except Exception:
         pass
     return _MODEL_CONFIG_FALLBACK
@@ -387,7 +398,7 @@ class SupervisorLoop(Extension):
             # Load model profile overrides once per context, cache on agent.
             model_overrides = getattr(self.agent, "_supervisor_model_overrides", None)
             if model_overrides is None:
-                model_overrides = _load_supervisor_overrides()
+                model_overrides = _load_supervisor_overrides(agent=self.agent)
                 self.agent._supervisor_model_overrides = model_overrides
             diversity_thresh = model_overrides.get("diversity_suppress", DIVERSITY_SUPPRESS_THRESHOLD)
 

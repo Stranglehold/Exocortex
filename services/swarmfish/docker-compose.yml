@@ -45,7 +45,7 @@ services:
       # Point at whatever model is currently loaded — no JIT reload triggered
       # when both systems use the same model name.
       SWARMFISH_LLM_URL: ${SWARMFISH_LLM_URL:-http://host.docker.internal:1234/v1}
-      SWARMFISH_LLM_MODEL: ${SWARMFISH_LLM_MODEL:-qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m}
+      SWARMFISH_LLM_MODEL: ${SWARMFISH_LLM_MODEL:-}
       SWARMFISH_LLM_API_KEY: ${SWARMFISH_LLM_API_KEY:-lm-studio}
       # Historian profile has 6 extra required output fields; reasoning model adds thinking tokens.
       # Investigation 2026-04-14: the reasoning-distilled model uses the majority

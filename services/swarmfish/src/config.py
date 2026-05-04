@@ -12,8 +12,8 @@ import os
 # Points at the same LM Studio endpoint as Agent Zero.
 # OpenAI-compatible API; api_key is ignored by LM Studio but required by the client.
 LLM_BASE_URL = os.getenv("SWARMFISH_LLM_URL", "http://host.docker.internal:1234/v1")
-LLM_MODEL    = os.getenv("SWARMFISH_LLM_MODEL",
-                          "qwen3.5-27b-claude-4.6-opus-reasoning-distilled@q4_k_m")
+from llm_config import get_llm_model as _get_llm_model
+LLM_MODEL    = _get_llm_model()
 LLM_API_KEY  = os.getenv("SWARMFISH_LLM_API_KEY", "lm-studio")
 
 # --- Database -----------------------------------------------------------

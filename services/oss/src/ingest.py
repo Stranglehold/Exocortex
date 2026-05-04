@@ -47,7 +47,7 @@ LLM_MODEL     = _get_llm_model()
 # Separate LLM config for ingestion tasks — point at a lighter/faster model.
 # Defaults to same as main LLM_URL/MODEL if not set.
 INGEST_LLM_URL   = os.environ.get("OSS_LLM_URL_INGEST",   LLM_URL)
-INGEST_LLM_MODEL = os.environ.get("OSS_LLM_MODEL_INGEST", LLM_MODEL)
+INGEST_LLM_MODEL = os.environ.get("OSS_LLM_MODEL_INGEST") or LLM_MODEL
 INGEST_WORKERS   = int(os.environ.get("OSS_INGEST_WORKERS", "3"))
 EMB_MODEL     = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 FAISS_PATH    = os.environ.get("OSS_FAISS_PATH", "/app/data/faiss/claims.index")
