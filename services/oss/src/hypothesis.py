@@ -313,6 +313,58 @@ def falsify_hypothesis(
     }
 
 
+def suspend_hypothesis(hypothesis_id: int, reason: str = "", session_id=None) -> dict:
+    """
+    Mark a hypothesis as SUSPENDED (analyst review / data quality issue).
+
+    SUSPENDED hypotheses are excluded from active monitoring and reporting
+    but are preserved in the record. Use for garbage data, test entries,
+    or hypotheses that cannot be evaluated with available evidence.
+
+    Args:
+        hypothesis_id:  ID of the hypothesis
+        reason:         Optional reason for suspension
+
+    Returns:
+        dict with hypothesis_id, status
+
+    Raises:
+        ValueError: if hypothesis not found or already terminal (PROMOTED/FALSIFIED)
+    """
+    sid = session_id or uuid.uuid4()
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, status FROM hypothesis_registry WHERE id = %s",
+                (hypothesis_id,),
+            )
+            hyp = cur.fetchone()
+            if not hyp:
+                raise ValueError(f"Hypothesis {hypothesis_id} not found")
+            if hyp["status"] in ("PROMOTED", "FALSIFIED"):
+                raise ValueError(
+                    f"Hypothesis {hypothesis_id} is already {hyp['status']} — cannot suspend"
+                )
+
+            cur.execute(
+                "UPDATE hypothesis_registry SET status = 'SUSPENDED' WHERE id = %s",
+                (hypothesis_id,),
+            )
+
+    audit.log_event(
+        session_id=sid,
+        event_type="hypothesis_suspended",
+        actor="analyst",
+        action=f"Hypothesis {hypothesis_id} SUSPENDED: {reason[:120]}",
+        data_accessed={"hypothesis_id": hypothesis_id, "reason": reason},
+    )
+
+    log.info(f"[HYPOTHESIS] #{hypothesis_id} SUSPENDED")
+
+    return {"hypothesis_id": hypothesis_id, "status": "SUSPENDED"}
+
+
 # ---------------------------------------------------------------------------
 # Promotion
 # ---------------------------------------------------------------------------

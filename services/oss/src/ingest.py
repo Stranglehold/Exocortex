@@ -1016,6 +1016,46 @@ def _init_contradict_cursor() -> int:
         conn.close()
 
 
+_SWARMFISH_V2_URL     = os.environ.get("SWARMFISH_V2_URL", "")
+_SWARMFISH_V2_API_KEY = os.environ.get("SWARMFISH_V2_API_KEY", "")
+_SWARMFISH_V2_MIN_CLAIMS = int(os.environ.get("SWARMFISH_V2_MIN_NEW_CLAIMS", "10"))
+
+
+def _trigger_swarmfish_v2_predictions(new_claims: int, topics: list) -> None:
+    """
+    Fire SWARMFISH V2 prediction for each active topic after a significant ingest.
+
+    Runs in a background thread (fire-and-forget). Does not block the ingest loop.
+    Skips gracefully if SWARMFISH_V2_URL is not configured.
+    """
+    if not _SWARMFISH_V2_URL or not _SWARMFISH_V2_API_KEY:
+        return
+    import urllib.request
+    endpoint = f"{_SWARMFISH_V2_URL}/api/plugins/swarmfish/api_swarmfish_predict"
+    headers  = {"Content-Type": "application/json", "X-API-KEY": _SWARMFISH_V2_API_KEY}
+    for topic in topics:
+        tag   = topic.get("tag",          "unknown")
+        label = topic.get("display_name") or tag
+        body  = json.dumps({
+            "question":      (
+                f"Assess the current situation for: {label}. "
+                f"{new_claims} new intelligence items detected in the latest ingest pass. "
+                "Based on recent signal flow, evaluate trajectory confidence."
+            ),
+            "session_label": f"auto_{tag}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}",
+        }).encode()
+        try:
+            req = urllib.request.Request(endpoint, data=body, method="POST", headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read().decode())
+            log.info(
+                f"[SWARMFISH-V2] Auto-prediction for '{label}': "
+                f"consensus={result.get('consensus_confidence', '?')}"
+            )
+        except Exception as e:
+            log.warning(f"[SWARMFISH-V2] Auto-prediction failed for '{label}': {e}")
+
+
 def run_scheduler():
     interval_minutes = int(os.environ.get("OSS_INGEST_INTERVAL_MINUTES", "30"))
     interval_seconds = interval_minutes * 60
@@ -1026,10 +1066,19 @@ def run_scheduler():
 
     while True:
         if not _stop_event.is_set():
+            _new_claims = 0
             try:
-                run_once()
+                _new_claims = run_once() or 0
             except Exception as e:
                 log.error(f"Ingestion pass error: {e}")
+            # Trigger SWARMFISH V2 auto-prediction when enough new claims landed.
+            if _new_claims >= _SWARMFISH_V2_MIN_CLAIMS and _SWARMFISH_V2_URL:
+                _active = get_active_topics()
+                threading.Thread(
+                    target=_trigger_swarmfish_v2_predictions,
+                    args=(_new_claims, _active),
+                    daemon=True,
+                ).start()
             try:
                 import social_ingest
                 conn = get_conn()
