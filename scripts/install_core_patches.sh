@@ -2,11 +2,14 @@
 # install_core_patches.sh
 # Deploy core Agent Zero file patches to the active container.
 #
-# v1.6 paths:
-#   /a0/python/tools/    → /a0/tools/
-#   /a0/python/helpers/  → /a0/helpers/
-#   /a0/python/api/      → /a0/api/
-#   /a0/python/extensions/ no longer exists — deploy to profile path only
+# v1.13 paths:
+#   /a0/helpers/         — still present (extract_tools.py, etc.)
+#   /a0/prompts/         — still present
+#   /a0/api/             — still present
+#   /a0/tools/           — REMOVED in v1.13; tools are now in /a0/plugins/_*/tools/
+#   browser_agent.py     — REMOVED: browser is now /a0/plugins/_browser/tools/browser.py
+#                          and /a0/plugins/_browser_agent/ handles AI-guided browsing
+#   captcha_solver.py    — REMOVED: needs adaptation to new browser plugin architecture
 #
 # Patches:
 #   patches/helpers/extract_tools.py
@@ -54,33 +57,12 @@ _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 echo "[PATCH] Deploying core patches to container: $CONTAINER"
 
 # ── 0. Tool: browser_agent.py + captcha_solver.py ────────────────────────────
-
-BROWSER_TOOL_SRC="$PATCH_DIR/tools/browser_agent.py"
-BROWSER_TOOL_DST="/a0/tools/browser_agent.py"
-CAPTCHA_SRC="$PATCH_DIR/tools/captcha_solver.py"
-CAPTCHA_DST="/a0/tools/captcha_solver.py"
-TOOLS_PYCACHE="/a0/tools/__pycache__"
-
-if [ -f "$BROWSER_TOOL_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/tools
-  docker cp "$BROWSER_TOOL_SRC" "$CONTAINER:$BROWSER_TOOL_DST"
-  echo "[PATCH] tools/browser_agent.py deployed."
-else
-  echo "[PATCH] WARNING: $BROWSER_TOOL_SRC not found — skipped."
-fi
-
-if [ -f "$CAPTCHA_SRC" ]; then
-  docker cp "$CAPTCHA_SRC" "$CONTAINER:$CAPTCHA_DST"
-  echo "[PATCH] tools/captcha_solver.py deployed."
-else
-  echo "[PATCH] WARNING: $CAPTCHA_SRC not found — skipped."
-fi
-
-if [ -f "$BROWSER_TOOL_SRC" ] || [ -f "$CAPTCHA_SRC" ]; then
-  _exec "$CONTAINER" bash -c "rm -rf '$TOOLS_PYCACHE'" 2>/dev/null || true
-  _exec "$CONTAINER" bash -c "cd /a0 && /opt/venv-a0/bin/python3 -m py_compile tools/browser_agent.py && echo '[PATCH] browser_agent.py OK'"
-  _exec "$CONTAINER" bash -c "cd /a0 && /opt/venv-a0/bin/python3 -m py_compile tools/captcha_solver.py && echo '[PATCH] captcha_solver.py OK'"
-fi
+# NOTE v1.13: /a0/tools/ no longer exists. Browser is now a plugin at
+#   /a0/plugins/_browser/tools/browser.py (direct control)
+#   /a0/plugins/_browser_agent/tools/ (AI-guided browsing, compiled)
+# browser_agent.py and captcha_solver.py need adaptation for the new plugin
+# architecture before they can be restored. Skipped for now.
+echo "[PATCH] Skipping browser_agent.py/captcha_solver.py — v1.13 plugin architecture change (needs redesign)."
 
 # ── 1. Python helper: extract_tools.py ────────────────────────────────────────
 
@@ -263,10 +245,10 @@ else
 fi
 
 # ── 7. agent.py: validate_tool_request empty-args fix ────────────────────────
-# A0 validate_tool_request uses `not tool_request.get("tool_args")` which is
-# True for empty dict {} (falsy). No-arg tools (oss_health, swarmfish_calibration,
-# etc.) always fail with "must have a tool_args (type dictionary) field".
-# Fix: check for None rather than falsiness.
+# v1.13 NOTE: validate_tool_request now delegates to normalize_tool_request()
+# in extract_tools.py, which uses isinstance() checks (not falsiness).
+# The empty-dict bug is already fixed in v1.13 + our extract_tools.py patch.
+# Keeping the old pattern check for pre-v1.13 containers.
 
 _exec "$CONTAINER" python3 -c "
 path = '/a0/agent.py'
@@ -282,7 +264,7 @@ if old in content:
 elif new in content:
     print('[PATCH] agent.py validate_tool_request: already patched, skipped.')
 else:
-    print('[PATCH] WARNING: agent.py pattern not found — manual check required.')
+    print('[PATCH] v1.13+: validate_tool_request delegates to normalize_tool_request() — no patch needed.')
 "
 
 # ── 8. Extension: _20_meta_reasoning_gate.py ─────────────────────────────────

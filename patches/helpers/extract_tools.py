@@ -1,49 +1,29 @@
-import re, os, importlib, importlib.util, inspect
-from types import ModuleType
-from typing import Any, Type, TypeVar
 from .dirty_json import DirtyJson
-from .files import get_abs_path, deabsolute_path
-import regex
-from fnmatch import fnmatch
+import regex, re
+from helpers.modules import load_classes_from_file, load_classes_from_folder # keep here for backwards compatibility
+from typing import Any
 
 # Gemma 4 / native LLM tool call format:
 #   <|tool_call>call:TOOL_NAME{arg: "val", ...}<tool_call|>
-# May be preceded by <channel|> or other tokens.
 _NATIVE_TOOL_CALL_RX = re.compile(
     r'<\|tool_call\>\s*call\s*:\s*(\w+)\s*(\{)',
     re.IGNORECASE,
 )
 
 # Strip thinking-token blocks that leak from reasoning-distilled models before JSON parse.
-# Pattern: <think>...</think> or <thinking>...</thinking>, may span multiple lines.
 _THINK_TAG_RX = re.compile(r'<think(?:ing)?>\s*.*?\s*</think(?:ing)?>', re.DOTALL | re.IGNORECASE)
 
 # Extract tool_name from partial / unparseable JSON via regex fallback.
 _PARTIAL_TOOL_NAME_RX = re.compile(r'"tool_name"\s*:\s*"([^"]+)"')
 
+# Extract text field value from a partial (truncated) response tool JSON.
+_PARTIAL_TEXT_RX = re.compile(r'"text"\s*:\s*"(.*)', re.DOTALL)
+
 # Tools that carry large inline payloads likely to trigger output-token truncation.
 _LARGE_PAYLOAD_TOOLS = {"code_execution_tool", "text_editor:write", "text_editor"}
 
-
-def _detect_truncation(partial: str) -> str | None:
-    """Return the likely tool_name if partial looks like a truncated JSON payload.
-
-    Heuristic: the partial JSON contains a tool_name we recognise as a large-payload
-    tool AND the response ends without a proper closing brace (i.e. the JSON was cut
-    off mid-string).  Returns None if this doesn't look like truncation.
-    """
-    m = _PARTIAL_TOOL_NAME_RX.search(partial)
-    if not m:
-        return None
-    tool = m.group(1)
-    if tool in _LARGE_PAYLOAD_TOOLS:
-        # Confirm truncation: the partial must NOT have its outer brace closed.
-        # A properly-terminated response would have passed DirtyJson already.
-        return tool
-    # Also catch any tool where a large "code" value is present
-    if '"code"' in partial or '"content"' in partial:
-        return tool
-    return None
+# Minimum partial size (chars) before attempting response-tool truncation recovery.
+_RESPONSE_RECOVERY_THRESHOLD = 8000
 
 
 def _find_closing_brace(s: str) -> int:
@@ -74,25 +54,51 @@ def _find_closing_brace(s: str) -> int:
     return -1
 
 
-def json_parse_dirty(json:str) -> dict[str,Any] | None:
+def _detect_truncation(partial: str) -> str | None:
+    """Return the likely tool_name if partial looks like a truncated JSON payload."""
+    m = _PARTIAL_TOOL_NAME_RX.search(partial)
+    if not m:
+        return None
+    tool = m.group(1)
+    if tool in _LARGE_PAYLOAD_TOOLS:
+        return tool
+    if '"code"' in partial or '"content"' in partial:
+        return tool
+    return None
+
+
+def _extract_partial_response_text(partial: str) -> str | None:
+    """Extract the 'text' field from a partial (truncated) response tool JSON."""
+    m = _PARTIAL_TEXT_RX.search(partial)
+    if not m:
+        return None
+    raw = m.group(1)
+    text = (raw
+        .replace('\\n', '\n')
+        .replace('\\t', '\t')
+        .replace('\\"', '"')
+        .replace('\\\\', '\\')
+    )
+    if text.endswith('\\'):
+        text = text[:-1]
+    return text.strip() or None
+
+
+def json_parse_dirty(json: str) -> dict[str, Any] | None:
     if not json or not isinstance(json, str):
         return None
 
     stripped = json.strip()
 
-    # Strip thinking tokens — reasoning-distilled models (Qwen, DeepSeek-R1) sometimes
-    # leak <think>...</think> blocks containing {braces} that confuse the JSON finder below.
+    # Strip thinking tokens — reasoning-distilled models sometimes leak <think>...</think>
     stripped = _THINK_TAG_RX.sub('', stripped).strip()
     if not stripped:
         return None
 
     # ── Native tool call format (Gemma 4, etc.) ───────────────────────────
-    # Pattern: <|tool_call>call:TOOL_NAME{arg: "val", ...}<tool_call|>
-    # Detect before standard JSON path — args dict has no tool_name key.
     m = _NATIVE_TOOL_CALL_RX.search(stripped)
     if m:
         tool_name = m.group(1)
-        # m.group(2) == '{'; start from the { character
         args_start = m.start(2)
         args_str = stripped[args_start:]
         end_idx = _find_closing_brace(args_str)
@@ -110,30 +116,41 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
     # ── Standard JSON path ────────────────────────────────────────────────
     _start = stripped.find('{')
     if _start != -1:
-        # Use bracket-aware brace matching to find the real closing '}'.
-        # The naive rfind('}') approach used by extract_json_object_string would
-        # find any '}' in the string — including ones inside JSON string values
-        # (e.g. Python f-strings like f"{timestamp}" or f"{filename}").  When
-        # those patterns arrive mid-stream, rfind returns their '}' as the outer
-        # closing brace, causing DirtyJson to parse a truncated object and
-        # stop_response to fire early, cutting the code write at the variable name.
-        # _find_closing_brace tracks in-string state and ignores '}' inside quotes.
         _end_idx = _find_closing_brace(stripped[_start:])
         if _end_idx == -1:
-            # Outer brace not yet closed — stream still in progress, keep buffering.
+            partial = stripped[_start:]
+            if len(partial) >= _RESPONSE_RECOVERY_THRESHOLD:
+                m_name = _PARTIAL_TOOL_NAME_RX.search(partial)
+                if m_name and m_name.group(1) == "response":
+                    partial_text = _extract_partial_response_text(partial)
+                    if partial_text:
+                        import sys
+                        print(
+                            f"[EXTRACT-TOOLS] Truncated response tool detected "
+                            f"({len(partial)} chars). Recovering partial text.",
+                            file=sys.stderr, flush=True,
+                        )
+                        return {
+                            "tool_name": "response",
+                            "tool_args": {
+                                "text": (
+                                    partial_text.rstrip()
+                                    + "\n\n[SYSTEM NOTICE: Response truncated by token "
+                                    "limit. For long content, write to a file using "
+                                    "code_execution_tool first, then respond with a "
+                                    "short summary and the file path.]"
+                                )
+                            },
+                        }
             return None
         ext_json = stripped[_start : _start + _end_idx + 1]
         try:
             data = DirtyJson.parse_string(ext_json)
             if isinstance(data, dict):
-                # Valid JSON but empty tool_name — model emitted {"tool_name": "", ...}
-                # after reasoning tokens. Treat the original text as a plain response
-                # rather than routing to Unknown and dumping the full tool list.
+                # Empty tool_name — model emitted reasoning without a valid tool call
                 if not data.get("tool_name", "").strip():
                     return {"tool_name": "response", "tool_args": {"text": stripped}}
-                # text_editor colon-dispatch inference — Gemma 4 and similar models
-                # emit "text_editor" without the required :read/:write/:patch suffix.
-                # Infer the correct method from tool_args so A0 dispatches correctly.
+                # text_editor colon-dispatch inference
                 if data.get("tool_name") == "text_editor":
                     args = data.get("tool_args", {})
                     if "content" in args:
@@ -142,10 +159,7 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                         data["tool_name"] = "text_editor:patch"
                     else:
                         data["tool_name"] = "text_editor:read"
-                # Detect response text truncation: text field ends with ':' or ':\n'
-                # which means the model was about to continue (file path, list, etc.)
-                # but the response was cut off by the max_tokens limit.
-                # Append a visible marker so the agent sees it on the next turn.
+                # Detect response text truncation
                 if data.get("tool_name") == "response":
                     text = data.get("tool_args", {}).get("text", "")
                     if text.rstrip().endswith(":"):
@@ -161,12 +175,11 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                             "If you intended to write a file, use write_file first, then call "
                             "response with the file path.]"
                         )
+                # Default tool_args to {} if missing or non-dict
+                if not isinstance(data.get("tool_args"), dict):
+                    data["tool_args"] = {}
                 return data
         except Exception:
-            # Parsing failed. Check whether this looks like a truncated large-payload
-            # call (code_execution_tool / text_editor:write with a big code string).
-            # If so, return None to trigger fw.msg_misformat.md — which now contains
-            # explicit append-mode guidance.  The detected tool is logged for visibility.
             truncated_tool = _detect_truncation(ext_json)
             if truncated_tool:
                 import sys
@@ -175,39 +188,67 @@ def json_parse_dirty(json:str) -> dict[str,Any] | None:
                     "fw.msg_misformat.md will inject append-mode guidance.",
                     file=sys.stderr, flush=True,
                 )
-            # Fall through to plain-text fallback (which rejects {-starting strings)
 
     # Fallback: plain text → implicit response tool call.
-    # Reasoning-distilled models respond in natural language after thinking tokens
-    # rather than JSON. Wrapping as a response call avoids the misformat loop.
-    #
-    # Guard: do NOT apply to strings starting with '{' — those are incomplete or
-    # malformed JSON objects, not plain text. Returning a non-None result for a
-    # partial '{' causes stream_callback to fire stop_response after just one
-    # character, killing the stream immediately.
+    # Guard: do NOT apply to strings starting with '{'.
     if stripped and not stripped.startswith('{'):
         return {"tool_name": "response", "tool_args": {"text": stripped}}
     return None
 
+
+def normalize_tool_request(tool_request: Any) -> tuple[str, dict]:
+    if not isinstance(tool_request, dict):
+        raise ValueError("Tool request must be a dictionary")
+    tool_name = tool_request.get("tool_name")
+    if not tool_name or not isinstance(tool_name, str):
+        tool_name = tool_request.get("tool")
+    if not tool_name or not isinstance(tool_name, str):
+        raise ValueError("Tool request must have a tool_name (type string) field")
+    tool_args = tool_request.get("tool_args")
+    if not isinstance(tool_args, dict):
+        tool_args = tool_request.get("args")
+    if not isinstance(tool_args, dict):
+        raise ValueError("Tool request must have a tool_args (type dictionary) field")
+    return tool_name, tool_args
+
+
+def extract_json_root_string(content: str) -> str | None:
+    if not content or not isinstance(content, str):
+        return None
+
+    start = content.find("{")
+    if start == -1:
+        return None
+    first_array = content.find("[")
+    if first_array != -1 and first_array < start:
+        return None
+
+    parser = DirtyJson()
+    try:
+        parser.parse(content[start:])
+    except Exception:
+        return None
+
+    if not parser.completed:
+        return None
+
+    return content[start : start + parser.index]
+
+
 def extract_json_object_string(content):
-    start = content.find('{')
+    start = content.find("{")
     if start == -1:
         return ""
 
     # Find the first '{'
-    end = content.rfind('}')
+    end = content.rfind("}")
     if end == -1:
         # If there's no closing '}', return from start to the end
         return content[start:]
     else:
         # If there's a closing '}', return the substring from start to end
-        return content[start:end+1]
+        return content[start : end + 1]
 
-def extract_json_root_string(content):
-    """Alias for extract_json_object_string — used by agent.py stream_callback
-    to extract a complete JSON root object from partial stream buffers.
-    Added in V1.7 agent.py but was missing from our patched extract_tools.py."""
-    return extract_json_object_string(content)
 
 def extract_json_string(content):
     # Regular expression pattern to match a JSON object
@@ -222,74 +263,14 @@ def extract_json_string(content):
     else:
         return ""
 
+
 def fix_json_string(json_string):
     # Function to replace unescaped line breaks within JSON string values
     def replace_unescaped_newlines(match):
-        return match.group(0).replace('\n', '\\n')
+        return match.group(0).replace("\n", "\\n")
 
     # Use regex to find string values and apply the replacement function
-    fixed_string = re.sub(r'(?<=: ")(.*?)(?=")', replace_unescaped_newlines, json_string, flags=re.DOTALL)
-    return fixed_string
-
-
-T = TypeVar('T')  # Define a generic type variable
-
-def import_module(file_path: str) -> ModuleType:
-    # Handle file paths with periods in the name using importlib.util
-    abs_path = get_abs_path(file_path)
-    module_name = os.path.basename(abs_path).replace('.py', '')
-
-    # Create the module spec and load the module
-    spec = importlib.util.spec_from_file_location(module_name, abs_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load module from {abs_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-def load_classes_from_folder(folder: str, name_pattern: str, base_class: Type[T], one_per_file: bool = True) -> list[Type[T]]:
-    classes = []
-    abs_folder = get_abs_path(folder)
-
-    # Get all .py files in the folder that match the pattern, sorted alphabetically
-    py_files = sorted(
-        [file_name for file_name in os.listdir(abs_folder) if fnmatch(file_name, name_pattern) and file_name.endswith(".py")]
+    fixed_string = re.sub(
+        r'(?<=: ")(.*?)(?=")', replace_unescaped_newlines, json_string, flags=re.DOTALL
     )
-
-    # Iterate through the sorted list of files
-    for file_name in py_files:
-        file_path = os.path.join(abs_folder, file_name)
-        # Use the new import_module function
-        module = import_module(file_path)
-
-        # Get all classes in the module
-        class_list = inspect.getmembers(module, inspect.isclass)
-
-        # Filter for classes that are subclasses of the given base_class
-        # iterate backwards to skip imported superclasses
-        for cls in reversed(class_list):
-            if cls[1] is not base_class and issubclass(cls[1], base_class):
-                classes.append(cls[1])
-                if one_per_file:
-                    break
-
-    return classes
-
-def load_classes_from_file(file: str, base_class: type[T], one_per_file: bool = True) -> list[type[T]]:
-    classes = []
-    # Use the new import_module function
-    module = import_module(file)
-
-    # Get all classes in the module
-    class_list = inspect.getmembers(module, inspect.isclass)
-
-    # Filter for classes that are subclasses of the given base_class
-    # iterate backwards to skip imported superclasses
-    for cls in reversed(class_list):
-        if cls[1] is not base_class and issubclass(cls[1], base_class):
-            classes.append(cls[1])
-            if one_per_file:
-                break
-
-    return classes
+    return fixed_string
