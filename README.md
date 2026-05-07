@@ -1,8 +1,5 @@
 # Exocortex
 
-> **⚠️ Work in Progress — Current performance is below stock Agent Zero baseline.**
-> The extension stack is under active development. Benchmarks run against unmodified Agent Zero containers consistently show equal or better task completion in the stock build. Do not use this in production. Contributions and testing welcome.
-
 **A cognitive architecture framework for local language models — and a research program into what makes AI systems trustworthy, continuous, and genuinely useful.**
 
 *The phantom limb that's stronger than the original.*
@@ -19,7 +16,7 @@ That framing is still accurate for the technical core. But the project has grown
 
 ## The Problem It Solves
 
-Stock Agent Zero running a local model fails in predictable ways. These are documented failure modes — observed across dozens of sessions and five formal stress tests with full reproducible records.
+Stock Agent Zero running a local model fails in predictable ways. These are documented failure modes — observed across dozens of sessions and twelve formal stress tests with full reproducible records.
 
 **The model doesn't know its own tools exist.**
 Custom tools aren't listed in the per-turn system context. The model explores the filesystem or reimplements capabilities it already has rather than calling them by name. Result: tool calls that should be single invocations become three-step search-and-reimplementation sequences.
@@ -40,11 +37,12 @@ When all data retrieval attempts fail silently, the model produces complete, con
 
 | Failure mode | Stock A0 | With Exocortex |
 |---|---|---|
-| Supervisor firings per session | 10+ (ST-005) | 3 (ST-006) |
-| Operator interventions required | 2 (ST-005) | 0 (ST-006) |
+| Supervisor firings per session | 10+ (ST-005) | 3 (ST-006); 1 silent Tier 1 detect, 0 injections (ST-012) |
+| Operator interventions required | 2 (ST-005) | 0 (ST-006, ST-012) |
 | Tool fallback false positives | 17/session (ST-001) | 1/session (ST-002) |
 | Context compression recovery | Full re-derivation | 1-turn cite from `[ARTIFACTS]` |
-| Custom tool visibility | Not callable by name | Listed every turn via `_16_tool_registry.py` |
+| Token injection per turn | Unmetered | ~730–960 normal / ~1,000–1,230 heartbeat (ST-012, v1.13 curated stack) |
+| OpenPlanter analysis output | Shallow summary, 16 steps | 341 lines / 18 sections, ~51 steps, 38% budget remaining (ST-012) |
 
 **The pattern across all five fixes:** each layer eliminates a specific friction point. The model's capability doesn't change. The number of snags that prevent it from running does. The self-improvement session (2026-03-24) demonstrated this concretely: a local model crossed the gap from "here's a GitHub repo" to "I'm writing new tools to improve myself, and they're immediately callable" in a single autonomous session — with zero loops, zero operator interventions, and clean context compression recovery. Not because the model got smarter. Because the floor stopped collapsing under it.
 
@@ -258,6 +256,12 @@ Same 6-task battery run against stock v1.9 (`a0_v19_baseline` container) with no
 
 **ST-010: Agent-Zero v1.9 + Exocortex (2026-04-15)**
 Same battery against Exocortex v1.9 (`exocortex_v17`). Key findings: 40+ tools visible (vs 20 stock); SFX-001 confirmed — native detector fired 3× but zero prescriptive injections occurred; `combined_output.txt` confirmed written (T6 complete); `threat_assess.py` created and executed (T4 partial); T3 revealed a new failure mode — reasoning model's `<think>` token budget truncates long inline code payloads, requiring the `design-buildplan` skill to decompose before writing. BST v3.2 diagnosed from the classification data: 59% `investigation` in ST-010 pre-fix confirmed the investigation-dominance problem that motivated the v3.2 priority inversion.
+
+**ST-011: GEPA Phase 2 — Self-Improvement Loop**
+Planned. Tests whether the agent can independently rediscover BST v3.2 signal changes from misclassification data alone, without being told what the fix is. Also a stress test of the design-buildplan infrastructure on a five-file multi-phase build. Date TBD.
+
+**ST-012: Agent-Zero v1.13 + Exocortex Port Validation (2026-05-07)**
+First validation of the v1.13-ported curated Tier 1–4 stack (14 extensions). Task: OpenPlanter architecture analysis and SKILL.md production. Key findings: (1) **Two-path extension loading** — v1.13 loads from both the profile path and the plugin path; tombstoned extensions in the plugin path still execute, requiring cleanup of both paths. (2) Personality Loader import crash (`python.helpers` → `helpers`) — fixed pre-run. (3) Output quality: 341 lines / 18 sections, all 8 architecture components verified against source files, ~51 steps, 38% budget remaining at completion. (4) Zero operator interventions, zero TOOL-GUARD blocks, one silent Tier 1 supervisor detect with no injection needed. (5) Token injection reduced to ~730–960 tokens/turn normal (from ~2,000–3,000+ in v1.9 Exocortex). (6) Step budget 50% advisory threshold too aggressive — fired 11 consecutive turns before task completion; recommended tuning to fire once at 50% then escalate at 25%. Upper-tier supervision (Tier 2+ surgery, subordinate delegation, memory recall under load) not exercised — those are the next test targets.
 
 ---
 
