@@ -150,6 +150,50 @@ echo "Clearing pycache..."
 find "$TARGET_ROOT" -name "*.pyc" -delete
 find "$TARGET_ROOT" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
+# ── Verification pass (DEC-026) ───────────────────────────────────────────────
+# Confirm no un-curated .py files exist in either discovery path.
+# Any file here that isn't in INSTALL_LIST is a ghost extension risk.
+echo ""
+echo "Verification pass — scanning for un-curated extensions..."
+
+CURATED_FILENAMES=()
+for RELPATH in "${!INSTALL_LIST[@]}"; do
+  CURATED_FILENAMES+=("$(basename "$RELPATH")")
+done
+
+GHOST_FOUND=0
+for PY in $(find "$TARGET_ROOT" -name "*.py" 2>/dev/null); do
+  FNAME="$(basename "$PY")"
+  FOUND=0
+  for CF in "${CURATED_FILENAMES[@]}"; do
+    [ "$FNAME" = "$CF" ] && FOUND=1 && break
+  done
+  if [ $FOUND -eq 0 ]; then
+    echo "  UNCURATED (profile): $PY"
+    GHOST_FOUND=$((GHOST_FOUND + 1))
+  fi
+done
+
+if [ -d "$PLUGIN_EXT" ]; then
+  for PY in $(find "$PLUGIN_EXT" -name "*.py" 2>/dev/null); do
+    FNAME="$(basename "$PY")"
+    FOUND=0
+    for CF in "${CURATED_FILENAMES[@]}"; do
+      [ "$FNAME" = "$CF" ] && FOUND=1 && break
+    done
+    if [ $FOUND -eq 0 ]; then
+      echo "  UNCURATED (plugin): $PY"
+      GHOST_FOUND=$((GHOST_FOUND + 1))
+    fi
+  done
+fi
+
+if [ $GHOST_FOUND -eq 0 ]; then
+  echo "  OK — no un-curated extensions found."
+else
+  echo "  WARNING: $GHOST_FOUND un-curated file(s) found. Review and tombstone if stale."
+fi
+
 echo ""
 echo "Done. $INSTALLED installed, $FAILED skipped."
 echo "Restart the container to activate: docker restart exocortex_v17"

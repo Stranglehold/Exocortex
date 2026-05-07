@@ -7,19 +7,21 @@ Tier 1: Mechanical Safety — zero model calls, fires every turn
 Tracks turn count per agent instance. Injects a [Step N/M] annotation
 into the last user message in history_output every turn. Fires progressive
 warning injections when the budget runs low:
-  - 50% remaining: gentle advisory
-  - 25% remaining: strong warning to consolidate and respond
-  - 0% remaining: final-answer demand
 
-Prevents silent budget exhaustion — a model aware it has 8 steps left
-plans and prioritizes differently than one that thinks turns are unlimited.
+  - 50% used  (once): gentle advisory — plan remaining work
+  - 75% used  (once): escalated warning — begin wrapping up
+  - ≥90% used (every turn): hard pressure — write output now
+  - 100% used (every turn): exhaustion demand — stop all tools
+
+Warnings at 50% and 75% fire exactly once (tracked in _step_budget_fired).
+Per-turn pressure only activates at ≥90% — genuine emergency territory.
+This prevents advisory noise during normal task execution.
 
 Default budget: 80 turns (configurable via /a0/usr/Exocortex/config.json
 under "step_budget_tracker": {"enabled": true, "max_steps": 80}).
 
-Pattern source: OpenPlanter progressive warnings at 50%/25% + Claude Code
-max_turns hard ceiling. Does NOT hard-stop — warns and lets the agent decide.
-No LLM calls.
+Pattern source: OpenPlanter progressive warnings + Opus ST-012 guidance.
+Does NOT hard-stop — warns and lets the agent decide. No LLM calls.
 """
 
 import json
@@ -32,9 +34,10 @@ from helpers.extension import Extension
 _CONFIG_PATH = "/a0/usr/Exocortex/config.json"
 _DEFAULT_MAX_STEPS = 80
 
-_WARN_50 = "[STEP-BUDGET] Advisory: you have used {used} of {max} steps ({pct}%). Consider consolidating findings before context grows further."
-_WARN_25 = "[STEP-BUDGET] Warning: only {remaining} steps remain ({pct}% of budget). Begin wrapping up. Summarize findings and call response unless the task requires more steps."
-_WARN_0 = "[STEP-BUDGET] Budget exhausted: {used}/{max} steps used. Report what you have found so far and stop. Do not call additional tools."
+_WARN_50 = "[STEP-BUDGET] BUDGET NOTE: 50% of step budget used ({used}/{max} steps). Plan your remaining work accordingly."
+_WARN_75 = "[STEP-BUDGET] BUDGET WARNING: 75% of step budget used ({used}/{max} steps). Prioritize completing your current output. A partial result is better than no result."
+_WARN_90 = "[STEP-BUDGET] BUDGET CRITICAL: {remaining} steps remaining. Write your output NOW. Do not start new sub-tasks."
+_WARN_0 = "[STEP-BUDGET] BUDGET EXHAUSTED: {used}/{max} steps used. Report what you have found so far and stop. Do not call additional tools."
 
 
 def _load_config(agent) -> dict:
@@ -70,6 +73,11 @@ class StepBudgetTracker(Extension):
             step: int = getattr(self.agent, "_step_budget_count", 0) + 1
             self.agent._step_budget_count = step
 
+            # Track which one-shot thresholds have already fired
+            if not hasattr(self.agent, "_step_budget_fired"):
+                self.agent._step_budget_fired = set()
+            fired: set = self.agent._step_budget_fired
+
             history_output = getattr(loop_data, "history_output", None)
             user_msg = _get_last_user_msg(history_output)
             if not user_msg:
@@ -77,23 +85,25 @@ class StepBudgetTracker(Extension):
 
             remaining = max_steps - step
             pct_used = int(100 * step / max_steps)
-            pct_remaining = 100 - pct_used
 
-            # Always inject step counter prefix
             step_tag = f"[Step {step}/{max_steps}]"
 
-            # Determine if a warning block should be prepended too
+            # Determine warning to inject (if any)
             warning: str = ""
             if step >= max_steps:
+                # Always fire on exhaustion
                 warning = _WARN_0.format(used=step, max=max_steps)
-            elif pct_remaining <= 25:
-                warning = _WARN_25.format(
-                    remaining=remaining, pct=pct_remaining
-                )
-            elif pct_remaining <= 50:
-                warning = _WARN_50.format(
-                    used=step, max=max_steps, pct=pct_used
-                )
+            elif pct_used >= 90:
+                # Per-turn pressure in final 10%
+                warning = _WARN_90.format(remaining=remaining)
+            elif pct_used >= 75 and "75" not in fired:
+                # Fire once at 75%
+                warning = _WARN_75.format(used=step, max=max_steps)
+                fired.add("75")
+            elif pct_used >= 50 and "50" not in fired:
+                # Fire once at 50%
+                warning = _WARN_50.format(used=step, max=max_steps)
+                fired.add("50")
 
             existing = str(user_msg.get("content", ""))
             if warning:
@@ -104,8 +114,8 @@ class StepBudgetTracker(Extension):
             if step % 10 == 0 or warning:
                 print(
                     f"[STEP-BUDGET] Step {step}/{max_steps} "
-                    f"({pct_remaining}% remaining)"
-                    + (f" — warning injected" if warning else ""),
+                    f"({100 - pct_used}% remaining)"
+                    + (" — warning injected" if warning else ""),
                     flush=True,
                 )
 

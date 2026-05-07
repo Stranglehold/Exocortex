@@ -250,7 +250,7 @@ Agent Zero loads extensions from two path types, deduplicated by file stem (prof
 1. **Profile path** (per-agent): `/a0/usr/agents/agent0/extensions/python/<hook>/`
 2. **Plugin path** (per-plugin): `/a0/usr/plugins/exocortex/extensions/python/<hook>/`
 
-Both paths searched via `subagents.get_paths(agent, "extensions/python", hook)`. Dedup: same filename in both paths → profile path version runs, plugin version skipped. When deploying an extension, ensure it's in the `python/` subdirectory — files at `extensions/<hook>/` (without `python/`) are silently ignored.
+Both paths searched via `subagents.get_paths(agent, "extensions/python", hook)`. Dedup: same filename in both paths → profile path version runs, plugin version skipped. **Critical:** a file present only in the plugin path (no profile counterpart) still executes — dedup only applies when both paths have the same filename. Tombstoning an extension from the profile path does NOT remove it from the plugin path. See DEC-026 and Fragile Seam #11. When deploying an extension, ensure it's in the `python/` subdirectory — files at `extensions/<hook>/` (without `python/`) are silently ignored.
 
 Import paths inside the container must use the module name as Python sees it — NOT the filesystem path:
 - Correct: `from helpers.extension import Extension`
@@ -275,6 +275,7 @@ Lessons learned the hard way. Check these first when something breaks silently.
 | 8 | Extension deployed to `extensions/<hook>/` instead of `extensions/python/<hook>/` | Extension file exists, never loads, no error | The `python/` subdirectory is required. Files at the bare hook path are invisible to `get_paths()`. |
 | 9 | Same extension in two hooks with a once-per-session gate | Wrong-hook version fires first, sets flag, correct-hook version skips forever | `_memory_catalog_built` flag: if `_18_memory_catalog.py` exists in both `before_main_llm_call` and `message_loop_prompts_after`, before fires first and blocks the correct version. Keep each extension in exactly one hook. |
 | 10 | Extension import uses `python.helpers.*` | `ModuleNotFoundError: No module named 'python.helpers'` at extension load — entire hook fails silently | Use `from helpers.extension import Extension`, `from plugins._memory.helpers.memory import Memory` |
+| 11 | Tombstone removes from profile path only | Extension removed from profile path continues firing from plugin path — ghost extension, no log evidence it's stale | Remove from BOTH paths. `install_extensions.sh` does this. Manual tombstone: two `rm -f` entries. Confirmed in ST-012: TOOL-REG, MEM-CAT, INJECTION-BUDGET fired after profile removal. See DEC-026. |
 
 ---
 

@@ -295,3 +295,15 @@
 **Informed by:** Kestrel's claw-code analysis (2026-03-31) + Opus architectural review (same day). Routing-time permission semantics pattern extracted from claw-code. Subordinate depth enforcement as the concrete motivating use case identified by Opus.
 **What NOT to do:** Don't redesign the action boundary for this reason alone. The current pre-execution gate works. Build the subordinate depth enforcement feature first, confirm the timing is a real problem under load, then revisit.
 **Instances:** `extensions/tool_execute_before/_15_action_boundary.py` (current pre-execution implementation).
+---
+
+## DEC-026: Extension Install and Tombstone Must Target Both Discovery Paths
+
+**Date:** 2026-05-07
+**Session:** ST-012 port validation
+**Principle:** In Agent Zero v1.13+, every extension add, remove, and tombstone operation must target both the profile path and the plugin path. Removing from only one path leaves ghost extensions running from the other.
+**Context:** v1.13 calls `subagents.get_paths(agent, "extensions/python", hook)` which returns both `/a0/usr/agents/agent0/extensions/python/{hook}/` (profile) and `/a0/usr/plugins/exocortex/extensions/python/{hook}/` (plugin). Dedup key is filename only — profile wins on collision, but files present *only* in the plugin path still execute. Discovered empirically in ST-012: TOOL-REG (`_16_tool_registry.py`), MEM-CAT (`_18_memory_catalog.py`), and INJECTION-BUDGET (`_18_injection_budget.py`) continued firing after being removed from the profile path, because they remained in the plugin path.
+**Operational rule:** `install_extensions.sh` handles this via an explicit plugin-path cleanup phase (runs regardless of whether the plugin path exists). Any manual tombstone operation outside the install script must also remove from both paths. The install script ends with a verification pass confirming zero un-curated `.py` files in the profile path.
+**Alternatives rejected:** Removing the plugin extension directory entirely (breaks plugin infrastructure unrelated to extensions). Relying on the profile-wins dedup (plugin-only files have no profile counterpart to win against — they run unchecked).
+**Revisit if:** Agent Zero changes its extension discovery mechanism in a future version (check `helpers/extension.py` and `helpers/subagents.py` `get_paths()` on each upgrade).
+**Instances:** `extensions/install_extensions.sh` (implements the two-path cleanup). See WIRING.md "Extension Load Path" and "Known Fragile Seams #11".
