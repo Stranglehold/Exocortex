@@ -9,7 +9,7 @@ Post-processes recalled memories by applying classification-based filters:
   2. Role-relevance filter: Suppress memories from non-overlapping BST
      domains (unless load_bearing)
   3. Utility ranking: load_bearing > tactical > archived, then by
-     access_count descending
+     access_count descending, then by temporal-decay-adjusted similarity
   4. Cap total injected memories at configurable limit
 
 Also handles:
@@ -188,6 +188,28 @@ def _get_query(loop_data) -> str:
     return ""
 
 
+# ── Temporal Decay ───────────────────────────────────────────────────────────
+
+def _temporal_decay_score(metadata: dict) -> float:
+    """Calculate time-based relevance multiplier. Newer memories weighted higher.
+
+    Returns a score in [0.05, 1.0] where 1.0 = created today, 0.05 = very old.
+    Applied as a multiplier on similarity score in the tertiary rank position,
+    so it only breaks ties between memories with equal utility and access count.
+    """
+    try:
+        created_str = metadata.get("timestamp", "")
+        now = datetime.now(timezone.utc)
+        if isinstance(created_str, str) and "T" in created_str:
+            created = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+            age_days = (now - created).days
+        else:
+            age_days = 365  # Assume old if timestamp unparseable
+        return min(max(1.0 / (age_days + 1), 0.05), 1.0)
+    except Exception:
+        return 1.0  # No decay on parse error
+
+
 # ── Filter and Rank ──────────────────────────────────────────────────────────
 
 def _filter_and_rank(
@@ -205,6 +227,7 @@ def _filter_and_rank(
         doc_id = doc.metadata.get("id", "") if hasattr(doc, "metadata") else ""
         cls = doc.metadata.get(CLS_KEY, {}) if hasattr(doc, "metadata") else {}
         lin = doc.metadata.get(LIN_KEY, {}) if hasattr(doc, "metadata") else {}
+        temporal_decay = _temporal_decay_score(doc.metadata if hasattr(doc, "metadata") else {})
 
         # ── Validity filter: exclude deprecated and loop_period memories ──
         if cls.get("validity") in ("deprecated", "loop_period"):
@@ -232,8 +255,8 @@ def _filter_and_rank(
         access_count = lin.get("access_count", 0)
 
         # Composite rank: utility class primary, access count secondary,
-        # similarity score tertiary
-        rank = (utility_score, access_count, sim_score)
+        # decay-adjusted similarity tertiary (newer memories break ties)
+        rank = (utility_score, access_count, sim_score * temporal_decay)
         scored.append((doc, sim_score, rank))
 
     # Sort by rank descending
