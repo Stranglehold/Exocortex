@@ -46,6 +46,7 @@ DEFAULT_CONFIG = {
     "maintenance_interval_loops": 25,
     "conflict_top_k": 5,
     "enable_purge": False,
+    "memory_budget_tokens": 400,   # Hard cap on total recall injection per turn
 }
 
 # Metadata keys (must match _55_memory_classifier.py)
@@ -80,6 +81,7 @@ class MemoryRelevanceFilter(Extension):
                 return
 
             max_injected = config.get("max_injected_memories", 8)
+            budget_tokens = config.get("memory_budget_tokens", 400)
 
             # Get current role for relevance filtering
             role = getattr(self.agent, "_org_active_role", None)
@@ -109,6 +111,7 @@ class MemoryRelevanceFilter(Extension):
                         filter="area == 'main' or area == 'fragments'",
                     )
                     filtered = _filter_and_rank(raw, all_docs, role_domains, max_injected)
+                    filtered = _apply_budget_gate(filtered, budget_tokens)
 
                     if filtered:
                         txt = "\n\n".join(
@@ -138,7 +141,9 @@ class MemoryRelevanceFilter(Extension):
                         filter="area == 'solutions'",
                     )
                     sol_cap = max(2, max_injected // 2)
+                    sol_budget = max(100, budget_tokens // 4)
                     filtered = _filter_and_rank(raw, all_docs, role_domains, sol_cap)
+                    filtered = _apply_budget_gate(filtered, sol_budget)
 
                     if filtered:
                         txt = "\n\n".join(
@@ -172,6 +177,41 @@ class MemoryRelevanceFilter(Extension):
                 )
             except Exception:
                 pass
+
+
+# ── Memory Budget Gate ───────────────────────────────────────────────────────
+
+def _apply_budget_gate(filtered: list[tuple], budget_tokens: int) -> list[tuple]:
+    """Trim ranked memories to fit within a hard token budget.
+
+    Memories are already ranked highest-first. Walk in order, accumulating
+    estimated token count (chars // 4). Stop when budget is hit. Load-bearing
+    memories always pass regardless of budget position.
+    """
+    if budget_tokens <= 0:
+        return filtered
+
+    budget_chars = budget_tokens * 4
+    kept = []
+    accumulated = 0
+
+    for doc, score in filtered:
+        content = getattr(doc, "page_content", "") or ""
+        cls = doc.metadata.get(CLS_KEY, {}) if hasattr(doc, "metadata") else {}
+        utility = cls.get("utility", "tactical")
+
+        # load_bearing memories always survive the gate
+        if utility == "load_bearing":
+            kept.append((doc, score))
+            accumulated += len(content)
+            continue
+
+        if accumulated + len(content) <= budget_chars:
+            kept.append((doc, score))
+            accumulated += len(content)
+        # else: drop this memory — budget exceeded
+
+    return kept
 
 
 # ── Query Extraction ─────────────────────────────────────────────────────────

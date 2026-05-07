@@ -1,59 +1,156 @@
 #!/bin/bash
 # install_extensions.sh
-# Copies hardening extensions into /a0/python/extensions/
-# Creates target subdirectories if needed
-# Backs up any existing files with the same name before overwriting
-# Safe to re-run
+# Installs the v1.13 curated Exocortex extension stack to the agent0 profile path.
+# Profile path persists across A0 image updates (/a0/usr/agents/agent0/extensions/python/).
+#
+# Curated list (Tier 1-4 only — per Opus architectural guidance, May 2026):
+#
+# Tier 1 — Mechanical Safety (zero model calls, every turn/tool)
+#   tool_execute_before/_02_tool_signature_guardian.py  — identical-call loop blocker
+#   tool_execute_before/_16_py_write_guard.py           — .py write blocker
+#   message_loop_prompts_after/_08_step_budget_tracker.py — step count + warnings
+#
+# Tier 2 — Context Quality (cheap heuristics, conditional)
+#   message_loop_prompts_after/_55_memory_relevance_filter.py — ranked recall + budget gate
+#   tool_execute_after/_28_output_compressor.py              — verbose output trimmer
+#
+# Tier 3 — Active Supervision (periodic or on signal)
+#   message_loop_prompts_after/_21_constraint_heartbeat.py   — rule re-injection
+#   message_loop_end/_50_supervisor_loop.py                  — loop/stall detection
+#   message_loop_end/_28_backend_standby.py                  — backend recovery
+#   message_loop_end/_29_stuck_delivery.py                   — stuck response recovery
+#
+# Tier 4 — Quality Assurance (specific triggers)
+#   tool_execute_after/_25_evidence_ledger_recorder.py       — provenance tracking
+#   monologue_end/_52_selective_memorizer.py                 — signal-discriminating memory
+#   monologue_end/_55_memory_classifier.py                   — 5-axis classification
+#   message_loop_prompts_after/_56_memory_enhancement.py     — 6-stage retrieval pipeline
+#   before_main_llm_call/_11_belief_state_tracker.py         — BST classification only
+#
+# DO NOT ADD without Opus architectural review:
+#   BST enrichment injection, metacognitive injection, tool registry injection,
+#   HTN plan selector, injection gate, operator profile per-turn.
+#
+# Safe to re-run. Removes stale heartbeat from wrong hook on first run.
+
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$SCRIPT_DIR"
-TARGET_ROOT="/a0/python/extensions"
-BACKUP_ROOT="$TARGET_ROOT/.hardening_originals"
+TARGET_ROOT="/a0/usr/agents/agent0/extensions/python"
+BACKUP_ROOT="/a0/usr/agents/agent0/extensions/.hardening_originals"
 
 if [ ! -d "$TARGET_ROOT" ]; then
   echo "ERROR: $TARGET_ROOT not found. Are you running inside the agent-zero container?"
   exit 1
 fi
 
-if [ ! -d "$SOURCE_DIR" ]; then
-  echo "ERROR: $SOURCE_DIR not found. Run this script from the repo root."
-  exit 1
+echo "Installing Exocortex v1.13 curated extension stack..."
+echo ""
+
+# ── Remove stale/wrong-hook extensions (profile path) ────────────────────────
+echo "Removing stale extensions from profile path..."
+rm -f "$TARGET_ROOT/before_main_llm_call/_21_constraint_heartbeat.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_09_injection_gate.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_17_orchestration_gate.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_19_context_pruner.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_18_injection_budget.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_13_operator_profile.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_14_metacognitive_injection.py"
+rm -f "$TARGET_ROOT/before_main_llm_call/_16_tool_registry.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_09_context_pruner.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_16_tool_registry.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_18_memory_catalog.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_19_skill_suggester.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_57_orchestration_mode.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_58_ontology_query.py"
+rm -f "$TARGET_ROOT/message_loop_prompts_after/_95_tiered_tool_injection.py"
+echo "  done."
+echo ""
+
+# ── Remove stale extensions from plugin path (loaded by v1.13 plugin system) ─
+# v1.13 load order: profile path wins on filename collision, but files only in
+# the plugin path still run. Clean tombstoned extensions from the plugin too.
+PLUGIN_EXT="/a0/usr/plugins/exocortex/extensions/python"
+if [ -d "$PLUGIN_EXT" ]; then
+  echo "Removing stale extensions from plugin path..."
+  rm -f "$PLUGIN_EXT/message_loop_prompts_after/_16_tool_registry.py"
+  rm -f "$PLUGIN_EXT/message_loop_prompts_after/_18_memory_catalog.py"
+  rm -f "$PLUGIN_EXT/message_loop_prompts_after/_19_skill_suggester.py"
+  rm -f "$PLUGIN_EXT/message_loop_prompts_after/_58_ontology_query.py"
+  rm -f "$PLUGIN_EXT/message_loop_prompts_after/_95_tiered_tool_injection.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_18_injection_budget.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_15_htn_plan_selector.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_12_proactive_supervisor.py"
+  echo "  done."
+  echo ""
 fi
 
-echo "Installing hardening extensions..."
-echo ""
+# ── Curated install list ──────────────────────────────────────────────────────
+declare -A INSTALL_LIST=(
+  # Tier 1
+  ["tool_execute_before/_02_tool_signature_guardian.py"]="tool_execute_before"
+  ["tool_execute_before/_16_py_write_guard.py"]="tool_execute_before"
+  ["message_loop_prompts_after/_08_step_budget_tracker.py"]="message_loop_prompts_after"
+  # Tier 2
+  ["message_loop_prompts_after/_55_memory_relevance_filter.py"]="message_loop_prompts_after"
+  ["tool_execute_after/_28_output_compressor.py"]="tool_execute_after"
+  # Tier 3
+  ["message_loop_prompts_after/_21_constraint_heartbeat.py"]="message_loop_prompts_after"
+  ["message_loop_end/_50_supervisor_loop.py"]="message_loop_end"
+  ["message_loop_end/_28_backend_standby.py"]="message_loop_end"
+  ["message_loop_end/_29_stuck_delivery.py"]="message_loop_end"
+  # Tier 4
+  ["tool_execute_after/_25_evidence_ledger_recorder.py"]="tool_execute_after"
+  ["monologue_end/_52_selective_memorizer.py"]="monologue_end"
+  ["monologue_end/_55_memory_classifier.py"]="monologue_end"
+  ["message_loop_prompts_after/_56_memory_enhancement.py"]="message_loop_prompts_after"
+  ["before_main_llm_call/_11_belief_state_tracker.py"]="before_main_llm_call"
+)
 
 INSTALLED=0
-SKIPPED=0
+FAILED=0
 
-# Walk source directory — each subfolder is an extension point
-for EXT_POINT_DIR in "$SOURCE_DIR"/*/; do
-  EXT_POINT=$(basename "$EXT_POINT_DIR")
-  TARGET_DIR="$TARGET_ROOT/$EXT_POINT"
-  BACKUP_DIR="$BACKUP_ROOT/$EXT_POINT"
+for RELPATH in "${!INSTALL_LIST[@]}"; do
+  HOOK_DIR="${INSTALL_LIST[$RELPATH]}"
+  SOURCE_FILE="$SOURCE_DIR/$RELPATH"
+  TARGET_DIR="$TARGET_ROOT/$HOOK_DIR"
+  FILENAME="$(basename "$RELPATH")"
+  TARGET_FILE="$TARGET_DIR/$FILENAME"
+  BACKUP_DIR="$BACKUP_ROOT/$HOOK_DIR"
 
-  mkdir -p "$TARGET_DIR"
-  mkdir -p "$BACKUP_DIR"
+  if [ ! -f "$SOURCE_FILE" ]; then
+    echo "MISSING: $RELPATH (skipped)"
+    FAILED=$((FAILED + 1))
+    continue
+  fi
 
-  for SOURCE_FILE in "$EXT_POINT_DIR"*.py; do
-    [ -f "$SOURCE_FILE" ] || continue
-    FILENAME=$(basename "$SOURCE_FILE")
-    TARGET_FILE="$TARGET_DIR/$FILENAME"
-    BACKUP_FILE="$BACKUP_DIR/$FILENAME"
+  mkdir -p "$TARGET_DIR" "$BACKUP_DIR"
 
-    # Backup existing file only if backup doesn't already exist
-    if [ -f "$TARGET_FILE" ] && [ ! -f "$BACKUP_FILE" ]; then
-      cp "$TARGET_FILE" "$BACKUP_FILE"
-      echo "BACKED UP: $EXT_POINT/$FILENAME → .hardening_originals/"
-    fi
+  if [ -f "$TARGET_FILE" ] && [ ! -f "$BACKUP_DIR/$FILENAME" ]; then
+    cp "$TARGET_FILE" "$BACKUP_DIR/$FILENAME"
+    echo "BACKED UP: $HOOK_DIR/$FILENAME"
+  fi
 
-    cp "$SOURCE_FILE" "$TARGET_FILE"
-    echo "INSTALLED: $EXT_POINT/$FILENAME"
-    INSTALLED=$((INSTALLED + 1))
-  done
+  # Compile-check before installing
+  if ! python3 -m py_compile "$SOURCE_FILE" 2>/dev/null; then
+    echo "COMPILE FAIL: $RELPATH (skipped)"
+    FAILED=$((FAILED + 1))
+    continue
+  fi
+
+  cp "$SOURCE_FILE" "$TARGET_FILE"
+  echo "INSTALLED: $HOOK_DIR/$FILENAME"
+  INSTALLED=$((INSTALLED + 1))
 done
 
+# ── Clear pycache ─────────────────────────────────────────────────────────────
 echo ""
-echo "Done. $INSTALLED extension(s) installed."
-echo "Originals (if any) preserved in $BACKUP_ROOT"
-echo "To restore: cp $BACKUP_ROOT/\$EXT_POINT/* $TARGET_ROOT/\$EXT_POINT/"
+echo "Clearing pycache..."
+find "$TARGET_ROOT" -name "*.pyc" -delete
+find "$TARGET_ROOT" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+echo ""
+echo "Done. $INSTALLED installed, $FAILED skipped."
+echo "Restart the container to activate: docker restart exocortex_v17"
+echo "Originals preserved in: $BACKUP_ROOT"

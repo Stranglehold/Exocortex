@@ -1,8 +1,8 @@
 import os
 import json
 from typing import Any
-from python.helpers.files import VariablesPlugin
-from python.helpers import settings
+from helpers.files import VariablesPlugin
+from helpers import settings
 
 
 class PersonalityLoader(VariablesPlugin):
