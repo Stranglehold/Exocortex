@@ -1,0 +1,11 @@
+<div
+  class="right-canvas-surface-panel"
+  data-surface-id="intelligence"
+  :class="{
+    'is-active': $store.rightCanvas?.isSurfaceVisible('intelligence'),
+    'is-mounted': $store.rightCanvas?.isSurfaceRendered('intelligence')
+  }"
+  :aria-hidden="(!$store.rightCanvas?.isSurfaceVisible('intelligence')).toString()"
+>
+  <x-component path="/plugins/oss/webui/intelligence-panel.html"></x-component>
+</div>

@@ -26,6 +26,9 @@ echo "  Target: $PLUGIN_BASE"
 _exec "$CONTAINER" mkdir -p \
   "$PLUGIN_BASE/src" \
   "$PLUGIN_BASE/api" \
+  "$PLUGIN_BASE/webui" \
+  "$PLUGIN_BASE/extensions/webui/right_canvas_register_surfaces" \
+  "$PLUGIN_BASE/extensions/webui/right-canvas-panels" \
   "$DATA_DIR"
 
 # ── Plugin manifest ────────────────────────────────────────────────────────────
@@ -82,6 +85,19 @@ docker cp "$API_SRC/api_oss_credibility.py"   "$API_DEST/"
 docker cp "$API_SRC/api_oss_rejections.py"    "$API_DEST/"
 docker cp "$API_SRC/api_oss_staging.py"       "$API_DEST/"
 docker cp "$API_SRC/api_oss_network.py"       "$API_DEST/"
+
+# ── WebUI assets (right-canvas v1.13 surface system) ─────────────────────────
+
+WEBUI_SRC="$SCRIPT_DIR/webui"
+
+docker cp "$WEBUI_SRC/intelligence-store.js" \
+    "$CONTAINER:$PLUGIN_BASE/webui/intelligence-store.js"
+docker cp "$WEBUI_SRC/intelligence-panel.html" \
+    "$CONTAINER:$PLUGIN_BASE/webui/intelligence-panel.html"
+docker cp "$WEBUI_SRC/register-intelligence.js" \
+    "$CONTAINER:$PLUGIN_BASE/extensions/webui/right_canvas_register_surfaces/register-intelligence.js"
+docker cp "$SCRIPT_DIR/extensions/webui/right-canvas-panels/intelligence-panel.html" \
+    "$CONTAINER:$PLUGIN_BASE/extensions/webui/right-canvas-panels/intelligence-panel.html"
 
 # ── Tool files (deployed to A0 native tools dir — where A0 dispatches from) ──
 # A0 loads tool classes from /a0/tools/, not from plugin subdirectories.
@@ -175,6 +191,7 @@ echo ""
 echo "  V1 external Docker services (oss_app, oss_postgres)"
 echo "  are no longer needed — V2 runs within the A0 container."
 echo ""
-echo "  Background ingestion starts automatically 30s after first plugin load."
+echo "  Background ingestion starts PAUSED (OSS_INGEST_PAUSED=true by default)."
+echo "  Use oss_ingest_resume or the panel Ingest button to start ingestion."
 echo "  Reload browser tab to activate new API handlers."
 echo "  For tool file changes: restart A0 container or wait for next session."
