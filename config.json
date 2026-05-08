@@ -2,5 +2,12 @@
   "step_budget_tracker": {
     "enabled": true,
     "max_steps": 80
+  },
+  "idle_time_engine": {
+    "enabled": true,
+    "idle_threshold_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "max_steps_per_cycle": 20,
+    "workshop_field_ratio": "3:1"
   }
 }

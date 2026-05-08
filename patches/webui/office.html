@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Zero's Office</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: #0a0a0f;
+    color: #c8c8d0;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #222230;
+    padding-bottom: 16px;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: normal;
+    color: #8888aa;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .status-idle     { background: #1a2a1a; color: #4caf50; border: 1px solid #2a4a2a; }
+  .status-working  { background: #1a1a2a; color: #5b8dee; border: 1px solid #2a2a4a; }
+  .status-cooldown { background: #2a2218; color: #f0a030; border: 1px solid #4a3a1a; }
+  .status-session  { background: #2a1a2a; color: #c070e0; border: 1px solid #4a2a4a; }
+
+  .stats-row {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 20px;
+    font-size: 0.8rem;
+    color: #555566;
+  }
+  .stat-item span { color: #9090b0; font-weight: 600; }
+
+  .next-cycle {
+    font-size: 0.75rem;
+    color: #555566;
+    margin-left: auto;
+    align-self: center;
+  }
+
+  .feed-header {
+    font-size: 0.7rem;
+    color: #444455;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .feed-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .feed-entry {
+    background: #0e0e18;
+    border: 1px solid #1a1a28;
+    border-left: 3px solid #333;
+    border-radius: 4px;
+    padding: 12px 14px;
+  }
+  .feed-entry.workshop { border-left-color: #3a5a8a; }
+  .feed-entry.field    { border-left-color: #3a6a4a; }
+  .feed-entry.interrupted { border-left-color: #6a4a1a; opacity: 0.7; }
+  .feed-entry.circuit_breaker { border-left-color: #6a2a2a; opacity: 0.7; }
+
+  .entry-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .entry-type {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+  .type-workshop { background: #1a2a3a; color: #5b8dee; }
+  .type-field    { background: #1a2a1a; color: #4caf50; }
+
+  .entry-time {
+    font-size: 0.75rem;
+    color: #444455;
+    flex: 1;
+  }
+
+  .entry-status {
+    font-size: 0.7rem;
+    color: #555566;
+  }
+  .status-completed { color: #4caf50; }
+  .status-interrupted { color: #f0a030; }
+  .status-circuit_breaker { color: #e05050; }
+
+  .entry-activity {
+    font-size: 0.85rem;
+    color: #a0a0c0;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .entry-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.72rem;
+    color: #444455;
+  }
+  .entry-meta span { color: #666688; }
+
+  .entry-deliverables {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: #444455;
+  }
+  .entry-deliverables span {
+    display: inline-block;
+    background: #141420;
+    border: 1px solid #1e1e30;
+    border-radius: 3px;
+    padding: 1px 6px;
+    margin: 2px 3px 2px 0;
+    color: #7070a0;
+    font-family: monospace;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 0;
+    color: #333344;
+    font-size: 0.85rem;
+  }
+
+  .error-state {
+    text-align: center;
+    padding: 40px 0;
+    color: #5a2a2a;
+    font-size: 0.8rem;
+  }
+
+  .refresh-hint {
+    position: fixed;
+    bottom: 16px;
+    right: 20px;
+    font-size: 0.65rem;
+    color: #333344;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Agent Zero's Office</h1>
+  <span id="status-badge" class="status-badge status-idle">⬤ Available</span>
+  <span id="next-cycle" class="next-cycle"></span>
+</header>
+
+<div class="stats-row">
+  <div>Total cycles: <span id="stat-total">—</span></div>
+  <div>Workshop: <span id="stat-workshop">—</span></div>
+  <div>Field: <span id="stat-field">—</span></div>
+  <div>Memories saved: <span id="stat-memories">—</span></div>
+</div>
+
+<div class="feed-header">Recent Activity</div>
+<div id="feed-list" class="feed-list">
+  <div class="empty-state">Loading…</div>
+</div>
+
+<div class="refresh-hint">Auto-refresh every 60s</div>
+
+<script>
+const API = '/api/office_feed';
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  } catch { return iso; }
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString([], {month:'short', day:'numeric'})
+      + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  } catch { return iso; }
+}
+
+function setBadge(status) {
+  const badge = document.getElementById('status-badge');
+  const next  = document.getElementById('next-cycle');
+  badge.className = 'status-badge';
+  const state = (status.state || 'idle').toLowerCase();
+  const icons = {idle:'⬤', working:'◉', cooldown:'◌', session:'⬡'};
+  const labels = {idle:'Available', working:'Working', cooldown:'Cooldown', session:'In Session'};
+
+  badge.classList.add('status-' + state);
+  badge.textContent = (icons[state] || '⬤') + ' ' + (status.label || labels[state] || state);
+
+  if (state === 'cooldown' && status.next_cycle) {
+    next.textContent = 'Next cycle ~' + fmtTime(status.next_cycle);
+  } else if (state === 'working' && status.started) {
+    next.textContent = 'Started ' + fmtTime(status.started);
+  } else {
+    next.textContent = '';
+  }
+}
+
+function renderEntry(e) {
+  const ct = (e.cycle_type || 'workshop').toLowerCase();
+  const st = (e.status || 'completed').toLowerCase();
+  const statusClass = st === 'completed' ? 'status-completed'
+    : st === 'interrupted' ? 'status-interrupted'
+    : 'status-circuit_breaker';
+  const statusIcon = st === 'completed' ? '✓' : st === 'interrupted' ? '↩' : '⚡';
+
+  const delivs = (e.deliverables || []).map(d =>
+    `<span>${d.replace(/^.*\//, '')}</span>`
+  ).join('');
+
+  return `
+    <div class="feed-entry ${ct} ${st !== 'completed' ? st : ''}">
+      <div class="entry-header">
+        <span class="entry-type type-${ct}">${ct === 'field' ? 'Field' : 'Workshop'}</span>
+        <span class="entry-time">${fmtDate(e.timestamp)}</span>
+        <span class="entry-status ${statusClass}">${statusIcon} ${st}</span>
+      </div>
+      <div class="entry-activity">${e.activity || '—'}</div>
+      ${delivs ? `<div class="entry-deliverables">${delivs}</div>` : ''}
+      <div class="entry-meta">
+        <div>Steps: <span>${e.steps_used || 0}/${e.max_steps || 20}</span></div>
+        <div>Duration: <span>${e.duration_minutes || 0}min</span></div>
+        <div>Memories: <span>${e.memories_saved || 0}</span></div>
+        ${e.cycle_number !== undefined ? `<div>Cycle: <span>#${e.cycle_number}</span></div>` : ''}
+      </div>
+    </div>`;
+}
+
+async function refresh() {
+  try {
+    const resp = await fetch(API);
+    if (!resp.ok) throw new Error(resp.status);
+    const data = await resp.json();
+
+    setBadge(data.status || {});
+
+    const entries = data.entries || [];
+    const total   = data.total_cycles || 0;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-workshop').textContent =
+      entries.filter(e => (e.cycle_type||'').toLowerCase() === 'workshop').length;
+    document.getElementById('stat-field').textContent =
+      entries.filter(e => (e.cycle_type||'').toLowerCase() === 'field').length;
+    document.getElementById('stat-memories').textContent =
+      entries.reduce((s, e) => s + (e.memories_saved || 0), 0);
+
+    const list = document.getElementById('feed-list');
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="empty-state">No idle cycles yet. The Office opens when Jake steps away.</div>';
+    } else {
+      list.innerHTML = entries.map(renderEntry).join('');
+    }
+  } catch (err) {
+    document.getElementById('feed-list').innerHTML =
+      `<div class="error-state">Could not reach /office_feed — is the container running?<br><br>${err}</div>`;
+  }
+}
+
+refresh();
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
