@@ -232,7 +232,9 @@ The injection overhead per turn was too large to sustain a long research session
 - REASON-INJ + META + PACE: ~150 tokens/turn
 - Agent output (thoughts + tool call) + tool results (large code files)
 
-CTX-PRUNE removed up to 8 messages but could not offset the per-turn fixed injection cost. A 100K-token context window was insufficient for 14 steps of source code reading under full Exocortex injection load.
+CTX-PRUNE removed up to 8 messages but could not offset the per-turn fixed injection cost. An 80K-token context window (`chat_model.ctx_length=80000` in `_model_config/config.json`) was insufficient for 14 steps of source code reading under full Exocortex injection load.
+
+**Note:** `config.json` has `context_watchdog.context_window_tokens: 100000` — this value is stale and 25% larger than the actual model context. The context_watchdog would never fire before the model overflows. This is a separate misconfiguration that should be fixed.
 
 **Result: PARTIAL**
 
@@ -300,7 +302,8 @@ Supervisor thresholds were correctly lowered per the Qwen3.6-27B eval (ST-012 fi
 | Test A Tier 2 surgery not exercised | Low | Pending — needs redesigned test |
 | Container has old `install_extensions.sh` | Low | Pending — v1.13 version on Windows, not deployed |
 | Ras2Cqjf (follow-up query) running long on INLINE-TRUNC loop | Low | Resolved (exit code 49) — not test-critical |
-| Subordinate context overflow on large research tasks | Medium | New — injection overhead (~1000+ tokens/turn fixed cost) + source-file reading exhausts 100K context window in 14 steps. Needs either: (a) reduced injection profile for subordinate contexts, or (b) summarization checkpoint before context fills |
+| Subordinate context overflow on large research tasks | Medium | New — injection overhead (~1000+ tokens/turn fixed cost) + source-file reading exhausts 80K context window in 14 steps. Needs either: (a) reduced injection profile for subordinate contexts, or (b) summarization checkpoint before context fills |
+| `context_watchdog.context_window_tokens` misconfigured | Medium | New — set to 100000 in `config.json` but actual model ctx_length is 80000. Watchdog fires 25% too late (never before model overflows). Fix: set to 80000 or lower |
 | Sleep Phase 5 `SelfImprovementEngine` fails on container restart | Low | Pending — `str / str` division; fix: `Path(_AGENTEVOLVER_PLUGIN_DIR)` |
 
 ---
