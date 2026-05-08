@@ -1,13 +1,5 @@
-import json
-import os
-
 from helpers.extension import Extension
 from agent import Agent, LoopData
-
-# Fallback when no config exists and agent hasn't set context_window_size.
-# Override in /a0/usr/Exocortex/config.json: {"context_watchdog": {"context_window_tokens": 65536}}
-# Or at runtime: agent.set_data("context_window_size", N)
-_DEFAULT_CONTEXT_WINDOW = 65536
 
 # Warning thresholds as fraction of total window
 WARN_THRESHOLD     = 0.70   # log warning at 70%
@@ -17,27 +9,6 @@ CRITICAL_THRESHOLD = 0.85   # log critical at 85%
 # Other extensions (e.g. supervisor loop) can read these
 UTILIZATION_KEY = "context_utilization"
 TOKEN_COUNT_KEY = "context_token_count"
-
-_CONFIG_PATH = "/a0/usr/Exocortex/config.json"
-_CONFIG_KEY  = "context_watchdog"
-
-
-def _load_window_size() -> int:
-    """Read context_window_tokens from Exocortex config. Falls back to default."""
-    try:
-        if os.path.isfile(_CONFIG_PATH):
-            with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            v = cfg.get(_CONFIG_KEY, {}).get("context_window_tokens")
-            if isinstance(v, int) and v > 0:
-                return v
-    except Exception:
-        pass
-    return _DEFAULT_CONTEXT_WINDOW
-
-
-# Cache at module load — window size doesn't change mid-session
-_CONFIGURED_WINDOW = _load_window_size()
 
 
 class ContextWatchdog(Extension):
@@ -54,11 +25,18 @@ class ContextWatchdog(Extension):
         if not total_tokens:
             return
 
-        # Priority: runtime override > Exocortex config > module default
-        window_size = (
-            self.agent.get_data("context_window_size")
-            or _CONFIGURED_WINDOW
-        )
+        # Read from Agent Zero's live model config — same source as history.py.
+        # The supervisor sets this at session start via get_chat_model_config().
+        # Fall back to get_chat_model_config() directly if not yet set.
+        window_size = self.agent.get_data("context_window_size")
+        if not window_size:
+            try:
+                from plugins._model_config.helpers.model_config import get_chat_model_config
+                window_size = int(get_chat_model_config(self.agent).get("ctx_length", 0))
+            except Exception:
+                pass
+        if not window_size:
+            return  # Can't determine window size — skip rather than use wrong number
 
         utilization = total_tokens / window_size
 

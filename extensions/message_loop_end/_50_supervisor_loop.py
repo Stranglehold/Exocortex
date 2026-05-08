@@ -400,6 +400,16 @@ class SupervisorLoop(Extension):
             if model_overrides is None:
                 model_overrides = _load_supervisor_overrides(agent=self.agent)
                 self.agent._supervisor_model_overrides = model_overrides
+                # Wire ctx_length from Agent Zero's live model config so the context
+                # watchdog, org dispatcher, and supervisor context-fill detection all
+                # use the real limit rather than a hardcoded fallback.
+                try:
+                    from plugins._model_config.helpers.model_config import get_chat_model_config
+                    _ctx = int(get_chat_model_config(self.agent).get("ctx_length", 0))
+                    if _ctx > 0:
+                        self.agent.set_data("context_window_size", _ctx)
+                except Exception:
+                    pass
             diversity_thresh = model_overrides.get("diversity_suppress", DIVERSITY_SUPPRESS_THRESHOLD)
 
             # Three-layer threshold selection: learned → static → default.
