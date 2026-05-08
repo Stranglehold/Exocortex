@@ -43,6 +43,7 @@
   .status-working  { background: #1a1a2a; color: #5b8dee; border: 1px solid #2a2a4a; }
   .status-cooldown { background: #2a2218; color: #f0a030; border: 1px solid #4a3a1a; }
   .status-session  { background: #2a1a2a; color: #c070e0; border: 1px solid #4a2a4a; }
+  .status-paused   { background: #1a1a1a; color: #666688; border: 1px solid #2a2a3a; }
 
   .stats-row {
     display: flex;
@@ -159,6 +160,45 @@
     font-size: 0.8rem;
   }
 
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 0.75rem;
+  }
+
+  .control-label { color: #444455; }
+
+  .control-select {
+    background: #0e0e18;
+    border: 1px solid #1a1a28;
+    color: #7070a0;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+
+  .control-btn {
+    background: #0e0e18;
+    border: 1px solid #1a1a28;
+    color: #7070a0;
+    padding: 3px 12px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+  }
+  .control-btn:hover { border-color: #2a2a4a; color: #9090b0; }
+
+  .control-btn-resume { border-color: #2a4a2a; color: #4caf50; }
+  .control-btn-resume:hover { border-color: #3a6a3a; color: #6cd06c; }
+
+  .pause-until-text { color: #f0a030; font-size: 0.72rem; }
+
   .refresh-hint {
     position: fixed;
     bottom: 16px;
@@ -175,6 +215,24 @@
   <span id="status-badge" class="status-badge status-idle">⬤ Available</span>
   <span id="next-cycle" class="next-cycle"></span>
 </header>
+
+<div class="control-row">
+  <div id="pause-controls" style="display:flex;align-items:center;gap:10px;">
+    <span class="control-label">Pause engine:</span>
+    <select id="pause-duration" class="control-select">
+      <option value="1800">30 min</option>
+      <option value="3600" selected>1 hour</option>
+      <option value="7200">2 hours</option>
+      <option value="14400">4 hours</option>
+      <option value="28800">8 hours</option>
+    </select>
+    <button class="control-btn" onclick="pauseEngine()">Pause</button>
+  </div>
+  <div id="resume-controls" style="display:none;align-items:center;gap:10px;">
+    <span id="pause-until-label" class="pause-until-text"></span>
+    <button class="control-btn control-btn-resume" onclick="resumeEngine()">Resume</button>
+  </div>
+</div>
 
 <div class="stats-row">
   <div>Total cycles: <span id="stat-total">—</span></div>
@@ -214,8 +272,8 @@ function setBadge(status) {
   const next  = document.getElementById('next-cycle');
   badge.className = 'status-badge';
   const state = (status.state || 'idle').toLowerCase();
-  const icons = {idle:'⬤', working:'◉', cooldown:'◌', session:'⬡'};
-  const labels = {idle:'Available', working:'Working', cooldown:'Cooldown', session:'In Session'};
+  const icons  = {idle:'⬤', working:'◉', cooldown:'◌', session:'⬡', paused:'⏸'};
+  const labels = {idle:'Available', working:'Working', cooldown:'Cooldown', session:'In Session', paused:'Paused'};
 
   badge.classList.add('status-' + state);
   badge.textContent = (icons[state] || '⬤') + ' ' + (status.label || labels[state] || state);
@@ -224,8 +282,19 @@ function setBadge(status) {
     next.textContent = 'Next cycle ~' + fmtTime(status.next_cycle);
   } else if (state === 'working' && status.started) {
     next.textContent = 'Started ' + fmtTime(status.started);
+  } else if (state === 'paused' && status.paused_until) {
+    next.textContent = 'Resumes ' + fmtTime(status.paused_until);
   } else {
     next.textContent = '';
+  }
+
+  // Show/hide control panel based on pause state
+  const isPaused = state === 'paused';
+  document.getElementById('pause-controls').style.display = isPaused ? 'none' : 'flex';
+  document.getElementById('resume-controls').style.display = isPaused ? 'flex' : 'none';
+  if (isPaused && status.paused_until) {
+    document.getElementById('pause-until-label').textContent =
+      'Paused until ' + fmtTime(status.paused_until);
   }
 }
 
@@ -287,6 +356,29 @@ async function refresh() {
     document.getElementById('feed-list').innerHTML =
       `<div class="error-state">Could not reach /office_feed — is the container running?<br><br>${err}</div>`;
   }
+}
+
+async function pauseEngine() {
+  const duration = parseInt(document.getElementById('pause-duration').value);
+  try {
+    await fetch('/api/idle_control', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'pause', duration_seconds: duration}),
+    });
+    await refresh();
+  } catch(e) { console.error('Pause failed:', e); }
+}
+
+async function resumeEngine() {
+  try {
+    await fetch('/api/idle_control', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'resume'}),
+    });
+    await refresh();
+  } catch(e) { console.error('Resume failed:', e); }
 }
 
 refresh();

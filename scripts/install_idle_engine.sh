@@ -116,6 +116,7 @@ echo "  Syntax checks:"
 if command -v python3 &>/dev/null; then
     py_check "${REPO_DIR}/extensions/tool_execute_after/_70_idle_trigger.py"
     py_check "${REPO_DIR}/patches/api/office_feed.py"
+    py_check "${REPO_DIR}/patches/api/idle_control.py"
 else
     echo "  SKIP  python3 not available locally"
 fi
@@ -168,6 +169,13 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "office_feed.py" \
         "${CONTAINER}"
 
+    # ── Control API handler ──
+    install_file \
+        "${REPO_DIR}/patches/api/idle_control.py" \
+        "${API_DEST}/idle_control.py" \
+        "idle_control.py" \
+        "${CONTAINER}"
+
     # ── Office panel HTML ──
     install_file \
         "${REPO_DIR}/patches/webui/office.html" \
@@ -215,6 +223,14 @@ if not os.path.exists(path):
 else:
     print("  OK    office/status.json (already present)")
 PYEOF
+
+    # ── Initial office/control.json (if not present) ──
+    if ! _exec "${CONTAINER}" test -f "${EXOCORTEX_DEST}/office/control.json" 2>/dev/null; then
+        _exec "${CONTAINER}" python3 -c "import json; open('/a0/usr/Exocortex/office/control.json','w').write(json.dumps({'paused_until':0}))" 2>/dev/null || true
+        echo "  OK    [${CONTAINER}] office/control.json (created)"
+    else
+        echo "  OK    [${CONTAINER}] office/control.json (already present)"
+    fi
 
     # ── Initial office/feed.jsonl (if not present) ──
     if ! _exec "${CONTAINER}" test -f "${EXOCORTEX_DEST}/office/feed.jsonl" 2>/dev/null; then

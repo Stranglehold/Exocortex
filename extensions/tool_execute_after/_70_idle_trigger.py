@@ -13,16 +13,26 @@ Field mode (1 of every 4 cycles): interest research per interests.md
 Cycle type selection (3:1 ratio):
   - Cycles 0,1,2 → WORKSHOP; cycle 3 → FIELD; cycle 4,5,6 → WORKSHOP; etc.
 
+Continuous cycling: after a cycle completes naturally (not interrupted by the user),
+  the engine fires the next cycle immediately (next poll interval, ~60s gap).
+  cooldown_seconds only applies after a user-interrupted cycle.
+  This means once idle, the agent works continuously until Jake sends a message.
+
+Pause control: /a0/usr/Exocortex/office/control.json → {"paused_until": <float ts>}
+  Written by the /api/idle_control endpoint. Monitor skips cycle activation while
+  time.time() < paused_until. Pause affects new cycle starts only — a running cycle
+  completes before the pause takes effect.
+
 Config: /a0/usr/Exocortex/config.json → "idle_time_engine" section
   enabled: true
   idle_threshold_seconds: 1800      # 30 min — time since last real user session
-  cooldown_seconds: 3600            # 60 min — minimum gap between cycles
+  cooldown_seconds: 3600            # 60 min — gap after user-interrupted cycles only
   max_steps_per_cycle: 20
   workshop_field_ratio: "3:1"
 
 State keys (stored on agent.data):
   _idle_last_user_ts      — float: time.time() set at end of any real user session
-  _idle_last_cycle_end_ts — float: time.time() set at end of each idle cycle
+  _idle_last_cycle_end_ts — float: 0 after natural completion (continuous), time.time() after interrupt
   idle_mode               — bool: True while an idle cycle is active
   idle_cycle_count        — int: total completed cycles (drives cycle type selection)
 
@@ -37,6 +47,7 @@ Design notes:
 
 Office panel feed: /a0/usr/Exocortex/office/feed.jsonl (agent writes at cycle end)
 Status indicator:  /a0/usr/Exocortex/office/status.json (trigger writes on transitions)
+Pause control:     /a0/usr/Exocortex/office/control.json (written by idle_control API)
 """
 
 import asyncio
@@ -57,6 +68,7 @@ if _EXOCORTEX_PATH not in sys.path:
 _CONFIG_PATH = "/a0/usr/Exocortex/config.json"
 _OFFICE_DIR = "/a0/usr/Exocortex/office"
 _STATUS_PATH = "/a0/usr/Exocortex/office/status.json"
+_CONTROL_PATH = "/a0/usr/Exocortex/office/control.json"
 _PROMPT_PATH = "/a0/usr/Exocortex/prompts/idle_activation.md"
 
 # Agent data keys
@@ -136,21 +148,18 @@ class IdleTrigger(Extension):
                 agent.set_data(_KEY_IDLE_MODE, False)
                 cycle_n = (agent.get_data(_KEY_CYCLE_COUNT) or 0) + 1
                 agent.set_data(_KEY_CYCLE_COUNT, cycle_n)
-                agent.set_data(_KEY_LAST_CYCLE_END, time.time())
 
                 if interrupted:
-                    # Real user message arrived mid-cycle — reset idle timer too
+                    # Real user message arrived mid-cycle — enforce cooldown + reset idle timer.
                     agent.set_data(_KEY_LAST_USER_TS, time.time())
+                    agent.set_data(_KEY_LAST_CYCLE_END, time.time())
                     print(f"[IDLE] Cycle {cycle_n} interrupted by user.", flush=True)
                     _write_status({"state": "idle", "label": "Available"})
                 else:
-                    print(f"[IDLE] Cycle {cycle_n} complete.", flush=True)
-                    cooldown_s = config.get("cooldown_seconds", 3600)
-                    next_ts = datetime.fromtimestamp(
-                        time.time() + cooldown_s, tz=timezone.utc
-                    ).isoformat()
-                    _write_status({"state": "cooldown", "label": "Cooldown",
-                                   "next_cycle": next_ts})
+                    # Natural completion — continuous cycling: next cycle fires after next poll.
+                    agent.set_data(_KEY_LAST_CYCLE_END, 0)
+                    print(f"[IDLE] Cycle {cycle_n} complete. Continuing.", flush=True)
+                    _write_status({"state": "idle", "label": "Available"})
             else:
                 # Real user session just ended — reset idle clock
                 agent.set_data(_KEY_LAST_USER_TS, time.time())
@@ -192,6 +201,12 @@ async def _idle_monitor(agent, config: dict, ctx: str) -> None:
 
             # Skip if already in an idle cycle
             if agent.get_data(_KEY_IDLE_MODE):
+                continue
+
+            # Skip if manually paused via control panel
+            control = _read_control()
+            paused_until = control.get("paused_until", 0)
+            if paused_until and time.time() < paused_until:
                 continue
 
             threshold = config.get("idle_threshold_seconds", 1800)
@@ -316,6 +331,17 @@ def _write_status(status: dict) -> None:
         os.replace(tmp, _STATUS_PATH)
     except Exception:
         pass
+
+
+def _read_control() -> dict:
+    """Read control.json for pause state. Returns {} on any error."""
+    try:
+        if os.path.exists(_CONTROL_PATH):
+            with open(_CONTROL_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
 
 
 def _load_config() -> dict:
