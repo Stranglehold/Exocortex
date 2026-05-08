@@ -21,7 +21,7 @@ _PM_PATH = "/a0/usr/Exocortex"
 if _PM_PATH not in _sys.path:
     _sys.path.insert(0, _PM_PATH)
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
 
 # ── Constants ────────────────────────────────────────────────────
@@ -328,6 +328,8 @@ class SupervisorLoop(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — parent monitors; skip supervisor (DEC-028)
             # Org state — may be None. Loop/cascade/context run regardless.
             # PACE and stall require org context.
             role = getattr(self.agent, ACTIVE_ROLE_KEY, None)

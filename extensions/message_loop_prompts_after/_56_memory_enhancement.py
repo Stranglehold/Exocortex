@@ -37,7 +37,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
 from plugins._memory.helpers.memory import Memory
 
@@ -119,6 +119,8 @@ class MemoryEnhancement(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip full memory bootstrap (DEC-028)
             print("[MEM-ENHANCE] execute() called", flush=True)
             if loop_data.extras_persistent is None:
                 loop_data.extras_persistent = {}

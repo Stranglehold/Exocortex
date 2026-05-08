@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
 
 PLAN_LIBRARY_PATH = Path(__file__).parent / "htn_plan_library.json"
@@ -42,6 +42,8 @@ class HTNPlanSelector(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip graph workflow engine (DEC-028)
             library = _load_library()
             if not library:
                 return
@@ -159,7 +161,10 @@ def _match_plan(library: dict, domain: str, message: str, agent=None) -> tuple:
             continue
 
         plan_domains = plan.get("domains", [])
-        domain_match = not plan_domains or domain in plan_domains
+        # BST produces compound domains like "bugfix+investigation".
+        # Split on "+" and check if any component matches the plan's domain list.
+        active_domains = set(domain.split("+")) if domain else set()
+        domain_match = not plan_domains or bool(active_domains & set(plan_domains))
 
         triggers = plan.get("triggers", [])
         threshold = plan.get("trigger_threshold", 2)

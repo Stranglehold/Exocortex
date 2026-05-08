@@ -43,7 +43,7 @@ import json
 import os
 from typing import Optional
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
 
 # ── Constraint Content (from Opus, expanded_heartbeat_content_20260428.md) ────
@@ -128,6 +128,8 @@ class ConstraintHeartbeat(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> None:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip heartbeat (DEC-028)
             cfg = _load_config(self.agent)
             if not cfg.get("enabled", True):
                 return

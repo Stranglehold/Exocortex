@@ -307,3 +307,33 @@
 **Alternatives rejected:** Removing the plugin extension directory entirely (breaks plugin infrastructure unrelated to extensions). Relying on the profile-wins dedup (plugin-only files have no profile counterpart to win against — they run unchecked).
 **Revisit if:** Agent Zero changes its extension discovery mechanism in a future version (check `helpers/extension.py` and `helpers/subagents.py` `get_paths()` on each upgrade).
 **Instances:** `extensions/install_extensions.sh` (implements the two-path cleanup). See WIRING.md "Extension Load Path" and "Known Fragile Seams #11".
+
+---
+
+## DEC-027: Step Budget Warnings Must Fire Exactly Once (Fire-Once Mechanism)
+
+**Date:** 2026-05-07
+**Session:** ST-013 Test C
+**Principle:** Step budget warnings (WARN_50, WARN_75) must fire exactly once per threshold crossing, not once per turn after the threshold is crossed. Repeated injections of the same advisory saturate context and are indistinguishable from no-ops.
+**Context:** ST-013 Test C validated the fire-once mechanism in `_08_step_budget_tracker.py`. WARN_50 appeared exactly once in full Docker logs across a 20-step run; a silence test at 6/20 steps (30%) produced zero log output. The agent visibly adapted strategy when WARN_75 fired — batching 13 remaining computations into a single call. This is the warning being actionable rather than ambient.
+**Implementation:** Each threshold is checked against a set of already-fired thresholds stored on the agent. Once a threshold fires, it is added to the set and never fires again for that session. Cleared only on session reset.
+**What NOT to do:** Don't fire the warning every turn once the threshold is crossed. Don't suppress warnings entirely. The warning needs to land once with enough force to change behavior.
+**Revisit if:** Multi-turn tasks regularly hit 75%+ budget before completing legitimate work — may need configurable thresholds per domain class.
+**Instances:** `extensions/message_loop_prompts_after/_08_step_budget_tracker.py`.
+
+---
+
+## DEC-028: Subordinate Injection Profiles — Reduced Extension Set in Child Agents
+
+**Date:** 2026-05-07
+**Session:** ST-013 Test D (analysis) + implementation
+**Principle:** Subordinate agents have different cognitive needs than parent agents and run in tighter context budgets. The full extension stack designed for the parent (supervisor, planning overhead, full memory bootstrap) is actively harmful in subordinates because it consumes the working space the subordinate needs for its task.
+**Context:** ST-013 Test D observed context overflow at step 14 of a subordinate doing source-code research. All 14 extensions fired correctly — the failure was the cumulative injection overhead (~1,000–1,200 tokens/turn) on an 80K window. With ~8K effective working space after history, the subordinate had approximately 7 turns of headroom. Source file reads of 500–2,000 tokens consumed the rest. The parent was monitoring the subordinate; the supervisor in the subordinate was redundant. The memory bootstrap was reading memories irrelevant to a focused research task.
+**Detection mechanism:** `agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None` — native Agent Zero key set by `call_subordinate` on all child agents. No new flag required.
+**Excluded in subordinate context:** HEARTBEAT (`_21_`), SUPERVISOR (`_50_`), MEM-ENHANCE full bootstrap (`_56_`), META (`_14_metacognitive_injection`), PACE generator (`_14_pace_plan_generator`), HTN planner (`_15_`), TOOL-REG full injection (`_16_`), REASON-INJ (`_13_`).
+**Retained in subordinate context:** BST classification (`_11_`), TOOL-GUARD (`_12_completion_tracker`), PY-WRITE-GUARD (tool_execute_before), OUTPUT-COMPRESSOR, STEP-BUDGET (`_08_`), EVIDENCE-LEDGER + EPISTEMIC-INTEGRITY, SELECTIVE-MEMORIZER.
+**Estimated overhead reduction:** 1,000–1,200 tokens/turn → 200–400 tokens/turn. Effective working horizon: ~7 turns → ~20+ turns.
+**Implementation:** Single guard at the top of each excluded extension's `execute()`: `if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None: return`.
+**Alternatives rejected:** Config flag per extension (requires manual coordination across all extensions, maintenance burden). Reducing parent injection (parent needs full stack for complex multi-step tasks). Spawning subordinates with separate system prompt (would require changes to Agent Zero core).
+**Revisit if:** A subordinate task requires planning overhead (explicitly orchestrated multi-phase subtask — rare but possible). When this occurs, the parent should pass context via the subordinate's initial prompt rather than relying on the extension stack.
+**Instances:** `_13_reasoning_state.py`, `_14_metacognitive_injection.py`, `_14_pace_plan_generator.py`, `_15_htn_plan_selector.py`, `_16_tool_registry.py`, `_21_constraint_heartbeat.py`, `_50_supervisor_loop.py`, `_56_memory_enhancement.py`.

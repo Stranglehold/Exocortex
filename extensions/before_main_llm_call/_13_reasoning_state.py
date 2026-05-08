@@ -29,7 +29,7 @@ import json
 import os
 from typing import Any
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
 
 REASONING_KEY = "_reasoning_state"
@@ -42,6 +42,8 @@ class ReasoningStateInjector(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip reasoning state injection (DEC-028)
             state = getattr(self.agent, REASONING_KEY, None)
             if not state:
                 # First turn: attempt artifact bootstrap from staging.jsonl

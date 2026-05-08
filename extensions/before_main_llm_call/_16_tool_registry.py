@@ -33,8 +33,19 @@ import re
 import textwrap
 from typing import Optional
 
-from agent import LoopData
+from agent import Agent, LoopData
 from helpers.extension import Extension
+
+# mtime cache — skip tool rescan when plugin dirs unchanged
+try:
+    import sys as _sys
+    _pm = "/a0/usr/Exocortex/extensions/before_main_llm_call"
+    if _pm not in _sys.path:
+        _sys.path.insert(0, _pm)
+    from mtime_cache import cached as _mtime_cached
+    _mtime_cache = True
+except Exception:
+    _mtime_cache = None
 
 
 def _log_injection_tokens(agent, ext_name: str, text: str) -> None:
@@ -248,12 +259,20 @@ class ToolRegistry(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> None:
         try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip full tool registry injection (DEC-028)
             user_msg = _get_last_user_message(loop_data.history_output)
             if not user_msg:
                 return
 
-            tool_files = _scan_tools()
-            programs   = _read_manifest().get("programs", {})
+            if _mtime_cache:
+                scan_paths = glob.glob(TOOLS_GLOB) + [MANIFEST_PATH]
+                tool_files, _ = _mtime_cached("tool_reg_scan", scan_paths, _scan_tools)
+                manifest_raw, _ = _mtime_cached("tool_reg_manifest", [MANIFEST_PATH], _read_manifest)
+                programs = manifest_raw.get("programs", {}) if isinstance(manifest_raw, dict) else {}
+            else:
+                tool_files = _scan_tools()
+                programs   = _read_manifest().get("programs", {})
 
             if not tool_files and not programs:
                 return
