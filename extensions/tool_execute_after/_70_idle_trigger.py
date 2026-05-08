@@ -15,19 +15,28 @@ Cycle type selection (3:1 ratio):
 
 Config: /a0/usr/Exocortex/config.json → "idle_time_engine" section
   enabled: true
-  idle_threshold_seconds: 1800      # 30 min — time since last real user message
+  idle_threshold_seconds: 1800      # 30 min — time since last real user session
   cooldown_seconds: 3600            # 60 min — minimum gap between cycles
   max_steps_per_cycle: 20
   workshop_field_ratio: "3:1"
 
 State keys (stored on agent.data):
-  _idle_last_user_ts      — float: time.time() of last REAL user session end
-  _idle_last_cycle_end_ts — float: time.time() of last idle cycle end
+  _idle_last_user_ts      — float: time.time() set at end of any real user session
+  _idle_last_cycle_end_ts — float: time.time() set at end of each idle cycle
   idle_mode               — bool: True while an idle cycle is active
   idle_cycle_count        — int: total completed cycles (drives cycle type selection)
 
+Design notes:
+  - Monitor starts on the FIRST tool call after restart (not only on response tool).
+    This bootstraps the engine without requiring a user message post-restart.
+  - _idle_last_user_ts is initialized to time.time() on first run so the agent
+    waits the full idle threshold before the first cycle (grace period).
+  - The monitor is a PERSISTENT LOOP — it never exits. No need for the response
+    tool to restart it after each cycle.
+  - State transitions (cycle end, interrupt detection) still happen on response tool.
+
 Office panel feed: /a0/usr/Exocortex/office/feed.jsonl (agent writes at cycle end)
-Status indicator: /a0/usr/Exocortex/office/status.json (trigger writes on transitions)
+Status indicator:  /a0/usr/Exocortex/office/status.json (trigger writes on transitions)
 """
 
 import asyncio
@@ -56,14 +65,13 @@ _KEY_LAST_CYCLE_END = "_idle_last_cycle_end_ts"
 _KEY_IDLE_MODE = "idle_mode"
 _KEY_CYCLE_COUNT = "idle_cycle_count"
 
-# Marker injected at the start of every idle activation prompt.
-# Used to distinguish idle-cycle user messages from real user messages
-# when walking history backwards.
+# Prefix injected at the start of every idle activation prompt.
+# Used to distinguish idle-cycle user messages from real user messages.
 _ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"
 
 _POLL_INTERVAL = 60  # seconds between idle monitor checks
 
-# Per-context asyncio monitor task registry (same pattern as _60_sleep_trigger.py)
+# Per-context asyncio monitor task registry
 _idle_tasks: Dict[str, asyncio.Task] = {}
 
 
@@ -92,22 +100,38 @@ class IdleTrigger(Extension):
 
             ctx = _ctx_id(agent)
 
-            # Only act at end-of-monologue (response tool)
-            if tool_name != "response":
-                return
+            # ── Bootstrap: initialize timestamp on first-ever tool call ──────
+            # Sets _idle_last_user_ts to now if never set, so the engine waits
+            # the full idle threshold before firing (grace period after restart).
+            if agent.get_data(_KEY_LAST_USER_TS) is None:
+                agent.set_data(_KEY_LAST_USER_TS, time.time())
+                print("[IDLE] Engine initialized. Idle clock starts now.", flush=True)
 
-            # Prune completed monitor tasks from registry
+            # ── Start persistent monitor on ANY tool call if not running ─────
+            # The monitor is a perpetual loop; no restart needed after each cycle.
             for k in list(_idle_tasks):
                 if _idle_tasks[k].done():
                     del _idle_tasks[k]
 
-            # Determine whether we're ending an idle cycle or a real user session.
-            # Walk history backwards to find the most recent user message and check
-            # whether it's our idle activation (sentinel prefix) or a real user message.
+            if ctx not in _idle_tasks:
+                _idle_tasks[ctx] = asyncio.create_task(
+                    _idle_monitor(agent, config, ctx)
+                )
+                print(
+                    f"[IDLE] Monitor started (ctx={ctx}, "
+                    f"threshold={config.get('idle_threshold_seconds', 1800)}s, "
+                    f"cooldown={config.get('cooldown_seconds', 3600)}s).",
+                    flush=True,
+                )
+
+            # ── State transitions only happen on response tool ───────────────
+            if tool_name != "response":
+                return
+
             idle_mode = agent.get_data(_KEY_IDLE_MODE)
 
             if idle_mode:
-                # We were in an idle cycle. Check if a real user message interrupted it.
+                # An idle cycle just ended (completed or interrupted by user).
                 interrupted = _last_user_msg_is_real(agent)
                 agent.set_data(_KEY_IDLE_MODE, False)
                 cycle_n = (agent.get_data(_KEY_CYCLE_COUNT) or 0) + 1
@@ -115,7 +139,7 @@ class IdleTrigger(Extension):
                 agent.set_data(_KEY_LAST_CYCLE_END, time.time())
 
                 if interrupted:
-                    # Real user message arrived mid-cycle — also reset idle timer
+                    # Real user message arrived mid-cycle — reset idle timer too
                     agent.set_data(_KEY_LAST_USER_TS, time.time())
                     print(f"[IDLE] Cycle {cycle_n} interrupted by user.", flush=True)
                     _write_status({"state": "idle", "label": "Available"})
@@ -128,21 +152,9 @@ class IdleTrigger(Extension):
                     _write_status({"state": "cooldown", "label": "Cooldown",
                                    "next_cycle": next_ts})
             else:
-                # Real user session just ended
+                # Real user session just ended — reset idle clock
                 agent.set_data(_KEY_LAST_USER_TS, time.time())
                 _write_status({"state": "idle", "label": "Available"})
-
-            # Start idle monitor if no monitor is currently running for this context
-            if ctx not in _idle_tasks:
-                _idle_tasks[ctx] = asyncio.create_task(
-                    _idle_monitor(agent, config, ctx)
-                )
-                print(
-                    f"[IDLE] Monitor started (ctx={ctx}, "
-                    f"threshold={config.get('idle_threshold_seconds', 1800)}s, "
-                    f"cooldown={config.get('cooldown_seconds', 3600)}s).",
-                    flush=True,
-                )
 
         except Exception as e:
             try:
@@ -158,24 +170,32 @@ class IdleTrigger(Extension):
 
 async def _idle_monitor(agent, config: dict, ctx: str) -> None:
     """
-    Poll every _POLL_INTERVAL seconds. Fire an autonomous idle cycle when:
-      - time since last real user message >= idle_threshold_seconds
+    Persistent loop that checks idle conditions every _POLL_INTERVAL seconds.
+
+    Fires an autonomous idle cycle when:
+      - time since last real user session >= idle_threshold_seconds
       - time since last idle cycle end >= cooldown_seconds
       - agent is not currently in an idle cycle
 
-    Exits after injecting one activation (one monitor per response-tool fire).
-    The next response-tool in execute() restarts a fresh monitor.
+    Never exits — restarts after each cycle without needing a response tool trigger.
+    Reloads config every iteration so live threshold changes take effect.
     """
-    threshold = config.get("idle_threshold_seconds", 1800)
-    cooldown = config.get("cooldown_seconds", 3600)
-
+    print(f"[IDLE] Monitor running (ctx={ctx}).", flush=True)
     try:
         while True:
             await asyncio.sleep(_POLL_INTERVAL)
 
-            # Guard: already in an idle cycle (activation still processing)
+            # Reload config so live edits (e.g. threshold changes for testing) take effect
+            config = _load_config()
+            if not config.get("enabled", True):
+                continue
+
+            # Skip if already in an idle cycle
             if agent.get_data(_KEY_IDLE_MODE):
                 continue
+
+            threshold = config.get("idle_threshold_seconds", 1800)
+            cooldown = config.get("cooldown_seconds", 3600)
 
             now = time.time()
             last_user = agent.get_data(_KEY_LAST_USER_TS) or 0
@@ -189,7 +209,7 @@ async def _idle_monitor(agent, config: dict, ctx: str) -> None:
             if since_cycle < cooldown:
                 continue
 
-            # ── Fire idle cycle ──
+            # ── Fire idle cycle ──────────────────────────────────────────────
             cycle_count = agent.get_data(_KEY_CYCLE_COUNT) or 0
             cycle_type = _determine_cycle_type(cycle_count, config)
             max_steps = config.get("max_steps_per_cycle", 20)
@@ -200,8 +220,8 @@ async def _idle_monitor(agent, config: dict, ctx: str) -> None:
                 flush=True,
             )
 
-            # Set flag BEFORE communicate() so the first tool-use inside the cycle
-            # sees idle_mode=True
+            # Set flag BEFORE communicate() so the first tool-use inside the
+            # cycle sees idle_mode=True immediately
             agent.set_data(_KEY_IDLE_MODE, True)
             _write_status({
                 "state": "working",
@@ -214,12 +234,13 @@ async def _idle_monitor(agent, config: dict, ctx: str) -> None:
             try:
                 agent.context.communicate(UserMessage(activation))
             except Exception as e:
-                # If injection fails, clear flag so the system doesn't get stuck
-                print(f"[IDLE] Failed to inject activation: {e}", flush=True)
+                print(f"[IDLE] communicate() failed: {e}", flush=True)
                 agent.set_data(_KEY_IDLE_MODE, False)
+                # Back off before trying again — update last_cycle so cooldown applies
+                agent.set_data(_KEY_LAST_CYCLE_END, time.time())
                 _write_status({"state": "idle", "label": "Available"})
 
-            break  # one activation per monitor task
+            # Loop continues — next cycle will be gated by cooldown and idle_mode
 
     except asyncio.CancelledError:
         print(f"[IDLE] Monitor cancelled (ctx={ctx}).", flush=True)
@@ -246,13 +267,12 @@ def _last_user_msg_is_real(agent) -> bool:
     """
     Walk history output() backwards to find the most recent user message (ai=False).
     Return True if it's a real user message, False if it's our idle activation.
-    A return value of True indicates the idle cycle was interrupted by the user.
+    True means the idle cycle was interrupted by the user.
     """
     try:
         for msg in reversed(agent.history.output()):
             if msg.get("ai", True):  # ai=True = AI message, skip
                 continue
-            # Found a user message — check if it's our idle activation
             content = msg.get("content", "")
             if isinstance(content, dict):
                 content = content.get("text", "") or str(content)
