@@ -19,7 +19,6 @@
     <link rel="stylesheet" href="css/notification.css">
     <link rel="stylesheet" href="css/buttons.css">
     <link rel="stylesheet" href="css/tables.css">
-    <link rel="stylesheet" href="css/artifact-panel.css">
 
     <!-- Flatpickr for datetime picker -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css">
@@ -40,7 +39,7 @@
 
     <!-- Then load Alpine.js -->
     <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script> -->
-    <script type="module" src="js/artifact-panel.js"></script>
+
     <script type="module" src="js/initFw.js"></script>
 
     <script src="vendor/ace-min/ace.js"></script>
@@ -85,87 +84,6 @@
         </div>
         <!-- Left Sidebar (Header Icons, Quick Actions, Tabs, Chats, Tasks) -->
         <x-component path="sidebar/left-sidebar.html"></x-component>
-
-        <!-- Artifact Panel (collapsible, right side) -->
-        <div id="artifact-panel" x-data="artifactPanel" :class="{ open: open }">
-
-            <!-- Toggle tab — always visible at 28px -->
-            <div class="artifact-tab" @click="toggle()" :title="open ? 'Collapse artifact panel' : 'Expand artifact panel'">
-                <span class="artifact-tab-icon" x-text="open ? 'chevron_right' : 'chevron_left'"></span>
-                <span class="artifact-tab-label">Artifacts</span>
-                <span class="artifact-dot" :class="{ visible: hasContent }"></span>
-            </div>
-
-            <!-- Panel content — hidden when collapsed -->
-            <div class="artifact-content" x-show="open" x-cloak>
-
-                <!-- Multi-artifact tab bar — only visible when 2+ tabs exist -->
-                <div class="artifact-tabs-bar" x-show="tabs.length > 1">
-                    <template x-for="(tab, i) in tabs" :key="tab.id">
-                        <div class="artifact-tab-item"
-                             :class="{ active: activeTab === i }"
-                             @click="switchTab(i)">
-                            <span class="artifact-tab-type-icon"
-                                  x-text="tab.type === 'svg' ? 'polyline' : (tab.type === 'js' ? 'code' : 'web')"></span>
-                            <span class="artifact-tab-title" x-text="tab.title"></span>
-                            <button class="artifact-tab-close"
-                                    @click.stop="closeTab(i)"
-                                    title="Close tab">close</button>
-                        </div>
-                    </template>
-                </div>
-
-                <!-- Header: title reflects active tab; actions always visible -->
-                <div class="artifact-header">
-                    <span class="artifact-header-title" x-text="(tabs[activeTab] && tabs[activeTab].title) || title || 'Artifact'"></span>
-                    <span class="artifact-header-type"
-                          x-show="(tabs[activeTab] ? tabs[activeTab].type : type) && (tabs[activeTab] ? tabs[activeTab].type : type) !== 'html'"
-                          x-text="tabs[activeTab] ? tabs[activeTab].type : type"></span>
-
-                    <!-- Zoom / pan controls -->
-                    <div class="artifact-header-actions artifact-zoom-controls" x-show="hasContent">
-                        <button class="artifact-header-btn" @click="zoomIn()"    title="Zoom in  (Ctrl+scroll)">zoom_in</button>
-                        <button class="artifact-header-btn" @click="zoomOut()"   title="Zoom out">zoom_out</button>
-                        <button class="artifact-header-btn" @click="zoomReset()" title="Reset zoom &amp; pan">fit_screen</button>
-                        <button class="artifact-header-btn" :class="{ 'artifact-btn-active': panMode }"
-                                @click="togglePan()" title="Pan mode (drag to pan)">pan_tool</button>
-                    </div>
-
-                    <!-- Service quick-links -->
-                    <div class="artifact-header-actions artifact-service-links">
-                        <template x-for="link in serviceLinks" :key="link.url">
-                            <button class="artifact-header-btn"
-                                    @click="window.open(link.url, '_blank')"
-                                    :title="'Open ' + link.label">
-                                <span x-text="link.icon"></span>
-                            </button>
-                        </template>
-                    </div>
-
-                    <!-- Primary actions -->
-                    <div class="artifact-header-actions">
-                        <button class="artifact-header-btn" x-show="closedTabs.length > 0"
-                                @click="reopenLastTab()"
-                                :title="'Reopen: ' + (closedTabs[0] ? closedTabs[0].title : '')">undo</button>
-                        <button class="artifact-header-btn" @click="openInNewTab()" title="Open in new tab">open_in_new</button>
-                        <button class="artifact-header-btn" @click="closeActiveTab()" title="Close tab">close</button>
-                    </div>
-                </div>
-
-                <!-- Frame wrapper: skeleton sits behind iframe, fades out on load -->
-                <div class="artifact-frame-wrapper">
-                    <div id="artifact-skeleton">
-                        <div class="skeleton-line"></div>
-                        <div class="skeleton-line"></div>
-                        <div class="skeleton-line"></div>
-                        <div class="skeleton-line"></div>
-                        <div class="skeleton-line"></div>
-                        <div class="skeleton-block"></div>
-                    </div>
-                    <iframe id="artifact-frame" sandbox="allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox" title="Artifact"></iframe>
-                </div>
-            </div>
-        </div>
 
         <!-- Right Panel (Message History and Input Section) -->
         <div id="right-panel" class="panel" >
