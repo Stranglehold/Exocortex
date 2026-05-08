@@ -1,0 +1,6 @@
+{
+  "step_budget_tracker": {
+    "enabled": true,
+    "max_steps": 80
+  }
+}

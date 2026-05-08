@@ -51,6 +51,29 @@ install_file() {
     fi
 }
 
+install_file_if_missing() {
+    local src="$1" dest="$2" label="${3:-$(basename "$1")}"
+    if [[ ! -f "$src" ]]; then
+        echo "  SKIP  ${label} (not found at ${src})"
+        return 0
+    fi
+    # Check if destination already exists in container
+    if _exec "${CONTAINER_NAME}" test -f "${dest}" 2>/dev/null; then
+        echo "  OK    ${label} (already present — skipping)"
+        return 0
+    fi
+    if docker cp "${src}" "${CONTAINER_NAME}:${dest}" 2>/dev/null; then
+        echo "  OK    ${label} → ${dest} (initial deploy)"
+    else
+        cp -p "${src}" "${dest}" 2>/dev/null || {
+            echo "  ERR   ${label} — deploy failed"
+            ERRORS=$((ERRORS + 1))
+            return 1
+        }
+        echo "  OK    ${label} → ${dest} (direct copy)"
+    fi
+}
+
 clear_pycache() {
     local pyc="$1"
     _exec "${CONTAINER_NAME}" rm -f "${pyc}" 2>/dev/null || rm -f "${pyc}" 2>/dev/null || true
@@ -82,6 +105,12 @@ install_file \
     "${REPO_DIR}/sleep_config.json" \
     "${EXOCORTEX_DEST}/sleep_config.json" \
     "sleep_config.json"
+
+# Deploy Exocortex config.json (only if not already present — preserves user edits)
+install_file_if_missing \
+    "${REPO_DIR}/config.json" \
+    "${EXOCORTEX_DEST}/config.json" \
+    "config.json"
 
 # ── Extension files ───────────────────────────────────────────────────────────
 

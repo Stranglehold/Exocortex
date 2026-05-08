@@ -71,6 +71,11 @@ class OrgDispatcher(Extension):
             if not role:
                 # No role for this domain (e.g. conversational) — clear and passthrough
                 _clear_role(self.agent)
+                self.agent.context.log.log(
+                    type="info",
+                    content=f"[ORG-DISPATCH] domain={domain} role=none (no matching role)",
+                    flush=True,
+                )
                 return
 
             prev_role_id = getattr(self.agent, PREV_ROLE_KEY, None)
@@ -79,6 +84,14 @@ class OrgDispatcher(Extension):
             # Store active role on agent
             self.agent._org_active_role = role
             setattr(self.agent, PREV_ROLE_KEY, current_role_id)
+
+            # Per-turn dispatch record (acceptance criterion: GAP-09)
+            pace_level = getattr(self.agent, "_pace_level", "primary")
+            self.agent.context.log.log(
+                type="info",
+                content=f"[ORG-DISPATCH] domain={domain} role={current_role_id} pace={pace_level}",
+                flush=True,
+            )
 
             # Log role change
             if prev_role_id and prev_role_id != current_role_id:
@@ -294,7 +307,13 @@ def _check_pace_trigger(pace_entry: dict, max_consecutive: int, turns_no_progres
             try:
                 ctx_window = agent.get_data("ctx_window") or {}
                 tokens = ctx_window.get("tokens", 0)
-                window_size = agent.get_data("context_window_size") or 100000
+                window_size = agent.get_data("context_window_size")
+                if not window_size:
+                    try:
+                        from plugins._model_config.helpers.model_config import get_chat_model_config
+                        window_size = int(get_chat_model_config(agent).get("ctx_length", 0))
+                    except Exception:
+                        pass
                 if tokens and window_size:
                     ctx_fill = tokens / window_size
             except Exception:
@@ -381,9 +400,12 @@ def _emit_salute(agent, role: dict, org: dict, loop_data):
             ctx_tokens = loop_data.params_temporary.get("context_token_count", 0)
             ctx_fill = loop_data.params_temporary.get("context_utilization", 0.0)
         try:
-            ctx_max = agent.get_data("context_window_size") or 100000
+            ctx_max = agent.get_data("context_window_size")
+            if not ctx_max:
+                from plugins._model_config.helpers.model_config import get_chat_model_config
+                ctx_max = int(get_chat_model_config(agent).get("ctx_length", 0))
         except Exception:
-            ctx_max = 100000
+            ctx_max = 0
 
         # Health
         if pace_level in ("contingent", "emergency"):

@@ -24,6 +24,7 @@ import os
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 # Ensure Exocortex module path is available
@@ -610,7 +611,7 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
 
     try:
         from self_improvement import SelfImprovementEngine  # type: ignore
-        engine = SelfImprovementEngine(_AGENTEVOLVER_PLUGIN_DIR)
+        engine = SelfImprovementEngine(Path(_AGENTEVOLVER_PLUGIN_DIR))
     except Exception as e:
         result["engine_unavailable"] = True
         result["errors"] += 1
