@@ -33,14 +33,14 @@ log = logging.getLogger("[INGEST]")
 # ---------------------------------------------------------------------------
 
 LLM_URL    = os.environ.get("OSS_LLM_URL",   "http://host.docker.internal:1234/v1")
-from llm_config import get_llm_model as _get_llm_model
+from .llm_config import get_llm_model as _get_llm_model
 LLM_MODEL  = _get_llm_model()
 EMB_MODEL  = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 FAISS_PATH = os.environ.get("OSS_FAISS_PATH", "/a0/usr/oss/claims.index")
 DEDUP_THRESHOLD = float(os.environ.get("OSS_DEDUP_THRESHOLD", "0.95"))
 INTERVAL_MINUTES = int(os.environ.get("OSS_INGEST_INTERVAL_MINUTES", "30"))
 
-_ingest_paused = False
+_ingest_paused = os.environ.get("OSS_INGEST_PAUSED", "true").lower() in ("1", "true", "yes")
 _ingest_lock   = threading.Lock()
 _bg_thread: Optional[threading.Thread] = None
 

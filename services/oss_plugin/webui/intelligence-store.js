@@ -1,29 +1,33 @@
 /**
  * intelligence-store.js — Alpine store for the Intelligence Panel
  *
- * Manages all state and API calls for the 6-tab right-canvas surface.
- * Import createIntelStore() from register-intelligence.js and register
- * it as Alpine.store("intelligence") before the panel HTML renders.
+ * Uses A0's fetchApi (CSRF token auth, same-origin) — no hardcoded tokens.
+ * All endpoints hit the V2 plugin API at /api/plugins/oss/.
  */
 
-const OSS_URL = "http://localhost:7731";
-const TOKEN   = "dev_analyst_token";
+import { fetchApi } from "/js/api.js";
 
-async function ossGet(path) {
-  const r = await fetch(OSS_URL + path, {
-    headers: { "X-Analyst-Token": TOKEN },
+const OSS = "/api/plugins/oss";
+
+async function ossGet(path, body = {}) {
+  const r = await fetchApi(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`OSS ${r.status} — ${path}`);
+  if (!r || !r.ok) throw new Error(`OSS ${r?.status ?? "?"} — ${path}`);
   return r.json();
 }
 
 async function ossPost(path, body = {}) {
-  const r = await fetch(OSS_URL + path, {
+  const r = await fetchApi(path, {
     method: "POST",
-    headers: { "X-Analyst-Token": TOKEN, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`OSS ${r.status} — ${path}`);
+  if (!r || !r.ok) throw new Error(`OSS ${r?.status ?? "?"} — ${path}`);
   return r.json();
 }
 
@@ -37,7 +41,6 @@ export function createIntelStore() {
     connected: false,
     _toastTimer: null,
     _pollTimer:  null,
-    _sse:        null,
 
     // ── Status tab ───────────────────────────────────────────────────────────
     health:        null,
@@ -50,7 +53,7 @@ export function createIntelStore() {
     staged:        [],
     stagedTotal:   0,
     triageTopic:   "",
-    triageSel:     [],    // array of selected claim IDs
+    triageSel:     [],
 
     // ── Ledger tab ───────────────────────────────────────────────────────────
     ledger:      [],
@@ -58,10 +61,10 @@ export function createIntelStore() {
     ledgerTotal: 0,
 
     // ── Analysis tab ─────────────────────────────────────────────────────────
-    analysisTopic: "",
-    drift:         null,
-    silence:       null,
-    activation:    null,
+    analysisTopic:  "",
+    drift:          null,
+    silence:        null,
+    activation:     null,
     contradictions: [],
 
     // ── Hypotheses tab ───────────────────────────────────────────────────────
@@ -87,7 +90,6 @@ export function createIntelStore() {
       this.connected = false;
       clearInterval(this._pollTimer);
       this._pollTimer = null;
-      if (this._sse) { this._sse.close(); this._sse = null; }
     },
 
     async refresh() {
@@ -128,16 +130,16 @@ export function createIntelStore() {
     // ── Health / Status ───────────────────────────────────────────────────────
 
     async _loadHealth() {
-      this.health = await ossGet("/api/health");
+      this.health = await ossGet(`${OSS}/api_oss_health`);
     },
 
     async _loadTopics() {
-      const d = await ossGet("/api/topics");
+      const d = await ossGet(`${OSS}/api_oss_topics`);
       this.topics = d.topics ?? (Array.isArray(d) ? d : []);
     },
 
     async _loadSources() {
-      const d = await ossGet("/api/sources");
+      const d = await ossGet(`${OSS}/api_oss_sources`);
       this.sources = d.sources ?? (Array.isArray(d) ? d : []);
     },
 
@@ -152,13 +154,13 @@ export function createIntelStore() {
     },
 
     async pauseIngest() {
-      await ossPost("/api/ingest/pause");
+      await ossPost(`${OSS}/api_oss_ingest`, { action: "pause" });
       if (this.health) this.health.ingest_paused = true;
       this.notify("Ingest paused", "warn");
     },
 
     async resumeIngest() {
-      await ossPost("/api/ingest/resume");
+      await ossPost(`${OSS}/api_oss_ingest`, { action: "resume" });
       if (this.health) this.health.ingest_paused = false;
       this.notify("Ingest resumed", "ok");
     },
@@ -166,9 +168,11 @@ export function createIntelStore() {
     async runIngestNow() {
       this.loading = true;
       try {
-        await ossPost("/api/ingest/run");
+        await ossPost(`${OSS}/api_oss_ingest`, { action: "run" });
         this.notify("Ingest cycle triggered", "ok");
         setTimeout(() => this._loadHealth(), 3000);
+      } catch (e) {
+        this.notify(e.message, "danger");
       } finally {
         this.loading = false;
       }
@@ -178,7 +182,7 @@ export function createIntelStore() {
       const tag = this.addTopicInput.trim().toLowerCase().replace(/\s+/g, "-");
       if (!tag) return;
       try {
-        await ossPost("/admin/add_topic", { tag, analyst_token: TOKEN });
+        await ossPost(`${OSS}/api_oss_add_topic`, { tag, display_name: tag });
         this.notify(`Topic "${tag}" added`, "ok");
         this.addTopicInput = "";
         this.addTopicOpen  = false;
@@ -191,10 +195,9 @@ export function createIntelStore() {
     // ── Triage ────────────────────────────────────────────────────────────────
 
     async loadStaged() {
-      const q = this.triageTopic
-        ? `?topic=${encodeURIComponent(this.triageTopic)}&limit=100`
-        : "?limit=100";
-      const d    = await ossGet(`/api/feed${q}`);
+      const body = { limit: 100 };
+      if (this.triageTopic) body.topic = this.triageTopic;
+      const d   = await ossGet(`${OSS}/api_oss_feed`, body);
       const all  = d.claims ?? (Array.isArray(d) ? d : []);
       this.staged      = all.filter(c => c.trust_level === "STAGED");
       this.stagedTotal = this.staged.length;
@@ -208,14 +211,15 @@ export function createIntelStore() {
 
     isSel(id) { return this.triageSel.includes(id); },
 
-    selectAll()    { this.triageSel = this.staged.map(c => c.id); },
-    clearSel()     { this.triageSel = []; },
+    selectAll() { this.triageSel = this.staged.map(c => c.id); },
+    clearSel()  { this.triageSel = []; },
 
     async bulkPromote() {
       if (!this.triageSel.length) return;
-      const ids   = [...this.triageSel];
-      const topic = this.triageTopic || null;
-      await ossPost("/admin/bulk_promote", { ids, topic });
+      const ids = [...this.triageSel];
+      await Promise.all(ids.map(id =>
+        ossPost(`${OSS}/api_oss_staging`, { action: "promote", claim_id: id })
+      ));
       this.notify(`${ids.length} claims promoted`, "ok");
       await this.loadStaged();
     },
@@ -223,11 +227,10 @@ export function createIntelStore() {
     // ── Ledger ────────────────────────────────────────────────────────────────
 
     async loadLedger() {
-      const q = this.ledgerTopic
-        ? `?topic=${encodeURIComponent(this.ledgerTopic)}&limit=100`
-        : "?limit=100";
-      const d        = await ossGet(`/api/feed${q}`);
-      const all      = d.claims ?? (Array.isArray(d) ? d : []);
+      const body = { limit: 100 };
+      if (this.ledgerTopic) body.topic = this.ledgerTopic;
+      const d    = await ossGet(`${OSS}/api_oss_feed`, body);
+      const all  = d.claims ?? (Array.isArray(d) ? d : []);
       this.ledger      = all.filter(c => c.trust_level === "PROMOTED");
       this.ledgerTotal = this.ledger.length;
     },
@@ -240,15 +243,15 @@ export function createIntelStore() {
       const topic    = this.analysisTopic;
 
       const [dr, si, ac, co] = await Promise.allSettled([
-        ossPost("/api/drift",          { topic, since: since72h }),
-        ossPost("/api/silence",        { topic, since: since72h }),
-        ossPost("/api/activation",     { topic, since: since72h }),
-        ossPost("/api/contradictions", { topic, analyst_token: TOKEN }),
+        ossPost(`${OSS}/api_oss_drift`,          { topic, since: since72h }),
+        ossPost(`${OSS}/api_oss_silence`,        { topic, since: since72h }),
+        ossPost(`${OSS}/api_oss_activation`,     { topic, since: since72h }),
+        ossPost(`${OSS}/api_oss_contradictions`, { topic }),
       ]);
 
-      this.drift         = dr.status === "fulfilled" ? dr.value : null;
-      this.silence       = si.status === "fulfilled" ? si.value : null;
-      this.activation    = ac.status === "fulfilled" ? ac.value : null;
+      this.drift          = dr.status === "fulfilled" ? dr.value : null;
+      this.silence        = si.status === "fulfilled" ? si.value : null;
+      this.activation     = ac.status === "fulfilled" ? ac.value : null;
       this.contradictions = co.status === "fulfilled"
         ? (co.value.pairs ?? [])
         : [];
@@ -257,8 +260,11 @@ export function createIntelStore() {
     // ── Hypotheses ────────────────────────────────────────────────────────────
 
     async loadHypotheses() {
-      let url = `/api/hypotheses?status=${this.hypStatus}&limit=50`;
-      const d = await ossGet(url);
+      const d = await ossPost(`${OSS}/api_oss_hypotheses`, {
+        action: "list",
+        status: this.hypStatus,
+        limit:  50,
+      });
       this.hypotheses = d.hypotheses ?? (Array.isArray(d) ? d : []);
     },
 
@@ -268,7 +274,7 @@ export function createIntelStore() {
     },
 
     async promoteHyp(id) {
-      await ossPost(`/api/hypothesis/${id}/promote`);
+      await ossPost(`${OSS}/api_oss_hypotheses`, { action: "promote", hypothesis_id: id });
       this.notify(`Hypothesis #${id} promoted`, "ok");
       await this.loadHypotheses();
     },
@@ -276,18 +282,12 @@ export function createIntelStore() {
     async falsifyHyp(id) {
       const ev = window.prompt(`Falsification evidence for hypothesis #${id}:`);
       if (!ev) return;
-      await ossPost(`/api/hypothesis/${id}/falsify`, { evidence: ev });
+      await ossPost(`${OSS}/api_oss_hypotheses`, { action: "falsify", hypothesis_id: id, evidence: ev });
       this.notify(`Hypothesis #${id} falsified`, "warn");
       await this.loadHypotheses();
     },
 
-    async suspendHyp(id) {
-      await ossPost(`/api/hypothesis/${id}/suspend`, { reason: "Analyst suspension" });
-      this.notify(`Hypothesis #${id} suspended`, "info");
-      await this.loadHypotheses();
-    },
-
-    // ── Predict (SWARMFISH via OSS proxy) ─────────────────────────────────────
+    // ── Predict (placeholder — SWARMFISH proxy not yet wired to canvas) ───────
 
     async runPredict() {
       if (!this.predictTopic) { this.notify("Select a topic first", "warn"); return; }
@@ -296,9 +296,12 @@ export function createIntelStore() {
       this.swfConsensus = null;
       this.error        = null;
       try {
-        const d = await ossPost("/api/swarmfish/predict", { topic: this.predictTopic });
-        this.swfProfiles  = d.profiles   ?? [];
-        this.swfConsensus = d.consensus  ?? null;
+        const d = await ossPost(`${OSS}/api_oss_hypotheses`, {
+          action: "list",
+          limit:  20,
+        });
+        this.swfProfiles = d.hypotheses ?? [];
+        this.notify("Loaded hypotheses (SWARMFISH canvas proxy pending)", "info");
       } catch (e) {
         this.error = e.message;
       } finally {
@@ -311,8 +314,8 @@ export function createIntelStore() {
     timeSince(ts) {
       if (!ts) return "never";
       const secs = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-      if (secs < 60)   return `${secs}s ago`;
-      if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+      if (secs < 60)    return `${secs}s ago`;
+      if (secs < 3600)  return `${Math.floor(secs / 60)}m ago`;
       if (secs < 86400) return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m ago`;
       return `${Math.floor(secs / 86400)}d ago`;
     },
@@ -321,27 +324,18 @@ export function createIntelStore() {
       if (!ts) return "—";
       const d = new Date(ts);
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-        + " "
-        + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+        + " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
     },
 
-    fmtConf(v) {
-      return v != null ? (v * 100).toFixed(0) + "%" : "—";
-    },
-
-    confBarW(v) {
-      return v != null ? Math.round(v * 100) + "%" : "0%";
-    },
+    fmtConf(v)  { return v != null ? (v * 100).toFixed(0) + "%" : "—"; },
+    confBarW(v) { return v != null ? Math.round(v * 100) + "%" : "0%"; },
 
     techniqueLabel(t) {
       const map = {
-        neutral_framing:  "neutral",
-        loaded_language:  "loaded",
-        false_balance:    "false-bal",
-        selective_omit:   "omit",
-        fear_appeal:      "fear",
-        appeal_to_authority: "authority",
-        unclassified:     "unclassed",
+        neutral_framing: "neutral", loaded_language: "loaded",
+        false_balance: "false-bal", selective_omit: "omit",
+        fear_appeal: "fear", appeal_to_authority: "authority",
+        unclassified: "unclassed",
       };
       return map[t] ?? t ?? "—";
     },

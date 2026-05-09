@@ -42,6 +42,7 @@ DEST="$CONTAINER:$PLUGIN_BASE/src"
 
 docker cp "$SRC/__init__.py"              "$DEST/"
 docker cp "$SRC/db.py"                   "$DEST/"
+docker cp "$SRC/llm_config.py"           "$DEST/"
 docker cp "$SRC/ingest.py"               "$DEST/"
 docker cp "$SRC/audit.py"                "$DEST/"
 docker cp "$SRC/operator_state.py"       "$DEST/"
