@@ -114,15 +114,19 @@ class IdleTrigger(Extension):
 
 
 def _last_user_msg_is_real(agent) -> bool:
-    """Walk history backwards to the most recent user message. True if not an idle activation."""
+    """Walk history backwards to the most recent user message. True if not an idle activation.
+
+    The API message arrives JSON-wrapped as {"user_message": "## IDLE-TIME CYCLE ACTIVATED..."},
+    so check sentinel appears anywhere in the content, not just at the start.
+    """
     try:
         for msg in reversed(agent.history.output()):
             if msg.get("ai", True):
                 continue
             content = msg.get("content", "")
             if isinstance(content, dict):
-                content = content.get("text", "") or str(content)
-            return not str(content).startswith(_ACTIVATION_SENTINEL)
+                content = content.get("text", "") or content.get("user_message", "") or str(content)
+            return _ACTIVATION_SENTINEL not in str(content)
     except Exception:
         pass
     return False
