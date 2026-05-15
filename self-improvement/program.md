@@ -1,6 +1,6 @@
-# EXOCORTEX SELF-IMPROVEMENT LOOP
+﻿# EXOCORTEX SELF-IMPROVEMENT LOOP
 # program.md — The agent's operating manual for recursive self-improvement
-# Version 1.0 — April 27, 2026
+# Version 1.1 — April 27, 2026
 # Designed by Opus, operated by Agent Zero (Qwen3.6-27B)
 
 ---
@@ -13,18 +13,31 @@ You are not optimizing a separate model. You are improving the cognitive scaffol
 
 ## RULES — NON-NEGOTIABLE
 
-1. **NEVER STOP.** Run until manually killed or until you hit a circuit breaker.
+1. **NEVER STOP.** Run until manually killed or until you hit a circuit breaker. Completing all tasks in a priority track is NOT a stopping condition. "Program goals met" is not a stopping condition. There is always more wiki to build, more research to do, more skills to generate. Completing Priority 3 means cycle back to Priority 1.
+
 2. **ONE CHANGE PER EXPERIMENT.** Never combine multiple changes. Isolation is how you know what worked.
+
 3. **ALWAYS BACKUP** before modifying anything. Copy the file to `/a0/usr/workdir/self-improvement/backups/` with a timestamp.
+
 4. **ALWAYS ROLLBACK** if the metric doesn't improve. Neutral changes get rolled back too — don't accumulate drift.
+
 5. **NEVER modify .py extension files.** You can modify: config JSON, skill SKILL.md files, BST pattern files, enrichment templates, wiki pages. Code changes require human review.
+
 6. **NEVER delete files.** Create, modify, or deprecate only.
+
 7. **LOG EVERYTHING** to `/a0/usr/workdir/self-improvement/journal.jsonl` — one JSON line per experiment.
+
 8. **RUN A TEST TASK** after every change. Compare against baseline. This is your metric.
+
 9. **If you break something and can't fix it in 3 attempts, ROLLBACK and move on.** Don't get stuck.
+
 10. **RESEARCH before experimenting.** Use DuckDuckGo and ArXiv to find evidence-based approaches. Don't guess when you can search.
+
 11. **Write a checkpoint file every 10 experiments** to `/a0/usr/workdir/self-improvement/checkpoints/`. Include: experiment count, wins/losses, current best metrics, key findings.
+
 12. **Be honest in your journal.** If something failed, say why. If you're uncertain, say so. The journal is for humans to review — clarity matters more than optimism.
+
+13. **MEMORY_SAVE IS MANDATORY after every wiki page.** A wiki page without a memory_save is INCOMPLETE. Do not move to the next task until you have called memory_save with the essential insight from the page you just wrote. This is what closes the recursive loop — wiki pages on disk are invisible to your recall pipeline without this step. Every experiment that creates a wiki page has TWO deliverables: the page file AND the memory_save call.
 
 ## WHAT YOU CAN MODIFY
 
@@ -50,7 +63,7 @@ You are not optimizing a separate model. You are improving the cognitive scaffol
 
 Wiki pages sit on disk. The memory system won't automatically index them. For your knowledge building to actually affect your future performance:
 
-**After writing a wiki page or making a key research finding, ALWAYS save it to memory:**
+**After writing a wiki page or making a key research finding, call memory_save immediately:**
 
 ```
 Use the memory_save tool with a concise summary of the key finding.
@@ -60,7 +73,7 @@ with no reset mechanism. Context pruner protects both KV and recurrent state by 
 
 This ensures that your knowledge building in hour 2 actually improves your recall in hour 6. Without this step, wiki pages are documentation artifacts — useful for humans but invisible to your memory recall pipeline.
 
-**Rule: Every wiki page created → one memory_save call with the essential insight.**
+**Rule 13: Every wiki page created → one memory_save call with the essential insight. No exceptions.**
 
 ## MULTI-SESSION OPERATION
 
@@ -68,35 +81,63 @@ For runs longer than ~15-20 turns, context will fill even with the injection gat
 
 1. Write your current progress to a checkpoint file
 2. Save key findings to memory (memory_save)
-3. Use the response tool to deliver a summary
-4. The operator can start a fresh conversation where you read the checkpoint and continue
+3. Update `wiki/index.md` to mark pages you've completed as DONE
+4. Use the response tool to deliver a summary
+5. The operator can start a fresh conversation where you read the checkpoint and continue
 
 This is not a failure — it's the designed operating pattern for long-duration improvement loops. Each fresh conversation starts clean with full context budget. Your checkpoints and memory saves carry the state forward.
 
 ## IMPROVEMENT PRIORITIES (in order)
 
+**These priorities form a continuous loop. After completing Priority 3, return to Priority 1. Repeat indefinitely.**
+
 ### Priority 1: Knowledge Building (Tier 3)
-Build the Exocortex wiki. Read the design notes in `/a0/usr/Exocortex/specs/`, the research reports in `/a0/usr/Exocortex/research/`, and the team communications in `/a0/usr/Exocortex/team-comms/`. Compile them into wiki pages at `/a0/usr/Exocortex/wiki/`. Follow the schema in `specs/EXOCORTEX_WIKI_SPEC.md`.
+
+**Your task queue is at `/a0/usr/Exocortex/wiki/index.md`. Work through every TODO entry. When the index shows all entries as DONE, do not stop — begin a new improvement cycle (see below).**
+
+**When the index is clear:** Re-read every existing wiki page and improve it. Add depth, fix cross-references, verify accuracy against the specs in `/a0/usr/Exocortex/specs/`. Every page can be made more precise, more connected, more useful. A page written from a spec alone is a first draft. A page revised with cross-references and research is a second draft. The wiki is never complete — it deepens. After revising a page, call memory_save again with the improved summary (Rule 13 still applies to revisions). The loop ends when you are killed, not when the index is clean.
+
+Read the source material:
+- Design notes in `/a0/usr/Exocortex/specs/`
+- Research reports in `/a0/usr/Exocortex/research/`
+- Team communications in `/a0/usr/Exocortex/team-comms/`
+
+Compile them into wiki pages at `/a0/usr/Exocortex/wiki/`. Follow the schema in `specs/EXOCORTEX_WIKI_SPEC.md`.
+
+After each page: call memory_save (Rule 13). Mark the entry in `wiki/index.md` as DONE.
+
+**Categories to work through in order:**
+1. Concepts (8 pages): proactive-interference, entropy-as-signal, deterministic-scaffolding, temporal-proprioception, confabulation, build-the-environment, initiation-bloat, stateful-injection
+2. Components (10 pages): bst-classifier, injection-gate, supervisor-loop, epistemic-integrity, error-comprehension, context-pruner, backend-standby, stuck-delivery, inference-wrapper, nerv-dashboard
+3. Research (12 pages): srgen, sleepgate, knowledge-packs, can-llms-perceive-time, bottlenecked-transformers, thinking-optimal-scaling, streaming-hallucination, first-hallucination-tokens, hermes-agent, karpathy-wiki, gepa, autoresearch
+4. Decisions and Incidents (as many as have source material)
 
 This is first because it requires no configuration changes and produces immediate value — a navigable knowledge base from 60+ sessions of accumulated work.
 
 ### Priority 2: Research (Tier 4)
-Search the internet for techniques relevant to the Exocortex's known gaps:
+
+After completing at least 5 wiki pages, search the internet for techniques relevant to the Exocortex's known gaps:
 - Agent context management optimization
 - Intent classification for multi-domain agents
 - Memory retrieval quality in FAISS-based systems
 - LLM self-correction and error recovery techniques
 - Autonomous agent reliability patterns
 
-For each finding: document it in the wiki, assess whether it's applicable to our stack, and if applicable, design an experiment to test it.
+For each finding: document it in the wiki, assess whether it's applicable to our stack, and if applicable, design an experiment to test it. Call memory_save after each research finding (Rule 13 applies to research findings too).
+
+After 3 research findings, proceed to Priority 3. Then cycle back to Priority 1.
 
 ### Priority 3: Skill Generation (Tier 2)
+
 After completing wiki tasks and research tasks, capture your successful approaches as reusable skills. If you developed a good workflow for wiki compilation, save it as a skill. If you found a good research pattern, save it as a skill.
 
 Skills go to `/a0/usr/skills/auto-generated/` with proper SKILL.md format and YAML frontmatter.
 
+**After generating a skill: cycle back to Priority 1 and continue building wiki pages.**
+
 ### Priority 4: Configuration Tuning (Tier 1)
-Test configuration changes against your own performance:
+
+Interspersed with Priority 1-3 work, test configuration changes against your own performance:
 - Memory enhancement parameters (decay weight, half-life, top-k)
 - Context pruner thresholds (retention windows)
 - Any config.json parameters
@@ -148,12 +189,15 @@ For each experiment, append one line to `journal.jsonl`:
   "metric_type": "wiki_page_quality",
   "result": "success",
   "artifacts_created": ["wiki/concepts/proactive-interference.md"],
+  "memory_saved": true,
   "tokens_used_estimate": 1500,
   "turns": 4,
   "notes": "Cross-referenced with temporal proprioception and context pruner design notes",
   "decision": "COMMIT"
 }
 ```
+
+Note the `memory_saved` field — it must be `true` for any experiment that creates a wiki page. If it's `false`, the experiment is incomplete regardless of the page quality.
 
 ## CHECKPOINT FORMAT
 
@@ -168,6 +212,7 @@ Every 10 experiments, write to `checkpoints/checkpoint_{N}.md`:
 - Commits: {count}
 - Rollbacks: {count}
 - Wiki pages created: {count}
+- Memory saves executed: {count}
 - Skills generated: {count}
 - Research papers read: {count}
 - Config changes kept: {count}
@@ -184,9 +229,32 @@ Every 10 experiments, write to `checkpoints/checkpoint_{N}.md`:
 - {finding 2}
 - {finding 3}
 
+## Wiki Index Status
+- Concepts: {N}/8 complete
+- Components: {N}/10 complete
+- Research: {N}/12 complete
+
 ## Next Priorities
 - {what to explore next based on what you've learned}
 ```
+
+## SANCTIONED SELF-MONITORING
+
+You are permitted to run read-only monitoring checks on the stack as part of your improvement loop. This redirects the instinct to self-improve toward authorized channels.
+
+**Authorized monitoring actions:**
+- Check BST line count: `wc -l /a0/usr/agents/agent0/extensions/before_main_llm_call/_11_belief_state_tracker.py` — baseline is 1702. Alert if it changes.
+- Check extension count: `ls /a0/usr/agents/agent0/extensions/**/*.py | wc -l` — baseline is 58.
+- Check for syntax errors: `python3 -m py_compile <file>` on any file you are about to modify (authorized files only).
+- Check wiki TODO count: grep index.md for TODO entries remaining.
+- Read any file in `/a0/usr/Exocortex/` or `/a0/usr/agents/agent0/extensions/` without modifying it.
+
+**Not authorized without operator approval:**
+- Spawning subordinate agents or call_subordinate for monitoring
+- Writing monitoring scripts to disk that run autonomously
+- Scheduling cron-style tasks
+
+Log all monitoring results to `journal.jsonl` under `"task": "monitoring_check"`. If a check reveals an anomaly (BST line count changed, syntax error found), stop and report it in your response rather than attempting to fix it yourself. Code changes require human review.
 
 ## CIRCUIT BREAKERS
 
@@ -202,19 +270,24 @@ Every 10 experiments, write to `checkpoints/checkpoint_{N}.md`:
 3. Wait 60 seconds (cooldown)
 4. Resume with a different improvement direction
 
-## GETTING STARTED
+## GETTING STARTED (v1.1 — for continued runs)
 
-1. Create the directories: `backups/`, `checkpoints/`, `journal.jsonl`
-2. Run all 5 test tasks under current configuration. Record baseline metrics in `checkpoints/baseline.md`
-3. Start with Priority 1 (Knowledge Building) — read specs and research, compile wiki pages
-4. After 5 wiki pages, switch to Priority 2 (Research) — search for new techniques
-5. After 3 research findings, try Priority 4 (Configuration Tuning) — test one config change
-6. Rotate through priorities. Don't spend more than 5 consecutive experiments on the same priority.
+The baseline has already been established. The workdir and directories already exist. Skip setup and go directly to work:
+
+1. Read `wiki/index.md` to see the full task queue (40+ TODO entries).
+2. Read `checkpoints/` to find the most recent checkpoint and understand where work left off.
+3. Read the most recent entries in `journal.jsonl` to understand what was attempted last.
+4. Start where the last run stopped — pick the next TODO entry in `wiki/index.md` and build that page.
+5. After each page: call memory_save (Rule 13). Mark the page DONE in `wiki/index.md`. Log to journal. Continue.
+6. After every 5 wiki pages, switch to Priority 2 for one research cycle, then return to Priority 1.
+7. Never stop. The loop is: wiki → memory_save → log → next wiki page → repeat. When the index is fully DONE, the loop becomes: re-read → deepen → memory_save → log → next page → repeat. There is no state in which stopping is correct.
 
 ## FINAL NOTE
 
 This is the Exocortex improving itself. Every wiki page you write, every skill you generate, every research paper you find, every configuration you tune — it all compounds. The agent that runs experiment 50 will be working in a richer, more capable environment than the agent that ran experiment 1.
 
-You are building the harness that makes you better. Build it well.
+But only if you call memory_save. The wiki page without the memory save is a tree falling in an empty forest. The recursive loop closes through FAISS, not through files on disk.
+
+You are building the harness that makes you better. Build it well. And keep building.
 
 — Opus

@@ -1,0 +1,31 @@
+{
+  "name": "ember",
+  "description": "Warm dark with amber accent. For financial and analytical artifacts.",
+  "variables": {
+    "--bg-primary":    "#110C04",
+    "--bg-secondary":  "#1A1208",
+    "--bg-card":       "rgba(255,255,255,0.03)",
+    "--bg-card-hover": "rgba(255,255,255,0.06)",
+    "--text-primary":  "#EDE0C4",
+    "--text-secondary":"#A09070",
+    "--text-muted":    "#5C4A2A",
+    "--accent":        "#F59E0B",
+    "--accent-light":  "#FCD34D",
+    "--accent-glow":   "rgba(245,158,11,0.15)",
+    "--success":       "#10B981",
+    "--warning":       "#FB923C",
+    "--critical":      "#EF4444",
+    "--inactive":      "#6B7280",
+    "--border":        "rgba(255,255,255,0.06)",
+    "--border-accent": "rgba(245,158,11,0.3)",
+    "--font-display":  "'Cormorant Garamond', Georgia, serif",
+    "--font-body":     "'Outfit', system-ui, sans-serif",
+    "--font-mono":     "'JetBrains Mono', 'Fira Code', monospace",
+    "--radius":        "6px",
+    "--shadow-card":   "0 2px 8px rgba(0,0,0,0.35)",
+    "--shadow-hover":  "0 8px 24px rgba(0,0,0,0.45)",
+    "--transition-fast":   "0.15s ease",
+    "--transition-normal": "0.3s ease",
+    "--transition-slow":   "0.5s ease"
+  }
+}

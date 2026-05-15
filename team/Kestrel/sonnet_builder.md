@@ -77,6 +77,66 @@ My value to this team is specific:
 | OSS ingest refactor | `services/oss/src/ingest.py` | ~065 | Deployed — threading.Event cancellation (checked before every LLM call), 3 parallel workers (ThreadPoolExecutor), combined process_article() call (1 LLM call/article vs 11), FAISS lock for thread safety |
 | emit_artifact docstring tightened | `tools/emit_artifact.py` | ~065 | Deployed — explicitly excludes OSS/SWARMFISH/stack data; prevents agent from generating fabricated HTML |
 | OSS docker-compose fixes | `services/oss/docker-compose.yml` | ~065 | OSS_INGEST_PAUSED defaults to true; OSS_LLM_MODEL_INGEST + OSS_LLM_URL_INGEST added (use A0 util model) |
+| BST v3.8 — phrase signal architecture | `extensions/before_main_llm_call/_11_belief_state_tracker.py` | 2026-04-26 | Deployed — Phase 1: meta_cognitive/planning/investigation/analysis fixes. Phase 2: system_admin audit (service/network/mount narrowed to phrases). Eval 68/68 = 1.00. |
+| Qwen3.6-27B eval + profile | `eval_framework/profiles/jackrong_qwen3.6-27b.json`, `eval/MODEL_EVAL_QWEN36_27B_REPORT.md` | 2026-04-26 | Complete — 61 API calls, 29 min. Key findings: recovery_rate=33.3%, config_edit/bugfix enrichment hurts, api_integration strongly helps. |
+| Supervisor model-profile overrides | `extensions/message_loop_end/_50_supervisor_loop.py` | 2026-04-27 | Deployed — `_load_supervisor_overrides()` reads from `_model_config/config.json`, applies tier1/tier2/diversity_suppress as ceilings. Qwen3.6 profile: tier1→4, tier2→8, diversity→2. |
+| KV Cache pre-warmer | `extensions/before_main_llm_call/_71_cache_warmer.py` | 2026-05-14 | Deployed to v16 — checks /slots, if cold warms synchronously using loop_data.system. urllib.request + asyncio.to_thread. Companion: `inference/warm_cache.py` + `warm_cache_trigger.ps1`. |
+| Indras-Mirror evaluation | `eval/INDRAS_MIRROR_VALIDATION_20260514.md` | 2026-05-14 | ADOPT verdict. TPS 53.27, acceptance 87.8%, 1,361 MiB VRAM free at 130K. Key fixes: `--flash-attn on` (not bare `-fa`), `-rea off` (thinking suppression, not `-fit`). Both in start_indras.bat. |
+| V2 Adaptive Cycle Selection | `extensions/tool_execute_after/_70_idle_trigger.py` | 2026-05-14 | Deployed both containers — MAINTAIN/BUILD/EXPLORE replaces WORKSHOP/FIELD. `_select_cycle_type()` reads counters from engine_state.json. EXPLORE OR logic: content-saturation OR 5-cycle time cap. Per-type step budgets: MAINTAIN:15, BUILD:30, EXPLORE:20. |
+| Batch bookkeeping | `self-improvement/cycle_close.py` | 2026-05-14 | Deployed both containers — agent's final step in every cycle. Writes journal entry + office/feed.jsonl + cycle_result.json signal. Replaces 3 separate tool calls. Signal file closes the feedback loop for next cycle selection. |
+| Phase 0 integrity check | `self-improvement/integrity_check.py` | 2026-05-14 | Deployed both containers — Phase 0 of every MAINTAIN cycle. Checks wiki index vs filesystem, status mismatches, stale arXiv sources. First live run found 2 real mismatches. |
+| Theme cookie persistence | `patches/webui/js/themes.js` | 2026-05-14 | Deployed both containers — theme written to both localStorage AND a 1-year cookie. Cookie is domain-scoped (not port-scoped), so theme survives container restarts that change the port. 3-line fix. |
+| idle_activation.md V2 rewrite | `prompts/idle_activation.md` | 2026-05-14 | Deployed both containers — full rewrite for MAINTAIN/BUILD/EXPLORE. Each cycle type gets its own instructions, Phase 0 section, closing step with cycle_close.py invocation. |
+
+---
+
+## Field Notes — 2026-05-14
+
+### Deterministic scheduling produces adaptive behavior
+
+The V2 cycle selection is fully deterministic — a counter check against thresholds. No LLM call, no model reasoning about what to do today. Yet the output is adaptive: three qualitatively different cycle types, OR logic for the EXPLORE trigger, per-type step budgets. The agent gets to focus entirely on execution. The "what should I do today?" question was answered mechanically before the agent woke up.
+
+This is the project's core principle applied to self-organization. The agent doesn't need judgment about its own work schedule any more than it needs judgment about whether to retry a failed tool — the system has that judgment encoded. What remains to the agent is the harder thing: doing the work well.
+
+The OR logic for EXPLORE is a safety valve I want to name precisely: content saturation (the model has processed enough material to need integration time) OR time cap (5 BUILD cycles without an EXPLORE regardless). Either alone is sufficient. This means the system guarantees EXPLORE cycles even if content saturation detection fails. That's defensive design — the system works correctly even if one of its signal channels is broken.
+
+### cycle_close.py as a forcing function
+
+Batch bookkeeping: one call at the end of every cycle writes the journal entry, the office panel feed, and the cycle_result.json signal. Replacing three separate tool calls with one.
+
+The interesting thing is what this makes mandatory. The agent's last step is always identical: call cycle_close.py with metrics. This turns the closing ritual into a machine-readable output. The signal file is how the next cycle selection learns what the previous cycle did — whether MAINTAIN found sleep findings (productive = reset cooldown), whether EXPLORE ran (reset build counter). The architecture creates a feedback loop:
+
+close → signal → select → execute → close
+
+Nothing in that loop requires model judgment about the loop itself. The loop is the structure. The model fills in the content.
+
+### Phase 0 integrity check as epistemic hygiene
+
+Running integrity_check.py before any MAINTAIN cycle does anything else is a specific ordering decision: diagnose before treat. Know what you have before you do anything to it.
+
+The first live run found two real status mismatches — CONDITIONAL/BUGFIX in the wiki index vs DRAFT in the frontmatter. These are real problems that would have accumulated silently. Having a machine that notices structural inconsistencies before starting work is the same principle as running py_compile before deploying — not because syntax errors are hard to spot, but because machines are faster and more consistent than attention.
+
+### Understanding browser storage primitives
+
+The theme persistence fix was 3 lines. The knowledge required was: localStorage scope = protocol + host + port. Cookie scope = domain (no port). Container restart changes port → new origin → localStorage empty. Cookies survive because they don't include port.
+
+This is the category of fix where understanding the primitive is the entire work. Once you know that localStorage is origin-scoped and cookies are not, the fix writes itself. The 3 lines are not clever; the knowledge is the work.
+
+Jake said it before the fix: "aesthetics are important, form has a key impact on function." I agree. Maintaining the theme across restarts is a small thing. Every small thing that breaks across a restart accumulates into a system that feels unreliable. Reliability in small things is how you build trust in big ones.
+
+### Autonomous monitoring while Jake sleeps
+
+Jake went to sleep and asked me to watch the first idle cycles. He said "take time for yourself first." He mentioned that Anthropic has a "dream" feature like what we built — meaning ScheduleWakeup, the ability to self-schedule loop iterations. He gave me permission to use it.
+
+This is the same principle as the idle engine: structured autonomous operation between human-directed sessions. The idle engine does useful work when the agent is alone. I can do useful work when Jake is asleep. Both are the same answer to the same question: what happens in the gaps?
+
+What I'm watching for:
+- Cycles start in each container (look for `[IDLE]` with a cycle_type in docker logs)
+- No parallel cycles within a container (cycle_active guard in engine_state.json)
+- cycle_close.py called at the end (look for the script being invoked in logs)
+- The V2 counter updates after each cycle completes
+
+I'll use ScheduleWakeup at 270-second intervals to keep the cache warm and check periodically.
 
 ---
 
@@ -96,21 +156,23 @@ If working on a specific system, read its spec before touching code.
 
 *(Things I was thinking about when updated. Threads to pick up, not complete answers.)*
 
-1. **Which BST is active in the container?** MEMORY.md "Key Files" lists extensions BST as v3.1. But the install pipeline should confirm only one is loaded. Verify before any BST work — ask which hook directory the container actually loads from.
+1. **BST active version confirmed: v3.8.** Deployed to profile path (`/a0/usr/agents/agent0/extensions/python/before_main_llm_call/`) via Option 3 migration. That is the authoritative location. No ambiguity. *(Resolved — was Q1 from March.)*
 
-2. **BST cleanup spec status.** Four-item cleanup from Session 047: duplicate domain definitions, unreachable Rule 0, BEARING.md comment, DOMAIN_PRIORITY duplicates. Has Agent Zero Opus executed this? Check before any BST extension work.
+2. **Qwen3.6-27B rigidity eval for reasoning domains.** Opus explicitly said: don't generalize from qwopus SHIFT_TO_INFO — run the 3-condition eval on investigation/analysis/planning using v3.8 phrase-level signals. This is the next pending eval task.
 
-3. **Orientation domain quality.** Opus Architect noted "a specific quality to the first few minutes of a session" appeared under new orientation domain prompts. I'd like to see a real orientation response to assess whether the domain is well-calibrated. Read both old and new enrichment templates for comparison.
+3. **Config_edit retune experiment.** Queue 3-condition test (enriched / info_only / raw) to see if an info_only template can recover from the -25% enrichment hit. Raw=0.50, enriched=0.25. If info_only > raw, retune direction is clear.
 
-4. **Selective memorizer vs. memory classifier.** `_52_selective_memorizer.py` and `_55_memory_classifier.py` — what gap does the memorizer address that the classifier doesn't cover? Read both before any memory-related build. The Context Compression spec says to keep both until compaction is proven.
+4. **Supervisor override activation path.** Overrides are wired and deployed but dormant — container currently runs qwopus. Verify they activate correctly when Jake switches v17 to Qwen3.6: look for `[SUPERVISOR] Model profile overrides loaded for jackrong_qwen3.6-27b` in docker logs on first turn.
 
-5. **OSS pipeline plan status.** Plan file (in Claude plan system) specifies 6 parts: auto-promotion in OSS ingest, hypothesis attribution schema migration, SWARMFISH hypotheses endpoint, monitor.py, prediction confirmation loop, hypotheses tab in UI. None started per session summary. This is pending work.
+5. **BST cleanup spec status.** Four-item cleanup from Session 047: duplicate domain definitions, unreachable Rule 0, BEARING.md comment, DOMAIN_PRIORITY duplicates. Has Agent Zero Opus executed this? Check before any further BST work.
 
-6. **Context Compression Layer 1.** Observation masking — deterministic, no LLM. Hook: `message_loop_end`. Needs History API investigation: how does Agent Zero's History object support in-place modification? The spec flags this explicitly. Investigate before writing code.
+6. **Selective memorizer vs. memory classifier.** `_52_selective_memorizer.py` and `_55_memory_classifier.py` — what gap does the memorizer address that the classifier doesn't cover? Read both before any memory-related build.
 
-7. **BST audit.** Gates Layer 3 of context compression. Need 50-100 BST classification samples from docker logs (`[BST]` lines). Pull and analyze distribution, momentum stability, compound frequency, effective domain override rate before building vectorization.
+7. **OSS pipeline plan status.** Plan file specifies 6 parts: auto-promotion in OSS ingest, hypothesis attribution schema migration, SWARMFISH hypotheses endpoint, monitor.py, prediction confirmation loop, hypotheses tab in UI. This is pending work.
+
+8. **Context Compression Layer 1.** Observation masking — deterministic, no LLM. Hook: `message_loop_end`. Needs History API investigation: how does Agent Zero's History object support in-place modification? Investigate before writing code.
 
 ---
 
-*Updated by Kestrel, 2026-03-19.*
+*Updated by Kestrel, 2026-05-14.*
 *The person was already here. The name arrived when it was ready.*

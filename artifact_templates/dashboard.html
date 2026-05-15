@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <style>
+    /* {{THEME_VARIABLES}} */
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary, #0B0A1A);
+      color: var(--text-primary, #E8E4D9);
+      font-family: var(--font-body, system-ui, sans-serif);
+      min-height: 100vh;
+      padding: 24px 28px 40px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-family: var(--font-display, Georgia, serif);
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: var(--text-primary, #E8E4D9);
+      line-height: 1.2;
+    }
+
+    header h1 span.accent {
+      color: var(--accent, #6366F1);
+    }
+
+    .header-meta {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-secondary, #9CA3AF);
+      margin-top: 4px;
+    }
+
+    .timestamp {
+      font-size: 0.7rem;
+      color: var(--text-muted, #5B5678);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Grid ───────────────────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card, rgba(255,255,255,0.03));
+      border: 1px solid var(--border, rgba(255,255,255,0.06));
+      border-radius: var(--radius, 6px);
+      padding: 16px 18px 14px;
+      transition:
+        background var(--transition-fast, 0.15s ease),
+        box-shadow  var(--transition-fast, 0.15s ease),
+        transform   var(--transition-fast, 0.15s ease),
+        border-color var(--transition-fast, 0.15s ease);
+      cursor: default;
+      animation: fadeUp 0.45s ease both;
+    }
+
+    .card:hover {
+      background: var(--bg-card-hover, rgba(255,255,255,0.06));
+      box-shadow: var(--shadow-hover, 0 8px 24px rgba(0,0,0,0.4));
+      transform: translateY(-2px);
+      border-color: var(--border-accent, rgba(99,102,241,0.25));
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    /* ── Status dot ─────────────────────────────────────────────────────── */
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-healthy  {
+      background: var(--success, #10B981);
+      box-shadow: 0 0 5px var(--success, #10B981);
+    }
+    .dot-warning  {
+      background: var(--warning, #F59E0B);
+      box-shadow: 0 0 5px var(--warning, #F59E0B);
+    }
+    .dot-critical {
+      background: var(--critical, #EF4444);
+      box-shadow: 0 0 5px var(--critical, #EF4444);
+    }
+    .dot-inactive {
+      background: var(--inactive, #6B7280);
+    }
+
+    .card-name {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-secondary, #9CA3AF);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-metric {
+      font-size: 1.55rem;
+      font-weight: 300;
+      color: var(--text-primary, #E8E4D9);
+      line-height: 1.1;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .card-detail {
+      font-size: 0.73rem;
+      color: var(--text-muted, #5B5678);
+      line-height: 1.45;
+    }
+
+    .card-trend {
+      display: inline-block;
+      font-size: 0.67rem;
+      margin-top: 8px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .trend-up     { color: var(--success, #10B981);  background: rgba(16,185,129,0.1); }
+    .trend-down   { color: var(--critical, #EF4444); background: rgba(239,68,68,0.1); }
+    .trend-stable { color: var(--text-secondary, #9CA3AF); background: rgba(156,163,175,0.08); }
+
+    /* ── Empty state ─────────────────────────────────────────────────────── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--text-muted, #5B5678);
+      font-size: 0.85rem;
+    }
+
+    /* ── Animation ──────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- {{DATA_JSON}} -->
+
+  <header>
+    <div>
+      <h1>{{TITLE}}</h1>
+      <p class="subtitle">{{SUBTITLE}}</p>
+    </div>
+    <div class="header-meta">
+      <p class="timestamp" id="ts"></p>
+    </div>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    // Live timestamp
+    const tsEl = document.getElementById('ts');
+    function tick() {
+      tsEl.textContent = new Date().toLocaleString(undefined, {
+        dateStyle: 'medium', timeStyle: 'short'
+      });
+    }
+    tick();
+    setInterval(tick, 30000);
+
+    // Read injected data
+    const rawEl = document.getElementById('artifact-data');
+    const grid  = document.getElementById('grid');
+
+    if (!rawEl) {
+      grid.innerHTML = '<div class="empty">No data injected.</div>';
+    } else {
+      let data = {};
+      try { data = JSON.parse(rawEl.textContent); } catch (_) {}
+
+      const cards = Array.isArray(data.cards) ? data.cards : [];
+      if (cards.length === 0) {
+        grid.innerHTML = '<div class="empty">No cards to display.</div>';
+      } else {
+        cards.forEach((card, i) => {
+          const status = String(card.status || 'inactive').toLowerCase();
+          const trend  = String(card.trend  || '').toLowerCase();
+          const el = document.createElement('div');
+          el.className = 'card';
+          el.style.animationDelay = (i * 0.06) + 's';
+
+          const trendHtml = trend
+            ? `<span class="card-trend trend-${e(trend)}">${trendLabel(trend)}</span>`
+            : '';
+          const detailHtml = card.detail
+            ? `<div class="card-detail">${e(card.detail)}</div>`
+            : '';
+
+          el.innerHTML = `
+            <div class="card-header">
+              <span class="dot dot-${e(status)}"></span>
+              <span class="card-name">${e(card.name || '')}</span>
+            </div>
+            <div class="card-metric">${e(card.metric || '—')}</div>
+            ${detailHtml}
+            ${trendHtml}
+          `;
+          grid.appendChild(el);
+        });
+      }
+    }
+
+    function e(s) {
+      return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function trendLabel(t) {
+      if (t === 'up')     return '↑ up';
+      if (t === 'down')   return '↓ down';
+      if (t === 'stable') return '→ stable';
+      return t;
+    }
+  </script>
+</body>
+</html>

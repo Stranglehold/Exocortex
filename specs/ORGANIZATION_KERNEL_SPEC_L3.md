@@ -42,6 +42,19 @@ Four-tier failure response doctrine: Primary (normal execution), Alternate (self
 Contingent (escalate to supervisor), Emergency (abort and report). Each tier has a trigger
 condition and a prescribed action.
 
+> **Scope note (2026-04-17, GAP-07):** The PACE concept appears in two distinct forms in
+> this project. The PACE deployed here is **inter-agent coordination PACE** — how agents
+> within an organization communicate and escalate when their primary channel fails. It lives
+> in the Organization Kernel and role schemas.
+>
+> A separate concept, **PACE task planning** (single-agent execution with pre-generated
+> Primary/Alternate/Contingent/Emergency strategies for a specific task), is described in
+> `REASONING_PERSISTENCE_PACE_DESIGN_NOTE.md` and is **not yet built**. That document's
+> status is "Pre-spec exploration." The two forms are architecturally distinct — inter-agent
+> PACE is a coordination protocol; task planning PACE is a single-agent loop recovery
+> mechanism. See GAP-13 in `meta/AUDIT_002_GAP_CLOSURE_PLAN.md` for build decision
+> pending (GWE relationship must be resolved first).
+
 ### Microcosm / Macrocosm
 Microcosm: all roles run inside a single container. Role "switching" means the dispatcher
 activates different capability sets per message. Sequential execution.

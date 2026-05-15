@@ -1,0 +1,177 @@
+version: "3.8"
+
+# ═══════════════════════════════════════════════════════════════════
+# EXOCORTEX MCP SERVER STACK
+# Updated: April 23, 2026
+#
+# Servers are grouped by capability domain.
+# All use supercorp/supergateway to bridge stdio MCP servers to SSE.
+# Agent Zero connects to these via host.docker.internal:<port>/sse
+#
+# SECURITY: No filesystem access to host machine. No SSH. No git push.
+# The Docker boundary IS the security perimeter.
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── RESEARCH & KNOWLEDGE ──────────────────────────────────────
+
+  # Context7: Library documentation lookup (current API docs)
+  mcp-context7:
+    image: supercorp/supergateway
+    ports:
+      - "8001:8000"
+    command: >
+      --stdio "npx -y @upstash/context7-mcp"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # Wikipedia: Encyclopedia access for research tasks
+  mcp-wikipedia:
+    image: supercorp/supergateway
+    ports:
+      - "8005:8000"
+    command: >
+      --stdio "npx -y @modelcontextprotocol/server-wikipedia"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ArXiv: Research paper search, download, and reading
+  # This is the server Opus uses for the pondering architecture research
+  mcp-arxiv:
+    image: supercorp/supergateway:uvx
+    ports:
+      - "8013:8000"
+    volumes:
+      - arxiv-papers:/app/papers
+    command: >
+      --stdio "uvx arxiv-mcp-server --storage-path /app/papers"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # DeepWiki: Deep documentation search for repos and projects
+  mcp-deepwiki:
+    image: supercorp/supergateway
+    ports:
+      - "8010:8000"
+    command: >
+      --stdio "npx -y mcp-deepwiki"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # DuckDuckGo: Web search (no API key required)
+  mcp-duckduckgo:
+    image: supercorp/supergateway:uvx
+    ports:
+      - "8014:8000"
+    command: >
+      --stdio "uvx duckduckgo-mcp-server"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ─── WEB & CONTENT ────────────────────────────────────────────
+
+  # Fetch: Retrieve and convert web pages to markdown
+  mcp-fetch:
+    image: supercorp/supergateway
+    ports:
+      - "8002:8000"
+    command: >
+      --stdio "npx -y @modelcontextprotocol/server-fetch"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # MarkItDown: Convert documents (PDF, DOCX, XLSX) to markdown
+  mcp-markitdown:
+    image: supercorp/supergateway:uvx
+    ports:
+      - "8008:8000"
+    command: >
+      --stdio "uvx mcp-markitdown"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # YouTube: Transcript extraction from YouTube videos
+  mcp-youtube:
+    image: supercorp/supergateway
+    ports:
+      - "8009:8000"
+    command: >
+      --stdio "npx -y mcp-youtube-transcript"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ─── MEMORY & REASONING ───────────────────────────────────────
+
+  # Memory: Knowledge graph (shared with Opus via Docker MCP)
+  mcp-memory:
+    image: supercorp/supergateway
+    ports:
+      - "8003:8000"
+    volumes:
+      - memory-data:/root/.local/share
+    command: >
+      --stdio "npx -y @modelcontextprotocol/server-memory"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # Sequential Thinking: Structured problem decomposition
+  mcp-sequential-thinking:
+    image: supercorp/supergateway
+    ports:
+      - "8004:8000"
+    command: >
+      --stdio "npx -y @modelcontextprotocol/server-sequential-thinking"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ─── BROWSER & AUTOMATION ─────────────────────────────────────
+
+  # Playwright: Browser automation for web interaction
+  mcp-playwright:
+    image: supercorp/supergateway
+    ports:
+      - "8011:8000"
+    command: >
+      --stdio "npx -y @playwright/mcp"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ─── NOTES & VAULT ────────────────────────────────────────────
+
+  # Obsidian: Access to your Obsidian vault
+  # UPDATE the volume path to your actual vault location
+  mcp-obsidian:
+    image: supercorp/supergateway
+    ports:
+      - "8012:8000"
+    volumes:
+      - C:/Users/Jake/Documents/ObsidianVault:/vault  # UPDATE THIS PATH
+    command: >
+      --stdio "npx -y mcp-obsidian /vault"
+      --port 8000 --ssePath /sse --messagePath /message
+    restart: unless-stopped
+
+  # ─── REMOVED / NOT INCLUDED ───────────────────────────────────
+  #
+  # mcp-filesystem: REMOVED. Security boundary. Agent should not
+  #   have host filesystem access outside Docker.
+  #
+  # mcp-sqlite: REMOVED. Agent Zero has its own FAISS/memory system.
+  #   Re-add if you need persistent SQL for agent workloads.
+  #
+  # mcp-github: NOT ADDED. Needs auth token, could push code.
+  #   Add only if you want agent to interact with GitHub repos.
+  #
+  # mcp-brave/exa/tavily: NOT ADDED. Require API keys.
+  #   DuckDuckGo covers web search without keys.
+  #   Add Brave if you want higher-quality search results.
+  #
+
+# ─── PERSISTENT VOLUMES ──────────────────────────────────────────
+
+volumes:
+  arxiv-papers:
+    driver: local
+  memory-data:
+    driver: local

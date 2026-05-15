@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inference Monitor -- RTX 3090</title>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --border: #2a2a34;
+    --accent: #7c6af7;
+    --accent2: #4fa3e0;
+    --green: #3dbb7a;
+    --yellow: #e8b84b;
+    --red: #e05c5c;
+    --text: #e0e0e8;
+    --text2: #888899;
+    --text3: #555566;
+    --mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; letter-spacing: 0.02em;
+  }
+  .badge-online  { background: rgba(61,187,122,0.15); color: var(--green);  border: 1px solid rgba(61,187,122,0.3); }
+  .badge-loading { background: rgba(232,184,75,0.15); color: var(--yellow); border: 1px solid rgba(232,184,75,0.3); }
+  .badge-offline { background: rgba(224,92,92,0.15);  color: var(--red);    border: 1px solid rgba(224,92,92,0.3); }
+  #poll-status { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .grid-wide { grid-template-columns: 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .metric-row { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-label { color: var(--text2); font-size: 12px; }
+  .metric-value { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .metric-value.green  { color: var(--green); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-value.red    { color: var(--red); }
+  .big-metric { display: flex; align-items: baseline; gap: 6px; padding: 4px 0 8px; }
+  .big-value { font-family: var(--mono); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .big-unit  { font-size: 13px; color: var(--text2); }
+  .big-sub   { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  .vram-bar-bg { background: var(--surface2); border-radius: 4px; height: 8px; margin: 8px 0 4px; overflow: hidden; }
+  .vram-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%); }
+  .vram-bar-fill.warn { background: linear-gradient(90deg, var(--yellow) 0%, #e08b4b 100%); }
+  .vram-bar-fill.crit { background: linear-gradient(90deg, var(--red) 0%, #c04040 100%); }
+  .vram-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  .ctx-bar-bg { background: var(--surface2); border-radius: 4px; height: 6px; margin: 6px 0 3px; overflow: hidden; }
+  .ctx-bar-fill { height: 100%; border-radius: 4px; background: var(--accent2); transition: width 0.6s ease; }
+
+  .cache-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .cache-value { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--green); }
+  .cache-bar-bg { flex: 1; background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .cache-bar-fill { height: 100%; border-radius: 4px; background: var(--green); transition: width 0.5s ease; }
+
+  #activity-feed { font-family: var(--mono); font-size: 11px; color: var(--text2); max-height: 160px; overflow-y: auto; padding-right: 4px; }
+  #activity-feed::-webkit-scrollbar { width: 4px; }
+  #activity-feed::-webkit-scrollbar-track { background: transparent; }
+  #activity-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .feed-entry { display: flex; gap: 8px; padding: 2px 0; border-bottom: 1px solid rgba(42,42,52,0.5); }
+  .feed-ts  { color: var(--text3); flex-shrink: 0; }
+  .feed-msg { color: var(--text2); }
+  .feed-msg.ok   { color: var(--green); }
+  .feed-msg.warn { color: var(--yellow); }
+  .feed-msg.err  { color: var(--red); }
+
+  .gpu-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+  .gpu-metric-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+  .gpu-metric-value { font-family: var(--mono); font-size: 15px; color: var(--text); }
+
+  #settings-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  #settings-panel.open { display: block; }
+  .settings-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .settings-row label { color: var(--text2); width: 120px; flex-shrink: 0; font-size: 12px; }
+  .settings-row input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; font-family: var(--mono); font-size: 12px; width: 200px; }
+  .settings-row input:focus { outline: none; border-color: var(--accent); }
+  .btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+  .btn:hover  { border-color: var(--accent); color: var(--text); }
+  .btn.active { border-color: var(--accent); color: var(--accent); }
+  .na { color: var(--text3); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Inference Monitor -- RTX 3090</h1>
+  <span id="server-badge" class="badge badge-offline">OFFLINE</span>
+  <span id="poll-status">--</span>
+  <button class="btn" id="settings-btn" onclick="toggleSettings()">Settings</button>
+</header>
+
+<div id="settings-panel">
+  <div class="settings-row">
+    <label>Server URL</label>
+    <input type="text" id="cfg-server" value="http://localhost:1235">
+  </div>
+  <div class="settings-row">
+    <label>Poll interval (s)</label>
+    <input type="number" id="cfg-interval" value="5" min="2" max="60">
+  </div>
+  <div class="settings-row">
+    <label></label>
+    <button class="btn" onclick="applySettings()">Apply</button>
+  </div>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card-title">Decode Speed</div>
+    <div class="big-metric">
+      <div class="big-value" id="m-tps">--</div>
+      <div class="big-unit">tok/s</div>
+    </div>
+    <div class="big-sub" id="m-tps-sub">--</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Time to First Token</div>
+    <div class="big-metric">
+      <div class="big-value" id="m-ttft">--</div>
+      <div class="big-unit" id="m-ttft-unit">ms</div>
+    </div>
+    <div class="big-sub" id="m-ttft-sub">--</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">KV Cache Reuse</div>
+    <div class="cache-row">
+      <div class="cache-value" id="m-cache-n">--</div>
+      <div class="cache-bar-bg">
+        <div class="cache-bar-fill" id="m-cache-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="metric-row">
+        <span class="metric-label">Tokens cached</span>
+        <span class="metric-value green" id="m-cache-n2">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Tokens processed</span>
+        <span class="metric-value" id="m-prompt-n">--</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Cache hit rate</span>
+        <span class="metric-value" id="m-cache-pct">--</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">MTP Status</div>
+    <div class="metric-row">
+      <span class="metric-label">Status</span>
+      <span class="metric-value" id="m-mtp-status">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Draft tokens (max)</span>
+      <span class="metric-value" id="m-mtp-draft">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Acceptance rate</span>
+      <span class="metric-value green" id="m-mtp-accept">--</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card-title">Context Window</div>
+    <div class="metric-row">
+      <span class="metric-label">Used</span>
+      <span class="metric-value" id="m-ctx-used">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Total</span>
+      <span class="metric-value" id="m-ctx-total">--</span>
+    </div>
+    <div class="ctx-bar-bg">
+      <div class="ctx-bar-fill" id="m-ctx-bar" style="width:0%"></div>
+    </div>
+    <div class="metric-row" style="margin-top:4px">
+      <span class="metric-label">Utilization</span>
+      <span class="metric-value" id="m-ctx-pct">--</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">VRAM</div>
+    <div class="vram-bar-bg">
+      <div class="vram-bar-fill" id="m-vram-bar" style="width:0%"></div>
+    </div>
+    <div class="vram-legend">
+      <span id="m-vram-used-label">--</span>
+      <span id="m-vram-total-label">--</span>
+    </div>
+    <div style="margin-top:10px" class="gpu-metrics">
+      <div>
+        <div class="gpu-metric-label">Power</div>
+        <div class="gpu-metric-value" id="m-gpu-power">--</div>
+      </div>
+      <div>
+        <div class="gpu-metric-label">Temperature</div>
+        <div class="gpu-metric-value" id="m-gpu-temp">--</div>
+      </div>
+      <div>
+        <div class="gpu-metric-label">VRAM Used</div>
+        <div class="gpu-metric-value" id="m-vram-used">--</div>
+      </div>
+      <div>
+        <div class="gpu-metric-label">VRAM Free</div>
+        <div class="gpu-metric-value" id="m-vram-free">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Model</div>
+    <div class="metric-row">
+      <span class="metric-label">Name</span>
+      <span class="metric-value" id="m-model-name" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Architecture</span>
+      <span class="metric-value" id="m-model-arch">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Parameters</span>
+      <span class="metric-value" id="m-model-params">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Quantization</span>
+      <span class="metric-value" id="m-model-quant">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">KV types (K/V)</span>
+      <span class="metric-value" id="m-kv-types">--</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Server Config</div>
+    <div class="metric-row">
+      <span class="metric-label">Port</span>
+      <span class="metric-value" id="m-port">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Flash attention</span>
+      <span class="metric-value" id="m-flash-attn">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Threads</span>
+      <span class="metric-value" id="m-threads">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Active slots</span>
+      <span class="metric-value" id="m-slots">--</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Last poll</span>
+      <span class="metric-value" id="m-last-seen">--</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="grid grid-wide">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:8px">Activity Feed</div>
+    <div id="activity-feed"></div>
+  </div>
+</div>
+
+<script>
+// ---- Config ----------------------------------------------------------------
+let serverUrl = 'http://localhost:1235';
+let pollMs    = 5000;
+let pollTimer = null;
+let lastCacheN = null;
+
+// ---- Settings --------------------------------------------------------------
+function toggleSettings() {
+  document.getElementById('settings-panel').classList.toggle('open');
+  document.getElementById('settings-btn').classList.toggle('active');
+}
+function applySettings() {
+  serverUrl = document.getElementById('cfg-server').value.trim().replace(/\/$/, '');
+  pollMs    = Math.max(2000, parseInt(document.getElementById('cfg-interval').value) * 1000);
+  restartPolling();
+  toggleSettings();
+  feed('Settings applied -- polling ' + serverUrl, 'ok');
+}
+
+// ---- Activity feed ---------------------------------------------------------
+const feedEl  = document.getElementById('activity-feed');
+const feedMax = 80;
+function feed(msg, cls) {
+  const ts  = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const div = document.createElement('div');
+  div.className = 'feed-entry';
+  div.innerHTML = '<span class="feed-ts">' + ts + '</span>'
+                + '<span class="feed-msg ' + (cls || '') + '">' + esc(msg) + '</span>';
+  feedEl.prepend(div);
+  while (feedEl.children.length > feedMax) feedEl.lastElementChild.remove();
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ---- Helpers ---------------------------------------------------------------
+function setText(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+function fmtMs(ms) {
+  if (ms == null || isNaN(ms)) return ['--', 'ms'];
+  if (ms >= 1000) return [(ms / 1000).toFixed(2), 's'];
+  return [Math.round(ms).toString(), 'ms'];
+}
+function fmtMiB(mib) {
+  if (mib == null || isNaN(mib)) return '--';
+  if (mib >= 1024) return (mib / 1024).toFixed(2) + ' GiB';
+  return mib.toFixed(0) + ' MiB';
+}
+function na(v, suffix) {
+  if (v == null || v === '' || isNaN(v)) return '<span class="na">--</span>';
+  return esc(String(v) + (suffix || ''));
+}
+function setBadge(status) {
+  const el = document.getElementById('server-badge');
+  el.className = 'badge';
+  if (status === 'ok')       { el.classList.add('badge-online');  el.textContent = 'ONLINE'; }
+  else if (status === 'loading') { el.classList.add('badge-loading'); el.textContent = 'LOADING'; }
+  else                        { el.classList.add('badge-offline'); el.textContent = 'OFFLINE'; }
+}
+
+// ---- Fetch helpers ---------------------------------------------------------
+async function get(path) {
+  const r = await fetch(serverUrl + path, { signal: AbortSignal.timeout(4000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ---- Main poll -------------------------------------------------------------
+async function poll() {
+  const statusEl = document.getElementById('poll-status');
+  statusEl.textContent = 'polling...';
+  const t0 = Date.now();
+
+  const [health, slots, props, gpu] = await Promise.allSettled([
+    get('/health'),
+    get('/slots'),
+    get('/props'),
+    get('/api/gpu')
+  ]);
+
+  const elapsed = Date.now() - t0;
+  statusEl.textContent = new Date().toLocaleTimeString('en-US', {hour12:false}) + ' (' + elapsed + 'ms)';
+
+  // ---- Health ---------------------------------------------------------------
+  if (health.status !== 'fulfilled') {
+    setBadge('offline');
+    feed('Server unreachable: ' + (health.reason?.message || 'timeout'), 'err');
+    return;
+  }
+  const st = health.value.status || '';
+  if      (st === 'ok')      setBadge('ok');
+  else if (st === 'loading') setBadge('loading');
+  else                       setBadge('offline');
+
+  // ---- Slots ----------------------------------------------------------------
+  if (slots.status === 'fulfilled' && Array.isArray(slots.value) && slots.value.length > 0) {
+    const slot    = slots.value[0];
+    const timings = slot.timings || slot.last_timings || {};
+
+    // Decode TPS
+    const tps = timings.predicted_per_second ?? timings.t_token_per_second ?? null;
+    setText('m-tps', tps != null ? tps.toFixed(1) : '<span class="na">--</span>');
+    const prefillTps = timings.prompt_per_second ?? timings.t_prompt_per_second ?? null;
+    setText('m-tps-sub', prefillTps != null
+      ? 'Prefill: ' + prefillTps.toFixed(1) + ' tok/s'
+      : (tps != null ? 'Generating' : 'Idle'));
+
+    // TTFT
+    const ttft = timings.time_to_first_token_ms ?? timings.t_prompt_per_token_ms ?? null;
+    const [ttftVal, ttftUnit] = fmtMs(ttft);
+    setText('m-ttft', ttftVal === '--' ? '<span class="na">--</span>' : esc(ttftVal));
+    setText('m-ttft-unit', esc(ttftUnit));
+    const longPrefill = ttft != null && ttft > 30000;
+    setText('m-ttft-sub', longPrefill ? 'Long prefill -- cache miss?' : (ttft != null ? 'OK' : '--'));
+
+    // Cache reuse (THE metric for fix validation)
+    const cacheN  = timings.cache_n  ?? timings.n_cache_used    ?? null;
+    const promptN = timings.prompt_n ?? timings.n_prompt_tokens  ?? null;
+    const totalN  = (cacheN != null && promptN != null) ? cacheN + promptN : null;
+    const hitPct  = (totalN != null && totalN > 0) ? Math.round(100 * cacheN / totalN) : null;
+
+    if (cacheN !== lastCacheN && cacheN != null) {
+      const msg = 'cache_n=' + cacheN + '  prompt_n=' + (promptN ?? '--') + '  hit=' + (hitPct ?? '--') + '%';
+      feed(msg, cacheN > 0 ? 'ok' : 'warn');
+      lastCacheN = cacheN;
+    }
+
+    setText('m-cache-n',   cacheN  != null ? String(cacheN)  : '<span class="na">--</span>');
+    setText('m-cache-n2',  cacheN  != null ? String(cacheN)  : '<span class="na">--</span>');
+    setText('m-prompt-n',  promptN != null ? String(promptN) : '<span class="na">--</span>');
+    setText('m-cache-pct', hitPct  != null ? hitPct + '%'    : '<span class="na">--</span>');
+    const cacheBar = document.getElementById('m-cache-bar');
+    if (cacheBar) cacheBar.style.width = (hitPct ?? 0) + '%';
+
+    // MTP
+    const mtpDraft  = timings.mtp_n_drafted  ?? slot.mtp_n_drafted  ?? null;
+    const mtpAccept = timings.mtp_n_accepted ?? slot.mtp_n_accepted ?? null;
+    const mtpOn     = mtpDraft != null;
+    setText('m-mtp-status', mtpOn ? '<span class="green">ACTIVE</span>' : '<span class="na">Disabled</span>');
+    setText('m-mtp-draft',  mtpOn ? String(mtpDraft) : '<span class="na">--</span>');
+    const acceptRate = (mtpDraft != null && mtpAccept != null && mtpDraft > 0)
+      ? ((mtpAccept / mtpDraft) * 100).toFixed(1) + '%'
+      : (mtpOn ? '0%' : '<span class="na">--</span>');
+    setText('m-mtp-accept', acceptRate);
+
+    // Context
+    const ctxUsed  = slot.n_past ?? slot.ctx_used ?? null;
+    const ctxTotal = slot.n_ctx  ?? null;
+    const ctxPct   = (ctxUsed != null && ctxTotal != null && ctxTotal > 0)
+      ? Math.round(100 * ctxUsed / ctxTotal) : null;
+    setText('m-ctx-used',  na(ctxUsed  != null ? ctxUsed.toLocaleString()  : null));
+    setText('m-ctx-total', na(ctxTotal != null ? ctxTotal.toLocaleString() : null));
+    setText('m-ctx-pct',   ctxPct != null ? ctxPct + '%' : '<span class="na">--</span>');
+    const ctxBar = document.getElementById('m-ctx-bar');
+    if (ctxBar) ctxBar.style.width = (ctxPct ?? 0) + '%';
+
+    // Server config
+    setText('m-port',      esc(serverUrl.match(/:(\d+)/)?.[1] ?? '--'));
+    setText('m-slots',     esc(String(slots.value.length)));
+    setText('m-last-seen', esc(new Date().toLocaleTimeString('en-US', {hour12:false})));
+  }
+
+  // ---- Props ----------------------------------------------------------------
+  if (props.status === 'fulfilled' && props.value) {
+    const p = props.value;
+    const modelPath = p.model_path ?? p['model-path'] ?? null;
+    if (modelPath) {
+      const fname = modelPath.split(/[/\\]/).pop();
+      setText('m-model-name', esc(fname || modelPath));
+      const el = document.getElementById('m-model-name');
+      if (el) el.title = modelPath;
+      const qm = fname.match(/[QqIi]\d[_K]?[A-Za-z0-9_]*/);
+      setText('m-model-quant', qm ? esc(qm[0].toUpperCase()) : '<span class="na">--</span>');
+    }
+    setText('m-model-arch',   na(p.model_type ?? p.arch));
+    const nP = p.n_params ?? null;
+    setText('m-model-params', nP != null ? (nP / 1e9).toFixed(1) + 'B' : '<span class="na">--</span>');
+    const kvK = p.kv_cache_type_k ?? p.cache_type_k ?? null;
+    const kvV = p.kv_cache_type_v ?? p.cache_type_v ?? null;
+    setText('m-kv-types', (kvK || kvV) ? esc((kvK ?? '--') + ' / ' + (kvV ?? '--')) : '<span class="na">--</span>');
+    const fa = p.flash_attn ?? p.use_flash_attn ?? null;
+    setText('m-flash-attn', fa != null ? (fa ? '<span class="green">ON</span>' : 'off') : '<span class="na">--</span>');
+    setText('m-threads', na(p.n_threads));
+  }
+
+  // ---- GPU ------------------------------------------------------------------
+  if (gpu.status === 'fulfilled' && gpu.value) {
+    const g = gpu.value;
+    const usedMiB  = g.vram_used_mib  ?? null;
+    const totalMiB = g.vram_total_mib ?? null;
+    const freeMiB  = g.vram_free_mib  ?? null;
+    const pct      = (usedMiB != null && totalMiB != null && totalMiB > 0)
+      ? Math.round(100 * usedMiB / totalMiB) : null;
+
+    setText('m-vram-used',       fmtMiB(usedMiB));
+    setText('m-vram-free',       fmtMiB(freeMiB));
+    setText('m-vram-used-label', fmtMiB(usedMiB)  + ' used');
+    setText('m-vram-total-label',fmtMiB(totalMiB) + ' total');
+
+    const bar = document.getElementById('m-vram-bar');
+    if (bar) {
+      bar.style.width = (pct ?? 0) + '%';
+      bar.className   = 'vram-bar-fill' + (pct >= 95 ? ' crit' : pct >= 85 ? ' warn' : '');
+    }
+
+    const pw   = g.power_draw_w   ?? null;
+    const temp = g.temperature_c  ?? null;
+    setText('m-gpu-power', pw   != null ? pw.toFixed(0)   + ' W'  : '<span class="na">--</span>');
+    setText('m-gpu-temp',  temp != null ? temp.toFixed(0) + ' C'  : '<span class="na">--</span>');
+  } else {
+    setText('m-gpu-power', '<span class="na">start gpu_proxy.ps1</span>');
+    setText('m-gpu-temp',  '<span class="na">start gpu_proxy.ps1</span>');
+  }
+}
+
+// ---- Polling ---------------------------------------------------------------
+function restartPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  poll();
+  pollTimer = setInterval(poll, pollMs);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  feed('Dashboard started -- connecting to ' + serverUrl, 'ok');
+  restartPolling();
+});
+</script>
+</body>
+</html>

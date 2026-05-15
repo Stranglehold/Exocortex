@@ -44,7 +44,125 @@
   .status-cooldown { background: #2a2218; color: #f0a030; border: 1px solid #4a3a1a; }
   .status-session  { background: #2a1a2a; color: #c070e0; border: 1px solid #4a2a4a; }
   .status-paused   { background: #1a1a1a; color: #666688; border: 1px solid #2a2a3a; }
+  .status-disabled { background: #1a0a0a; color: #664444; border: 1px solid #3a1a1a; }
 
+  /* ── Master power switch ─────────────────────────────────────────────────── */
+  .power-panel {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    border-radius: 6px;
+    border: 2px solid #1a1a28;
+    background: #0c0c16;
+  }
+  .power-panel.is-off {
+    border-color: #3a1818;
+    background: #0e0808;
+  }
+  .power-panel.is-on {
+    border-color: #183a18;
+    background: #080e08;
+  }
+
+  .power-indicator {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  .power-label {
+    flex: 1;
+  }
+  .power-label .power-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .power-panel.is-off .power-title { color: #884444; }
+  .power-panel.is-on  .power-title { color: #448844; }
+
+  .power-label .power-desc {
+    font-size: 0.7rem;
+    color: #444455;
+    margin-top: 3px;
+  }
+
+  .power-btn {
+    padding: 8px 22px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 2px solid;
+    transition: background 0.12s, color 0.12s;
+  }
+  .power-btn-on {
+    background: #0d200d;
+    border-color: #2a6a2a;
+    color: #4caf50;
+  }
+  .power-btn-on:hover {
+    background: #143214;
+    border-color: #3a8a3a;
+    color: #6cd06c;
+  }
+  .power-btn-off {
+    background: #200d0d;
+    border-color: #6a2a2a;
+    color: #e05050;
+  }
+  .power-btn-off:hover {
+    background: #321414;
+    border-color: #8a3a3a;
+    color: #ff7070;
+  }
+
+  /* ── Pause controls ──────────────────────────────────────────────────────── */
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 0.75rem;
+  }
+
+  .control-label { color: #444455; }
+
+  .control-select {
+    background: #0e0e18;
+    border: 1px solid #1a1a28;
+    color: #7070a0;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+  }
+
+  .control-btn {
+    background: #0e0e18;
+    border: 1px solid #1a1a28;
+    color: #7070a0;
+    padding: 3px 12px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+  }
+  .control-btn:hover { border-color: #2a2a4a; color: #9090b0; }
+
+  .control-btn-resume { border-color: #2a4a2a; color: #4caf50; }
+  .control-btn-resume:hover { border-color: #3a6a3a; color: #6cd06c; }
+
+  .pause-until-text { color: #f0a030; font-size: 0.72rem; }
+
+  /* ── Stats + feed ────────────────────────────────────────────────────────── */
   .stats-row {
     display: flex;
     gap: 32px;
@@ -78,10 +196,29 @@
     border-radius: 4px;
     padding: 12px 14px;
   }
+  /* V1 cycle types (backwards compat) */
   .feed-entry.workshop { border-left-color: #3a5a8a; }
   .feed-entry.field    { border-left-color: #3a6a4a; }
-  .feed-entry.interrupted { border-left-color: #6a4a1a; opacity: 0.7; }
+  /* V2 cycle types */
+  .feed-entry.maintain { border-left-color: #3a5a8a; }
+  .feed-entry.build    { border-left-color: #3a6a4a; }
+  .feed-entry.explore  { border-left-color: #7a4a8a; }
+  .feed-entry.interrupted     { border-left-color: #6a4a1a; opacity: 0.7; }
   .feed-entry.circuit_breaker { border-left-color: #6a2a2a; opacity: 0.7; }
+  /* Priority highlights */
+  .feed-entry.priority-notable { background: #12100e; border-color: #2a2010; }
+  .feed-entry.priority-urgent  { background: #120e0e; border-color: #2a1010; }
+
+  .priority-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .priority-notable { background: #2a2010; color: #f0a030; border: 1px solid #4a3a10; }
+  .priority-urgent  { background: #2a1010; color: #e05050; border: 1px solid #4a1010; }
 
   .entry-header {
     display: flex;
@@ -98,8 +235,13 @@
     padding: 2px 7px;
     border-radius: 3px;
   }
+  /* V1 */
   .type-workshop { background: #1a2a3a; color: #5b8dee; }
   .type-field    { background: #1a2a1a; color: #4caf50; }
+  /* V2 */
+  .type-maintain { background: #1a2a3a; color: #5b8dee; }
+  .type-build    { background: #1a2a1a; color: #4caf50; }
+  .type-explore  { background: #1a1a2a; color: #c070e0; }
 
   .entry-time {
     font-size: 0.75rem;
@@ -160,45 +302,6 @@
     font-size: 0.8rem;
   }
 
-  .control-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-    font-size: 0.75rem;
-  }
-
-  .control-label { color: #444455; }
-
-  .control-select {
-    background: #0e0e18;
-    border: 1px solid #1a1a28;
-    color: #7070a0;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.72rem;
-    cursor: pointer;
-  }
-
-  .control-btn {
-    background: #0e0e18;
-    border: 1px solid #1a1a28;
-    color: #7070a0;
-    padding: 3px 12px;
-    border-radius: 3px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.72rem;
-    cursor: pointer;
-    transition: border-color 0.1s, color 0.1s;
-  }
-  .control-btn:hover { border-color: #2a2a4a; color: #9090b0; }
-
-  .control-btn-resume { border-color: #2a4a2a; color: #4caf50; }
-  .control-btn-resume:hover { border-color: #3a6a3a; color: #6cd06c; }
-
-  .pause-until-text { color: #f0a030; font-size: 0.72rem; }
-
   .refresh-hint {
     position: fixed;
     bottom: 16px;
@@ -212,32 +315,49 @@
 
 <header>
   <h1>Agent Zero's Office</h1>
-  <span id="status-badge" class="status-badge status-idle">⬤ Available</span>
+  <span id="status-badge" class="status-badge status-disabled">● Disabled</span>
   <span id="next-cycle" class="next-cycle"></span>
 </header>
 
-<div class="control-row">
-  <div id="pause-controls" style="display:flex;align-items:center;gap:10px;">
-    <span class="control-label">Pause engine:</span>
-    <select id="pause-duration" class="control-select">
-      <option value="1800">30 min</option>
-      <option value="3600" selected>1 hour</option>
-      <option value="7200">2 hours</option>
-      <option value="14400">4 hours</option>
-      <option value="28800">8 hours</option>
-    </select>
-    <button class="control-btn" onclick="pauseEngine()">Pause</button>
+<!-- ── Master power switch ─────────────────────────────────────────────────── -->
+<div id="power-panel" class="power-panel is-off">
+  <div class="power-indicator" id="power-indicator">⬛</div>
+  <div class="power-label">
+    <div class="power-title" id="power-title">WORKSHOP OFF</div>
+    <div class="power-desc" id="power-desc">
+      Workshop cycles are disabled. No autonomous LLM calls will be made.
+    </div>
   </div>
-  <div id="resume-controls" style="display:none;align-items:center;gap:10px;">
-    <span id="pause-until-label" class="pause-until-text"></span>
-    <button class="control-btn control-btn-resume" onclick="resumeEngine()">Resume</button>
+  <button class="power-btn power-btn-on" id="power-btn" onclick="togglePower()">
+    ENABLE
+  </button>
+</div>
+
+<!-- ── Pause controls (only visible when enabled) ─────────────────────────── -->
+<div id="pause-section" style="display:none;">
+  <div class="control-row">
+    <div id="pause-controls" style="display:flex;align-items:center;gap:10px;">
+      <span class="control-label">Pause engine:</span>
+      <select id="pause-duration" class="control-select">
+        <option value="1800">30 min</option>
+        <option value="3600" selected>1 hour</option>
+        <option value="7200">2 hours</option>
+        <option value="14400">4 hours</option>
+        <option value="28800">8 hours</option>
+      </select>
+      <button class="control-btn" onclick="pauseEngine()">Pause</button>
+    </div>
+    <div id="resume-controls" style="display:none;align-items:center;gap:10px;">
+      <span id="pause-until-label" class="pause-until-text"></span>
+      <button class="control-btn control-btn-resume" onclick="resumeEngine()">Resume</button>
+    </div>
   </div>
 </div>
 
 <div class="stats-row">
   <div>Total cycles: <span id="stat-total">—</span></div>
-  <div>Workshop: <span id="stat-workshop">—</span></div>
-  <div>Field: <span id="stat-field">—</span></div>
+  <div>Maintain: <span id="stat-workshop">—</span></div>
+  <div>Build+Explore: <span id="stat-field">—</span></div>
   <div>Memories saved: <span id="stat-memories">—</span></div>
 </div>
 
@@ -249,7 +369,10 @@
 <div class="refresh-hint">Auto-refresh every 60s</div>
 
 <script>
-const API = '/api/office_feed';
+const API         = '/api/office_feed';
+const CONTROL_API = '/api/idle_control';
+
+let _engineEnabled = false;
 
 function fmtTime(iso) {
   if (!iso) return '—';
@@ -267,13 +390,45 @@ function fmtDate(iso) {
   } catch { return iso; }
 }
 
-function setBadge(status) {
+function updatePowerPanel(enabled) {
+  _engineEnabled = enabled;
+  const panel = document.getElementById('power-panel');
+  const indicator = document.getElementById('power-indicator');
+  const title = document.getElementById('power-title');
+  const desc = document.getElementById('power-desc');
+  const btn = document.getElementById('power-btn');
+  const pauseSec = document.getElementById('pause-section');
+
+  if (enabled) {
+    panel.className = 'power-panel is-on';
+    indicator.textContent = '🟢';
+    title.textContent = 'IDLE ENGINE ON';
+    desc.textContent = 'Adaptive cycles active (MAINTAIN / BUILD / EXPLORE). Agent works autonomously when idle.';
+    btn.className = 'power-btn power-btn-off';
+    btn.textContent = 'DISABLE';
+    pauseSec.style.display = 'block';
+  } else {
+    panel.className = 'power-panel is-off';
+    indicator.textContent = '⬛';
+    title.textContent = 'IDLE ENGINE OFF';
+    desc.textContent = 'Idle cycles disabled. No autonomous LLM calls will be made.';
+    btn.className = 'power-btn power-btn-on';
+    btn.textContent = 'ENABLE';
+    pauseSec.style.display = 'none';
+  }
+}
+
+function setBadge(status, enabled) {
   const badge = document.getElementById('status-badge');
   const next  = document.getElementById('next-cycle');
   badge.className = 'status-badge';
-  const state = (status.state || 'idle').toLowerCase();
-  const icons  = {idle:'⬤', working:'◉', cooldown:'◌', session:'⬡', paused:'⏸'};
-  const labels = {idle:'Available', working:'Working', cooldown:'Cooldown', session:'In Session', paused:'Paused'};
+
+  let state = (status.state || 'idle').toLowerCase();
+  if (!enabled) state = 'disabled';
+
+  const icons  = {idle:'⬤', working:'◉', cooldown:'◌', session:'⬡', paused:'⏸', disabled:'●'};
+  const labels = {idle:'Available', working:'Working', cooldown:'Cooldown',
+                  session:'In Session', paused:'Paused', disabled:'Disabled'};
 
   badge.classList.add('status-' + state);
   badge.textContent = (icons[state] || '⬤') + ' ' + (status.label || labels[state] || state);
@@ -288,42 +443,65 @@ function setBadge(status) {
     next.textContent = '';
   }
 
-  // Show/hide control panel based on pause state
-  const isPaused = state === 'paused';
-  document.getElementById('pause-controls').style.display = isPaused ? 'none' : 'flex';
-  document.getElementById('resume-controls').style.display = isPaused ? 'flex' : 'none';
-  if (isPaused && status.paused_until) {
-    document.getElementById('pause-until-label').textContent =
-      'Paused until ' + fmtTime(status.paused_until);
+  // Pause controls only make sense when enabled
+  if (enabled) {
+    const isPaused = state === 'paused';
+    document.getElementById('pause-controls').style.display = isPaused ? 'none' : 'flex';
+    document.getElementById('resume-controls').style.display = isPaused ? 'flex' : 'none';
+    if (isPaused && status.paused_until) {
+      document.getElementById('pause-until-label').textContent =
+        'Paused until ' + fmtTime(status.paused_until);
+    }
   }
 }
 
+const CYCLE_LABELS = {
+  workshop: 'Workshop', field: 'Field',
+  maintain: 'Maintain', build: 'Build', explore: 'Explore',
+};
+
 function renderEntry(e) {
-  const ct = (e.cycle_type || 'workshop').toLowerCase();
-  const st = (e.status || 'completed').toLowerCase();
+  const ct       = (e.cycle_type || 'workshop').toLowerCase();
+  const st       = (e.status || 'completed').toLowerCase();
+  const priority = (e.priority || 'routine').toLowerCase();
   const statusClass = st === 'completed' ? 'status-completed'
     : st === 'interrupted' ? 'status-interrupted'
     : 'status-circuit_breaker';
   const statusIcon = st === 'completed' ? '✓' : st === 'interrupted' ? '↩' : '⚡';
 
+  const priorityBadge = priority !== 'routine'
+    ? `<span class="priority-badge priority-${priority}">${priority}</span>`
+    : '';
+
   const delivs = (e.deliverables || []).map(d =>
     `<span>${d.replace(/^.*\//, '')}</span>`
   ).join('');
 
+  // V2-specific meta fields
+  const sleepLine   = e.sleep_findings  > 0 ? `<div>Sleep finds: <span>${e.sleep_findings}</span></div>` : '';
+  const pagesLine   = e.pages_deepened  > 0 ? `<div>Pages: <span>${e.pages_deepened}</span></div>` : '';
+  const skillsLine  = e.skills_captured > 0 ? `<div>Skills: <span>${e.skills_captured}</span></div>` : '';
+  const reportsLine = e.field_reports   > 0 ? `<div>Reports: <span>${e.field_reports}</span></div>` : '';
+  const issuesLine  = e.integrity_issues > 0
+    ? `<div style="color:#e05050">Issues: <span>${e.integrity_issues}</span></div>` : '';
+
+  const priorityClass = priority !== 'routine' ? ` priority-${priority}` : '';
+
   return `
-    <div class="feed-entry ${ct} ${st !== 'completed' ? st : ''}">
+    <div class="feed-entry ${ct} ${st !== 'completed' ? st : ''}${priorityClass}">
       <div class="entry-header">
-        <span class="entry-type type-${ct}">${ct === 'field' ? 'Field' : 'Workshop'}</span>
+        <span class="entry-type type-${ct}">${CYCLE_LABELS[ct] || ct}</span>
+        ${priorityBadge}
         <span class="entry-time">${fmtDate(e.timestamp)}</span>
         <span class="entry-status ${statusClass}">${statusIcon} ${st}</span>
       </div>
       <div class="entry-activity">${e.activity || '—'}</div>
       ${delivs ? `<div class="entry-deliverables">${delivs}</div>` : ''}
       <div class="entry-meta">
-        <div>Steps: <span>${e.steps_used || 0}/${e.max_steps || 20}</span></div>
-        <div>Duration: <span>${e.duration_minutes || 0}min</span></div>
+        <div>Steps: <span>${e.steps_used || 0}</span></div>
         <div>Memories: <span>${e.memories_saved || 0}</span></div>
         ${e.cycle_number !== undefined ? `<div>Cycle: <span>#${e.cycle_number}</span></div>` : ''}
+        ${sleepLine}${pagesLine}${skillsLine}${reportsLine}${issuesLine}
       </div>
     </div>`;
 }
@@ -334,21 +512,24 @@ async function refresh() {
     if (!resp.ok) throw new Error(resp.status);
     const data = await resp.json();
 
-    setBadge(data.status || {});
+    const enabled = data.enabled !== undefined ? data.enabled : false;
+    updatePowerPanel(enabled);
+    setBadge(data.status || {}, enabled);
 
     const entries = data.entries || [];
     const total   = data.total_cycles || 0;
     document.getElementById('stat-total').textContent = total;
+    // Support both V1 (workshop/field) and V2 (maintain/build/explore) cycle types
     document.getElementById('stat-workshop').textContent =
-      entries.filter(e => (e.cycle_type||'').toLowerCase() === 'workshop').length;
+      entries.filter(e => ['workshop','maintain'].includes((e.cycle_type||'').toLowerCase())).length;
     document.getElementById('stat-field').textContent =
-      entries.filter(e => (e.cycle_type||'').toLowerCase() === 'field').length;
+      entries.filter(e => ['field','explore','build'].includes((e.cycle_type||'').toLowerCase())).length;
     document.getElementById('stat-memories').textContent =
       entries.reduce((s, e) => s + (e.memories_saved || 0), 0);
 
     const list = document.getElementById('feed-list');
     if (entries.length === 0) {
-      list.innerHTML = '<div class="empty-state">No idle cycles yet. The Office opens when Jake steps away.</div>';
+      list.innerHTML = '<div class="empty-state">No cycles yet. Enable the workshop and step away.</div>';
     } else {
       list.innerHTML = entries.map(renderEntry).join('');
     }
@@ -358,10 +539,23 @@ async function refresh() {
   }
 }
 
+async function togglePower() {
+  const action = _engineEnabled ? 'disable' : 'enable';
+  try {
+    const resp = await fetch(CONTROL_API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action}),
+    });
+    if (!resp.ok) throw new Error(resp.status);
+    await refresh();
+  } catch(e) { console.error('Power toggle failed:', e); }
+}
+
 async function pauseEngine() {
   const duration = parseInt(document.getElementById('pause-duration').value);
   try {
-    await fetch('/api/idle_control', {
+    await fetch(CONTROL_API, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action: 'pause', duration_seconds: duration}),
@@ -372,7 +566,7 @@ async function pauseEngine() {
 
 async function resumeEngine() {
   try {
-    await fetch('/api/idle_control', {
+    await fetch(CONTROL_API, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({action: 'resume'}),

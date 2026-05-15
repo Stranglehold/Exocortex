@@ -18,7 +18,7 @@ sys.path.insert(0, "/a0/usr/plugins/oss")
 from helpers.api import ApiHandler, Request
 
 from src.db import get_conn, init_db
-from src.ingest import run_once, is_paused, set_paused
+from src.ingest import run_once, is_paused, set_paused, start_background_loop
 
 
 class OssIngest(ApiHandler):
@@ -50,9 +50,11 @@ class OssIngest(ApiHandler):
 
             elif action == "resume":
                 set_paused(False)
+                start_background_loop()
                 return {"ok": True, "paused": False}
 
             elif action == "run":
+                start_background_loop()
                 conn = get_conn()
                 init_db(conn)
                 result = run_once(conn)

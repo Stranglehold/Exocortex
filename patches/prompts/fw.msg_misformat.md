@@ -1,21 +1,20 @@
-Your response could not be parsed as valid JSON. Two causes and fixes:
+Your response could not be parsed as valid JSON. Identify which case applies and follow the fix:
 
-── TRUNCATED PAYLOAD (most common) ──
-Your JSON was cut off mid-payload. This happens when you try to embed large code inside a single code_execution_tool call — the output token limit truncates the JSON before it closes.
+── RESPONSE TEXT TOO LONG ──
+You tried to send a long response and the text field was cut off before the closing braces.
 
-FIX: Use code_execution_tool with runtime=python to write files in small sections:
+DO NOT retry the same long response — it will be cut off again.
 
-Section 1 (creates the file):
-{"tool_name": "code_execution_tool", "tool_args": {"runtime": "python", "code": "with open('/path/to/file.py', 'w') as f:\n    f.write('first section — max ~800 chars')"}}
+FIX:
+Step 1 — Write the content to a file using code_execution_tool. Write in sections of ≤800 characters each, using 'w' mode for the first section and 'a' mode for every section after.
+Step 2 — Call response with 2-3 sentences summarizing what you wrote and where the file is.
 
-Section 2+ (appends to the file):
-{"tool_name": "code_execution_tool", "tool_args": {"runtime": "python", "code": "with open('/path/to/file.py', 'a') as f:\n    f.write('next section')"}}
+── CODE PAYLOAD TOO LARGE ──
+Your JSON was cut off mid-payload. This happens when you embed large code inside a single code_execution_tool call and the output token limit truncates the JSON before it closes.
 
-Rules:
-- Always use code_execution_tool with runtime=python — do NOT use text_editor, text_editor_remote, or any other tool
-- Keep each "code" string under 800 characters
-- Use 'w' mode for the first section, 'a' mode for every section after
-- Continue appending until all content is written
+FIX: Write files in small sections using code_execution_tool with runtime=python. Keep each "code" string under 800 characters. Use 'w' mode for the first section, 'a' mode for every section after.
+
+Do NOT use text_editor, text_editor_remote, or any other tool — only code_execution_tool with runtime=python.
 
 ── FORMAT ERROR (no large payload involved) ──
 Your response must be ONLY a JSON object — no text, markdown, or prose before or after it.

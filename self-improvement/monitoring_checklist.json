@@ -1,0 +1,19 @@
+{
+  "daily_checks": [
+    "Verify injection budget <563 tokens/turn (target 40% reduction)",
+    "Check mtime_cache hit rate in /tmp/exocortex_cache/",
+    "Monitor BST conditional enrichment effectiveness",
+    "Scan for new extension files needing audit"
+  ],
+  "weekly_tasks": [
+    "Full extension audit (target: 0% error rate)",
+    "Hook profiling update (identify new hotspots >200 LOC)",
+    "Memory precision spot-check (<50% noise target)",
+    "Wiki page maintenance for completed priorities"
+  ],
+  "performance_targets": {
+    "injection_budget_max": 563,
+    "error_rate_max_pct": 3.0,
+    "hook_parse_time_ms": 50
+  }
+}

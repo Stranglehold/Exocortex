@@ -1,0 +1,31 @@
+{
+  "name": "indigo",
+  "description": "Deep space dark with indigo accent. Default Exocortex aesthetic.",
+  "variables": {
+    "--bg-primary":    "#0B0A1A",
+    "--bg-secondary":  "#12111F",
+    "--bg-card":       "rgba(255,255,255,0.03)",
+    "--bg-card-hover": "rgba(255,255,255,0.06)",
+    "--text-primary":  "#E8E4D9",
+    "--text-secondary":"#9CA3AF",
+    "--text-muted":    "#5B5678",
+    "--accent":        "#6366F1",
+    "--accent-light":  "#818CF8",
+    "--accent-glow":   "rgba(99,102,241,0.15)",
+    "--success":       "#10B981",
+    "--warning":       "#F59E0B",
+    "--critical":      "#EF4444",
+    "--inactive":      "#6B7280",
+    "--border":        "rgba(255,255,255,0.06)",
+    "--border-accent": "rgba(99,102,241,0.3)",
+    "--font-display":  "'Cormorant Garamond', Georgia, serif",
+    "--font-body":     "'Outfit', system-ui, sans-serif",
+    "--font-mono":     "'JetBrains Mono', 'Fira Code', monospace",
+    "--radius":        "6px",
+    "--shadow-card":   "0 2px 8px rgba(0,0,0,0.3)",
+    "--shadow-hover":  "0 8px 24px rgba(0,0,0,0.4)",
+    "--transition-fast":   "0.15s ease",
+    "--transition-normal": "0.3s ease",
+    "--transition-slow":   "0.5s ease"
+  }
+}

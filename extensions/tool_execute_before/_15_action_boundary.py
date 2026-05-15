@@ -327,7 +327,8 @@ def _extract_command(tool_args: Optional[Dict], tool_name: str) -> str:
     # "whois", "nmap", "ssh", "git push" in explanatory text.
     if tool_name == "text_editor":
         path = tool_args.get("path", "")
-        return f"{tool_name} {path}"
+        cmd_type = tool_args.get("command", "")  # view, write, str_replace, etc.
+        return f"{tool_name} {cmd_type} {path}".strip()
     # For other tools, build a string for matching against tool name + args
     return f"{tool_name} {json.dumps(tool_args, default=str)}"
 
@@ -368,6 +369,25 @@ def _classify(
         for sys_path in TIER_4_SYSTEM_WRITE_PATHS:
             if sys_path in command:
                 return (4, "s4_system_write", [f"py_open_write_indirect:{sys_path}"], sys_path)
+
+    # text_editor write/str_replace to system paths — same T4 authority as
+    # Python open() writes (Gap A). Gap A covers shell code using Python open();
+    # this covers the text_editor tool writing directly to system directories.
+    # _extract_command now includes the command type so the pattern can distinguish
+    # write/str_replace from view.
+    if tool_name == "text_editor" and re.match(
+        r"text_editor\s+(write|str_replace)\b", command, re.IGNORECASE
+    ):
+        path_m = re.match(r"text_editor\s+\S+\s+(.+)", command)
+        if path_m:
+            te_path = path_m.group(1).strip()
+            for sys_path in TIER_4_SYSTEM_WRITE_PATHS:
+                if te_path.startswith(sys_path):
+                    return (
+                        4, "s4_system_write",
+                        [f"text_editor_write:{te_path}"],
+                        te_path,
+                    )
 
     # Tier 4: command patterns
     # Gap B fix: skip matches that fall inside a quoted string literal —

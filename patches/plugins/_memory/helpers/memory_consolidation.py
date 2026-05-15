@@ -104,8 +104,22 @@ class MemoryConsolidator:
             return result
 
         except asyncio.TimeoutError:
-            _log.warning("Memory consolidation timeout for area %s (background task)", area)
-            return {"success": False, "memory_ids": []}
+            # LLM busy (likely competing with active agent work on single GPU).
+            # Fall back to direct insert so the memory isn't silently lost.
+            _log.warning(
+                "Memory consolidation timeout for area %s — falling back to direct insert (model busy)",
+                area,
+            )
+            try:
+                db = await Memory.get(self.agent)
+                if "timestamp" not in metadata:
+                    metadata["timestamp"] = datetime.now(timezone.utc).isoformat()
+                memory_id = await db.insert_text(new_memory, metadata)
+                _log.info("Timeout fallback insert succeeded for area %s (id=%s)", area, memory_id)
+                return {"success": True, "memory_ids": [memory_id]}
+            except Exception as insert_err:
+                _log.warning("Timeout fallback insert also failed for area %s: %s", area, insert_err)
+                return {"success": False, "memory_ids": []}
 
         except Exception as e:
             _log.warning("Memory consolidation error for area %s: %s (background task)", area, e)

@@ -187,8 +187,9 @@ class ProactiveSupervisorAnalyzer(Extension):
                 return
 
             # Get BST domain for task-class-aware thresholds
+            # BST stores belief state at _bst_store["__bst_belief_state__"]["domain"]
             bst_store = getattr(self.agent, BST_STORE_KEY, {}) or {}
-            bst_domain = bst_store.get("domain", "") or ""
+            bst_domain = bst_store.get("__bst_belief_state__", {}).get("domain", "") or ""
             task_class = DOMAIN_CLASS_MAP.get(bst_domain, "default")
 
             # Run all five detectors, collect signals

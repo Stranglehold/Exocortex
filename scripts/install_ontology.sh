@@ -24,7 +24,7 @@ fi
 
 ONT_DEST="/a0/usr/ontology"
 TOOLS_SRC="${REPO_DIR}/tools"
-TOOLS_DEST="/a0/python/tools"
+TOOLS_DEST="/a0/tools"
 ROLES_SRC="${REPO_DIR}/organizations/roles"
 ROLES_DEST="/a0/usr/organizations/roles"
 EXT_DIR="/a0/python/extensions"

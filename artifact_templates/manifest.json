@@ -1,0 +1,227 @@
+{
+  "version": "1.0.0",
+  "description": "Artifact template catalog. The model reads this to select the right template.",
+  "templates": {
+    "dashboard": {
+      "description": "Grid of status cards showing component health, metrics, or system state",
+      "use_when": "Operator asks for status, health, monitoring, or an overview of multiple items",
+      "required_fields": ["title", "cards"],
+      "optional_fields": ["subtitle"],
+      "data_schema": {
+        "title": "string — dashboard title",
+        "subtitle": "string (optional)",
+        "cards": [
+          {
+            "name": "string — card title",
+            "status": "healthy | warning | critical | inactive",
+            "metric": "string — primary value displayed large",
+            "detail": "string (optional) — secondary info line",
+            "trend": "up | down | stable (optional)"
+          }
+        ]
+      },
+      "examples": [
+        "Show me the stack status",
+        "What's the health of the system?",
+        "Give me a monitoring dashboard"
+      ]
+    },
+    "table": {
+      "description": "Sortable, filterable table for structured data",
+      "use_when": "Presenting tabular data, comparisons, inventories, logs, or any rows-and-columns data",
+      "required_fields": ["title", "columns", "rows"],
+      "optional_fields": ["searchable"],
+      "data_schema": {
+        "title": "string",
+        "columns": [
+          { "key": "string", "label": "string", "sortable": "boolean (default true)" }
+        ],
+        "rows": [{ "key1": "value1", "key2": "value2" }],
+        "searchable": "boolean (default true)"
+      },
+      "examples": [
+        "Show me the eval results as a table",
+        "List all topics with their claim counts",
+        "Compare the model profiles"
+      ]
+    },
+    "timeline": {
+      "description": "Chronological sequence of events, milestones, or decisions",
+      "use_when": "Presenting project history, session summaries, decision logs, roadmaps, or any ordered sequence of events",
+      "required_fields": ["title", "events"],
+      "optional_fields": ["subtitle", "orientation"],
+      "data_schema": {
+        "title": "string",
+        "events": [
+          {
+            "date": "string — display date",
+            "title": "string — event title",
+            "description": "string — event detail",
+            "status": "complete | active | planned (optional)",
+            "category": "string (optional)"
+          }
+        ],
+        "orientation": "vertical (default) | horizontal"
+      },
+      "examples": [
+        "Show me the project roadmap",
+        "Timeline of session milestones",
+        "What decisions have we made?"
+      ]
+    },
+    "network": {
+      "description": "Force-directed graph showing nodes and relationships",
+      "use_when": "Architecture diagrams, dependency maps, relationship visualizations, entity connection maps",
+      "required_fields": ["title", "nodes", "edges"],
+      "optional_fields": [],
+      "data_schema": {
+        "title": "string",
+        "nodes": [
+          {
+            "id": "string",
+            "label": "string",
+            "group": "string (optional) — for color grouping",
+            "size": "number (optional, default 1)",
+            "detail": "string (optional) — shown on hover"
+          }
+        ],
+        "edges": [
+          {
+            "source": "string — node id",
+            "target": "string — node id",
+            "label": "string (optional)",
+            "weight": "number (optional, default 1)"
+          }
+        ]
+      },
+      "examples": [
+        "Show me the stack architecture",
+        "Map the relationships between components",
+        "Visualize the extension dependencies"
+      ]
+    },
+    "report": {
+      "description": "Structured document with sections, findings, and recommendations",
+      "use_when": "Analysis results, briefings, research summaries, post-mortems, any long-form structured output",
+      "required_fields": ["title", "sections"],
+      "optional_fields": ["subtitle", "date", "author", "executive_summary", "recommendations"],
+      "data_schema": {
+        "title": "string",
+        "subtitle": "string (optional)",
+        "date": "string (optional)",
+        "author": "string (optional)",
+        "executive_summary": "string (optional)",
+        "sections": [
+          {
+            "heading": "string",
+            "content": "string — markdown-compatible text",
+            "callout": "string (optional)",
+            "callout_type": "info | warning | success | critical (optional)"
+          }
+        ],
+        "recommendations": [
+          { "priority": "high | medium | low", "text": "string" }
+        ]
+      },
+      "examples": [
+        "Write up the analysis findings",
+        "Give me a briefing on the OSS data",
+        "Post-mortem on the loop incident"
+      ]
+    },
+    "gallery": {
+      "description": "Responsive grid of content cards for browsable collections",
+      "use_when": "Team rosters, feature showcases, skill inventories, research entries, any browsable collection of items",
+      "required_fields": ["title", "cards"],
+      "optional_fields": ["columns"],
+      "data_schema": {
+        "title": "string",
+        "cards": [
+          {
+            "title": "string",
+            "subtitle": "string (optional)",
+            "description": "string",
+            "tags": ["string"],
+            "status": "string (optional)",
+            "icon": "string (optional) — Lucide icon name"
+          }
+        ],
+        "columns": "number (optional, default 3)"
+      },
+      "examples": [
+        "Show me the team",
+        "List all the skills",
+        "Gallery of active investigations"
+      ]
+    },
+    "constellation": {
+      "description": "Abstract SVG node visualization on dark background with star field",
+      "use_when": "Conceptual maps, theme connections, team visualizations, abstract relationship displays where the aesthetic matters more than precision",
+      "required_fields": ["title", "nodes"],
+      "optional_fields": ["subtitle", "connections"],
+      "data_schema": {
+        "title": "string",
+        "subtitle": "string (optional)",
+        "nodes": [
+          {
+            "id": "string",
+            "label": "string",
+            "type": "primary | secondary",
+            "description": "string (optional)"
+          }
+        ],
+        "connections": [
+          { "from": "string — node id", "to": "string — node id" }
+        ]
+      },
+      "examples": [
+        "Visualize the project themes",
+        "Show the team as a constellation",
+        "Map the conceptual relationships"
+      ]
+    },
+    "comparison": {
+      "description": "Side-by-side comparison of 2-4 options with scored metrics",
+      "use_when": "Tool evaluations, model comparisons, option analysis, decision support, any head-to-head comparison",
+      "required_fields": ["title", "options"],
+      "optional_fields": [],
+      "data_schema": {
+        "title": "string",
+        "options": [
+          {
+            "name": "string",
+            "recommended": "boolean (optional)",
+            "scores": [
+              {
+                "metric": "string",
+                "value": "string | number",
+                "rating": "good | neutral | poor (optional)"
+              }
+            ]
+          }
+        ]
+      },
+      "examples": [
+        "Compare the model options",
+        "Which approach is better?",
+        "Evaluate these three tools"
+      ]
+    }
+  },
+  "themes": {
+    "indigo":   "Deep space dark with indigo accent. Default Exocortex aesthetic.",
+    "ember":    "Warm dark with amber accent. For financial and analytical artifacts.",
+    "slate":    "Cool gray with emerald accent. Professional, understated. For reports.",
+    "midnight": "Deep navy with rose accent. For dashboards and monitoring.",
+    "graphite": "Near-black with minimal blue-gray accent. Maximum austerity. For technical artifacts."
+  },
+  "bst_domain_hints": {
+    "analysis":     ["report", "comparison", "table"],
+    "investigation":["report", "timeline", "network"],
+    "financial":    ["dashboard", "table", "comparison"],
+    "planning":     ["timeline", "dashboard"],
+    "coding":       ["table", "report"],
+    "conversation": ["gallery", "constellation"],
+    "research":     ["report", "network", "timeline"]
+  }
+}

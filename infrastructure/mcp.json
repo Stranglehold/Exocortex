@@ -1,0 +1,72 @@
+{
+  "mcpServers": {
+
+    "context7": {
+      "description": "Library documentation lookup — current API docs for any programming library",
+      "url": "https://mcp.context7.com/mcp",
+      "type": "streamable-http"
+    },
+
+    "deep-wiki": {
+      "description": "Deep documentation search for GitHub repositories",
+      "url": "https://mcp.deepwiki.com/mcp",
+      "type": "streamable-http"
+    },
+
+    "memory": {
+      "description": "Knowledge graph — shared persistent memory between team members",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "init_timeout": 120,
+      "tool_timeout": 30
+    },
+
+    "wikipedia": {
+      "description": "Wikipedia article search and retrieval",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "wikipedia-mcp"
+      ],
+      "init_timeout": 120,
+      "tool_timeout": 30
+    },
+
+    "arxiv": {
+      "description": "Search, download, and read research papers from arXiv",
+      "command": "uvx",
+      "args": [
+        "arxiv-mcp-server",
+        "--storage-path",
+        "/a0/usr/workdir/papers"
+      ],
+      "init_timeout": 120,
+      "tool_timeout": 120
+    },
+
+    "duckduckgo": {
+      "description": "Web search via DuckDuckGo — no API key required",
+      "command": "uvx",
+      "args": [
+        "duckduckgo-mcp-server"
+      ],
+      "init_timeout": 120,
+      "tool_timeout": 30
+    },
+
+    "sequential-thinking": {
+      "disabled": true,
+      "description": "Structured problem decomposition — enable for complex multi-step reasoning",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "--package",
+        "@modelcontextprotocol/server-sequential-thinking",
+        "mcp-server-sequential-thinking"
+      ]
+    }
+  }
+}

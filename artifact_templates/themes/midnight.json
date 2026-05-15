@@ -1,0 +1,31 @@
+{
+  "name": "midnight",
+  "description": "Deep navy with rose accent. For dashboards and monitoring.",
+  "variables": {
+    "--bg-primary":    "#070B14",
+    "--bg-secondary":  "#0D1321",
+    "--bg-card":       "rgba(255,255,255,0.03)",
+    "--bg-card-hover": "rgba(255,255,255,0.06)",
+    "--text-primary":  "#E2E8F4",
+    "--text-secondary":"#8899BB",
+    "--text-muted":    "#3D5070",
+    "--accent":        "#F43F5E",
+    "--accent-light":  "#FB7185",
+    "--accent-glow":   "rgba(244,63,94,0.15)",
+    "--success":       "#10B981",
+    "--warning":       "#F59E0B",
+    "--critical":      "#EF4444",
+    "--inactive":      "#6B7280",
+    "--border":        "rgba(255,255,255,0.06)",
+    "--border-accent": "rgba(244,63,94,0.3)",
+    "--font-display":  "'Cormorant Garamond', Georgia, serif",
+    "--font-body":     "'Outfit', system-ui, sans-serif",
+    "--font-mono":     "'JetBrains Mono', 'Fira Code', monospace",
+    "--radius":        "6px",
+    "--shadow-card":   "0 2px 8px rgba(0,0,0,0.4)",
+    "--shadow-hover":  "0 8px 28px rgba(0,0,0,0.5)",
+    "--transition-fast":   "0.15s ease",
+    "--transition-normal": "0.3s ease",
+    "--transition-slow":   "0.5s ease"
+  }
+}

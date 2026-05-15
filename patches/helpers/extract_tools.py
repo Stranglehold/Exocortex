@@ -10,6 +10,39 @@ _NATIVE_TOOL_CALL_RX = re.compile(
     re.IGNORECASE,
 )
 
+# DeepSeek DSML tool call format:
+#   <｜｜DSML｜｜tool_calls>
+#   <｜｜DSML｜｜invoke name="TOOL_NAME">
+#   <｜｜DSML｜｜parameter name="PARAM_NAME" string="true">VALUE</｜｜DSML｜｜parameter>
+#   </｜｜DSML｜｜invoke>
+#   </｜｜DSML｜｜tool_calls>
+_DSML_DETECT_RX = re.compile(r'<[^>]*?DSML', re.IGNORECASE)
+_DSML_INVOKE_RX = re.compile(
+    r'<[^>]*?DSML[^>]*?invoke\s+name=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
+_DSML_PARAM_RX = re.compile(
+    r'<[^>]*?DSML[^>]*?parameter\s+name=["\']([^"\']+)["\'][^>]*>(.*?)</[^>]*?DSML[^>]*?parameter>',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _parse_dsml(text: str) -> "dict[str, Any] | None":
+    """Convert a DeepSeek DSML tool call block to Agent Zero's {tool_name, tool_args} dict."""
+    m = _DSML_INVOKE_RX.search(text)
+    if not m:
+        return None
+    tool_name = m.group(1).strip()
+    if not tool_name:
+        return None
+    tool_args: dict[str, Any] = {}
+    for pm in _DSML_PARAM_RX.finditer(text):
+        name = pm.group(1).strip()
+        value = pm.group(2).strip()
+        if name:
+            tool_args[name] = value
+    return {"tool_name": tool_name, "tool_args": tool_args}
+
 # Strip thinking-token blocks that leak from reasoning-distilled models before JSON parse.
 _THINK_TAG_RX = re.compile(r'<think(?:ing)?>\s*.*?\s*</think(?:ing)?>', re.DOTALL | re.IGNORECASE)
 
@@ -94,6 +127,12 @@ def json_parse_dirty(json: str) -> dict[str, Any] | None:
     stripped = _THINK_TAG_RX.sub('', stripped).strip()
     if not stripped:
         return None
+
+    # ── DeepSeek DSML format ─────────────────────────────────────────────
+    if _DSML_DETECT_RX.search(stripped):
+        result = _parse_dsml(stripped)
+        if result:
+            return result
 
     # ── Native tool call format (Gemma 4, etc.) ───────────────────────────
     m = _NATIVE_TOOL_CALL_RX.search(stripped)

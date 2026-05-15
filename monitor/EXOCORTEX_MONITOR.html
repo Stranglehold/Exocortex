@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // SYSTEM MONITOR</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg-primary: #0a0a0c;
+    --bg-secondary: #0f0f14;
+    --bg-panel: #12121a;
+    --border: #1a1a2e;
+    --border-active: #ff6b35;
+    --text-primary: #c0c0c8;
+    --text-dim: #555566;
+    --text-label: #666680;
+    --nerv-orange: #ff6b35;
+    --nerv-red: #cc0000;
+    --nerv-amber: #ff9f1c;
+    --nerv-green: #00cc88;
+    --nerv-cyan: #00aacc;
+    --nerv-blue: #3366cc;
+    --nerv-magenta: #cc3399;
+    --warning-stripe: repeating-linear-gradient(
+      -45deg,
+      #1a1a00, #1a1a00 10px,
+      #0a0a0c 10px, #0a0a0c 20px
+    );
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── Scan Lines Overlay ─────────────────── */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .header {
+    background: linear-gradient(180deg, #1a0005 0%, var(--bg-primary) 100%);
+    border-bottom: 2px solid var(--nerv-red);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  .header::before {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--nerv-red), transparent);
+  }
+
+  .header-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--nerv-red);
+    text-shadow: 0 0 30px rgba(204, 0, 0, 0.4);
+    letter-spacing: 8px;
+  }
+
+  .header-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    margin-top: 2px;
+  }
+
+  .header-status {
+    text-align: right;
+    font-size: 11px;
+  }
+
+  .connection-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  .connection-dot.on { background: var(--nerv-green); box-shadow: 0 0 10px var(--nerv-green); }
+  .connection-dot.off { background: var(--nerv-red); box-shadow: 0 0 10px var(--nerv-red); }
+  .connection-dot.warn { background: var(--nerv-amber); box-shadow: 0 0 10px var(--nerv-amber); animation: blink 1s infinite; }
+
+  @keyframes blink { 50% { opacity: 0.3; } }
+  @keyframes pulse-bar { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 5px var(--nerv-orange); } 50% { box-shadow: 0 0 20px var(--nerv-orange); } }
+
+  /* ── Warning Stripe Bar ─────────────────── */
+  .warning-bar {
+    height: 6px;
+    background: var(--warning-stripe);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .warning-bar.active { opacity: 1; }
+
+  /* ── Main Grid ──────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+    padding: 16px 24px;
+  }
+
+  /* ── Panel ──────────────────────────────── */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-active), transparent);
+    opacity: 0.3;
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--nerv-cyan);
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #1a1a2e;
+  }
+
+  .panel.generating { border-color: var(--nerv-orange); animation: glow 2s infinite; }
+  .panel.error { border-color: var(--nerv-red); }
+
+  /* ── Status Indicator (big) ─────────────── */
+  .status-display {
+    text-align: center;
+    padding: 16px 0 12px;
+  }
+
+  .status-state {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 36px;
+    letter-spacing: 6px;
+  }
+
+  .status-state.idle { color: var(--nerv-cyan); text-shadow: 0 0 20px rgba(0,170,204,0.3); }
+  .status-state.generating { color: var(--nerv-orange); text-shadow: 0 0 30px rgba(255,107,53,0.5); }
+  .status-state.error { color: var(--nerv-red); text-shadow: 0 0 30px rgba(204,0,0,0.5); }
+  .status-state.offline { color: var(--text-dim); }
+
+  .status-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* ── Metrics ────────────────────────────── */
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #111118;
+  }
+
+  .metric-label {
+    color: var(--text-label);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .metric-value {
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  /* ── Progress Bar ───────────────────────── */
+  .bar-container {
+    width: 100%;
+    height: 6px;
+    background: #111118;
+    border-radius: 1px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── Activity Pulse ─────────────────────── */
+  .pulse-bar {
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--nerv-orange), transparent);
+    animation: pulse-bar 1.5s ease-in-out infinite;
+    margin-top: 8px;
+    opacity: 0;
+  }
+  .pulse-bar.active { opacity: 1; }
+
+  /* ── Log Feed ───────────────────────────── */
+  .log-feed {
+    grid-column: 1 / -1;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .log-entry {
+    font-size: 11px;
+    padding: 3px 0;
+    border-bottom: 1px solid #0e0e14;
+    display: flex;
+    gap: 10px;
+  }
+
+  .log-ts { color: var(--text-dim); min-width: 70px; }
+  .log-tag { min-width: 90px; font-weight: bold; }
+  .log-msg { color: var(--text-primary); }
+
+  /* ── Footer ─────────────────────────────── */
+  .footer {
+    text-align: center;
+    padding: 12px;
+    font-size: 10px;
+    color: #2a2a3a;
+    letter-spacing: 3px;
+    border-top: 1px solid #111118;
+  }
+
+  /* ── Responsive ─────────────────────────── */
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; }
+    .header-title { font-size: 20px; letter-spacing: 4px; }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">EXOCORTEX</div>
+    <div class="header-subtitle">SYSTEM MONITOR // LAYER B // INFERENCE INTELLIGENCE</div>
+  </div>
+  <div class="header-status">
+    <div><span class="connection-dot" id="connDot"></span><span id="connLabel">CONNECTING</span></div>
+    <div style="margin-top:4px;color:var(--text-dim)">UPTIME <span id="uptime">00:00:00</span></div>
+  </div>
+</div>
+
+<div class="warning-bar" id="warningBar"></div>
+
+<div class="main">
+
+  <!-- STATUS -->
+  <div class="panel" id="statusPanel">
+    <div class="panel-title">SYSTEM STATE</div>
+    <div class="status-display">
+      <div class="status-state" id="statusState">OFFLINE</div>
+      <div class="status-sub" id="statusSub">Waiting for connection...</div>
+    </div>
+    <div class="pulse-bar" id="pulseBar"></div>
+    <div style="margin-top:12px">
+      <div class="metric-row">
+        <span class="metric-label">TOKENS</span>
+        <span class="metric-value" id="mTokens" style="color:var(--text-primary)">0</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">SPEED</span>
+        <span class="metric-value" id="mSpeed" style="color:var(--nerv-cyan)">0 tok/s</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">ELAPSED</span>
+        <span class="metric-value" id="mElapsed" style="color:var(--text-dim)">0s</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">REQUEST</span>
+        <span class="metric-value" id="mRequest" style="color:var(--text-dim);font-size:11px">---</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPU -->
+  <div class="panel" id="gpuPanel">
+    <div class="panel-title">GPU</div>
+    <div class="metric-row">
+      <span class="metric-label">UTILIZATION</span>
+      <span class="metric-value" id="gpuUtil" style="color:var(--nerv-green)">---%</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar-fill" id="gpuUtilBar" style="width:0%;background:var(--nerv-green)"></div>
+    </div>
+
+    <div class="metric-row" style="margin-top:10px">
+      <span class="metric-label">VRAM USED</span>
+      <span class="metric-value" id="gpuVramUsed" style="color:var(--nerv-orange)">--- MB</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar-fill" id="gpuVramBar" style="width:0%;background:var(--nerv-orange)"></div>
+    </div>
+
+    <div class="metric-row" style="margin-top:10px">
+      <span class="metric-label">VRAM FREE</span>
+      <span class="metric-value" id="gpuVramFree" style="color:var(--nerv-cyan)">--- MB</span>
+    </div>
+
+    <div class="metric-row" style="margin-top:10px">
+      <span class="metric-label">TEMPERATURE</span>
+      <span class="metric-value" id="gpuTemp" style="color:var(--nerv-green)">---C</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar-fill" id="gpuTempBar" style="width:0%;background:var(--nerv-green)"></div>
+    </div>
+
+    <div class="metric-row" style="margin-top:10px">
+      <span class="metric-label">MODEL</span>
+      <span class="metric-value" id="gpuModel" style="color:var(--text-dim);font-size:11px">---</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">LOADED</span>
+      <span class="metric-value" id="gpuLoaded" style="color:var(--text-dim)">---</span>
+    </div>
+  </div>
+
+  <!-- LOG FEED -->
+  <div class="panel log-feed" id="logPanel">
+    <div class="panel-title">LIVE FEED</div>
+    <div id="logEntries">
+      <div class="log-entry">
+        <span class="log-ts">--:--:--</span>
+        <span class="log-tag" style="color:var(--text-dim)">SYSTEM</span>
+        <span class="log-msg" style="color:var(--text-dim)">Waiting for events...</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  EXOCORTEX // QWEN3.5-27B // LAYER B INFERENCE WRAPPER // <span id="dateLabel"></span>
+</div>
+
+<script>
+const POLL_URL = 'http://localhost:8080/v1/status';
+const POLL_MS = 1000;
+const MAX_LOGS = 30;
+
+let startTime = Date.now();
+let prevActive = false;
+let prevTokens = 0;
+let logs = [];
+let connected = false;
+
+// ── Elements ──────────────────────────
+const $ = id => document.getElementById(id);
+
+// ── Uptime ────────────────────────────
+function updateUptime() {
+  const s = Math.floor((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, '0');
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  const sec = String(s % 60).padStart(2, '0');
+  $('uptime').textContent = `${h}:${m}:${sec}`;
+}
+
+// ── Log ───────────────────────────────
+function addLog(tag, msg, color) {
+  const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+  logs.push({ ts: now, tag, msg, color });
+  if (logs.length > MAX_LOGS) logs.shift();
+  renderLogs();
+}
+
+function renderLogs() {
+  const el = $('logEntries');
+  el.innerHTML = logs.map(l =>
+    `<div class="log-entry">
+      <span class="log-ts">${l.ts}</span>
+      <span class="log-tag" style="color:${l.color}">${l.tag}</span>
+      <span class="log-msg">${l.msg}</span>
+    </div>`
+  ).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Color helpers ─────────────────────
+function tempColor(c) {
+  if (c > 85) return 'var(--nerv-red)';
+  if (c > 75) return 'var(--nerv-orange)';
+  return 'var(--nerv-green)';
+}
+
+function utilColor(p) {
+  if (p > 90) return 'var(--nerv-orange)';
+  return 'var(--nerv-green)';
+}
+
+// ── Update UI ─────────────────────────
+function update(data) {
+  const gen = data.generation || {};
+  const gpu = data.gpu || {};
+  const isActive = gen.active;
+  const model = data.model || '---';
+  const loaded = data.model_loaded;
+
+  // Connection
+  connected = true;
+  $('connDot').className = 'connection-dot on';
+  $('connLabel').textContent = 'CONNECTED';
+  $('connLabel').style.color = 'var(--nerv-green)';
+
+  // Status
+  const sp = $('statusPanel');
+  const ss = $('statusState');
+  const sub = $('statusSub');
+  const pulse = $('pulseBar');
+  const wbar = $('warningBar');
+
+  if (!loaded) {
+    ss.textContent = 'UNLOADED';
+    ss.className = 'status-state offline';
+    sub.textContent = 'Model not in VRAM';
+    sp.className = 'panel';
+    pulse.className = 'pulse-bar';
+    wbar.className = 'warning-bar';
+  } else if (isActive) {
+    ss.textContent = 'GENERATING';
+    ss.className = 'status-state generating';
+    sub.textContent = `${gen.tokens_generated || 0} tokens @ ${gen.tokens_per_second || 0} tok/s`;
+    sp.className = 'panel generating';
+    pulse.className = 'pulse-bar active';
+    wbar.className = 'warning-bar active';
+  } else {
+    ss.textContent = 'IDLE';
+    ss.className = 'status-state idle';
+    sub.textContent = 'Awaiting request';
+    sp.className = 'panel';
+    pulse.className = 'pulse-bar';
+    wbar.className = 'warning-bar';
+  }
+
+  // Metrics
+  $('mTokens').textContent = gen.tokens_generated || 0;
+  $('mSpeed').textContent = (gen.tokens_per_second || 0) + ' tok/s';
+  $('mElapsed').textContent = (gen.elapsed_s || 0) + 's';
+  $('mRequest').textContent = gen.request_id ? gen.request_id.slice(-12) : '---';
+
+  // GPU
+  if (gpu && !gpu.error) {
+    const u = gpu.utilization_pct || 0;
+    const used = gpu.memory_used_mb || 0;
+    const free = gpu.memory_free_mb || 0;
+    const total = used + free;
+    const t = gpu.temperature_c || 0;
+
+    $('gpuUtil').textContent = u + '%';
+    $('gpuUtil').style.color = utilColor(u);
+    $('gpuUtilBar').style.width = u + '%';
+    $('gpuUtilBar').style.background = utilColor(u);
+
+    $('gpuVramUsed').textContent = used + ' MB';
+    $('gpuVramBar').style.width = (total > 0 ? (used / total * 100) : 0) + '%';
+    $('gpuVramFree').textContent = free + ' MB';
+
+    $('gpuTemp').textContent = t + 'C';
+    $('gpuTemp').style.color = tempColor(t);
+    $('gpuTempBar').style.width = Math.min(t / 100 * 100, 100) + '%';
+    $('gpuTempBar').style.background = tempColor(t);
+  }
+
+  $('gpuModel').textContent = model;
+  $('gpuLoaded').textContent = loaded ? 'YES' : 'NO';
+  $('gpuLoaded').style.color = loaded ? 'var(--nerv-green)' : 'var(--nerv-red)';
+
+  // Log events on transitions
+  if (isActive && !prevActive) {
+    addLog('GEN', `GENERATING >> ${gen.request_id || '...'}`, 'var(--nerv-orange)');
+  }
+  if (!isActive && prevActive && gen.tokens_generated > 0) {
+    addLog('DONE', `${gen.tokens_generated} tokens @ ${gen.tokens_per_second} tok/s in ${gen.elapsed_s}s`, 'var(--nerv-green)');
+  }
+  if (gpu && gpu.temperature_c > 82 && (!prevActive || gen.tokens_generated % 50 === 0)) {
+    addLog('WARN', `GPU TEMP ${gpu.temperature_c}C`, 'var(--nerv-red)');
+  }
+
+  prevActive = isActive;
+  prevTokens = gen.tokens_generated || 0;
+}
+
+function setOffline() {
+  if (!connected) return;
+  connected = false;
+  $('connDot').className = 'connection-dot off';
+  $('connLabel').textContent = 'DISCONNECTED';
+  $('connLabel').style.color = 'var(--nerv-red)';
+  $('statusState').textContent = 'OFFLINE';
+  $('statusState').className = 'status-state offline';
+  $('statusSub').textContent = 'Wrapper not responding';
+  $('statusPanel').className = 'panel';
+  $('pulseBar').className = 'pulse-bar';
+  $('warningBar').className = 'warning-bar';
+  addLog('ERR', 'Connection lost to wrapper', 'var(--nerv-red)');
+}
+
+// ── Polling ───────────────────────────
+async function poll() {
+  try {
+    const res = await fetch(POLL_URL);
+    const data = await res.json();
+    update(data);
+  } catch (e) {
+    setOffline();
+  }
+}
+
+// ── Init ──────────────────────────────
+$('dateLabel').textContent = new Date().toLocaleDateString();
+addLog('SYS', 'EXOCORTEX MONITOR ONLINE', 'var(--nerv-cyan)');
+addLog('SYS', 'Polling ' + POLL_URL, 'var(--text-dim)');
+
+setInterval(updateUptime, 1000);
+setInterval(poll, POLL_MS);
+poll();
+</script>
+</body>
+</html>

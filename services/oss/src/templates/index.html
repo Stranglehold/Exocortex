@@ -4,1242 +4,865 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OSS — Operational Signal Store</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body x-data="app()" x-init="init()">
 
-<!-- ── Toast ────────────────────────────────────────────────── -->
-<div x-show="toast.visible"
-     :class="'toast ' + toast.type"
-     x-text="toast.message"
-     x-transition
-     style="display:none"></div>
+<!-- ── Toast ──────────────────────────────────────────────────────── -->
+<div class="toast" :class="[toast.type, toast.visible ? 'visible' : '']">
+  <span x-text="toast.message"></span>
+</div>
 
-<!-- ── Header ───────────────────────────────────────────────── -->
-<header>
-  <h1>OSS</h1>
+<!-- ── Header ─────────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-brand">
+    <span class="brand-sigil">◈</span>
+    <div>
+      <div class="brand-name">OSS</div>
+      <div class="brand-sub">Operational Signal Store</div>
+    </div>
+  </div>
 
-  <span :class="'status-pill ' + ingestStatus">
-    <span class="status-dot"></span>
-    <span x-text="ingestStatus === 'running' ? 'RUNNING' : ingestStatus === 'paused' ? 'PAUSED' : 'UNKNOWN'"></span>
-  </span>
+  <div class="header-controls">
+    <!-- Ingest status + controls -->
+    <div class="control-group">
+      <span class="ingest-pill instant" :class="ingestPaused ? 'paused' : 'running'">
+        <span class="status-dot"></span>
+        <span x-text="ingestPaused ? 'PAUSED' : 'LIVE'"></span>
+      </span>
+      <button class="btn btn-sm"
+              x-show="!ingestPaused"
+              @click="pauseIngest()">Pause</button>
+      <button class="btn btn-sm btn-ok"
+              x-show="ingestPaused"
+              @click="resumeIngest()">▶ Resume</button>
+      <button class="btn btn-sm"
+              :disabled="ingestRunning"
+              @click="runIngestNow()"
+              x-text="ingestRunning ? 'Running…' : '⟳ Run Now'">
+      </button>
+    </div>
 
-  <button class="btn btn-sm" @click="pauseIngest()"
-          x-show="ingestStatus === 'running'">Pause</button>
-  <button class="btn btn-sm btn-green" @click="resumeIngest()"
-          x-show="ingestStatus !== 'running'">Resume</button>
-  <button class="btn btn-sm" @click="runIngestNow()" :disabled="ingestRunning">
-    <span x-text="ingestRunning ? 'Running...' : 'Run Now'"></span>
-  </button>
+    <div class="header-divider"></div>
 
-  <span class="header-divider"></span>
+    <!-- Health summary -->
+    <div class="control-group" x-show="health">
+      <span class="health-stat">
+        <span class="mono" x-text="(health?.claims?.staged ?? 0).toLocaleString()"></span>
+        <span class="dim">staged</span>
+      </span>
+      <span class="health-stat">
+        <span class="mono ok" x-text="(health?.claims?.promoted ?? 0).toLocaleString()"></span>
+        <span class="dim">promoted</span>
+      </span>
+      <span class="health-stat"
+            :class="(health?.source_health?.failing ?? 0) > 0 ? 'danger' : ''">
+        <span class="mono" x-text="health?.sources_count ?? 0"></span>
+        <span class="dim">sources</span>
+      </span>
+    </div>
 
-  <span class="status-label text-dim text-sm">SWARMFISH</span>
-  <button class="btn btn-sm"
-          :class="swarmfish.active ? 'btn-green' : ''"
-          :disabled="swarmfish.toggling || swarmfish.unavailable"
-          @click="toggleSwarmfish()"
-          :title="swarmfish.unavailable ? 'SWARMFISH unavailable' : (swarmfish.active ? 'Monitor running — click to pause' : 'Monitor paused — click to enable')"
-          x-text="swarmfish.toggling ? '...' : (swarmfish.active ? 'Monitor ON' : 'Monitor OFF')">
-  </button>
-  <button class="btn btn-sm"
-          :disabled="swarmfish.running || swarmfish.unavailable"
-          @click="runSwarmfishNow()"
-          :title="swarmfish.last_run ? 'Last: ' + shortDate(swarmfish.last_run.at) + ' · topics=' + swarmfish.last_run.topics_checked + ' hypotheses=' + swarmfish.last_run.hypotheses_posted : 'No cycle run yet'"
-          x-text="swarmfish.running ? 'Running...' : 'Run Now'">
-  </button>
+    <div class="header-divider"></div>
 
-  <span class="header-spacer"></span>
-
-  <span x-show="operatorState.alert_level"
-        :class="'operator-badge ' + (operatorState.alert_level || 'nominal').toLowerCase()"
-        x-text="operatorState.alert_level || 'NOMINAL'"></span>
-
-  <span class="text-dim text-sm" x-text="healthStats"></span>
+    <!-- Operator state badge -->
+    <span class="operator-badge"
+          :class="(operatorState?.alert_level ?? 'nominal').toLowerCase()"
+          x-text="operatorState?.alert_level ?? 'NOMINAL'"></span>
+  </div>
 </header>
 
-<!-- ── Nav ──────────────────────────────────────────────────── -->
-<nav>
-  <template x-for="tab in tabs" :key="tab.id">
-    <button :class="activeTab === tab.id ? 'active' : ''"
-            @click="switchTab(tab.id)"
-            x-text="tab.label"></button>
-  </template>
+<!-- ── Tab Nav ─────────────────────────────────────────────────────── -->
+<nav class="tab-nav">
+  <button class="tab-btn" :class="tab === 'feed'        ? 'active' : ''" @click="switchTab('feed')">Feed</button>
+  <button class="tab-btn" :class="tab === 'triage'      ? 'active' : ''" @click="switchTab('triage')">Triage</button>
+  <button class="tab-btn" :class="tab === 'ledger'      ? 'active' : ''" @click="switchTab('ledger')">Ledger</button>
+  <button class="tab-btn" :class="tab === 'analysis'    ? 'active' : ''" @click="switchTab('analysis')">Analysis</button>
+  <button class="tab-btn" :class="tab === 'hypotheses'  ? 'active' : ''" @click="switchTab('hypotheses')">Hypotheses</button>
+  <button class="tab-btn" :class="tab === 'predict'     ? 'active' : ''" @click="switchTab('predict')">
+    <span>Predict</span>
+    <span class="tab-badge">SWARMFISH</span>
+  </button>
+  <div class="tab-filler"></div>
+  <div class="topic-selector">
+    <span class="dim mono" style="font-size:11px;">Topic:</span>
+    <select class="select-sm" x-model="globalTopic" @change="onTopicChange()">
+      <option value="">— All —</option>
+      <template x-for="t in topics" :key="t.tag ?? t">
+        <option :value="t.tag ?? t" x-text="t.tag ?? t"></option>
+      </template>
+    </select>
+  </div>
 </nav>
 
-<!-- ── Main ─────────────────────────────────────────────────── -->
-<main>
+<!-- ── Main Content ────────────────────────────────────────────────── -->
+<main class="app-main">
 
-  <!-- ── FEED ─────────────────────────────────────────────── -->
-  <div id="tab-feed" class="view" :class="activeTab === 'feed' ? 'active' : ''">
-    <div class="section-header">
-      <h2>Feed</h2>
-      <select x-model="feedTopic" @change="loadFeed()" style="width:180px">
-        <option value="">— All topics —</option>
-        <template x-for="t in topics" :key="t.tag">
-          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
-        </template>
-      </select>
-      <button class="btn btn-sm" @click="loadFeed()">Refresh</button>
-      <span class="text-dim text-sm" x-text="feedClaims.length + ' claims'"></span>
-    </div>
-
-    <div x-show="feedLoading" class="loading">Loading claims...</div>
-
-    <div x-show="!feedLoading && feedClaims.length === 0" class="empty">
-      No claims found for this topic.
-    </div>
-
-    <template x-for="c in feedClaims" :key="c.id">
-      <div :class="'claim-card ' + (c.trust_level || 'staged').toLowerCase()">
-        <div class="claim-text" x-text="c.claim_text"></div>
-        <div class="claim-meta">
-          <span class="cluster-badge" x-text="c.cluster || '?'"></span>
-          <span :class="'tech-badge ' + (c.technique_class || 'none')"
-                x-text="c.technique_class || 'none'"></span>
-          <span :class="'trust-badge ' + (c.trust_level || 'staged').toLowerCase()"
-                x-text="c.trust_level || 'STAGED'"></span>
-          <span x-text="c.source_name"></span>
-          <span x-show="c.published_at" x-text="shortDate(c.published_at)"></span>
-          <a x-show="c.article_url && !c.article_url.startsWith('manual')"
-             :href="c.article_url" target="_blank" rel="noopener" class="text-sm">↗</a>
-        </div>
-      </div>
-    </template>
+  <!-- Error banner -->
+  <div class="error-banner" x-show="error">
+    <span>⚠</span>
+    <span x-text="error"></span>
+    <button @click="error = null">✕</button>
   </div>
 
-  <!-- ── STAGING ──────────────────────────────────────────── -->
-  <div id="tab-staging" class="view" :class="activeTab === 'staging' ? 'active' : ''">
-    <div class="section-header">
-      <h2>Staging Queue</h2>
-      <select x-model="stagingTopic" @change="loadStaging()" style="width:180px">
-        <option value="">— All topics —</option>
-        <template x-for="t in topics" :key="t.tag">
-          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
-        </template>
-      </select>
-      <button class="btn btn-sm" @click="loadStaging()">Refresh</button>
-      <span class="text-dim text-sm" x-text="stagingClaims.length + ' awaiting review'"></span>
+  <!-- ── FEED TAB ───────────────────────────────────────────────────── -->
+  <div class="view" :class="tab === 'feed' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">Signal Feed</h2>
+      <span class="view-subtitle" x-text="feed.length.toLocaleString() + ' claims'"></span>
+      <div class="view-controls">
+        <select class="select-sm" x-model="feedTrustFilter" @change="renderFeed()">
+          <option value="">All trust levels</option>
+          <option value="STAGED">Staged</option>
+          <option value="PROMOTED">Promoted</option>
+        </select>
+        <button class="btn btn-sm" @click="loadFeed()">↻ Refresh</button>
+      </div>
     </div>
 
-    <div x-show="stagingLoading" class="loading">Loading staging queue...</div>
-    <div x-show="!stagingLoading && stagingClaims.length === 0" class="empty">
-      No staged claims.
-    </div>
-
-    <template x-for="c in stagingClaims" :key="c.id">
-      <div class="card">
-        <div class="claim-text" x-text="c.claim_text"></div>
-        <div class="claim-meta mt-8">
-          <span class="cluster-badge" x-text="c.cluster || '?'"></span>
-          <span :class="'tech-badge ' + (c.technique_class || 'none')"
-                x-text="c.technique_class || 'none'"></span>
-          <span :class="'trust-badge ' + (c.trust_level || 'staged').toLowerCase()"
-                x-text="c.trust_level || 'STAGED'"></span>
-          <span x-text="c.source_name"></span>
-          <span class="text-dim" x-text="'conf: ' + pct(c.staging_confidence)"></span>
-        </div>
-
-        <!-- Promote / Irrelevant / Return buttons -->
-        <div class="flex-center mt-8 gap-6">
-          <button class="btn btn-sm btn-green"
-                  @click="c._showPromote = !c._showPromote"
-                  x-text="c._showPromote ? 'Cancel' : 'Promote'"></button>
-          <button class="btn btn-sm btn-red"
-                  x-show="c.trust_level === 'STAGED' || c.trust_level === 'RETURNED_TO_STAGED'"
-                  @click="markIrrelevant(c.id)">× Irrelevant</button>
-          <button class="btn btn-sm"
-                  x-show="c.trust_level === 'PROMOTED'"
-                  @click="returnToStaged(c.id)">Return</button>
-        </div>
-
-        <!-- Inline promote form -->
-        <div class="promote-form mt-8" x-show="c._showPromote">
-          <label>Confidence: <span x-text="pct(c._promoteConf || 0.8)"></span></label>
-          <input type="range" min="0" max="1" step="0.01"
-                 x-model="c._promoteConf" :value="c._promoteConf || 0.8">
-          <div class="flex-center mt-8 gap-6">
-            <button class="btn btn-sm btn-primary"
-                    @click="promoteClaim(c)">Promote</button>
+    <div class="claim-grid">
+      <template x-if="feed.length === 0 && !loading">
+        <div class="empty-state">No claims match the current filter</div>
+      </template>
+      <template x-for="c in feedDisplay" :key="c.id">
+        <article class="claim-card">
+          <div class="claim-header">
+            <span class="source-name" x-text="c.source_name ?? '—'"></span>
+            <span class="claim-date mono" x-text="fmtDate(c.published_at ?? c.extracted_at)"></span>
+            <span class="trust-pill" :class="(c.trust_level ?? '').toLowerCase()"
+                  x-text="c.trust_level"></span>
+            <span class="technique-pill" x-text="techniqueLabel(c.technique_class)"></span>
           </div>
-        </div>
-      </div>
-    </template>
-  </div>
-
-  <!-- ── TOPICS ───────────────────────────────────────────── -->
-  <div id="tab-topics" class="view" :class="activeTab === 'topics' ? 'active' : ''">
-    <div class="add-form">
-      <h3>Add Topic</h3>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Tag (slug)</label>
-          <input type="text" x-model="newTopic.tag" placeholder="e.g. iran-nuclear">
-        </div>
-        <div class="form-field">
-          <label>Display Name</label>
-          <input type="text" x-model="newTopic.display_name" placeholder="Iran Nuclear">
-        </div>
-        <div class="form-field">
-          <label>Description</label>
-          <input type="text" x-model="newTopic.description" placeholder="Optional">
-        </div>
-        <div class="form-field" style="flex:0">
-          <label>&nbsp;</label>
-          <button class="btn btn-primary" @click="addTopic()">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <table class="topics-table">
-      <thead>
-        <tr>
-          <th>Tag</th>
-          <th>Display Name</th>
-          <th>Claims</th>
-          <th>Irrelevance %</th>
-          <th>Scrape Weight</th>
-          <th>Last Active</th>
-          <th>Parent</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template x-for="t in topics" :key="t.tag">
-          <tr>
-            <td><code style="font-size:12px" x-text="t.tag"></code></td>
-            <td x-text="t.display_name || '—'"></td>
-            <td x-text="t.claim_count"></td>
-            <td>
-              <span x-show="t.total_staged_count >= 10"
-                    x-text="pct(t.irrelevance_count / t.total_staged_count)"
-                    :style="'color:' + (t.irrelevance_count / t.total_staged_count > 0.5 ? 'var(--red)' : t.irrelevance_count / t.total_staged_count > 0.25 ? 'var(--yellow)' : 'var(--green)')">
-              </span>
-              <span x-show="t.total_staged_count < 10" class="text-dim text-sm">—</span>
-            </td>
-            <td>
-              <div class="scrape-weight-bar">
-                <div class="scrape-weight-fill"
-                     :style="'width:' + Math.round((t.scrape_weight || 1.0) * 100) + '%;background:' + scrapeWeightColor(t.scrape_weight || 1.0)">
-                </div>
-                <span x-text="Math.round((t.scrape_weight || 1.0) * 100) + '%'"></span>
-              </div>
-            </td>
-            <td x-text="shortDate(t.last_active)"></td>
-            <td x-text="t.parent_tag || '—'"></td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ── SOURCES ──────────────────────────────────────────── -->
-  <div id="tab-sources" class="view" :class="activeTab === 'sources' ? 'active' : ''">
-
-    <!-- Add RSS Source form -->
-    <div class="add-form">
-      <h3>Add RSS Source</h3>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Name</label>
-          <input type="text" x-model="newSource.name" placeholder="e.g. Reuters">
-        </div>
-        <div class="form-field" style="flex:2">
-          <label>Feed URL</label>
-          <input type="url" x-model="newSource.url" placeholder="https://...">
-        </div>
-        <div class="form-field" style="flex:0;min-width:120px">
-          <label>Type</label>
-          <select x-model="newSource.source_type">
-            <option value="outlet">outlet</option>
-            <option value="wire">wire</option>
-            <option value="official">official</option>
-            <option value="social">social</option>
-          </select>
-        </div>
-        <div class="form-field" style="flex:0;min-width:140px">
-          <label>Cluster</label>
-          <select x-model="newSource.cluster">
-            <option value="left">left</option>
-            <option value="center">center</option>
-            <option value="right">right</option>
-            <option value="wire">wire</option>
-            <option value="official">official</option>
-            <option value="independent">independent</option>
-            <option value="international">international</option>
-          </select>
-        </div>
-        <div class="form-field" style="flex:0;min-width:160px">
-          <label>Confidence: <span x-text="pct(newSource.confidence_score)"></span></label>
-          <input type="range" min="0" max="1" step="0.05" x-model="newSource.confidence_score">
-        </div>
-        <div class="form-field" style="flex:0">
-          <label>&nbsp;</label>
-          <button class="btn btn-primary" @click="addSource()">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- RSS Sources table -->
-    <div class="section-header" style="margin-top:16px">
-      <h3>RSS Sources</h3>
-      <button class="btn btn-sm" @click="loadSources()">Refresh</button>
-      <span class="text-dim text-sm" x-text="sources.length + ' sources'"></span>
-    </div>
-    <div x-show="sourcesLoading" class="loading">Loading sources...</div>
-    <table class="topics-table" x-show="!sourcesLoading">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Cluster</th>
-          <th>Type</th>
-          <th>Confidence</th>
-          <th>Claims</th>
-          <th>Feed URL</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template x-for="s in sources" :key="s.id">
-          <tr>
-            <td x-text="s.name"></td>
-            <td><span class="cluster-badge" x-text="s.cluster"></span></td>
-            <td><span class="tech-badge none" x-text="s.source_type"></span></td>
-            <td>
-              <div class="scrape-weight-bar">
-                <div class="scrape-weight-fill"
-                     :style="'width:' + Math.round((s.confidence_score || 0) * 100) + '%;background:var(--accent)'">
-                </div>
-                <span x-text="pct(s.confidence_score)"></span>
-              </div>
-            </td>
-            <td x-text="s.total_claims"></td>
-            <td><a :href="s.url" target="_blank" rel="noopener" class="text-sm text-dim" x-text="s.url.length > 50 ? s.url.slice(0,50)+'…' : s.url"></a></td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
-
-    <!-- Social Monitors section -->
-    <div class="add-form" style="margin-top:24px">
-      <h3>Social Monitors (X/Twitter)</h3>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Name</label>
-          <input type="text" x-model="newMonitor.display_name" placeholder="e.g. Iran Hormuz Watch">
-        </div>
-        <div class="form-field" style="flex:2">
-          <label>Search Query</label>
-          <input type="text" x-model="newMonitor.query" placeholder="e.g. iran strait hormuz">
-        </div>
-        <div class="form-field" style="flex:0;min-width:120px">
-          <label>Type</label>
-          <select x-model="newMonitor.monitor_type">
-            <option value="search">search</option>
-            <option value="hashtag">hashtag</option>
-            <option value="user">user</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Topic Tags (comma-sep)</label>
-          <input type="text" x-model="newMonitor.topic_tags" placeholder="iran-hormuz, iran">
-        </div>
-        <div class="form-field" style="flex:0;min-width:120px">
-          <label>Interval (min)</label>
-          <input type="number" x-model="newMonitor.interval_minutes" min="15" max="1440" style="width:80px">
-        </div>
-        <div class="form-field" style="flex:0">
-          <label>&nbsp;</label>
-          <button class="btn btn-primary" @click="addSocialMonitor()">Add</button>
-        </div>
-      </div>
-    </div>
-
-    <div x-show="monitorsLoading" class="loading">Loading monitors...</div>
-    <div x-show="!monitorsLoading && socialMonitors.length === 0" class="empty" style="margin-top:8px">
-      No social monitors configured. Add one above.
-    </div>
-
-    <template x-for="m in socialMonitors" :key="m.id">
-      <div class="card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1;min-width:160px">
-          <div style="font-weight:600" x-text="m.display_name"></div>
-          <div class="text-dim text-sm" x-text="'query: ' + m.query"></div>
-        </div>
-        <span class="tech-badge none" x-text="m.monitor_type"></span>
-        <template x-for="tag in (m.topic_tags || [])" :key="tag">
-          <span class="cluster-badge" x-text="tag"></span>
-        </template>
-        <span class="text-dim text-sm" x-text="m.interval_minutes + 'min'"></span>
-        <span class="text-dim text-sm" x-text="m.last_run_at ? 'last: ' + shortDate(m.last_run_at) : 'never run'"></span>
-        <span class="text-dim text-sm" x-text="m.result_count + ' ingested'"></span>
-        <button class="btn btn-sm btn-primary" @click="xSearchNow(m)">Search Now</button>
-        <button class="btn btn-sm" @click="toggleMonitor(m)">
-          <span x-text="m.active ? 'Pause' : 'Resume'"></span>
-        </button>
-        <button class="btn btn-sm btn-red" @click="deleteMonitor(m.id)">×</button>
-      </div>
-    </template>
-
-  </div>
-
-  <!-- ── CONTRADICTIONS ───────────────────────────────────── -->
-  <div id="tab-contradictions" class="view" :class="activeTab === 'contradictions' ? 'active' : ''">
-    <div class="section-header">
-      <h2>Contradictions</h2>
-      <select x-model="contradTopic" @change="loadContradictions()" style="width:180px">
-        <option value="">— All topics —</option>
-        <template x-for="t in topics" :key="t.tag">
-          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
-        </template>
-      </select>
-      <button class="btn btn-sm" @click="loadContradictions()">Refresh</button>
-      <span class="text-dim text-sm" x-text="contradictions.length + ' pairs'"></span>
-    </div>
-
-    <div x-show="contradLoading" class="loading">Loading contradictions...</div>
-    <div x-show="!contradLoading && contradictions.length === 0" class="empty">
-      No contradictions found.
-    </div>
-
-    <template x-for="(p, idx) in contradictions" :key="p.id || idx">
-      <div class="contradiction-row" @click="p._expanded = !p._expanded">
-        <div class="flex-center">
-          <span :class="'rel-badge ' + (p.relationship || 'contradiction')"
-                x-text="p.relationship || 'contradiction'"></span>
-          <span class="text-dim text-sm"
-                x-text="'conf: ' + pct(p.confidence)"></span>
-          <span class="text-dim text-sm" x-text="shortDate(p.flagged_at)"></span>
-          <span class="text-dim text-sm" x-text="p.source_name"></span>
-          <span class="header-spacer"></span>
-          <span class="text-dim text-sm" x-text="p._expanded ? '▲' : '▼'"></span>
-        </div>
-        <div class="claim-text mt-8" style="font-size:12px;color:var(--text-dim)"
-             x-text="truncate(p.claim_a_text, 120) + ' / ' + truncate(p.claim_b_text, 80)"></div>
-
-        <div class="contradiction-expanded" x-show="p._expanded">
-          <div class="claim-side">
-            <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px">CLAIM A</div>
-            <span x-text="p.claim_a_text"></span>
+          <p class="claim-text" x-text="c.claim_text"></p>
+          <div class="claim-footer" x-show="c.article_url">
+            <a :href="c.article_url" target="_blank" class="source-link">↗ <span x-text="c.article_title ?? 'source'"></span></a>
           </div>
-          <div class="claim-side">
-            <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:4px">CLAIM B</div>
-            <span x-text="p.claim_b_text"></span>
-          </div>
-        </div>
-      </div>
-    </template>
-  </div>
-
-  <!-- ── SILENCES ─────────────────────────────────────────── -->
-  <div id="tab-silences" class="view" :class="activeTab === 'silences' ? 'active' : ''">
-    <div class="section-header">
-      <h2>Silences</h2>
-      <select x-model="silenceTopic" @change="loadSilences()" style="width:180px">
-        <option value="">— Select topic —</option>
-        <template x-for="t in topics" :key="t.tag">
-          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
-        </template>
-      </select>
-      <button class="btn btn-sm" @click="loadSilences()">Refresh</button>
-      <span class="text-dim text-sm" x-text="silenceFlags.length + ' flags'"></span>
-    </div>
-
-    <div x-show="!silenceTopic" class="empty">Select a topic to view silence flags.</div>
-    <div x-show="silenceTopic && silenceLoading" class="loading">Loading silence flags...</div>
-    <div x-show="silenceTopic && !silenceLoading && silenceFlags.length === 0" class="empty">
-      No silence flags for this topic.
-    </div>
-
-    <template x-for="(f, i) in silenceFlags" :key="i">
-      <div class="silence-card">
-        <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="f.element"></div>
-        <div class="claim-meta mt-8">
-          <span class="text-dim text-sm">Present:</span>
-          <template x-for="cl in (f.present_in_clusters || [])" :key="cl">
-            <span class="cluster-badge" style="border-color:var(--green);color:var(--green)" x-text="cl"></span>
-          </template>
-          <span class="text-dim text-sm" x-show="(f.present_in_clusters || []).length === 0">none</span>
-        </div>
-        <div class="claim-meta mt-8">
-          <span class="text-dim text-sm">Absent:</span>
-          <template x-for="cl in (f.absent_from_clusters || [])" :key="cl">
-            <span class="cluster-badge" style="border-color:var(--red);color:var(--red)" x-text="cl"></span>
-          </template>
-        </div>
-        <div class="claim-meta mt-8">
-          <span class="text-dim text-sm" x-text="'method: ' + f.detection_method"></span>
-          <span class="text-dim text-sm" x-text="shortDate(f.first_detected)"></span>
-        </div>
-      </div>
-    </template>
-  </div>
-
-  <!-- ── ACTIVATIONS ──────────────────────────────────────── -->
-  <div id="tab-activations" class="view" :class="activeTab === 'activations' ? 'active' : ''">
-    <div class="section-header">
-      <h2>Activations</h2>
-      <select x-model="activationTopic" @change="loadActivations()" style="width:180px">
-        <option value="">— All topics —</option>
-        <template x-for="t in topics" :key="t.tag">
-          <option :value="t.tag" x-text="t.display_name || t.tag"></option>
-        </template>
-      </select>
-      <button class="btn btn-sm" @click="loadActivations()">Refresh</button>
-      <span class="text-dim text-sm" x-text="activationPatterns.length + ' patterns'"></span>
-    </div>
-
-    <div x-show="activationLoading" class="loading">Loading activation patterns...</div>
-    <div x-show="!activationLoading && activationPatterns.length === 0" class="empty">
-      No activation patterns found.
-    </div>
-
-    <template x-for="(p, i) in activationPatterns" :key="i">
-      <div class="activation-card">
-        <div class="flex-center" style="margin-bottom:8px">
-          <span class="spread-bar">&#9888; <span x-text="p.cluster_spread"></span> clusters</span>
-          <span :class="'tech-badge ' + (p.technique_class || 'none')"
-                x-text="p.technique_class || 'none'"></span>
-          <span class="text-dim text-sm" x-text="p.topic_tag"></span>
-          <span class="header-spacer"></span>
-          <span class="text-dim text-sm"
-                x-text="shortDate(p.first_seen) + ' → ' + shortDate(p.last_seen)"></span>
-        </div>
-        <div class="claim-text" x-text="p.claim_pattern"></div>
-        <div class="cluster-list mt-8">
-          <template x-for="cl in (p.clusters_present || [])" :key="cl">
-            <span class="cluster-badge" x-text="cl"></span>
-          </template>
-        </div>
-        <div class="claim-meta mt-8">
-          <span class="text-dim text-sm" x-text="p.claim_count + ' claims'"></span>
-          <span class="text-dim text-sm" x-text="p.window_minutes + 'm window'"></span>
-        </div>
-      </div>
-    </template>
-  </div>
-
-  <!-- ── HYPOTHESES ───────────────────────────────────────── -->
-  <div id="tab-hypotheses" class="view" :class="activeTab === 'hypotheses' ? 'active' : ''">
-
-    <!-- Register form -->
-    <div class="add-form">
-      <h3>Register Hypothesis</h3>
-      <div class="form-row">
-        <div class="form-field" style="flex:0;min-width:120px">
-          <label>Observation ID</label>
-          <input type="text" x-model="newHyp.observation_id" placeholder="123">
-        </div>
-        <div class="form-field">
-          <label>Explanation</label>
-          <textarea x-model="newHyp.explanation" rows="2" placeholder="What explains the observation?"></textarea>
-        </div>
-        <div class="form-field" style="flex:0;min-width:100px">
-          <label>Initial Conf</label>
-          <input type="text" x-model="newHyp.initial_confidence" placeholder="0.0">
-        </div>
-        <div class="form-field" style="flex:0">
-          <label>&nbsp;</label>
-          <button class="btn btn-primary" @click="registerHypothesis()">Register</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filter tabs -->
-    <div class="filter-tabs">
-      <template x-for="s in ['ACTIVE','PROMOTED','FALSIFIED','all']" :key="s">
-        <button :class="'filter-tab ' + (hypFilter === s ? 'active' : '')"
-                @click="hypFilter = s; loadHypotheses()"
-                x-text="s"></button>
+        </article>
       </template>
     </div>
-
-    <div x-show="hypLoading" class="loading">Loading hypotheses...</div>
-    <div x-show="!hypLoading && hypotheses.length === 0" class="empty">No hypotheses found.</div>
-
-    <template x-for="h in hypotheses" :key="h.id">
-      <div :class="'hyp-card ' + (h.status || 'active').toLowerCase()">
-        <!-- Header row -->
-        <div class="flex-center" style="margin-bottom:6px">
-          <span :class="'trust-badge ' + (h.status || 'ACTIVE').toLowerCase()"
-                x-text="h.status || 'ACTIVE'"></span>
-          <span x-show="h.auto_generated" class="tech-badge emergent" title="Generated by SWARMFISH monitor">auto</span>
-          <span class="text-dim text-sm"
-                x-text="h.observation_label || ('obs #' + h.observation_id)"></span>
-          <span class="header-spacer"></span>
-          <span class="text-dim text-sm"
-                x-text="pct(h.current_confidence) + ' confidence · ' + (h.predictions_confirmed || 0) + '/' + (h.predictions || []).length + ' predictions confirmed'"></span>
-        </div>
-
-        <!-- Confidence bar -->
-        <div class="confidence-bar-wrap">
-          <div class="confidence-bar-fill"
-               :style="'width:' + ((h.current_confidence || 0) * 100) + '%'"></div>
-        </div>
-
-        <!-- Explanation -->
-        <div class="claim-text" x-text="h.explanation" style="margin-top:6px"></div>
-
-        <!-- Source profiles (SWARMFISH attribution) -->
-        <template x-if="h.source_profiles && h.source_profiles.length > 0">
-          <div class="flex-center" style="margin-top:6px;gap:6px;flex-wrap:wrap">
-            <span class="text-dim text-sm">Profiles:</span>
-            <template x-for="p in (h.source_profiles || [])" :key="p.profile_name">
-              <span :class="'tech-badge ' + (p.was_dissenter ? 'fracture' : 'direct')"
-                    :title="p.was_dissenter ? 'Dissenter — deviated from consensus' : 'Consensus'"
-                    x-text="p.profile_name + ' ' + pct(p.confidence)"></span>
-            </template>
-            <a x-show="h.swarmfish_session_id"
-               :href="SWARMFISH_URL + '/acp/session/' + h.swarmfish_session_id"
-               target="_blank" class="text-sm text-dim">↗ session</a>
-          </div>
-        </template>
-
-        <!-- Predictions -->
-        <template x-for="(pred, pidx) in (h.predictions || [])" :key="pidx">
-          <div class="prediction-row">
-            <span class="text-sm" x-text="typeof pred.prediction === 'object' ? pred.prediction.condition : pred.prediction"></span>
-            <span class="header-spacer"></span>
-            <button class="btn btn-sm btn-green"
-                    x-show="h.status === 'ACTIVE'"
-                    @click="confirmPrediction(h.id, pidx)">Confirm</button>
-          </div>
-        </template>
-
-        <!-- Actions -->
-        <div class="flex-center mt-8 gap-6" x-show="h.status === 'ACTIVE'">
-          <button class="btn btn-sm btn-primary" @click="promoteHypothesis(h.id)">Promote</button>
-          <button class="btn btn-sm btn-red" @click="promptFalsify(h)">Falsify</button>
-        </div>
-        <div x-show="h.status === 'FALSIFIED'" class="text-dim text-sm mt-8"
-             x-text="'Falsified: ' + (h.falsification_evidence || '')"></div>
-
-        <!-- Falsify input -->
-        <div class="promote-form mt-8" x-show="h._falsifyOpen">
-          <label>Evidence for falsification</label>
-          <textarea x-model="h._falsifyEvidence" rows="2"
-                    placeholder="What evidence falsifies this hypothesis?"></textarea>
-          <div class="flex-center mt-8 gap-6">
-            <button class="btn btn-sm btn-red"
-                    @click="falsifyHypothesis(h)">Confirm Falsify</button>
-            <button class="btn btn-sm"
-                    @click="h._falsifyOpen = false">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </template>
   </div>
 
-</main>
+  <!-- ── TRIAGE TAB ─────────────────────────────────────────────────── -->
+  <div class="view" :class="tab === 'triage' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">Triage</h2>
+      <span class="view-subtitle" x-text="staged.length.toLocaleString() + ' staged'"></span>
+      <div class="view-controls">
+        <button class="btn btn-sm" @click="selectAll()">Select All</button>
+        <button class="btn btn-sm" @click="clearSel()">Clear</button>
+        <button class="btn btn-sm btn-ok"
+                :disabled="triageSel.length === 0"
+                @click="bulkPromote()">
+          ✓ Promote (<span x-text="triageSel.length"></span>)
+        </button>
+      </div>
+    </div>
+
+    <template x-if="staged.length === 0 && !loading">
+      <div class="empty-state">No staged claims for this topic</div>
+    </template>
+
+    <div class="claim-grid">
+      <template x-for="c in staged" :key="c.id">
+        <article class="claim-card triage-card" :class="isSel(c.id) ? 'selected' : ''">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <input type="checkbox" class="triage-check"
+                   :checked="isSel(c.id)"
+                   @change="toggleSel(c.id)">
+            <div style="flex:1;min-width:0;">
+              <div class="claim-header">
+                <span class="source-name" x-text="c.source_name ?? '—'"></span>
+                <span class="claim-date mono" x-text="fmtDate(c.published_at ?? c.extracted_at)"></span>
+                <span class="technique-pill" x-text="techniqueLabel(c.technique_class)"></span>
+                <span class="conf-val mono"
+                      x-show="c.staging_confidence != null"
+                      x-text="fmtConf(c.staging_confidence)"></span>
+              </div>
+              <p class="claim-text" x-text="c.claim_text"></p>
+            </div>
+          </div>
+        </article>
+      </template>
+    </div>
+  </div>
+
+  <!-- ── LEDGER TAB ─────────────────────────────────────────────────── -->
+  <div class="view" :class="tab === 'ledger' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">Promoted Ledger</h2>
+      <span class="view-subtitle" x-text="ledger.length.toLocaleString() + ' promoted'"></span>
+      <div class="view-controls">
+        <button class="btn btn-sm" @click="loadLedger()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="claim-grid">
+      <template x-if="ledger.length === 0 && !loading">
+        <div class="empty-state">No promoted claims</div>
+      </template>
+      <template x-for="c in ledger" :key="c.id">
+        <article class="claim-card">
+          <div class="claim-header">
+            <span class="source-name" x-text="c.source_name ?? '—'"></span>
+            <span class="cluster-tag" x-text="c.cluster ?? '—'"></span>
+            <span class="claim-date mono" x-text="fmtDate(c.published_at ?? c.extracted_at)"></span>
+            <span class="trust-pill promoted">PROMOTED</span>
+            <span class="technique-pill" x-text="techniqueLabel(c.technique_class)"></span>
+          </div>
+          <p class="claim-text" x-text="c.claim_text"></p>
+          <div class="claim-footer" x-show="c.article_url">
+            <a :href="c.article_url" target="_blank" class="source-link">
+              ↗ <span x-text="c.article_title ?? c.article_url"></span>
+            </a>
+          </div>
+        </article>
+      </template>
+    </div>
+  </div>
+
+  <!-- ── ANALYSIS TAB ───────────────────────────────────────────────── -->
+  <div class="view" :class="tab === 'analysis' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">Analysis</h2>
+      <span class="view-subtitle" x-text="globalTopic || 'Select a topic'"></span>
+      <div class="view-controls">
+        <button class="btn btn-sm btn-cyan"
+                :disabled="!globalTopic || loading"
+                @click="loadAnalysis()">
+          Analyze
+        </button>
+      </div>
+    </div>
+
+    <template x-if="!globalTopic">
+      <div class="empty-state">Select a topic from the nav to enable analysis</div>
+    </template>
+
+    <div class="analysis-grid" x-show="globalTopic">
+
+      <!-- DRIFT -->
+      <section class="analysis-card">
+        <div class="analysis-card-header">
+          <span class="analysis-card-title">Narrative Drift</span>
+          <span class="analysis-badge cyan" x-text="(drift?.claims?.length ?? 0) + ' claims / 72h'"></span>
+        </div>
+        <template x-if="drift">
+          <div>
+            <div class="metric-row">
+              <span class="metric-label">Contradictions</span>
+              <span class="metric-val" :class="(drift.contradiction_count ?? 0) > 0 ? 'danger' : 'ok'"
+                    x-text="drift.contradiction_count ?? 0"></span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Silent retractions</span>
+              <span class="metric-val" :class="(drift.silent_retcon_count ?? 0) > 0 ? 'warn' : 'ok'"
+                    x-text="drift.silent_retcon_count ?? 0"></span>
+            </div>
+          </div>
+        </template>
+        <template x-if="!drift">
+          <div class="empty-state" style="padding:20px 0;">Run analysis to load</div>
+        </template>
+      </section>
+
+      <!-- SILENCE -->
+      <section class="analysis-card">
+        <div class="analysis-card-header">
+          <span class="analysis-card-title">Silence Flags</span>
+          <span class="analysis-badge" :class="(silence?.total ?? 0) > 0 ? 'warn' : 'ok'"
+                x-text="silence?.total ?? 0"></span>
+        </div>
+        <template x-if="silence && silence.total > 0">
+          <div class="flag-list">
+            <template x-for="f in silence.flags.slice(0,6)" :key="f.id">
+              <div class="flag-item">
+                <span class="flag-element" x-text="f.element"></span>
+                <span class="flag-meta mono"
+                      x-text="'absent: ' + (f.absent_from_clusters ?? []).join(', ')"></span>
+              </div>
+            </template>
+            <div x-show="silence.total > 6" class="flag-meta"
+                 x-text="'+ ' + (silence.total - 6) + ' more'"></div>
+          </div>
+        </template>
+        <template x-if="!silence || silence.total === 0">
+          <div class="empty-state" style="padding:20px 0;">
+            <span x-text="!silence ? 'Run analysis to load' : 'No silence flags'"></span>
+          </div>
+        </template>
+      </section>
+
+      <!-- ACTIVATION -->
+      <section class="analysis-card">
+        <div class="analysis-card-header">
+          <span class="analysis-card-title">Activation Patterns</span>
+          <span class="analysis-badge" :class="(activation?.patterns?.length ?? 0) > 0 ? 'danger' : 'ok'"
+                x-text="activation?.patterns?.length ?? 0"></span>
+        </div>
+        <template x-if="activation && activation.patterns?.length > 0">
+          <div class="flag-list">
+            <template x-for="p in activation.patterns.slice(0,4)" :key="p.id">
+              <div class="flag-item">
+                <span class="flag-element" x-text="p.claim_pattern ?? p.description"></span>
+                <span class="flag-meta mono"
+                      x-text="'spread: ' + (p.cluster_spread ?? '?') + ' · ' + p.technique_class"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+        <template x-if="!activation || !activation.patterns?.length">
+          <div class="empty-state" style="padding:20px 0;">
+            <span x-text="!activation ? 'Run analysis to load' : 'No activation patterns'"></span>
+          </div>
+        </template>
+      </section>
+
+      <!-- CONTRADICTIONS -->
+      <section class="analysis-card">
+        <div class="analysis-card-header">
+          <span class="analysis-card-title">Contradictions</span>
+          <span class="analysis-badge" :class="contradictions.length > 0 ? 'danger' : 'ok'"
+                x-text="contradictions.length"></span>
+        </div>
+        <template x-if="contradictions.length > 0">
+          <div class="contradiction-list">
+            <template x-for="p in contradictions.slice(0,4)" :key="p.id">
+              <div class="contradiction-item">
+                <div class="contradiction-rel mono" x-text="p.relationship"></div>
+                <div class="contradiction-a" x-text="(p.claim_a_text ?? '').substring(0, 100) + '…'"></div>
+                <div class="contradiction-vs">vs.</div>
+                <div class="contradiction-b" x-text="(p.claim_b_text ?? '').substring(0, 100) + '…'"></div>
+                <div class="flag-meta mono" x-text="p.source_name + ' · ' + fmtDate(p.flagged_at)"></div>
+              </div>
+            </template>
+          </div>
+        </template>
+        <template x-if="contradictions.length === 0">
+          <div class="empty-state" style="padding:20px 0;">No contradictions loaded</div>
+        </template>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ── HYPOTHESES TAB ─────────────────────────────────────────────── -->
+  <div class="view" :class="tab === 'hypotheses' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">Hypotheses</h2>
+      <span class="view-subtitle">Chamberlin multiple-hypothesis method</span>
+      <div class="view-controls">
+        <template x-for="s in ['ACTIVE','PROMOTED','FALSIFIED','SUSPENDED']" :key="s">
+          <button class="btn btn-sm" :class="hypStatus === s ? 'btn-cyan' : ''"
+                  @click="setHypStatus(s)" x-text="s.charAt(0) + s.slice(1).toLowerCase()">
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <template x-if="hypotheses.length === 0 && !loading">
+      <div class="empty-state">No <span x-text="hypStatus.toLowerCase()"></span> hypotheses</div>
+    </template>
+
+    <div class="hyp-grid">
+      <template x-for="h in hypotheses" :key="h.hypothesis_id ?? h.id">
+        <article class="hyp-card ai-content">
+          <div class="hyp-card-header">
+            <span class="hyp-id mono" x-text="'#' + (h.hypothesis_id ?? h.id)"></span>
+            <span class="status-pill" :class="(h.status ?? '').toLowerCase()"
+                  x-text="h.status"></span>
+            <div class="hyp-header-spacer"></div>
+            <span class="hyp-conf mono" x-text="fmtConf(h.current_confidence)"></span>
+          </div>
+
+          <p class="hyp-explanation" x-text="h.candidate_explanation ?? h.explanation"></p>
+
+          <!-- Confidence bar -->
+          <div class="conf-bar-track">
+            <div class="conf-bar-fill" :style="'width:' + confBarW(h.current_confidence)"></div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="hyp-stats mono">
+            <span x-text="(h.predictions_generated?.length ?? 0) + ' predictions'"></span>
+            <span>·</span>
+            <span x-text="(h.predictions_confirmed ?? 0) + ' confirmed'"></span>
+            <span>·</span>
+            <span x-text="'obs #' + (h.observation_id ?? '—')"></span>
+          </div>
+
+          <!-- Falsification evidence (for FALSIFIED) -->
+          <template x-if="h.status === 'FALSIFIED' && h.falsification_evidence">
+            <div class="falsification-evidence">
+              <span class="mono" style="font-size:10px;color:var(--danger);">FALSIFIED BY:</span>
+              <p x-text="h.falsification_evidence"></p>
+            </div>
+          </template>
+
+          <!-- Actions (only for ACTIVE) -->
+          <template x-if="h.status === 'ACTIVE'">
+            <div class="hyp-actions">
+              <button class="btn btn-sm btn-ok"
+                      @click="promoteHyp(h.hypothesis_id ?? h.id)">Promote</button>
+              <button class="btn btn-sm btn-danger"
+                      @click="falsifyHyp(h.hypothesis_id ?? h.id)">Falsify</button>
+              <button class="btn btn-sm"
+                      @click="suspendHyp(h.hypothesis_id ?? h.id)">Suspend</button>
+            </div>
+          </template>
+
+          <!-- Timestamps -->
+          <div class="hyp-meta mono">
+            <span x-text="'Created: ' + fmtDate(h.created_at)"></span>
+            <template x-if="h.falsified_at">
+              <span x-text="' · Falsified: ' + fmtDate(h.falsified_at)"></span>
+            </template>
+          </div>
+        </article>
+      </template>
+    </div>
+  </div>
+
+  <!-- ── PREDICT TAB (SWARMFISH) ────────────────────────────────────── -->
+  <div class="view" :class="tab === 'predict' ? 'active' : ''">
+    <div class="view-header">
+      <h2 class="view-title">SWARMFISH</h2>
+      <span class="view-subtitle">Structured committee prediction</span>
+      <div class="view-controls">
+        <select class="select-sm" x-model="predictTopic">
+          <option value="">— Select topic —</option>
+          <template x-for="t in topics" :key="t.tag ?? t">
+            <option :value="t.tag ?? t" x-text="t.tag ?? t"></option>
+          </template>
+        </select>
+        <button class="btn btn-cyan"
+                :disabled="swfRunning || !predictTopic"
+                @click="runPredict()">
+          <span x-show="swfRunning" class="spinner"></span>
+          <span x-text="swfRunning ? 'Running…' : '▶ Run Predict'"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="predict-layout">
+
+      <!-- Consensus panel -->
+      <template x-if="swfConsensus">
+        <div class="consensus-panel">
+          <div class="consensus-header">
+            <div class="consensus-val"
+                 x-text="Math.round((swfConsensus.consensus_probability ?? 0) * 100) + '%'">
+            </div>
+            <div class="consensus-meta">
+              <div class="consensus-label mono">CONSENSUS</div>
+              <div class="consensus-range mono"
+                   x-text="'Range: ' + Math.round((swfConsensus.range_low ?? 0)*100)
+                            + '–' + Math.round((swfConsensus.range_high ?? 0)*100) + '%'">
+              </div>
+              <div class="consensus-confidence mono"
+                   x-text="swfConsensus.meta_confidence ?? ''"></div>
+            </div>
+          </div>
+          <template x-if="swfConsensus.operator_brief">
+            <div class="consensus-brief ai-content">
+              <div class="ai-label mono">OPERATOR BRIEF</div>
+              <p x-text="swfConsensus.operator_brief"></p>
+            </div>
+          </template>
+          <div class="consensus-actions">
+            <button class="btn btn-sm btn-cyan"
+                    @click="postConsensusAsHypothesis()"
+                    x-show="swfConsensus.operator_brief">
+              Post as Hypothesis
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Profile cards grid -->
+      <div class="profile-grid">
+        <template x-if="swfProfiles.length === 0 && !swfRunning">
+          <div class="empty-state">
+            Select a topic and run predict to generate committee assessments
+          </div>
+        </template>
+
+        <template x-if="swfRunning && swfProfiles.length === 0">
+          <div class="empty-state">
+            <span class="spinner"></span>
+            Querying profiles…
+          </div>
+        </template>
+
+        <template x-for="p in swfProfiles" :key="p.profile_id ?? p.name">
+          <div class="profile-card">
+            <div class="profile-card-header">
+              <div>
+                <div class="profile-name mono" x-text="p.profile_name ?? p.name"></div>
+                <div class="profile-meta mono" x-text="p.profile_type ?? ''"></div>
+              </div>
+              <div class="profile-conf-block">
+                <div class="profile-conf" x-text="Math.round((p.probability ?? 0) * 100) + '%'"></div>
+              </div>
+            </div>
+
+            <!-- Confidence bar -->
+            <div class="conf-bar-track" style="margin:8px 0;">
+              <div class="conf-bar-fill" :style="'width:' + Math.round((p.probability ?? 0)*100) + '%'"></div>
+            </div>
+
+            <!-- Brief -->
+            <div class="profile-brief ai-content" x-show="p.brief ?? p.reasoning">
+              <div class="ai-label mono">ASSESSMENT</div>
+              <p x-text="p.brief ?? p.reasoning"></p>
+            </div>
+
+            <!-- Key factors -->
+            <template x-if="p.key_factors?.length">
+              <div class="profile-factors">
+                <div class="ai-label mono" style="margin-bottom:6px;">KEY FACTORS</div>
+                <template x-for="f in p.key_factors" :key="f">
+                  <div class="factor-item" x-text="'· ' + f"></div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Dissent -->
+            <template x-if="p.dissent">
+              <div class="profile-dissent">
+                <span class="mono" style="font-size:10px;color:var(--warn);">DISSENT:</span>
+                <span x-text="p.dissent"></span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+    </div><!-- /predict-layout -->
+  </div>
+
+  <!-- ── Loading overlay ────────────────────────────────────────────── -->
+  <div class="loading-bar" :class="loading ? 'active' : ''"></div>
+
+</main><!-- /app-main -->
 
 <script>
-const TOKEN = 'dev_analyst_token';
-const SWARMFISH_URL = '{{ swarmfish_url }}';
+const OSS_URL = "";  // same-origin
+const TOKEN   = "dev_analyst_token";
+
+async function ossGet(path) {
+  const r = await fetch(OSS_URL + path, {
+    headers: { "X-Analyst-Token": TOKEN },
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${path}`);
+  return r.json();
+}
+
+async function ossPost(path, body = {}) {
+  const r = await fetch(OSS_URL + path, {
+    method: "POST",
+    headers: { "X-Analyst-Token": TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${path}`);
+  return r.json();
+}
 
 function app() {
   return {
-    // ── State ─────────────────────────────────────────────────
-    tabs: [
-      { id: 'feed',            label: 'Feed' },
-      { id: 'staging',         label: 'Staging' },
-      { id: 'topics',          label: 'Topics' },
-      { id: 'sources',         label: 'Sources' },
-      { id: 'contradictions',  label: 'Contradictions' },
-      { id: 'silences',        label: 'Silences' },
-      { id: 'activations',     label: 'Activations' },
-      { id: 'hypotheses',      label: 'Hypotheses' },
-    ],
-    activeTab: 'feed',
+    // ── Core ──────────────────────────────────────────────────────────
+    tab:          "feed",
+    loading:      false,
+    error:        null,
+    toast:        { visible: false, message: "", type: "info" },
+    _toastTimer:  null,
+    _pollTimer:   null,
 
-    // Header
-    ingestStatus:    'unknown',
-    ingestRunning:   false,
-    operatorState:   {},
-    healthStats:     '',
-    swarmfish:       { active: false, unavailable: false, toggling: false, running: false, last_run: null },
+    // ── Shared ────────────────────────────────────────────────────────
+    health:        null,
+    topics:        [],
+    globalTopic:   "",
+    operatorState: null,
+    ingestPaused:  true,
+    ingestRunning: false,
 
-    // Topics (shared across views)
-    topics: [],
+    // ── Feed tab ──────────────────────────────────────────────────────
+    feed:            [],
+    feedDisplay:     [],
+    feedTrustFilter: "",
 
-    // Feed
-    feedTopic:   '',
-    feedClaims:  [],
-    feedLoading: false,
+    // ── Triage tab ────────────────────────────────────────────────────
+    staged:    [],
+    triageSel: [],
 
-    // Staging
-    stagingTopic:   '',
-    stagingClaims:  [],
-    stagingLoading: false,
+    // ── Ledger tab ────────────────────────────────────────────────────
+    ledger: [],
 
-    // Topics tab
-    newTopic: { tag: '', display_name: '', description: '' },
-
-    // Sources tab
-    sources:          [],
-    sourcesLoading:   false,
-    newSource:        { name: '', url: '', source_type: 'outlet', cluster: 'independent', confidence_score: 0.7 },
-    socialMonitors:   [],
-    monitorsLoading:  false,
-    newMonitor:       { display_name: '', query: '', monitor_type: 'search', topic_tags: '', interval_minutes: 60 },
-
-    // Contradictions
-    contradTopic:   '',
+    // ── Analysis tab ─────────────────────────────────────────────────
+    drift:          null,
+    silence:        null,
+    activation:     null,
     contradictions: [],
-    contradLoading: false,
 
-    // Silences
-    silenceTopic:   '',
-    silenceFlags:   [],
-    silenceLoading: false,
+    // ── Hypotheses tab ───────────────────────────────────────────────
+    hypotheses: [],
+    hypStatus:  "ACTIVE",
 
-    // Activations
-    activationTopic:    '',
-    activationPatterns: [],
-    activationLoading:  false,
+    // ── Predict tab ──────────────────────────────────────────────────
+    predictTopic: "",
+    swfRunning:   false,
+    swfProfiles:  [],
+    swfConsensus: null,
 
-    // Hypotheses
-    hypFilter:   'ACTIVE',
-    hypotheses:  [],
-    hypLoading:  false,
-    newHyp: { observation_id: '', explanation: '', initial_confidence: '0.0' },
+    // ── Init ──────────────────────────────────────────────────────────
 
-    // Toast
-    toast: { visible: false, message: '', type: 'success' },
-
-    // ── Init ──────────────────────────────────────────────────
     async init() {
-      await Promise.all([this.loadHealth(), this.loadTopics(), this.loadSwarmfishStatus()]);
-      this.loadFeed();
+      await this.loadHealth();
+      await this.loadTopics();
+      await this.loadFeed();
+      this._pollTimer = setInterval(() => this.loadHealth(), 60_000);
     },
 
-    // ── Tab switch ────────────────────────────────────────────
-    switchTab(id) {
-      this.activeTab = id;
-      if (id === 'feed')           this.loadFeed();
-      if (id === 'staging')        this.loadStaging();
-      if (id === 'sources')        { this.loadSources(); this.loadSocialMonitors(); }
-      if (id === 'contradictions') this.loadContradictions();
-      if (id === 'silences')       this.loadSilences();
-      if (id === 'activations')    this.loadActivations();
-      if (id === 'hypotheses')     this.loadHypotheses();
+    // ── Navigation ────────────────────────────────────────────────────
+
+    async switchTab(t) {
+      this.tab = t;
+      this.error = null;
+      const map = {
+        feed:        () => this.loadFeed(),
+        triage:      () => this.loadStaged(),
+        ledger:      () => this.loadLedger(),
+        analysis:    () => this.globalTopic ? this.loadAnalysis() : Promise.resolve(),
+        hypotheses:  () => this.loadHypotheses(),
+        predict:     () => Promise.resolve(),
+      };
+      await this.wrap(map[t] ?? (() => Promise.resolve()));
     },
 
-    // ── Header ────────────────────────────────────────────────
+    onTopicChange() {
+      const refresh = {
+        feed:       () => this.loadFeed(),
+        triage:     () => this.loadStaged(),
+        ledger:     () => this.loadLedger(),
+        analysis:   () => this.globalTopic ? this.loadAnalysis() : Promise.resolve(),
+        hypotheses: () => this.loadHypotheses(),
+      };
+      if (refresh[this.tab]) this.wrap(refresh[this.tab].bind(this));
+    },
+
+    async wrap(fn) {
+      this.loading = true;
+      try { await fn(); }
+      catch (e) { this.error = e.message; }
+      finally { this.loading = false; }
+    },
+
+    // ── Health ────────────────────────────────────────────────────────
+
     async loadHealth() {
       try {
-        const r = await fetch('/api/health');
-        if (!r.ok) return;
-        const d = await r.json();
-        this.ingestStatus  = d.ingest_paused ? 'paused' : 'running';
-        this.healthStats   = `${d.claims?.total || 0} claims · ${d.claims?.promoted || 0} promoted`;
-        this.operatorState = await this.fetchOperatorState();
+        const d = await ossGet("/api/health");
+        this.health       = d;
+        this.ingestPaused = d.ingest_paused ?? true;
       } catch (e) {
-        this.ingestStatus = 'unknown';
+        console.warn("Health check failed:", e.message);
       }
     },
 
-    async fetchOperatorState() {
-      try {
-        const r = await fetch('/api/operator_state');
-        return r.ok ? await r.json() : {};
-      } catch { return {}; }
-    },
-
-    async loadSwarmfishStatus() {
-      try {
-        const r = await fetch('/admin/swarmfish/status', {
-          headers: { 'X-Analyst-Token': TOKEN },
-        });
-        if (r.ok) {
-          const d = await r.json();
-          this.swarmfish.active      = !!d.active;
-          this.swarmfish.running     = !!d.running;
-          this.swarmfish.last_run    = d.last_run || null;
-          this.swarmfish.unavailable = !!d.unavailable;
-        }
-      } catch { this.swarmfish.unavailable = true; }
-    },
-
-    async toggleSwarmfish() {
-      this.swarmfish.toggling = true;
-      try {
-        const r = await this.authPost('/admin/swarmfish/monitor/toggle', {});
-        if (r.ok) {
-          const d = await r.json();
-          this.swarmfish.active   = !!d.active;
-          this.swarmfish.last_run = d.last_run || null;
-          this.showToast(`SWARMFISH monitor ${d.active ? 'enabled' : 'disabled'}`);
-        }
-      } catch (e) { this.showToast('SWARMFISH unreachable', 'error'); }
-      this.swarmfish.toggling = false;
-    },
-
-    async runSwarmfishNow() {
-      this.swarmfish.running = true;
-      try {
-        const r = await this.authPost('/admin/swarmfish/monitor/run_now', {});
-        if (r.ok) {
-          this.showToast('SWARMFISH cycle started');
-          // Poll for completion every 5s (cycle can take minutes due to LLM)
-          const poll = setInterval(async () => {
-            await this.loadSwarmfishStatus();
-            if (!this.swarmfish.running) {
-              clearInterval(poll);
-              const lr = this.swarmfish.last_run;
-              if (lr) this.showToast(`Cycle done — ${lr.topics_checked} topics, ${lr.hypotheses_posted} hypotheses`);
-              this.loadHypotheses();
-            }
-          }, 5000);
-        } else {
-          const d = await r.json();
-          this.showToast(d.error || 'Run failed', 'error');
-          this.swarmfish.running = false;
-        }
-      } catch (e) {
-        this.showToast('SWARMFISH unreachable', 'error');
-        this.swarmfish.running = false;
-      }
+    async loadTopics() {
+      const d    = await ossGet("/api/topics");
+      this.topics = d.topics ?? (Array.isArray(d) ? d : []);
     },
 
     async pauseIngest() {
-      const r = await this.authPost('/admin/ingest/pause', {});
-      if (r.ok) { this.ingestStatus = 'paused'; this.showToast('Ingestion paused'); }
+      await ossPost("/api/ingest/pause");
+      this.ingestPaused = true;
+      this.notify("Ingest paused", "warn");
     },
 
     async resumeIngest() {
-      const r = await this.authPost('/admin/ingest/resume', {});
-      if (r.ok) { this.ingestStatus = 'running'; this.showToast('Ingestion resumed'); }
+      await ossPost("/api/ingest/resume");
+      this.ingestPaused = false;
+      this.notify("Ingest resumed", "ok");
     },
 
     async runIngestNow() {
       this.ingestRunning = true;
       try {
-        const r = await this.authPost('/admin/ingest', {});
-        if (r.ok) {
-          const d = await r.json();
-          this.showToast(
-            `Done: ${d.claims_inserted} claims, ${d.contradictions_flagged} contradictions`
-          );
-          this.loadHealth();
-        } else {
-          this.showToast('Ingest failed', 'error');
-        }
-      } catch (e) {
-        this.showToast('Ingest error: ' + e.message, 'error');
+        await ossPost("/api/ingest/run");
+        this.notify("Ingest cycle triggered", "ok");
+        setTimeout(() => this.loadHealth(), 4000);
       } finally {
         this.ingestRunning = false;
       }
     },
 
-    // ── Topics ────────────────────────────────────────────────
-    async loadTopics() {
-      try {
-        const r = await fetch('/api/topics');
-        if (!r.ok) return;
-        const d = await r.json();
-        this.topics = d.topics || [];
-      } catch {}
-    },
+    // ── Feed ──────────────────────────────────────────────────────────
 
-    async addTopic() {
-      if (!this.newTopic.tag) return;
-      const r = await this.authPost('/admin/add_topic', this.newTopic);
-      if (r.ok) {
-        this.showToast('Topic added: ' + this.newTopic.tag);
-        this.newTopic = { tag: '', display_name: '', description: '' };
-        this.loadTopics();
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.error || d.description || 'Failed to add topic', 'error');
-      }
-    },
-
-    // ── Sources ───────────────────────────────────────────────
-    async loadSources() {
-      this.sourcesLoading = true;
-      try {
-        const r = await fetch('/api/sources');
-        if (!r.ok) { this.sources = []; return; }
-        const d = await r.json();
-        this.sources = d.sources || [];
-      } catch {
-        this.sources = [];
-      } finally {
-        this.sourcesLoading = false;
-      }
-    },
-
-    async addSource() {
-      if (!this.newSource.name || !this.newSource.url) return;
-      const body = { ...this.newSource, confidence_score: parseFloat(this.newSource.confidence_score) };
-      const r = await this.authPost('/admin/add_source', body);
-      if (r.ok) {
-        const d = await r.json();
-        if (d.status === 'exists') {
-          this.showToast(d.message || 'Source already registered', 'error');
-        } else {
-          this.showToast('Source added: ' + this.newSource.name);
-          this.newSource = { name: '', url: '', source_type: 'outlet', cluster: 'independent', confidence_score: 0.7 };
-          this.loadSources();
-        }
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.description || d.error || 'Failed to add source', 'error');
-      }
-    },
-
-    // ── Social Monitors ───────────────────────────────────────
-    async loadSocialMonitors() {
-      this.monitorsLoading = true;
-      try {
-        const r = await fetch('/api/social_monitors');
-        if (!r.ok) { this.socialMonitors = []; return; }
-        const d = await r.json();
-        this.socialMonitors = d.monitors || [];
-      } catch {
-        this.socialMonitors = [];
-      } finally {
-        this.monitorsLoading = false;
-      }
-    },
-
-    async addSocialMonitor() {
-      if (!this.newMonitor.display_name || !this.newMonitor.query) return;
-      const tags = this.newMonitor.topic_tags
-        ? this.newMonitor.topic_tags.split(',').map(t => t.trim()).filter(Boolean)
-        : [];
-      const body = {
-        ...this.newMonitor,
-        topic_tags: tags,
-        interval_minutes: parseInt(this.newMonitor.interval_minutes) || 60,
-      };
-      const r = await this.authPost('/admin/add_social_monitor', body);
-      if (r.ok) {
-        this.showToast('Monitor added: ' + this.newMonitor.display_name);
-        this.newMonitor = { display_name: '', query: '', monitor_type: 'search', topic_tags: '', interval_minutes: 60 };
-        this.loadSocialMonitors();
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.description || d.error || 'Failed to add monitor', 'error');
-      }
-    },
-
-    async toggleMonitor(m) {
-      const r = await fetch(`/admin/social_monitor/${m.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
-        body: JSON.stringify({ active: !m.active, analyst_token: TOKEN }),
-      });
-      if (r.ok) {
-        this.showToast(m.active ? 'Monitor paused' : 'Monitor resumed');
-        this.loadSocialMonitors();
-      } else {
-        this.showToast('Toggle failed', 'error');
-      }
-    },
-
-    async deleteMonitor(id) {
-      if (!confirm('Delete this social monitor?')) return;
-      const r = await fetch(`/admin/social_monitor/${id}`, {
-        method: 'DELETE',
-        headers: { 'X-Analyst-Token': TOKEN },
-      });
-      if (r.ok) {
-        this.showToast('Monitor deleted');
-        this.loadSocialMonitors();
-      } else {
-        this.showToast('Delete failed', 'error');
-      }
-    },
-
-    async xSearchNow(m) {
-      const tags = m.topic_tags || [];
-      const r = await this.authPost('/admin/x_search', {
-        query: m.query, topic_tags: tags, count: 20
-      });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok) {
-        this.showToast(`Search complete: ${d.staged} ingested, ${d.skipped} skipped`);
-        this.loadSocialMonitors();
-      } else {
-        this.showToast(d.error || d.description || 'Search failed', 'error');
-      }
-    },
-
-    scrapeWeightColor(w) {
-      if (w >= 0.7) return 'var(--green)';
-      if (w >= 0.4) return 'var(--yellow)';
-      return 'var(--red)';
-    },
-
-    // ── Feed ──────────────────────────────────────────────────
     async loadFeed() {
-      this.feedLoading = true;
-      try {
-        const params = new URLSearchParams({ limit: 50 });
-        if (this.feedTopic) params.set('topic', this.feedTopic);
-        const r = await fetch('/api/feed?' + params);
-        if (!r.ok) { this.feedClaims = []; return; }
-        const d = await r.json();
-        this.feedClaims = d.claims || [];
-      } catch {
-        this.feedClaims = [];
-      } finally {
-        this.feedLoading = false;
-      }
+      const q  = this.globalTopic ? `&topic=${encodeURIComponent(this.globalTopic)}` : "";
+      const d  = await ossGet(`/api/feed?limit=200${q}`);
+      this.feed = d.claims ?? (Array.isArray(d) ? d : []);
+      this.renderFeed();
     },
 
-    // ── Staging ───────────────────────────────────────────────
-    async loadStaging() {
-      this.stagingLoading = true;
-      try {
-        const body = { analyst_token: TOKEN };
-        if (this.stagingTopic) body.topic = this.stagingTopic;
-        const r = await fetch('/api/staging', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
-          body: JSON.stringify(body),
-        });
-        if (!r.ok) { this.stagingClaims = []; return; }
-        const d = await r.json();
-        this.stagingClaims = (d.claims || []).map(c => ({
-          ...c, _showPromote: false, _promoteConf: 0.8, _falsifyOpen: false,
-        }));
-      } catch {
-        this.stagingClaims = [];
-      } finally {
-        this.stagingLoading = false;
-      }
+    renderFeed() {
+      this.feedDisplay = this.feedTrustFilter
+        ? this.feed.filter(c => c.trust_level === this.feedTrustFilter)
+        : this.feed;
     },
 
-    async promoteClaim(claim) {
-      const body = {
-        claim_id:       claim.id,
-        confidence:     parseFloat(claim._promoteConf) || 0.8,
-        source_weights: { [claim.source_id || claim.id]: 1.0 },
-        analyst_token:  TOKEN,
-      };
-      const r = await this.authPost('/admin/promote_claim', body);
-      if (r.ok) {
-        this.showToast('Claim promoted');
-        claim._showPromote = false;
-        this.loadStaging();
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.description || d.error || 'Promote failed', 'error');
-      }
+    // ── Triage ────────────────────────────────────────────────────────
+
+    async loadStaged() {
+      const q   = this.globalTopic ? `?topic=${encodeURIComponent(this.globalTopic)}&limit=200` : "?limit=200";
+      const d   = await ossGet(`/api/feed${q}`);
+      const all = d.claims ?? (Array.isArray(d) ? d : []);
+      this.staged    = all.filter(c => c.trust_level === "STAGED");
+      this.triageSel = [];
     },
 
-    async markIrrelevant(claimId) {
-      const r = await this.authPost('/admin/mark_irrelevant', {
-        claim_id: claimId, analyst_token: TOKEN
-      });
-      if (r.ok) {
-        this.showToast('Claim marked irrelevant');
-        this.loadStaging();
-        this.loadTopics();
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.description || d.error || 'Failed', 'error');
-      }
+    toggleSel(id) {
+      const i = this.triageSel.indexOf(id);
+      if (i >= 0) this.triageSel.splice(i, 1); else this.triageSel.push(id);
+    },
+    isSel(id)   { return this.triageSel.includes(id); },
+    selectAll() { this.triageSel = this.staged.map(c => c.id); },
+    clearSel()  { this.triageSel = []; },
+
+    async bulkPromote() {
+      if (!this.triageSel.length) return;
+      const ids   = [...this.triageSel];
+      const topic = this.globalTopic || null;
+      await ossPost("/admin/bulk_promote", { ids, topic });
+      this.notify(`${ids.length} claims promoted to ledger`, "ok");
+      await this.loadStaged();
     },
 
-    async returnToStaged(claimId) {
-      const reason = prompt('Reason for returning to staging?');
-      if (!reason) return;
-      const r = await this.authPost('/admin/return_to_staged', {
-        claim_id: claimId, reason, analyst_token: TOKEN
-      });
-      if (r.ok) {
-        this.showToast('Claim returned to staging');
-        this.loadStaging();
-      } else {
-        this.showToast('Return failed', 'error');
-      }
+    // ── Ledger ────────────────────────────────────────────────────────
+
+    async loadLedger() {
+      const q   = this.globalTopic ? `?topic=${encodeURIComponent(this.globalTopic)}&limit=200` : "?limit=200";
+      const d   = await ossGet(`/api/feed${q}`);
+      const all = d.claims ?? (Array.isArray(d) ? d : []);
+      this.ledger = all.filter(c => c.trust_level === "PROMOTED");
     },
 
-    // ── Contradictions ────────────────────────────────────────
-    async loadContradictions() {
-      this.contradLoading = true;
-      try {
-        const body = { analyst_token: TOKEN };
-        if (this.contradTopic) body.topic = this.contradTopic;
-        const r = await fetch('/api/contradictions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Analyst-Token': TOKEN },
-          body: JSON.stringify(body),
-        });
-        if (!r.ok) { this.contradictions = []; return; }
-        const d = await r.json();
-        this.contradictions = (d.pairs || []).map(p => ({ ...p, _expanded: false }));
-      } catch {
-        this.contradictions = [];
-      } finally {
-        this.contradLoading = false;
-      }
+    // ── Analysis ─────────────────────────────────────────────────────
+
+    async loadAnalysis() {
+      if (!this.globalTopic) return;
+      const since72h = new Date(Date.now() - 72 * 3600_000).toISOString();
+      const topic    = this.globalTopic;
+
+      const [dr, si, ac, co] = await Promise.allSettled([
+        ossPost("/api/drift",          { topic, since: since72h }),
+        ossPost("/api/silence",        { topic, since: since72h }),
+        ossPost("/api/activation",     { topic, since: since72h }),
+        ossPost("/api/contradictions", { topic, analyst_token: TOKEN }),
+      ]);
+
+      this.drift         = dr.status === "fulfilled" ? dr.value : null;
+      this.silence       = si.status === "fulfilled" ? si.value : null;
+      this.activation    = ac.status === "fulfilled" ? ac.value : null;
+      this.contradictions = co.status === "fulfilled" ? (co.value.pairs ?? []) : [];
     },
 
-    // ── Silences ──────────────────────────────────────────────
-    async loadSilences() {
-      if (!this.silenceTopic) return;
-      this.silenceLoading = true;
-      try {
-        const r = await fetch('/api/silence', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: this.silenceTopic }),
-        });
-        if (!r.ok) { this.silenceFlags = []; return; }
-        const d = await r.json();
-        this.silenceFlags = d.flags || [];
-      } catch {
-        this.silenceFlags = [];
-      } finally {
-        this.silenceLoading = false;
-      }
-    },
+    // ── Hypotheses ────────────────────────────────────────────────────
 
-    // ── Activations ───────────────────────────────────────────
-    async loadActivations() {
-      this.activationLoading = true;
-      try {
-        const body = { min_cluster_spread: 2 };
-        if (this.activationTopic) body.topic = this.activationTopic;
-        const r = await fetch('/api/activation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!r.ok) { this.activationPatterns = []; return; }
-        const d = await r.json();
-        this.activationPatterns = d.patterns || [];
-      } catch {
-        this.activationPatterns = [];
-      } finally {
-        this.activationLoading = false;
-      }
-    },
-
-    // ── Hypotheses ────────────────────────────────────────────
     async loadHypotheses() {
-      this.hypLoading = true;
+      const q   = `?status=${this.hypStatus}&limit=50`;
+      const d   = await ossGet(`/api/hypotheses${q}`);
+      this.hypotheses = d.hypotheses ?? (Array.isArray(d) ? d : []);
+    },
+
+    async setHypStatus(s) {
+      this.hypStatus = s;
+      await this.wrap(() => this.loadHypotheses());
+    },
+
+    async promoteHyp(id) {
+      await ossPost(`/api/hypothesis/${id}/promote`);
+      this.notify(`Hypothesis #${id} promoted`, "ok");
+      await this.loadHypotheses();
+    },
+
+    async falsifyHyp(id) {
+      const ev = window.prompt(`Falsification evidence for hypothesis #${id}:`);
+      if (!ev) return;
+      await ossPost(`/api/hypothesis/${id}/falsify`, { evidence: ev });
+      this.notify(`Hypothesis #${id} falsified`, "warn");
+      await this.loadHypotheses();
+    },
+
+    async suspendHyp(id) {
+      await ossPost(`/api/hypothesis/${id}/suspend`, { reason: "Analyst suspension" });
+      this.notify(`Hypothesis #${id} suspended`, "info");
+      await this.loadHypotheses();
+    },
+
+    // ── Predict (SWARMFISH) ───────────────────────────────────────────
+
+    async runPredict() {
+      if (!this.predictTopic) return;
+      this.swfRunning  = true;
+      this.swfProfiles = [];
+      this.swfConsensus = null;
       try {
-        const params = new URLSearchParams({ limit: '50' });
-        if (this.hypFilter !== 'all') params.set('status', this.hypFilter);
-        const r = await fetch('/api/hypotheses?' + params);
-        if (!r.ok) { this.hypotheses = []; return; }
-        const d = await r.json();
-        this.hypotheses = (d.hypotheses || []).map(h => ({
-          ...h, _falsifyOpen: false, _falsifyEvidence: '',
-        }));
-      } catch {
-        this.hypotheses = [];
+        const d = await ossPost("/api/swarmfish/predict", { topic: this.predictTopic });
+        this.swfProfiles  = d.profiles  ?? [];
+        this.swfConsensus = d.consensus ?? null;
+      } catch (e) {
+        this.error = "SWARMFISH: " + e.message;
       } finally {
-        this.hypLoading = false;
+        this.swfRunning = false;
       }
     },
 
-    async registerHypothesis() {
-      if (!this.newHyp.observation_id || !this.newHyp.explanation) {
-        this.showToast('observation_id and explanation required', 'error');
-        return;
-      }
-      const body = {
-        observation_id:      parseInt(this.newHyp.observation_id),
-        explanation:         this.newHyp.explanation,
-        initial_confidence:  parseFloat(this.newHyp.initial_confidence) || 0.0,
-        analyst_token:       TOKEN,
+    async postConsensusAsHypothesis() {
+      if (!this.swfConsensus?.operator_brief) return;
+      const obsId = Math.floor(Date.now() / 1000);  // synthetic observation ref
+      await ossPost("/api/hypothesis/register", {
+        observation_id:      obsId,
+        explanation:         this.swfConsensus.operator_brief,
+        initial_confidence:  this.swfConsensus.consensus_probability ?? 0.5,
+      });
+      this.notify("Posted as hypothesis", "ok");
+      if (this.tab !== "hypotheses") this.switchTab("hypotheses");
+    },
+
+    // ── Formatters ────────────────────────────────────────────────────
+
+    fmtDate(ts) {
+      if (!ts) return "—";
+      const d = new Date(ts);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        + " "
+        + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+    },
+
+    fmtConf(v) { return v != null ? (v * 100).toFixed(0) + "%" : "—"; },
+
+    confBarW(v) { return v != null ? Math.round(v * 100) + "%" : "0%"; },
+
+    techniqueLabel(t) {
+      const m = {
+        neutral_framing:  "neutral",
+        loaded_language:  "loaded",
+        false_balance:    "false-bal",
+        selective_omit:   "omit",
+        fear_appeal:      "fear",
+        appeal_to_authority: "authority",
+        unclassified:     "unclassed",
       };
-      const r = await this.authPost('/api/hypothesis', body);
-      if (r.ok) {
-        this.showToast('Hypothesis registered');
-        this.newHyp = { observation_id: '', explanation: '', initial_confidence: '0.0' };
-        this.loadHypotheses();
-      } else {
-        const d = await r.json().catch(() => ({}));
-        this.showToast(d.description || d.error || 'Register failed', 'error');
-      }
+      return m[t] ?? t ?? "—";
     },
 
-    async confirmPrediction(hypId, predIdx) {
-      const r = await this.authPost(`/api/hypothesis/${hypId}/confirm_prediction`, {
-        prediction_idx: predIdx, analyst_token: TOKEN,
-      });
-      if (r.ok) {
-        this.showToast('Prediction confirmed');
-        this.loadHypotheses();
-      } else {
-        this.showToast('Confirm failed', 'error');
-      }
-    },
-
-    async promoteHypothesis(hypId) {
-      const r = await this.authPost(`/api/hypothesis/${hypId}/promote`, {
-        analyst_token: TOKEN,
-      });
-      if (r.ok) {
-        this.showToast('Hypothesis promoted');
-        this.loadHypotheses();
-      } else {
-        this.showToast('Promote failed', 'error');
-      }
-    },
-
-    promptFalsify(hyp) {
-      hyp._falsifyOpen = true;
-      hyp._falsifyEvidence = '';
-    },
-
-    async falsifyHypothesis(hyp) {
-      if (!hyp._falsifyEvidence) {
-        this.showToast('Evidence required', 'error');
-        return;
-      }
-      const r = await this.authPost(`/api/hypothesis/${hyp.id}/falsify`, {
-        evidence: hyp._falsifyEvidence, analyst_token: TOKEN,
-      });
-      if (r.ok) {
-        this.showToast('Hypothesis falsified');
-        hyp._falsifyOpen = false;
-        this.loadHypotheses();
-      } else {
-        this.showToast('Falsify failed', 'error');
-      }
-    },
-
-    // ── Helpers ───────────────────────────────────────────────
-    async authPost(url, body) {
-      return fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Analyst-Token': TOKEN,
-        },
-        body: JSON.stringify({ ...body, analyst_token: TOKEN }),
-      });
-    },
-
-    shortDate(iso) {
-      if (!iso) return '—';
-      try {
-        const d = new Date(iso);
-        return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }) +
-               ' ' + d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-      } catch { return iso.slice(0, 10); }
-    },
-
-    pct(v) {
-      if (v === null || v === undefined) return '—';
-      return (parseFloat(v) * 100).toFixed(0) + '%';
-    },
-
-    truncate(s, n) {
-      if (!s) return '';
-      return s.length > n ? s.slice(0, n) + '…' : s;
-    },
-
-    showToast(message, type = 'success') {
-      this.toast = { visible: true, message, type };
-      setTimeout(() => { this.toast.visible = false; }, 3500);
+    notify(msg, type = "info") {
+      clearTimeout(this._toastTimer);
+      Object.assign(this.toast, { visible: true, message: msg, type });
+      this._toastTimer = setTimeout(() => { this.toast.visible = false; }, 3500);
     },
   };
 }

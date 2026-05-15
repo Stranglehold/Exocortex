@@ -1,0 +1,31 @@
+{
+  "name": "slate",
+  "description": "Cool gray with emerald accent. Professional, understated. For reports and documentation.",
+  "variables": {
+    "--bg-primary":    "#0F1117",
+    "--bg-secondary":  "#161B22",
+    "--bg-card":       "rgba(255,255,255,0.03)",
+    "--bg-card-hover": "rgba(255,255,255,0.06)",
+    "--text-primary":  "#E2E8F0",
+    "--text-secondary":"#94A3B8",
+    "--text-muted":    "#475569",
+    "--accent":        "#10B981",
+    "--accent-light":  "#34D399",
+    "--accent-glow":   "rgba(16,185,129,0.15)",
+    "--success":       "#10B981",
+    "--warning":       "#F59E0B",
+    "--critical":      "#EF4444",
+    "--inactive":      "#64748B",
+    "--border":        "rgba(255,255,255,0.06)",
+    "--border-accent": "rgba(16,185,129,0.3)",
+    "--font-display":  "'Cormorant Garamond', Georgia, serif",
+    "--font-body":     "'Outfit', system-ui, sans-serif",
+    "--font-mono":     "'JetBrains Mono', 'Fira Code', monospace",
+    "--radius":        "6px",
+    "--shadow-card":   "0 2px 8px rgba(0,0,0,0.3)",
+    "--shadow-hover":  "0 8px 24px rgba(0,0,0,0.4)",
+    "--transition-fast":   "0.15s ease",
+    "--transition-normal": "0.3s ease",
+    "--transition-slow":   "0.5s ease"
+  }
+}

@@ -27,12 +27,19 @@ class ContextWatchdog(Extension):
 
         # Read from Agent Zero's live model config — same source as history.py.
         # The supervisor sets this at session start via get_chat_model_config().
-        # Fall back to get_chat_model_config() directly if not yet set.
+        # Fall back to get_chat_model_config(), then A0 settings if still not set.
         window_size = self.agent.get_data("context_window_size")
         if not window_size:
             try:
                 from plugins._model_config.helpers.model_config import get_chat_model_config
                 window_size = int(get_chat_model_config(self.agent).get("ctx_length", 0))
+            except Exception:
+                pass
+        if not window_size:
+            try:
+                # Per-agent config had no ctx_length — fall back to global plugin config.
+                from plugins._model_config.helpers.model_config import get_config
+                window_size = int(get_config().get("chat_model", {}).get("ctx_length", 0))
             except Exception:
                 pass
         if not window_size:

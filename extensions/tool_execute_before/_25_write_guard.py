@@ -8,12 +8,15 @@ and metadata to agent data so the write validator (_26_) can restore on
 validation failure.
 
 Paired with _26_write_validator (tool_execute_after).
-State key: _write_guard = {path, content, lines, op}
+State key: _write_guard = {path, content, lines, op, intended_line_count}
+
+intended_line_count is the line count of the content the agent submitted to the tool.
+The validator compares this against what was actually written to detect silent truncation.
 
 No LLM calls. No blocking. Runs after MetaGate (_20_), before tool execution.
 """
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from typing import Any, Dict, Optional
 
 GUARD_KEY = "_write_guard"
@@ -62,15 +65,25 @@ class WriteGuard(Extension):
             except Exception as e:
                 print(f"[WRITE-GUARD] Could not read {path} for backup: {e}", flush=True)
 
+            # Count lines the agent intends to write — used by validator to detect
+            # silent tool truncation (written_lines << intended_lines = tool cut content)
+            intended_content: str = tool_args.get("content", "")
+            intended_line_count: int = intended_content.count("\n") + 1 if intended_content else 0
+
             self.agent.set_data(GUARD_KEY, {
                 "path": path,
                 "content": original,
                 "lines": original_lines,
                 "op": "write" if is_write else "patch",
+                "intended_line_count": intended_line_count,
             })
 
             label = "new file" if original is None else f"{original_lines} lines"
-            print(f"[WRITE-GUARD] Backed up: {path} ({label})", flush=True)
+            print(
+                f"[WRITE-GUARD] Backed up: {path} ({label})"
+                + (f", intended={intended_line_count} lines" if intended_line_count else ""),
+                flush=True,
+            )
 
         except Exception as e:
             print(f"[WRITE-GUARD] Error (passthrough): {e}", flush=True)

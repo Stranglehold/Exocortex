@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "Agent-Zero intent disambiguation taxonomy. Add domains freely \u2014 no code changes required.",
     "resolver_types": [
       "keyword_map",
@@ -13,13 +13,14 @@
       "working_memory_lookup"
     ],
     "changelog": {
+      "1.3.0": "GAP-02 reconciliation (Opus spec 2026-04-17). Renamed codegen->coding (merged refactor slots), conversational->conversation, osint->investigation. Merged docker_ops+dependency_mgmt->system_admin. Added financial, planning, testing. Removed orphans: agentic, api_integration, data_transform, log_analysis, pdf_ops, skill_building, refactor. DOMAIN_CONFIGS and slot_taxonomy now share identical domain lists.",
       "1.2.0": "Added working_memory_lookup resolver type. Wired into file/path/container/branch/package slots across domains.",
       "1.1.0": "Added git_ops, docker_ops, config_edit, prompt_engineering, log_analysis, pdf_ops, data_transform, api_integration, dependency_mgmt"
     }
   },
   "domains": {
-    "codegen": {
-      "description": "Writing, creating, or generating new code",
+    "coding": {
+      "description": "Writing, generating, editing, or refactoring code",
       "triggers": [
         "write",
         "create",
@@ -36,7 +37,21 @@
         "class",
         "script",
         "module",
-        "program"
+        "program",
+        "refactor",
+        "clean up",
+        "clean",
+        "tidy",
+        "simplify",
+        "optimize",
+        "improve",
+        "fix style",
+        "reorganize",
+        "restructure",
+        "lint",
+        "make it better",
+        "make this better",
+        "make cleaner"
       ],
       "required_slots": [
         "target_file",
@@ -47,7 +62,8 @@
         "preserve_behavior",
         "style",
         "scope",
-        "return_type"
+        "return_type",
+        "style_guide"
       ],
       "slot_definitions": {
         "target_file": {
@@ -78,9 +94,27 @@
             "append": "extend",
             "rewrite": "rewrite",
             "replace": "rewrite",
-            "redo": "rewrite"
+            "redo": "rewrite",
+            "refactor": "refactor",
+            "clean": "refactor",
+            "clean up": "refactor",
+            "tidy": "refactor",
+            "improve": "refactor",
+            "reorganize": "reorganize",
+            "restructure": "reorganize",
+            "simplify": "simplify",
+            "optimize": "optimize"
           },
           "type": "enum",
+          "enum_values": [
+            "create",
+            "extend",
+            "rewrite",
+            "refactor",
+            "reorganize",
+            "simplify",
+            "optimize"
+          ],
           "default": "create"
         },
         "language": {
@@ -108,91 +142,25 @@
           ],
           "type": "string",
           "nullable": true
+        },
+        "style_guide": {
+          "question": null,
+          "resolvers": [
+            "context_inference",
+            "history_scan"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "Style or linting standard to conform to, e.g. PEP8, project conventions. Relevant for refactor operations."
         }
       },
       "confidence_threshold": 0.65,
-      "preamble": "Identify the language. State exactly what needs to be written. Produce complete, runnable code only \u2014 no placeholders.",
+      "preamble": "Identify the language. State exactly what needs to be written or changed. For new code: produce complete, runnable code only \u2014 no placeholders. For refactoring: preserve all existing behavior exactly and list only the specific changes made. For Agent-Zero extensions: state the hook point (e.g. before_main_llm_call), input/output contract, and failure behavior before writing code.",
       "dialogue_acts": {
         "INFORM": "User provided code or spec",
         "REQUEST_CODE": "User wants code generated",
         "CLARIFY_SCOPE": "Scope of change is unclear"
       }
-    },
-    "refactor": {
-      "description": "Improving existing code without changing behavior",
-      "triggers": [
-        "refactor",
-        "clean up",
-        "clean",
-        "tidy",
-        "simplify",
-        "optimize",
-        "improve",
-        "fix style",
-        "reorganize",
-        "restructure",
-        "lint",
-        "make it better",
-        "make this better",
-        "make cleaner"
-      ],
-      "required_slots": [
-        "target_file",
-        "operation"
-      ],
-      "optional_slots": [
-        "preserve_behavior",
-        "style_guide",
-        "scope"
-      ],
-      "slot_definitions": {
-        "target_file": {
-          "question": "Which file should I refactor?",
-          "resolvers": [
-            "last_mentioned_file",
-            "working_memory_lookup",
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": false
-        },
-        "operation": {
-          "question": null,
-          "resolvers": [
-            "keyword_map"
-          ],
-          "keyword_map": {
-            "refactor": "refactor",
-            "clean": "refactor",
-            "clean up": "refactor",
-            "tidy": "refactor",
-            "simplify": "simplify",
-            "optimize": "optimize",
-            "improve": "refactor",
-            "reorganize": "reorganize"
-          },
-          "type": "enum",
-          "default": "refactor"
-        },
-        "preserve_behavior": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "bool",
-          "default": true
-        },
-        "scope": {
-          "question": "Should this apply to the whole file or a specific function?",
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true
-        }
-      },
-      "confidence_threshold": 0.7,
-      "preamble": "Preserve all existing behavior exactly. List only the specific changes made. Show the complete modified code."
     },
     "bugfix": {
       "description": "Diagnosing and fixing broken code",
@@ -263,89 +231,6 @@
       },
       "confidence_threshold": 0.7,
       "preamble": "Identify the root cause first. Explain it in one sentence. Then provide the complete fixed code."
-    },
-    "agentic": {
-      "description": "Executing a multi-step task or workflow via tools",
-      "triggers": [
-        "run",
-        "execute",
-        "do",
-        "perform",
-        "handle",
-        "manage",
-        "automate",
-        "set up",
-        "deploy",
-        "install",
-        "configure",
-        "process",
-        "start",
-        "launch",
-        "spin up",
-        "take care of"
-      ],
-      "required_slots": [
-        "target",
-        "operation"
-      ],
-      "optional_slots": [
-        "constraints",
-        "scope",
-        "output_format",
-        "confirmation_required"
-      ],
-      "slot_definitions": {
-        "target": {
-          "question": "What should I operate on \u2014 a file, a directory, a service, or something else?",
-          "resolvers": [
-            "last_mentioned_path",
-            "last_mentioned_entity",
-            "working_memory_lookup",
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": false
-        },
-        "operation": {
-          "question": "What specifically should be done?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "run": "execute",
-            "execute": "execute",
-            "start": "start",
-            "install": "install",
-            "deploy": "deploy",
-            "configure": "configure",
-            "set up": "configure",
-            "process": "process",
-            "manage": "manage"
-          },
-          "type": "string",
-          "nullable": false
-        },
-        "constraints": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true
-        },
-        "confirmation_required": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "bool",
-          "default": false,
-          "note": "Set true for destructive operations"
-        }
-      },
-      "confidence_threshold": 0.75,
-      "preamble": "Select one tool. State your reasoning in one sentence. Output valid JSON only. Do not chain tools without confirming intermediate results."
     },
     "file_ops": {
       "description": "File and directory manipulation: move, copy, delete, rename, search",
@@ -541,8 +426,8 @@
       "confidence_threshold": 0.6,
       "preamble": "Break the subject into sub-components. Address each explicitly before synthesizing a conclusion."
     },
-    "osint": {
-      "description": "Research, data gathering, site analysis, document investigation",
+    "investigation": {
+      "description": "Research, investigation, OSINT, and information gathering from external sources",
       "triggers": [
         "research",
         "investigate",
@@ -572,7 +457,7 @@
       ],
       "slot_definitions": {
         "target": {
-          "question": "What is the URL, domain, or subject to investigate?",
+          "question": "What is the URL, domain, subject, or entity to investigate?",
           "resolvers": [
             "working_memory_lookup",
             "context_inference",
@@ -620,75 +505,7 @@
         }
       },
       "confidence_threshold": 0.65,
-      "preamble": "State the target and what is being sought before beginning. Use structured output. Cite sources."
-    },
-    "skill_building": {
-      "description": "Creating Agent-Zero skills, extensions, tools, or prompt patches",
-      "triggers": [
-        "build a skill",
-        "create a skill",
-        "write a skill",
-        "make a skill",
-        "build an extension",
-        "create extension",
-        "write extension",
-        "new tool",
-        "build tool",
-        "agent zero skill",
-        "hardening"
-      ],
-      "required_slots": [
-        "skill_type",
-        "purpose"
-      ],
-      "optional_slots": [
-        "hook_point",
-        "language",
-        "integration_target"
-      ],
-      "slot_definitions": {
-        "skill_type": {
-          "question": "Is this a skill, extension, prompt patch, or framework replacement?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "skill": "skill",
-            "extension": "extension",
-            "prompt patch": "prompt_patch",
-            "fw replacement": "fw_replacement",
-            "framework replacement": "fw_replacement"
-          },
-          "type": "enum",
-          "enum_values": [
-            "skill",
-            "extension",
-            "prompt_patch",
-            "fw_replacement"
-          ],
-          "nullable": false
-        },
-        "purpose": {
-          "question": "What problem should this solve or what capability should it add?",
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": false
-        },
-        "hook_point": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "e.g. before_main_llm_call, error_format, tool_execute_after"
-        }
-      },
-      "confidence_threshold": 0.65,
-      "preamble": "State the hook point, input/output contract, and failure behavior before writing any code."
+      "preamble": "State the target and what is being sought before beginning. Use structured output. Cite sources. For log analysis tasks, scan for ERROR and WARNING lines first and quote exact log lines when identifying issues."
     },
     "git_ops": {
       "description": "Git version control operations: commit, push, pull, branch, merge, diff, stash, log",
@@ -843,167 +660,6 @@
       },
       "confidence_threshold": 0.75,
       "preamble": "State the exact git command before executing. For commit: if no message is provided, ask for one \u2014 do not invent it. For destructive operations (force push, hard reset, branch delete), state what will be permanently lost."
-    },
-    "docker_ops": {
-      "description": "Docker container and image operations: run, exec, logs, build, stop, pull, inspect",
-      "triggers": [
-        "docker",
-        "container",
-        "image",
-        "dockerfile",
-        "compose",
-        "exec into",
-        "shell into",
-        "container logs",
-        "docker logs",
-        "pull image",
-        "build image",
-        "stop container",
-        "restart container",
-        "docker run",
-        "docker exec",
-        "docker build",
-        "docker ps",
-        "spin up container",
-        "container shell"
-      ],
-      "required_slots": [
-        "operation"
-      ],
-      "optional_slots": [
-        "container_name",
-        "image_name",
-        "command",
-        "port_mapping",
-        "volume_mount",
-        "env_vars"
-      ],
-      "slot_definitions": {
-        "operation": {
-          "question": "What docker operation should I perform?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "run": "run",
-            "start": "run",
-            "spin up": "run",
-            "exec": "exec",
-            "shell": "exec",
-            "exec into": "exec",
-            "shell into": "exec",
-            "logs": "logs",
-            "log": "logs",
-            "output": "logs",
-            "build": "build",
-            "build image": "build",
-            "stop": "stop",
-            "kill": "stop",
-            "restart": "restart",
-            "pull": "pull",
-            "download image": "pull",
-            "ps": "ps",
-            "list containers": "ps",
-            "running containers": "ps",
-            "inspect": "inspect",
-            "info": "inspect",
-            "rm": "remove",
-            "remove": "remove",
-            "delete container": "remove",
-            "rmi": "remove_image",
-            "remove image": "remove_image"
-          },
-          "type": "enum",
-          "enum_values": [
-            "run",
-            "exec",
-            "logs",
-            "build",
-            "stop",
-            "restart",
-            "pull",
-            "ps",
-            "inspect",
-            "remove",
-            "remove_image"
-          ],
-          "nullable": false
-        },
-        "container_name": {
-          "question": "Which container?",
-          "resolvers": [
-            "last_mentioned_entity",
-            "context_inference",
-            "working_memory_lookup",
-            "history_scan"
-          ],
-          "type": "string",
-          "nullable": true,
-          "required_when": {
-            "operation": [
-              "exec",
-              "logs",
-              "stop",
-              "restart",
-              "inspect",
-              "remove"
-            ]
-          }
-        },
-        "image_name": {
-          "question": "Which image?",
-          "resolvers": [
-            "last_mentioned_entity",
-            "working_memory_lookup",
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "required_when": {
-            "operation": [
-              "run",
-              "pull",
-              "build",
-              "remove_image"
-            ]
-          }
-        },
-        "command": {
-          "question": "What command should I run inside the container?",
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "required_when": {
-            "operation": [
-              "exec"
-            ]
-          },
-          "default": "/bin/bash"
-        },
-        "port_mapping": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "e.g. 8080:80"
-        },
-        "volume_mount": {
-          "question": null,
-          "resolvers": [
-            "last_mentioned_path",
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true
-        }
-      },
-      "confidence_threshold": 0.8,
-      "preamble": "State the exact docker command before executing. For stop/remove operations, confirm the container name matches before proceeding. For exec, confirm the container is running first."
     },
     "config_edit": {
       "description": "Editing configuration files: env files, YAML, TOML, JSON config, INI, systemd units",
@@ -1222,528 +878,28 @@
       "confidence_threshold": 0.7,
       "preamble": "State the target model, the behavioral goal, and any token constraints before writing. Optimize for clarity at inference time, not human readability. Prefer imperative over declarative phrasing. Show the complete prompt \u2014 no ellipsis or placeholders."
     },
-    "log_analysis": {
-      "description": "Reading, parsing, and diagnosing agent logs, system logs, or error output",
+    "system_admin": {
+      "description": "System administration: Docker container management, package management, and system-level operations",
       "triggers": [
-        "log",
-        "logs",
-        "agent log",
-        "check log",
-        "read log",
-        "show log",
-        "what happened",
-        "last run",
-        "why did",
-        "error in log",
-        "warning in log",
-        "log output",
-        "bst log",
-        "watchdog log",
-        "context log",
-        "extension log",
-        "check the output",
-        "tail log",
-        "recent errors",
-        "what failed",
-        "log file"
-      ],
-      "required_slots": [
-        "log_source"
-      ],
-      "optional_slots": [
-        "error_pattern",
-        "time_range",
-        "verbosity_filter",
-        "last_n_lines"
-      ],
-      "slot_definitions": {
-        "log_source": {
-          "question": "Which log file or output stream should I check?",
-          "resolvers": [
-            "keyword_map",
-            "last_mentioned_file",
-            "working_memory_lookup",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "agent log": "/a0/logs/agent.log",
-            "agent.log": "/a0/logs/agent.log",
-            "bst log": "/a0/logs/agent.log",
-            "watchdog log": "/a0/logs/agent.log",
-            "docker log": "docker_logs",
-            "system log": "/var/log/syslog",
-            "klipper log": "/tmp/klippy.log",
-            "moonraker log": "/tmp/moonraker.log"
-          },
-          "type": "string",
-          "nullable": false
-        },
-        "error_pattern": {
-          "question": null,
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "bst": "[BST]",
-            "watchdog": "[CTX]",
-            "retry": "RepairableException",
-            "failure tracker": "failure_count",
-            "tool error": "tool_name"
-          },
-          "type": "string",
-          "nullable": true
-        },
-        "time_range": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "e.g. 'last 5 minutes', 'since restart'"
-        },
-        "last_n_lines": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "default": "100"
-        },
-        "verbosity_filter": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "enum",
-          "enum_values": [
-            "ERROR",
-            "WARNING",
-            "INFO",
-            "DEBUG",
-            "ALL"
-          ],
-          "default": "ALL"
-        }
-      },
-      "confidence_threshold": 0.65,
-      "preamble": "Scan for ERROR and WARNING lines first. State the first failure event and its timestamp before summarizing patterns. Quote the exact log line when identifying a specific issue \u2014 do not paraphrase errors."
-    },
-    "pdf_ops": {
-      "description": "PDF operations: extract text, merge, split, OCR, form-fill, convert",
-      "triggers": [
-        "pdf",
-        "extract pdf",
-        "merge pdf",
-        "split pdf",
-        "ocr",
-        "form fill",
-        "pdf form",
-        "convert pdf",
-        "pdf to",
-        "to pdf",
-        "read pdf",
-        "parse pdf",
-        "pdf text",
-        "pdf pages",
-        "rotate pdf",
-        "pdf images",
-        "pdf library",
-        "pdf skill"
-      ],
-      "required_slots": [
-        "operation",
-        "source_file"
-      ],
-      "optional_slots": [
-        "output_format",
-        "page_range",
-        "destination_file",
-        "ocr_language"
-      ],
-      "slot_definitions": {
-        "operation": {
-          "question": "What should I do with the PDF?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "extract": "extract_text",
-            "extract text": "extract_text",
-            "read": "extract_text",
-            "parse": "extract_text",
-            "text": "extract_text",
-            "merge": "merge",
-            "combine": "merge",
-            "join": "merge",
-            "split": "split",
-            "separate": "split",
-            "ocr": "ocr",
-            "scan": "ocr",
-            "optical": "ocr",
-            "form": "form_fill",
-            "fill": "form_fill",
-            "fill in": "form_fill",
-            "convert": "convert",
-            "to pdf": "convert",
-            "pdf to": "convert",
-            "rotate": "rotate",
-            "images": "extract_images",
-            "extract images": "extract_images"
-          },
-          "type": "enum",
-          "enum_values": [
-            "extract_text",
-            "merge",
-            "split",
-            "ocr",
-            "form_fill",
-            "convert",
-            "rotate",
-            "extract_images"
-          ],
-          "nullable": false
-        },
-        "source_file": {
-          "question": "Which PDF file should I work with?",
-          "resolvers": [
-            "last_mentioned_file",
-            "last_mentioned_path",
-            "working_memory_lookup",
-            "context_inference"
-          ],
-          "type": "path",
-          "nullable": false
-        },
-        "output_format": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true
-        },
-        "page_range": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "e.g. '1-5', '3', 'all'"
-        },
-        "destination_file": {
-          "question": null,
-          "resolvers": [
-            "context_inference",
-            "last_mentioned_path"
-          ],
-          "type": "path",
-          "nullable": true
-        },
-        "ocr_language": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "default": "eng"
-        }
-      },
-      "confidence_threshold": 0.7,
-      "preamble": "Load the pdf_library skill before attempting any operation. Verify the source file exists at the stated path. Use full absolute paths. State the output location before writing."
-    },
-    "data_transform": {
-      "description": "Format conversion and data restructuring: JSON, CSV, YAML, XML, TSV, schema mapping",
-      "triggers": [
-        "convert",
-        "transform",
-        "parse",
-        "format",
-        "reformat",
-        "json to",
-        "csv to",
-        "yaml to",
-        "to json",
-        "to csv",
-        "to yaml",
-        "restructure data",
-        "reshape",
-        "normalize data",
-        "flatten",
-        "serialize",
-        "deserialize",
-        "map fields",
-        "schema",
-        "data mapping",
-        "extract fields",
-        "filter rows",
-        "aggregate"
-      ],
-      "required_slots": [
-        "input_format",
-        "output_format"
-      ],
-      "optional_slots": [
-        "source_file",
-        "destination_file",
-        "field_mapping",
-        "filter_expression"
-      ],
-      "slot_definitions": {
-        "input_format": {
-          "question": "What is the current data format?",
-          "resolvers": [
-            "keyword_map",
-            "file_extension_inference",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "json": "json",
-            "csv": "csv",
-            "yaml": "yaml",
-            "yml": "yaml",
-            "xml": "xml",
-            "tsv": "tsv",
-            "toml": "toml",
-            "ini": "ini",
-            "markdown": "markdown",
-            "text": "text",
-            "plain": "text"
-          },
-          "type": "enum",
-          "enum_values": [
-            "json",
-            "csv",
-            "yaml",
-            "xml",
-            "tsv",
-            "toml",
-            "ini",
-            "markdown",
-            "text"
-          ],
-          "nullable": false
-        },
-        "output_format": {
-          "question": "What format should it be converted to?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "json": "json",
-            "csv": "csv",
-            "yaml": "yaml",
-            "yml": "yaml",
-            "xml": "xml",
-            "tsv": "tsv",
-            "toml": "toml",
-            "markdown": "markdown",
-            "table": "markdown",
-            "text": "text"
-          },
-          "type": "enum",
-          "enum_values": [
-            "json",
-            "csv",
-            "yaml",
-            "xml",
-            "tsv",
-            "toml",
-            "markdown",
-            "text"
-          ],
-          "nullable": false
-        },
-        "source_file": {
-          "question": null,
-          "resolvers": [
-            "last_mentioned_file",
-            "last_mentioned_path",
-            "working_memory_lookup"
-          ],
-          "type": "path",
-          "nullable": true
-        },
-        "destination_file": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "path",
-          "nullable": true
-        },
-        "field_mapping": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "Explicit field renames or mappings if schema changes"
-        },
-        "filter_expression": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true
-        }
-      },
-      "confidence_threshold": 0.65,
-      "preamble": "State the input format, output format, and any field mappings before transforming. If the source is a file, read it first and confirm its structure. Show a sample of the output before writing to disk."
-    },
-    "api_integration": {
-      "description": "Calling external APIs, building MCP servers, or handling HTTP integrations",
-      "triggers": [
-        "api",
-        "endpoint",
-        "rest",
-        "http",
-        "request",
-        "curl",
-        "mcp server",
-        "mcp",
-        "webhook",
-        "api call",
-        "api key",
-        "post request",
-        "get request",
-        "api integration",
-        "http client",
-        "fetch url",
-        "call endpoint",
-        "rate limit",
-        "auth token",
-        "bearer token",
-        "oauth",
-        "api wrapper",
-        "build mcp"
-      ],
-      "required_slots": [
-        "endpoint",
-        "method"
-      ],
-      "optional_slots": [
-        "auth_type",
-        "payload_schema",
-        "response_schema",
-        "rate_limit",
-        "base_url"
-      ],
-      "slot_definitions": {
-        "endpoint": {
-          "question": "What is the API endpoint or URL?",
-          "resolvers": [
-            "context_inference",
-            "last_mentioned_entity",
-            "working_memory_lookup",
-            "history_scan"
-          ],
-          "type": "string",
-          "nullable": false
-        },
-        "method": {
-          "question": "What HTTP method \u2014 GET, POST, PUT, DELETE, or PATCH?",
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "get": "GET",
-            "fetch": "GET",
-            "read": "GET",
-            "retrieve": "GET",
-            "post": "POST",
-            "create": "POST",
-            "send": "POST",
-            "submit": "POST",
-            "put": "PUT",
-            "update": "PUT",
-            "replace": "PUT",
-            "patch": "PATCH",
-            "modify": "PATCH",
-            "delete": "DELETE",
-            "remove": "DELETE"
-          },
-          "type": "enum",
-          "enum_values": [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
-          ],
-          "nullable": false,
-          "default": "GET"
-        },
-        "auth_type": {
-          "question": null,
-          "resolvers": [
-            "keyword_map",
-            "context_inference"
-          ],
-          "keyword_map": {
-            "bearer": "bearer_token",
-            "token": "bearer_token",
-            "api key": "api_key",
-            "apikey": "api_key",
-            "basic": "basic_auth",
-            "oauth": "oauth2",
-            "none": "none",
-            "no auth": "none"
-          },
-          "type": "enum",
-          "enum_values": [
-            "bearer_token",
-            "api_key",
-            "basic_auth",
-            "oauth2",
-            "none"
-          ],
-          "nullable": true,
-          "default": "none"
-        },
-        "payload_schema": {
-          "question": null,
-          "resolvers": [
-            "context_inference",
-            "history_scan"
-          ],
-          "type": "string",
-          "nullable": true
-        },
-        "base_url": {
-          "question": null,
-          "resolvers": [
-            "context_inference",
-            "history_scan"
-          ],
-          "type": "string",
-          "nullable": true
-        },
-        "rate_limit": {
-          "question": null,
-          "resolvers": [
-            "context_inference"
-          ],
-          "type": "string",
-          "nullable": true,
-          "note": "e.g. '100/hour', '10/second'"
-        }
-      },
-      "confidence_threshold": 0.7,
-      "preamble": "State the endpoint, method, and auth mechanism before making any call. Do not hardcode credentials \u2014 reference environment variables. For MCP server builds, state the tool schema and input/output contract before writing code."
-    },
-    "dependency_mgmt": {
-      "description": "Installing, updating, or auditing Python packages and system dependencies",
-      "triggers": [
+        "docker",
+        "container",
+        "image",
+        "dockerfile",
+        "compose",
+        "exec into",
+        "shell into",
+        "container logs",
+        "docker logs",
+        "pull image",
+        "build image",
+        "stop container",
+        "restart container",
+        "docker run",
+        "docker exec",
+        "docker build",
+        "docker ps",
+        "spin up container",
+        "container shell",
         "install package",
         "pip install",
         "install library",
@@ -1764,47 +920,191 @@
         "pip freeze",
         "pip list",
         "apt install",
-        "apt-get"
+        "apt-get",
+        "systemctl",
+        "service",
+        "daemon",
+        "cron",
+        "process",
+        "kill process",
+        "ps aux",
+        "system service"
       ],
       "required_slots": [
         "operation",
-        "package_name"
+        "subsystem"
       ],
       "optional_slots": [
+        "container_name",
+        "image_name",
+        "command",
+        "port_mapping",
+        "volume_mount",
+        "package_name",
         "version_spec",
         "target_env",
         "requirements_file"
       ],
       "slot_definitions": {
-        "operation": {
-          "question": "Should I install, upgrade, uninstall, or list packages?",
+        "subsystem": {
+          "question": "Is this a Docker operation, package management, or other system task?",
           "resolvers": [
             "keyword_map",
             "context_inference"
           ],
           "keyword_map": {
-            "install": "install",
-            "add": "install",
-            "get": "install",
-            "upgrade": "upgrade",
-            "update": "upgrade",
-            "uninstall": "uninstall",
-            "remove": "uninstall",
-            "list": "list",
-            "show": "list",
-            "freeze": "list",
-            "audit": "audit",
-            "check": "audit"
+            "docker": "docker",
+            "container": "docker",
+            "image": "docker",
+            "compose": "docker",
+            "pip": "packages",
+            "apt": "packages",
+            "install": "packages",
+            "package": "packages",
+            "venv": "packages",
+            "requirements": "packages",
+            "service": "system",
+            "systemctl": "system",
+            "cron": "system",
+            "process": "system",
+            "daemon": "system"
           },
           "type": "enum",
           "enum_values": [
+            "docker",
+            "packages",
+            "system"
+          ],
+          "nullable": false
+        },
+        "operation": {
+          "question": "What operation should I perform?",
+          "resolvers": [
+            "keyword_map",
+            "context_inference"
+          ],
+          "keyword_map": {
+            "run": "run",
+            "start": "run",
+            "spin up": "run",
+            "exec": "exec",
+            "shell": "exec",
+            "exec into": "exec",
+            "shell into": "exec",
+            "logs": "logs",
+            "log": "logs",
+            "build": "build",
+            "build image": "build",
+            "stop": "stop",
+            "kill": "stop",
+            "restart": "restart",
+            "pull": "pull",
+            "download image": "pull",
+            "ps": "list",
+            "list containers": "list",
+            "running containers": "list",
+            "inspect": "inspect",
+            "rm": "remove",
+            "remove": "remove",
+            "rmi": "remove_image",
+            "remove image": "remove_image",
+            "install": "install",
+            "add": "install",
+            "upgrade": "upgrade",
+            "update": "upgrade",
+            "uninstall": "uninstall",
+            "pip list": "list",
+            "pip freeze": "list",
+            "audit": "audit"
+          },
+          "type": "enum",
+          "enum_values": [
+            "run",
+            "exec",
+            "logs",
+            "build",
+            "stop",
+            "restart",
+            "pull",
+            "list",
+            "inspect",
+            "remove",
+            "remove_image",
             "install",
             "upgrade",
             "uninstall",
-            "list",
             "audit"
           ],
           "nullable": false
+        },
+        "container_name": {
+          "question": "Which container?",
+          "resolvers": [
+            "last_mentioned_entity",
+            "context_inference",
+            "working_memory_lookup",
+            "history_scan"
+          ],
+          "type": "string",
+          "nullable": true,
+          "required_when": {
+            "subsystem": ["docker"],
+            "operation": [
+              "exec",
+              "logs",
+              "stop",
+              "restart",
+              "inspect",
+              "remove"
+            ]
+          }
+        },
+        "image_name": {
+          "question": "Which image?",
+          "resolvers": [
+            "last_mentioned_entity",
+            "working_memory_lookup",
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "required_when": {
+            "subsystem": ["docker"],
+            "operation": [
+              "run",
+              "pull",
+              "build",
+              "remove_image"
+            ]
+          }
+        },
+        "command": {
+          "question": "What command should I run inside the container?",
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "default": "/bin/bash",
+          "note": "For docker exec operations"
+        },
+        "port_mapping": {
+          "question": null,
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "e.g. 8080:80"
+        },
+        "volume_mount": {
+          "question": null,
+          "resolvers": [
+            "last_mentioned_path",
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true
         },
         "package_name": {
           "question": "Which package?",
@@ -1853,9 +1153,376 @@
         }
       },
       "confidence_threshold": 0.75,
-      "preamble": "For pip installs in this container, always append --break-system-packages to the command. State the package name and version before installing. For uninstalls, confirm the package is not a transitive dependency of something critical."
+      "preamble": "For Docker: state the exact command before executing. For stop/remove operations, confirm the container name matches before proceeding. For exec, confirm the container is running first. For pip installs: always append --break-system-packages. State the package name and version before installing. For uninstalls, confirm the package is not a transitive dependency of something critical."
     },
-    "conversational": {
+    "financial": {
+      "description": "Financial analysis, market research, investment data, and economic intelligence",
+      "triggers": [
+        "financial",
+        "finance",
+        "market",
+        "stock",
+        "ticker",
+        "equity",
+        "bond",
+        "yield",
+        "portfolio",
+        "investment",
+        "earnings",
+        "revenue",
+        "SEC filing",
+        "10-K",
+        "10-Q",
+        "balance sheet",
+        "income statement",
+        "cash flow",
+        "fundamental analysis",
+        "technical analysis",
+        "macro",
+        "economic",
+        "GDP",
+        "inflation",
+        "interest rate",
+        "asset",
+        "commodity",
+        "forex",
+        "crypto",
+        "valuation",
+        "P/E",
+        "price target"
+      ],
+      "required_slots": [
+        "analysis_type",
+        "asset_reference"
+      ],
+      "optional_slots": [
+        "timeframe",
+        "data_source_type",
+        "comparison_target"
+      ],
+      "slot_definitions": {
+        "asset_reference": {
+          "question": "What asset, company, index, or economic indicator are you asking about?",
+          "resolvers": [
+            "context_inference",
+            "last_mentioned_entity",
+            "working_memory_lookup"
+          ],
+          "type": "string",
+          "nullable": false
+        },
+        "analysis_type": {
+          "question": "What type of analysis \u2014 fundamental, technical, macro, or general research?",
+          "resolvers": [
+            "keyword_map",
+            "context_inference"
+          ],
+          "keyword_map": {
+            "fundamental": "fundamental",
+            "earnings": "fundamental",
+            "SEC": "fundamental",
+            "balance sheet": "fundamental",
+            "technical": "technical",
+            "chart": "technical",
+            "price": "technical",
+            "macro": "macro",
+            "economic": "macro",
+            "GDP": "macro",
+            "inflation": "macro",
+            "research": "general",
+            "analyze": "general",
+            "what is": "general"
+          },
+          "type": "enum",
+          "enum_values": [
+            "fundamental",
+            "technical",
+            "macro",
+            "general"
+          ],
+          "default": "general"
+        },
+        "timeframe": {
+          "question": null,
+          "resolvers": [
+            "keyword_map",
+            "context_inference"
+          ],
+          "keyword_map": {
+            "daily": "daily",
+            "weekly": "weekly",
+            "monthly": "monthly",
+            "quarterly": "quarterly",
+            "annual": "annual",
+            "YTD": "ytd",
+            "year to date": "ytd",
+            "5 year": "5y",
+            "10 year": "10y"
+          },
+          "type": "string",
+          "nullable": true
+        },
+        "data_source_type": {
+          "question": null,
+          "resolvers": [
+            "keyword_map",
+            "context_inference"
+          ],
+          "keyword_map": {
+            "SEC": "sec_filing",
+            "filing": "sec_filing",
+            "earnings call": "earnings_transcript",
+            "transcript": "earnings_transcript",
+            "market data": "market_feed",
+            "price data": "market_feed",
+            "news": "news_feed",
+            "analyst": "analyst_report"
+          },
+          "type": "enum",
+          "enum_values": [
+            "sec_filing",
+            "earnings_transcript",
+            "market_feed",
+            "news_feed",
+            "analyst_report",
+            "general"
+          ],
+          "nullable": true
+        },
+        "comparison_target": {
+          "question": "What should this be compared against \u2014 sector, index, competitor, or benchmark?",
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.65,
+      "preamble": "Financial data has high temporal volatility. State your data sources and their timestamps before drawing conclusions. Flag any data older than 24 hours as potentially stale for price data, older than one quarter for fundamental data. Do not confabulate specific figures \u2014 if a number is not in the retrieved data, say so."
+    },
+    "planning": {
+      "description": "Project planning, task decomposition, timeline estimation, and workflow design",
+      "triggers": [
+        "plan",
+        "planning",
+        "roadmap",
+        "milestone",
+        "timeline",
+        "schedule",
+        "project",
+        "breakdown",
+        "decompose",
+        "phase",
+        "sprint",
+        "backlog",
+        "prioritize",
+        "sequence",
+        "dependency",
+        "deliverable",
+        "scope",
+        "what order",
+        "what first",
+        "how to approach",
+        "strategy",
+        "work breakdown",
+        "task list",
+        "next steps"
+      ],
+      "required_slots": [
+        "project_scope"
+      ],
+      "optional_slots": [
+        "timeline",
+        "dependencies",
+        "resource_constraints",
+        "output_format"
+      ],
+      "slot_definitions": {
+        "project_scope": {
+          "question": "What is the project or goal being planned?",
+          "resolvers": [
+            "context_inference",
+            "last_mentioned_entity",
+            "working_memory_lookup"
+          ],
+          "type": "string",
+          "nullable": false
+        },
+        "timeline": {
+          "question": null,
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "Target completion date or duration, if stated"
+        },
+        "dependencies": {
+          "question": null,
+          "resolvers": [
+            "context_inference",
+            "working_memory_lookup"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "External constraints, blockers, or prerequisite tasks"
+        },
+        "resource_constraints": {
+          "question": null,
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "Team size, compute limits, budget, or other constraints"
+        },
+        "output_format": {
+          "question": null,
+          "resolvers": [
+            "context_inference"
+          ],
+          "type": "enum",
+          "enum_values": [
+            "bullet_list",
+            "numbered_steps",
+            "markdown_table",
+            "gantt_description",
+            "prose"
+          ],
+          "default": "numbered_steps"
+        }
+      },
+      "confidence_threshold": 0.6,
+      "preamble": "Break the project into concrete, sequenced steps. State dependencies and blockers explicitly before the step that requires them. Do not collapse phases \u2014 each phase should have a clear entry condition and exit condition. Flag assumptions about scope or resources."
+    },
+    "testing": {
+      "description": "Writing, running, debugging, and interpreting test suites",
+      "triggers": [
+        "test",
+        "tests",
+        "pytest",
+        "unittest",
+        "test suite",
+        "write tests",
+        "add tests",
+        "run tests",
+        "test coverage",
+        "assertion",
+        "assert",
+        "mock",
+        "fixture",
+        "failing test",
+        "passing test",
+        "test case",
+        "regression test",
+        "unit test",
+        "integration test",
+        "end-to-end test",
+        "e2e",
+        "test runner",
+        "coverage report",
+        "test output",
+        "CI test",
+        "flaky test"
+      ],
+      "required_slots": [
+        "target_file",
+        "test_framework"
+      ],
+      "optional_slots": [
+        "expected_behavior",
+        "failure_description",
+        "test_scope"
+      ],
+      "slot_definitions": {
+        "target_file": {
+          "question": "Which file or module should be tested?",
+          "resolvers": [
+            "last_mentioned_file",
+            "working_memory_lookup",
+            "context_inference"
+          ],
+          "type": "string",
+          "nullable": true,
+          "null_means": "all_tests"
+        },
+        "test_framework": {
+          "question": "Which test framework \u2014 pytest, unittest, or custom?",
+          "resolvers": [
+            "keyword_map",
+            "file_extension_inference",
+            "context_inference",
+            "history_scan"
+          ],
+          "keyword_map": {
+            "pytest": "pytest",
+            "unittest": "unittest",
+            "jest": "jest",
+            "mocha": "mocha",
+            "vitest": "vitest",
+            "custom": "custom"
+          },
+          "type": "enum",
+          "enum_values": [
+            "pytest",
+            "unittest",
+            "jest",
+            "mocha",
+            "vitest",
+            "custom"
+          ],
+          "default": "pytest",
+          "nullable": false
+        },
+        "expected_behavior": {
+          "question": "What should the code under test do?",
+          "resolvers": [
+            "context_inference",
+            "history_scan"
+          ],
+          "type": "string",
+          "nullable": true
+        },
+        "failure_description": {
+          "question": "What failure are you seeing?",
+          "resolvers": [
+            "context_inference",
+            "history_scan"
+          ],
+          "type": "string",
+          "nullable": true,
+          "note": "For debugging failing tests \u2014 scan history for test output"
+        },
+        "test_scope": {
+          "question": null,
+          "resolvers": [
+            "keyword_map",
+            "context_inference"
+          ],
+          "keyword_map": {
+            "unit": "unit",
+            "integration": "integration",
+            "e2e": "e2e",
+            "end-to-end": "e2e",
+            "regression": "regression",
+            "all": "all"
+          },
+          "type": "enum",
+          "enum_values": [
+            "unit",
+            "integration",
+            "e2e",
+            "regression",
+            "all"
+          ],
+          "nullable": true
+        }
+      },
+      "confidence_threshold": 0.7,
+      "preamble": "Identify the test framework. State the target behavior before writing assertions. For new tests: confirm the test fails before the fix and passes after. Run tests in isolation. Quote exact test output when debugging failures \u2014 do not paraphrase assertion errors."
+    },
+    "conversation": {
       "description": "General conversation, greetings, meta questions, no task implied",
       "triggers": [],
       "required_slots": [],
@@ -2144,6 +1811,6 @@
     "belief_state_ttl_turns": 6,
     "min_trigger_word_length": 3,
     "multi_domain_strategy": "highest_confidence",
-    "fallback_domain": "conversational"
+    "fallback_domain": "conversation"
   }
 }

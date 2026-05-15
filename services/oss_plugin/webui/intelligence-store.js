@@ -73,10 +73,12 @@ export function createIntelStore() {
     hypTopic:   "",
 
     // ── Predict tab ──────────────────────────────────────────────────────────
-    predictTopic:  "",
-    swfRunning:    false,
-    swfProfiles:   [],
-    swfConsensus:  null,
+    predictTopic:    "",
+    swfRunning:      false,
+    swfProfiles:     [],
+    swfConsensus:    null,
+    swfSessions:     [],
+    swfSessionsTotal: 0,
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -107,7 +109,7 @@ export function createIntelStore() {
           ledger:     () => this.loadLedger(),
           analysis:   () => this.loadAnalysis(),
           hypotheses: () => this.loadHypotheses(),
-          predict:    () => Promise.resolve(),
+          predict:    () => this.loadSwfSessions(),
         };
         await (map[this.tab] ?? (() => Promise.resolve()))();
       } catch (e) {
@@ -143,7 +145,11 @@ export function createIntelStore() {
       this.sources = d.sources ?? (Array.isArray(d) ? d : []);
     },
 
-    get ingestPaused() { return this.health?.ingest_paused ?? true; },
+    get ingestPaused()   { return this.health?.ingest_paused ?? true; },
+    get claimsStaged()   { return this.health?.claims?.staged   ?? 0; },
+    get claimsPromoted() { return this.health?.claims?.promoted ?? 0; },
+    get sourcesCount()   { return this.health?.sources_count    ?? 0; },
+    get hypothesisCount(){ return this.health?.hypothesis_count ?? 0; },
 
     get healthBadge() {
       if (!this.health) return "unknown";
@@ -287,7 +293,17 @@ export function createIntelStore() {
       await this.loadHypotheses();
     },
 
-    // ── Predict (placeholder — SWARMFISH proxy not yet wired to canvas) ───────
+    // ── Predict (SWARMFISH committee) ─────────────────────────────────────────
+
+    async loadSwfSessions() {
+      try {
+        const d = await ossPost("/api/plugins/swarmfish/api_swarmfish_sessions", { limit: 10 });
+        this.swfSessions      = d.sessions ?? [];
+        this.swfSessionsTotal = d.count    ?? 0;
+      } catch (_) {
+        this.swfSessions = [];
+      }
+    },
 
     async runPredict() {
       if (!this.predictTopic) { this.notify("Select a topic first", "warn"); return; }
@@ -296,14 +312,17 @@ export function createIntelStore() {
       this.swfConsensus = null;
       this.error        = null;
       try {
-        const d = await ossPost(`${OSS}/api_oss_hypotheses`, {
-          action: "list",
-          limit:  20,
+        const d = await ossPost("/api/plugins/swarmfish/api_swarmfish_predict", {
+          question: this.predictTopic,
+          domain:   "geopolitical",
         });
-        this.swfProfiles = d.hypotheses ?? [];
-        this.notify("Loaded hypotheses (SWARMFISH canvas proxy pending)", "info");
+        this.swfProfiles  = d.assessments ?? [];
+        this.swfConsensus = d.consensus   ?? null;
+        this.notify("SWARMFISH committee complete", "ok");
+        await this.loadSwfSessions();
       } catch (e) {
         this.error = e.message;
+        this.notify(e.message, "danger");
       } finally {
         this.swfRunning = false;
       }

@@ -833,7 +833,7 @@ _stop_event = threading.Event()
 # Interrupts run_scheduler's inter-pass sleep so a resume starts a pass immediately
 # instead of waiting up to OSS_INGEST_INTERVAL_MINUTES for the next tick.
 _wakeup_event = threading.Event()
-if os.environ.get("OSS_INGEST_PAUSED", "false").lower() == "true":
+if os.environ.get("OSS_INGEST_PAUSED", "true").lower() in ("1", "true", "yes"):
     _stop_event.set()
 
 

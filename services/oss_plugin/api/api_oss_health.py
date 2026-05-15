@@ -56,6 +56,10 @@ class OssHealth(ApiHandler):
             cur.execute("SELECT COUNT(*) AS n FROM sources")
             src_count = cur.fetchone()["n"]
 
+            # Hypothesis count
+            cur.execute("SELECT COUNT(*) AS n FROM hypothesis_registry")
+            hyp_count = cur.fetchone()["n"]
+
             # Last ingestion timestamp
             cur.execute("SELECT MAX(extracted_at) AS last FROM claims")
             last_row = cur.fetchone()
@@ -78,6 +82,7 @@ class OssHealth(ApiHandler):
                     "falsified": counts.get("FALSIFIED", 0),
                 },
                 "sources_count": src_count,
+                "hypothesis_count": hyp_count,
                 "ingest_paused": is_paused(),
                 "last_ingestion": last_ingestion,
                 "health_report": health_report,

@@ -17,7 +17,7 @@ State key: _sleep_last_activity (float, unix timestamp)
 
 import time
 from agent import LoopData
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 ACTIVITY_KEY = "_sleep_last_activity"
 

@@ -88,6 +88,13 @@ model will see it on the next `before_main_llm_call` → `prepare_prompt` cycle.
 - If no role is active, return immediately. Zero overhead when the org kernel is off.
 - Track a turn counter independently from the dispatcher's counter.
 
+**Implementation note (2026-05-14 audit):** The above org-active gate applies to the
+SALUTE radio check and anomaly-detection tiers only. Loop detection, cascade detection,
+and context-window checks run on EVERY turn regardless of org state — they address
+failure modes that occur with or without an active role. The implementation (`_50_supervisor_loop.py`)
+is correct; this spec comment was stale. Do not add an org-active guard to loop/cascade/context
+detection when modifying the implementation.
+
 ### Radio Check Interval
 - Read the active role's `doctrine.salute_interval_turns` to determine check frequency.
 - Alternatively, use its own configurable interval (default: every 3 turns).

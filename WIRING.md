@@ -276,6 +276,7 @@ Lessons learned the hard way. Check these first when something breaks silently.
 | 9 | Same extension in two hooks with a once-per-session gate | Wrong-hook version fires first, sets flag, correct-hook version skips forever | `_memory_catalog_built` flag: if `_18_memory_catalog.py` exists in both `before_main_llm_call` and `message_loop_prompts_after`, before fires first and blocks the correct version. Keep each extension in exactly one hook. |
 | 10 | Extension import uses `python.helpers.*` | `ModuleNotFoundError: No module named 'python.helpers'` at extension load — entire hook fails silently | Use `from helpers.extension import Extension`, `from plugins._memory.helpers.memory import Memory` |
 | 11 | Tombstone removes from profile path only | Extension removed from profile path continues firing from plugin path — ghost extension, no log evidence it's stale | Remove from BOTH paths. `install_extensions.sh` does this. Manual tombstone: two `rm -f` entries. Confirmed in ST-012: TOOL-REG, MEM-CAT, INJECTION-BUDGET fired after profile removal. See DEC-026. |
+| 12 | Stagnation detection without `_30_tool_fallback_logger` | Supervisor stagnation check runs silently with no data — `_tool_output_tracker` is always empty, stagnation never fires even during true output loops | `_detect_output_stagnation()` reads `_tool_output_tracker` populated by the fallback logger. If `_30_tool_fallback_logger.py` is not deployed, the tracker is absent and stagnation detection is permanently blind. Verified 2026-05-14 audit. |
 
 ---
 

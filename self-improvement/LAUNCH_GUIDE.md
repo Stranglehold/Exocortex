@@ -1,4 +1,4 @@
-# LAUNCH GUIDE — Exocortex Self-Improvement Loop
+﻿# LAUNCH GUIDE — Exocortex Self-Improvement Loop
 ## April 27, 2026
 
 ---

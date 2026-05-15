@@ -19,7 +19,7 @@ from .db import jloads, jdumps
 log = logging.getLogger("[SILENCE]")
 
 LLM_URL   = os.environ.get("OSS_LLM_URL",   "http://host.docker.internal:1234/v1")
-from llm_config import get_llm_model as _get_llm_model
+from .llm_config import get_llm_model as _get_llm_model
 LLM_MODEL = _get_llm_model()
 
 _DISTINCT_CLUSTERS = {"left", "right", "center", "international", "independent"}

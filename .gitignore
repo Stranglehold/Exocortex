@@ -19,3 +19,13 @@ operator_profile_versions/
 action_boundary_config.json
 agents/
 state/
+
+# Inference — llama.cpp source clones and compiled builds (large, not committed)
+inference/llama-cpp-*/
+inference/buun-llama-cpp/
+inference/lucebox-dflash/
+inference/turbo3-cuda/
+inference/build_log.txt
+inference/mtp_server.log
+inference/compile_*.bat
+inference/compile.bat

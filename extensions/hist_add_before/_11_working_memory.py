@@ -106,9 +106,12 @@ _RE_PORT = re.compile(
     re.IGNORECASE,
 )
 
-# Container names — after docker keywords
+# Container names — after docker keywords.
+# Require 5+ chars to filter prose words ("so", "the", "can", "then") that
+# follow "container" in normal sentences. Real container names are always
+# longer (exocortex_v17, oss_app, flamboyant_bell).
 _RE_CONTAINER = re.compile(
-    r'(?:container|docker\s+(?:exec|logs|stop|restart|rm|inspect|attach))\s+([a-zA-Z0-9_\-]+)',
+    r'(?:container|docker\s+(?:exec|logs|stop|restart|rm|inspect|attach))\s+([a-zA-Z0-9_\-]{5,})',
     re.IGNORECASE,
 )
 

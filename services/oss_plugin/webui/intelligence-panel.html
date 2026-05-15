@@ -1,7 +1,4 @@
-<!-- intelligence-panel.html — Agent Zero right-canvas Intelligence Surface
-     Deploy to: /a0/usr/plugins/exocortex/extensions/webui/right-canvas-panels/
-     Requires:  intelligence-store.js registered as Alpine.store("intelligence")
--->
+<!-- intelligence-panel.html — Agent Zero right-canvas Intelligence Surface -->
 
 <style>
 /* ── Design System Tokens ─────────────────────────────────────── */
@@ -11,38 +8,46 @@
   --raised:  #0f1629;
   --overlay: #151d35;
   --border:  rgba(255,255,255,.07);
-  --border-bright: rgba(0,229,255,.25);
+  --border-hi: rgba(255,255,255,.14);
 
-  --cyan:    #00e5ff;
-  --cyan-dim: rgba(0,229,255,.15);
-  --cyan-glow: 0 0 12px rgba(0,229,255,.35);
+  /* Structural accent — cool indigo-cyan */
+  --cyan:      #4fc3f7;
+  --cyan-dim:  rgba(79,195,247,.12);
+  --cyan-glow: 0 0 12px rgba(79,195,247,.3);
 
-  --ok:      #00e676;
-  --ok-dim:  rgba(0,230,118,.12);
-  --warn:    #ffb300;
-  --warn-dim: rgba(255,179,0,.12);
-  --danger:  #ff1744;
-  --danger-dim: rgba(255,23,68,.12);
-  --info:    #448aff;
+  /* Attention accent — amber only for signals */
+  --amber:     #f59e0b;
+  --amber-dim: rgba(245,158,11,.12);
+  --amber-glow: 0 0 10px rgba(245,158,11,.3);
 
-  --txt-1:   #f0f2f5;
-  --txt-2:   #b0b8c8;
-  --txt-3:   #6b7a8d;
-  --txt-dim: #3d4a5c;
+  /* Semantic */
+  --ok:       #34d399;
+  --ok-dim:   rgba(52,211,153,.12);
+  --danger:   #f87171;
+  --danger-dim: rgba(248,113,113,.12);
+  --info:     #60a5fa;
+
+  /* Text hierarchy */
+  --txt-1:  #e8ecf2;
+  --txt-2:  #9ba8bb;
+  --txt-3:  #556070;
+  --txt-dim: #2d3545;
 
   --font-body: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", "Consolas", monospace;
 
+  /* Spring-eased cubic-bezier for overshoot feel */
+  --spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --t-fast:   0.15s;
-  --t-normal: 0.25s;
+  --t-norm:   0.25s;
 
   --r-sm:   6px;
   --r-md:   10px;
   --r-pill: 999px;
 }
 
-/* ── Layout ───────────────────────────────────────────────────── */
+/* ── Base Layout ──────────────────────────────────────────────── */
 .ip {
   display: flex;
   flex-direction: column;
@@ -52,6 +57,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   overflow: hidden;
+  position: relative;
 }
 
 /* ── Header ───────────────────────────────────────────────────── */
@@ -59,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   background: var(--void);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -67,40 +73,117 @@
 
 .ip-title {
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .12em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--cyan);
 }
 
 .ip-header-spacer { flex: 1; }
 
-.ip-ingest-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  transition: color var(--t-fast), border-color var(--t-fast);
-}
-.ip-ingest-pill.running { color: var(--ok); border-color: var(--ok); }
-.ip-ingest-pill.paused  { color: var(--warn); border-color: var(--warn); }
-.ip-ingest-pill.unknown { color: var(--txt-3); border-color: var(--border); }
-
-.ip-dot {
-  width: 6px; height: 6px;
+/* Live ingest pulse */
+.ip-live-dot {
+  width: 7px; height: 7px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+  flex-shrink: 0;
 }
-.ip-ingest-pill.running .ip-dot { animation: ip-blink 1.4s ease-in-out infinite; }
-@keyframes ip-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.ip-live-dot.live { animation: ip-breathe 2s ease-in-out infinite; }
+.ip-live-dot.paused { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: none; }
+.ip-live-dot.unknown { background: var(--txt-dim); box-shadow: none; animation: none; }
+@keyframes ip-breathe {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.75); }
+}
+
+.ip-ingest-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.ip-ingest-label.live   { color: var(--ok); }
+.ip-ingest-label.paused { color: var(--amber); }
+.ip-ingest-label.unknown { color: var(--txt-3); }
+
+/* Quick controls in header */
+.ip-hbtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--txt-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .06em;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast),
+              transform 80ms cubic-bezier(0.4,0,0.2,1);
+}
+.ip-hbtn:active { transform: scale(0.93); }
+.ip-hbtn.ok  { color: var(--ok);    border-color: var(--ok); }
+.ip-hbtn.ok:hover  { background: var(--ok-dim); }
+.ip-hbtn.amber { color: var(--amber); border-color: var(--amber); }
+.ip-hbtn.amber:hover { background: var(--amber-dim); }
+
+/* ── Persistent Status Bar ────────────────────────────────────── */
+.ip-statusbar {
+  display: flex;
+  align-items: stretch;
+  background: var(--void);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ip-sb-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px 7px;
+  position: relative;
+  cursor: default;
+}
+.ip-sb-stat + .ip-sb-stat::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 1px;
+  background: var(--border);
+}
+
+.ip-sb-val {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  transition: color var(--t-fast);
+}
+.ip-sb-val.staged   { color: var(--amber); }
+.ip-sb-val.promoted { color: var(--ok); }
+.ip-sb-val.neutral  { color: var(--txt-1); }
+.ip-sb-val.cyan     { color: var(--cyan); }
+
+.ip-sb-val.pulse {
+  animation: ip-val-pulse .35s var(--spring);
+}
+@keyframes ip-val-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.ip-sb-lbl {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--txt-3);
+  margin-top: 3px;
+}
 
 /* ── Tab Bar ──────────────────────────────────────────────────── */
 .ip-tabs {
@@ -115,161 +198,161 @@
 
 .ip-tab {
   flex: 1;
-  padding: 8px 4px;
+  padding: 7px 4px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--txt-3);
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .08em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color var(--t-fast), border-color var(--t-fast);
+  transition: color var(--t-fast), border-color var(--t-norm) var(--ease-out);
   white-space: nowrap;
 }
 .ip-tab:hover { color: var(--txt-2); }
 .ip-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
 
-/* ── Content ──────────────────────────────────────────────────── */
+/* ── Content scroll area ──────────────────────────────────────── */
 .ip-content {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 12px;
   scrollbar-width: thin;
   scrollbar-color: var(--overlay) transparent;
 }
-.ip-content::-webkit-scrollbar { width: 4px; }
-.ip-content::-webkit-scrollbar-track { background: transparent; }
+.ip-content::-webkit-scrollbar { width: 3px; }
 .ip-content::-webkit-scrollbar-thumb { background: var(--overlay); border-radius: 2px; }
 
 /* ── Shared Components ────────────────────────────────────────── */
-.ip-section { margin-bottom: 16px; }
+.ip-section { margin-bottom: 14px; }
 
-.ip-section-label {
+.ip-section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.ip-section-lbl {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--txt-3);
-  margin-bottom: 8px;
 }
 
 .ip-card {
   background: var(--raised);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  padding: 9px 11px;
+  margin-bottom: 7px;
   transition: border-color var(--t-fast);
 }
-.ip-card:hover { border-color: rgba(255,255,255,.14); }
+.ip-card:hover { border-color: var(--border-hi); }
+.ip-card.accent { border-color: rgba(79,195,247,.2); box-shadow: 0 0 0 1px rgba(79,195,247,.06) inset; }
 
-.ip-card-ai {
-  border-color: rgba(0,229,255,.2);
-  box-shadow: 0 0 0 1px rgba(0,229,255,.08) inset;
-}
-
-.ip-stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.ip-stat {
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-  text-align: center;
-}
-.ip-stat-val {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--txt-1);
-  line-height: 1;
-}
-.ip-stat-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--txt-3);
-  margin-top: 4px;
-}
-.ip-stat-val.cyan   { color: var(--cyan); }
-.ip-stat-val.ok     { color: var(--ok); }
-.ip-stat-val.warn   { color: var(--warn); }
-.ip-stat-val.danger { color: var(--danger); }
-
+/* Buttons */
 .ip-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 10px;
+  padding: 4px 9px;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--overlay);
   color: var(--txt-2);
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: .06em;
   cursor: pointer;
-  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast),
+              transform 80ms cubic-bezier(0.4,0,0.2,1);
 }
-.ip-btn:hover     { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.15); color: var(--txt-1); }
-.ip-btn:disabled  { opacity: .4; cursor: not-allowed; }
-.ip-btn.cyan      { border-color: var(--cyan); color: var(--cyan); }
+.ip-btn:hover     { background: rgba(255,255,255,.06); border-color: var(--border-hi); color: var(--txt-1); }
+.ip-btn:active    { transform: scale(0.94); }
+.ip-btn:disabled  { opacity: .35; cursor: not-allowed; transform: none; }
+.ip-btn.cyan      { border-color: rgba(79,195,247,.5); color: var(--cyan); }
 .ip-btn.cyan:hover{ background: var(--cyan-dim); }
-.ip-btn.ok        { border-color: var(--ok); color: var(--ok); }
+.ip-btn.ok        { border-color: rgba(52,211,153,.5); color: var(--ok); }
 .ip-btn.ok:hover  { background: var(--ok-dim); }
-.ip-btn.danger    { border-color: var(--danger); color: var(--danger); }
+.ip-btn.amber     { border-color: rgba(245,158,11,.5); color: var(--amber); }
+.ip-btn.amber:hover{ background: var(--amber-dim); }
+.ip-btn.danger    { border-color: rgba(248,113,113,.5); color: var(--danger); }
 .ip-btn.danger:hover { background: var(--danger-dim); }
-.ip-btn.warn      { border-color: var(--warn); color: var(--warn); }
-.ip-btn.warn:hover{ background: var(--warn-dim); }
 
-.ip-btn-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+.ip-btn-row { display: flex; gap: 5px; margin-bottom: 9px; flex-wrap: wrap; }
+
+.ip-icon-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--txt-3);
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 13px; padding: 0; flex-shrink: 0;
+  transition: border-color var(--t-fast), color var(--t-fast), transform 80ms cubic-bezier(0.4,0,0.2,1);
 }
+.ip-icon-btn:hover  { border-color: var(--border-hi); color: var(--txt-1); }
+.ip-icon-btn:active { transform: scale(0.9); }
+.ip-icon-btn.ok { color: var(--ok); border-color: rgba(52,211,153,.4); }
+.ip-icon-btn.ok:hover { background: var(--ok-dim); }
 
+/* Select */
 .ip-select {
   background: var(--raised);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   color: var(--txt-1);
   font-family: var(--font-mono);
-  font-size: 11px;
-  padding: 5px 8px;
+  font-size: 10px;
+  padding: 4px 7px;
   outline: none;
   cursor: pointer;
+  transition: border-color var(--t-fast);
 }
-.ip-select:focus { border-color: var(--border-bright); }
+.ip-select:focus { border-color: rgba(79,195,247,.4); }
 
-.ip-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 7px;
-  border-radius: var(--r-pill);
+/* Text input */
+.ip-input {
+  flex: 1;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 7px;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
+  color: var(--txt-1);
+  outline: none;
+  transition: border-color var(--t-fast);
+}
+.ip-input:focus { border-color: rgba(79,195,247,.4); }
+.ip-input::placeholder { color: var(--txt-3); }
+
+/* Pills */
+.ip-pill {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
-.ip-pill.staged     { background: rgba(68,138,255,.15); color: var(--info); border: 1px solid rgba(68,138,255,.3); }
-.ip-pill.promoted   { background: var(--ok-dim);        color: var(--ok);   border: 1px solid rgba(0,230,118,.3); }
-.ip-pill.falsified  { background: var(--danger-dim);    color: var(--danger); border: 1px solid rgba(255,23,68,.3); }
-.ip-pill.active     { background: var(--cyan-dim);      color: var(--cyan); border: 1px solid var(--border-bright); }
+.ip-pill.staged     { background: rgba(245,158,11,.12);  color: var(--amber); border: 1px solid rgba(245,158,11,.3); }
+.ip-pill.promoted   { background: var(--ok-dim);         color: var(--ok);    border: 1px solid rgba(52,211,153,.3); }
+.ip-pill.falsified  { background: var(--danger-dim);     color: var(--danger); border: 1px solid rgba(248,113,113,.3); }
+.ip-pill.active     { background: var(--cyan-dim);       color: var(--cyan);  border: 1px solid rgba(79,195,247,.3); }
 .ip-pill.suspended  { background: rgba(255,255,255,.05); color: var(--txt-3); border: 1px solid var(--border); }
+.ip-pill.tag        { background: rgba(96,165,250,.1);   color: var(--info);  border: 1px solid rgba(96,165,250,.25); }
 
+/* Claim text */
 .ip-claim-text {
   font-size: 12px;
   color: var(--txt-2);
@@ -280,350 +363,54 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 .ip-claim-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+  display: flex; gap: 7px; align-items: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--txt-3);
 }
 
-.ip-conf-bar-track {
-  height: 3px;
+/* Confidence bar */
+.ip-conf-track {
+  height: 2px;
   background: var(--overlay);
   border-radius: 2px;
   margin: 6px 0;
   overflow: hidden;
 }
-.ip-conf-bar-fill {
+.ip-conf-fill {
   height: 100%;
   background: var(--cyan);
   border-radius: 2px;
-  transition: width 0.4s var(--ease-out);
+  transition: width 0.5s var(--ease-out);
 }
 
+/* Empty / error states */
 .ip-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 32px 16px;
   color: var(--txt-3);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: .06em;
 }
+.ip-empty-icon { font-size: 22px; margin-bottom: 8px; opacity: .4; }
 
 .ip-error {
   background: var(--danger-dim);
-  border: 1px solid rgba(255,23,68,.25);
+  border: 1px solid rgba(248,113,113,.25);
   border-radius: var(--r-sm);
-  padding: 8px 10px;
+  padding: 7px 10px;
   color: var(--danger);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   margin-bottom: 10px;
 }
-
-.ip-source-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-}
-.ip-source-name { flex: 1; color: var(--txt-2); }
-.ip-source-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-3);
-  min-width: 28px;
-  text-align: right;
-}
-
-.ip-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 12px 0;
-}
-
-.ip-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Checkbox */
-.ip-check {
-  accent-color: var(--cyan);
-  width: 14px; height: 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.ip-topic-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-2);
-  margin: 3px;
-}
-.ip-topic-chip .ip-topic-count {
-  font-size: 10px;
-  color: var(--txt-3);
-}
-
-/* ── Status tab density improvements ────────────────────────────────── */
-
-/* Compact inline stats bar */
-.ip-inline-stats {
-  display: flex;
-  align-items: center;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-  margin-bottom: 8px;
-}
-.ip-istat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  gap: 3px;
-}
-.ip-istat-val {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--txt-1);
-  line-height: 1;
-}
-.ip-istat-val.ok     { color: var(--ok); }
-.ip-istat-val.warn   { color: var(--warn); }
-.ip-istat-val.danger { color: var(--danger); }
-.ip-istat-lbl {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--txt-3);
-}
-.ip-istat-sep {
-  width: 1px;
-  height: 26px;
-  background: var(--border);
-  flex-shrink: 0;
-  margin: 0 4px;
-}
-
-/* Ingest controls row */
-.ip-ingest-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding: 0 2px;
-}
-.ip-ingest-age {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-3);
-}
-.ip-btn-sm {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 3px 10px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border);
-  background: transparent;
-  cursor: pointer;
-  transition: var(--t-fast);
-}
-.ip-btn-sm.cyan  { color: var(--cyan);  border-color: var(--cyan); }
-.ip-btn-sm.cyan:hover  { background: color-mix(in srgb, var(--cyan) 12%, transparent); }
-.ip-btn-sm.ok    { color: var(--ok);   border-color: var(--ok); }
-.ip-btn-sm.ok:hover    { background: color-mix(in srgb, var(--ok) 12%, transparent); }
-.ip-btn-sm.warn  { color: var(--warn); border-color: var(--warn); }
-.ip-btn-sm:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* Section header row with action slot */
-.ip-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-.ip-section-header .ip-section-label { margin-bottom: 0; }
-
-/* Inline add-topic form */
-.ip-add-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-.ip-text-input {
-  flex: 1;
-  background: var(--bg-1);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 4px 7px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--txt-1);
-  outline: none;
-}
-.ip-text-input:focus { border-color: var(--cyan); }
-.ip-text-input::placeholder { color: var(--txt-3); }
-.ip-icon-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--txt-3);
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0;
-  flex-shrink: 0;
-  transition: var(--t-fast);
-}
-.ip-icon-btn:hover { border-color: var(--txt-1); color: var(--txt-1); }
-.ip-icon-btn.ok { color: var(--ok); border-color: var(--ok); }
-.ip-icon-btn.ok:hover { background: color-mix(in srgb, var(--ok) 12%, transparent); }
-
-/* Topics as a wrapping flex row */
-.ip-topic-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* Compact source list */
-.ip-source-compact { display: flex; flex-direction: column; gap: 2px; }
-.ip-source-compact-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 2px;
-  border-radius: var(--r-sm);
-  transition: background var(--t-fast);
-}
-.ip-source-compact-row:hover { background: var(--raised); }
-.ip-src-dot { font-size: 8px; flex-shrink: 0; line-height: 1; }
-.ip-src-dot.ok  { color: var(--ok); }
-.ip-src-dot.err { color: var(--danger); }
-.ip-src-dot.stale { color: var(--warn); }
-.ip-source-compact-row .ip-source-name {
-  flex: 1;
-  font-size: 11px;
-  color: var(--txt-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ip-source-compact-row .ip-source-count {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--txt-3);
-  flex-shrink: 0;
-}
-
-/* Hypothesis confidence widget */
-.ip-hyp-conf {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--cyan);
-}
-
-/* Predict consensus */
-.ip-consensus {
-  background: var(--raised);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--r-md);
-  padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: var(--cyan-glow);
-}
-.ip-consensus-val {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--cyan);
-}
-.ip-consensus-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--txt-3);
-}
-
-/* Profile card */
-.ip-profile-card {
-  background: var(--raised);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--cyan);
-  border-radius: var(--r-md);
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  animation: ip-slide-in 0.3s var(--ease-out);
-}
-@keyframes ip-slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-
-.ip-profile-name {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--txt-2);
-  letter-spacing: .04em;
-}
-.ip-profile-conf {
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--cyan);
-  float: right;
-}
-.ip-profile-brief {
-  font-size: 11px;
-  color: var(--txt-3);
-  margin-top: 5px;
-  line-height: 1.4;
-}
-
-/* Toast */
-.ip-toast {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  right: 12px;
-  padding: 8px 12px;
-  border-radius: var(--r-sm);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  z-index: 99;
-  animation: ip-slide-in .25s var(--ease-out);
-}
-.ip-toast.ok     { background: var(--ok-dim);     border: 1px solid rgba(0,230,118,.4); color: var(--ok); }
-.ip-toast.warn   { background: var(--warn-dim);   border: 1px solid rgba(255,179,0,.4); color: var(--warn); }
-.ip-toast.danger { background: var(--danger-dim); border: 1px solid rgba(255,23,68,.4); color: var(--danger); }
-.ip-toast.info   { background: rgba(68,138,255,.15); border: 1px solid rgba(68,138,255,.4); color: var(--info); }
 
 /* Spinner */
 .ip-spin {
   display: inline-block;
-  width: 12px; height: 12px;
+  width: 11px; height: 11px;
   border: 2px solid var(--border);
   border-top-color: var(--cyan);
   border-radius: 50%;
@@ -631,92 +418,332 @@
 }
 @keyframes ip-rotate { to { transform: rotate(360deg); } }
 
+/* Loading skeleton shimmer */
+.ip-skeleton {
+  background: linear-gradient(90deg, var(--raised) 25%, var(--overlay) 50%, var(--raised) 75%);
+  background-size: 200% 100%;
+  animation: ip-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--r-sm);
+  height: 11px;
+  margin-bottom: 6px;
+}
+@keyframes ip-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Ingest controls row */
+.ip-ingest-row {
+  display: flex; align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 1px;
+}
+.ip-ingest-age {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--txt-3);
+}
+
+/* Source compact list */
+.ip-src-list { display: flex; flex-direction: column; gap: 2px; }
+.ip-src-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 4px;
+  border-radius: var(--r-sm);
+  transition: background var(--t-fast);
+}
+.ip-src-row:hover { background: var(--raised); }
+.ip-src-dot { font-size: 7px; flex-shrink: 0; }
+.ip-src-dot.ok    { color: var(--ok); }
+.ip-src-dot.err   { color: var(--danger); }
+.ip-src-dot.stale { color: var(--amber); }
+.ip-src-name { flex: 1; font-size: 11px; color: var(--txt-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-src-count { font-family: var(--font-mono); font-size: 9px; color: var(--txt-3); flex-shrink: 0; }
+
 /* Analysis blocks */
-.ip-analysis-block {
+.ip-ablock {
   background: var(--raised);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  padding: 9px 11px;
+  margin-bottom: 9px;
 }
-.ip-analysis-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+.ip-ablock-hdr {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 7px;
 }
-.ip-analysis-title {
+.ip-ablock-title {
+  flex: 1;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--txt-3);
-  flex: 1;
 }
-.ip-analysis-num {
+.ip-ablock-num {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
-.ip-analysis-num.ok     { color: var(--ok); }
-.ip-analysis-num.warn   { color: var(--warn); }
-.ip-analysis-num.danger { color: var(--danger); }
-.ip-analysis-num.cyan   { color: var(--cyan); }
+.ip-ablock-num.ok     { color: var(--ok); }
+.ip-ablock-num.amber  { color: var(--amber); }
+.ip-ablock-num.danger { color: var(--danger); }
+.ip-ablock-num.cyan   { color: var(--cyan); }
 
-.ip-flag-item {
+.ip-flag {
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   color: var(--txt-2);
 }
-.ip-flag-item:last-child { border-bottom: none; }
-.ip-flag-cluster {
+.ip-flag:last-child { border-bottom: none; }
+.ip-flag-sub { font-family: var(--font-mono); font-size: 9px; color: var(--txt-3); }
+
+/* Hypothesis confidence */
+.ip-hyp-conf { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); }
+
+/* ── PREDICT TAB specific ─────────────────────────────────────── */
+
+/* Running state overlay */
+.ip-committee-working {
+  background: var(--raised);
+  border: 1px solid rgba(79,195,247,.2);
+  border-radius: var(--r-md);
+  padding: 20px 16px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.ip-committee-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+  letter-spacing: .1em;
+  margin-top: 10px;
+}
+
+/* Consensus card */
+.ip-consensus {
+  background: var(--raised);
+  border: 1px solid rgba(79,195,247,.25);
+  border-radius: var(--r-md);
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--cyan-glow);
+  animation: ip-slide-up .35s var(--ease-out);
+}
+.ip-consensus-val {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--cyan);
+  line-height: 1;
+}
+.ip-consensus-lbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--txt-3);
+  margin-top: 2px;
+}
+.ip-consensus-range {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--txt-3);
+  margin-top: 6px;
 }
 
-/* Status indicator — no transition (truth-bearing) */
-.ip-instant { transition: none !important; }
+/* Profile assessment card */
+.ip-profile-card {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--cyan);
+  border-radius: var(--r-md);
+  padding: 9px 11px;
+  margin-bottom: 7px;
+  animation: ip-slide-up .3s var(--ease-out);
+}
+@keyframes ip-slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.ip-profile-hdr { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.ip-profile-name { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--txt-2); flex: 1; }
+.ip-profile-conf { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--cyan); }
+.ip-profile-brief { font-size: 11px; color: var(--txt-3); line-height: 1.4; }
+
+/* Session history */
+.ip-session-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.ip-session-row:last-child { border-bottom: none; }
+.ip-session-q {
+  flex: 1;
+  color: var(--txt-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ip-session-conf {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+.ip-session-date {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--txt-3);
+  flex-shrink: 0;
+}
+
+/* SWARMFISH stats row */
+.ip-swf-stats {
+  display: flex;
+  gap: 0;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.ip-swf-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+}
+.ip-swf-stat + .ip-swf-stat { border-left: 1px solid var(--border); }
+.ip-swf-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--txt-1);
+  line-height: 1;
+}
+.ip-swf-lbl {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--txt-3);
+  margin-top: 3px;
+}
+
+/* Topics wrap */
+.ip-topic-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.ip-topic-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--txt-2);
+}
+.ip-topic-chip-count { font-size: 9px; color: var(--txt-3); }
+
+/* Checkbox */
+.ip-check { accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
+
+/* Toast */
+.ip-toast {
+  position: absolute;
+  bottom: 10px; left: 10px; right: 10px;
+  padding: 7px 11px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 99;
+  animation: ip-slide-up .22s var(--ease-out);
+}
+.ip-toast.ok     { background: var(--ok-dim);     border: 1px solid rgba(52,211,153,.35); color: var(--ok); }
+.ip-toast.warn   { background: var(--amber-dim);  border: 1px solid rgba(245,158,11,.35); color: var(--amber); }
+.ip-toast.danger { background: var(--danger-dim); border: 1px solid rgba(248,113,113,.35); color: var(--danger); }
+.ip-toast.info   { background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.35); color: var(--info); }
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 
 <!-- ── Panel Root ──────────────────────────────────────────────── -->
-<div class="ip" x-data="{}" style="position: relative;">
+<div class="ip" x-data="{}">
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <div class="ip-header">
-    <span class="ip-title">Intel</span>
-
-    <!-- Ingest status pill — instant state, no transition -->
-    <template x-if="$store.intelligence.health">
-      <span class="ip-ingest-pill ip-instant"
-            :class="$store.intelligence.ingestPaused ? 'paused' : 'running'">
-        <span class="ip-dot"></span>
-        <span x-text="$store.intelligence.ingestPaused ? 'PAUSED' : 'LIVE'"></span>
-      </span>
-    </template>
+    <span class="ip-title">Intelligence</span>
 
     <span class="ip-header-spacer"></span>
 
-    <!-- Quick ingest controls -->
-    <template x-if="$store.intelligence.ingestPaused">
-      <button class="ip-btn ok"
-              @click="$store.intelligence.resumeIngest()">▶ Resume</button>
+    <!-- Live / Paused indicator -->
+    <template x-if="$store.intelligence.health">
+      <span style="display:flex;align-items:center;gap:5px;">
+        <span class="ip-live-dot"
+              :class="$store.intelligence.ingestPaused ? 'paused' : 'live'"></span>
+        <span class="ip-ingest-label"
+              :class="$store.intelligence.ingestPaused ? 'paused' : 'live'"
+              x-text="$store.intelligence.ingestPaused ? 'paused' : 'live'"></span>
+      </span>
     </template>
-    <template x-if="!$store.intelligence.ingestPaused">
-      <button class="ip-btn warn"
-              @click="$store.intelligence.pauseIngest()">⏸ Pause</button>
+
+    <!-- Quick ingest toggle -->
+    <template x-if="$store.intelligence.health && $store.intelligence.ingestPaused">
+      <button class="ip-hbtn ok" style="margin-left:6px;"
+              @click="$store.intelligence.resumeIngest()">▶ resume</button>
     </template>
+    <template x-if="$store.intelligence.health && !$store.intelligence.ingestPaused">
+      <button class="ip-hbtn amber" style="margin-left:6px;"
+              @click="$store.intelligence.pauseIngest()">⏸ pause</button>
+    </template>
+  </div>
+
+  <!-- ── Status Bar ─────────────────────────────────────────────── -->
+  <div class="ip-statusbar">
+    <div class="ip-sb-stat" title="Claims awaiting triage"
+         @click="$store.intelligence.setTab('triage')" style="cursor:pointer;">
+      <span class="ip-sb-val staged"
+            x-text="$store.intelligence.claimsStaged.toLocaleString()">—</span>
+      <span class="ip-sb-lbl">staged</span>
+    </div>
+    <div class="ip-sb-stat" title="Promoted claims in ledger"
+         @click="$store.intelligence.setTab('ledger')" style="cursor:pointer;">
+      <span class="ip-sb-val promoted"
+            x-text="$store.intelligence.claimsPromoted.toLocaleString()">—</span>
+      <span class="ip-sb-lbl">promoted</span>
+    </div>
+    <div class="ip-sb-stat" title="Active sources">
+      <span class="ip-sb-val neutral"
+            x-text="$store.intelligence.sourcesCount">—</span>
+      <span class="ip-sb-lbl">sources</span>
+    </div>
+    <div class="ip-sb-stat" title="Tracked hypotheses"
+         @click="$store.intelligence.setTab('hypotheses')" style="cursor:pointer;">
+      <span class="ip-sb-val cyan"
+            x-text="$store.intelligence.hypothesisCount">—</span>
+      <span class="ip-sb-lbl">hypotheses</span>
+    </div>
   </div>
 
   <!-- ── Tab Bar ─────────────────────────────────────────────────── -->
   <div class="ip-tabs">
-    <template x-for="tab in ['status','triage','ledger','analysis','hypotheses','predict']" :key="tab">
+    <template x-for="t in ['status','triage','ledger','analysis','hypotheses','predict']" :key="t">
       <button class="ip-tab"
-              :class="$store.intelligence.tab === tab ? 'active' : ''"
-              @click="$store.intelligence.setTab(tab)"
-              x-text="tab.charAt(0).toUpperCase() + tab.slice(1)">
+              :class="$store.intelligence.tab === t ? 'active' : ''"
+              @click="$store.intelligence.setTab(t)"
+              x-text="t === 'predict' ? 'Predict' : t.charAt(0).toUpperCase() + t.slice(1)">
       </button>
     </template>
   </div>
@@ -725,77 +752,51 @@
   <div class="ip-content">
 
     <!-- Error banner -->
-    <div x-show="$store.intelligence.error" class="ip-error" x-text="'⚠ ' + $store.intelligence.error"></div>
+    <div x-show="$store.intelligence.error" x-cloak class="ip-error"
+         x-text="'⚠ ' + $store.intelligence.error"></div>
 
-    <!-- Loading spinner -->
-    <div x-show="$store.intelligence.loading && !$store.intelligence.error"
-         style="display:flex;justify-content:center;padding:30px 0;">
-      <span class="ip-spin"></span>
-    </div>
+    <!-- Loading skeleton -->
+    <template x-if="$store.intelligence.loading && !$store.intelligence.error">
+      <div>
+        <div class="ip-skeleton" style="width:60%;height:9px;margin-bottom:10px;"></div>
+        <div class="ip-skeleton" style="width:100%;height:52px;border-radius:10px;margin-bottom:8px;"></div>
+        <div class="ip-skeleton" style="width:100%;height:38px;border-radius:10px;margin-bottom:8px;"></div>
+        <div class="ip-skeleton" style="width:80%;height:38px;border-radius:10px;"></div>
+      </div>
+    </template>
 
     <!-- ── STATUS TAB ──────────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'status'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'status' && !$store.intelligence.loading" x-cloak>
 
-      <!-- Inline stats bar -->
+      <!-- Ingest controls row -->
       <template x-if="$store.intelligence.health">
-        <div>
-          <div class="ip-inline-stats">
-            <div class="ip-istat">
-              <span class="ip-istat-val warn"
-                    x-text="($store.intelligence.health.claims?.staged ?? 0).toLocaleString()"></span>
-              <span class="ip-istat-lbl">staged</span>
-            </div>
-            <span class="ip-istat-sep"></span>
-            <div class="ip-istat">
-              <span class="ip-istat-val ok"
-                    x-text="($store.intelligence.health.claims?.promoted ?? 0).toLocaleString()"></span>
-              <span class="ip-istat-lbl">promoted</span>
-            </div>
-            <span class="ip-istat-sep"></span>
-            <div class="ip-istat">
-              <span class="ip-istat-val"
-                    x-text="($store.intelligence.health.sources_count ?? 0)"></span>
-              <span class="ip-istat-lbl">sources</span>
-            </div>
-            <span class="ip-istat-sep"></span>
-            <div class="ip-istat">
-              <span class="ip-istat-val"
-                    :class="($store.intelligence.health.source_health?.failing ?? 0) > 0 ? 'danger' : 'ok'"
-                    x-text="($store.intelligence.health.source_health?.failing ?? 0) + ' fail'"></span>
-              <span class="ip-istat-lbl">src health</span>
-            </div>
-          </div>
-
-          <!-- Ingest controls row -->
-          <div class="ip-ingest-row">
-            <span class="ip-ingest-age"
-                  x-text="'last: ' + $store.intelligence.timeSince($store.intelligence.health.last_ingestion)">
-            </span>
-            <button class="ip-btn-sm"
-                    :disabled="$store.intelligence.loading"
-                    @click="$store.intelligence.runIngestNow()">⟳ run now</button>
-            <template x-if="$store.intelligence.ingestPaused">
-              <button class="ip-btn-sm ok" @click="$store.intelligence.resumeIngest()">▶ resume</button>
-            </template>
-            <template x-if="!$store.intelligence.ingestPaused">
-              <button class="ip-btn-sm" @click="$store.intelligence.pauseIngest()">⏸ pause</button>
-            </template>
-          </div>
+        <div class="ip-ingest-row">
+          <span class="ip-ingest-age"
+                x-text="'last run: ' + $store.intelligence.timeSince($store.intelligence.health.last_ingestion)">
+          </span>
+          <button class="ip-btn" :disabled="$store.intelligence.loading"
+                  @click="$store.intelligence.runIngestNow()">⟳ run</button>
+          <template x-if="$store.intelligence.ingestPaused">
+            <button class="ip-btn ok" @click="$store.intelligence.resumeIngest()">▶ resume</button>
+          </template>
+          <template x-if="!$store.intelligence.ingestPaused">
+            <button class="ip-btn amber" @click="$store.intelligence.pauseIngest()">⏸ pause</button>
+          </template>
         </div>
       </template>
 
       <!-- Topics -->
       <div class="ip-section">
-        <div class="ip-section-header">
-          <span>Topics</span>
+        <div class="ip-section-hdr">
+          <span class="ip-section-lbl">Topics</span>
           <button class="ip-icon-btn"
                   :class="$store.intelligence.addTopicOpen ? 'ok' : ''"
                   @click="$store.intelligence.addTopicOpen = !$store.intelligence.addTopicOpen"
                   title="Add topic">+</button>
         </div>
         <template x-if="$store.intelligence.addTopicOpen">
-          <div class="ip-add-row">
-            <input class="ip-text-input" type="text" placeholder="slug (e.g. iran-hormuz)"
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;">
+            <input class="ip-input" type="text" placeholder="slug (e.g. iran-hormuz)"
                    x-model="$store.intelligence.addTopicInput"
                    @keydown.enter="$store.intelligence.addTopic()"
                    @keydown.escape="$store.intelligence.addTopicOpen = false">
@@ -805,39 +806,49 @@
           </div>
         </template>
         <template x-if="$store.intelligence.topics.length === 0">
-          <div class="ip-empty">No topics configured</div>
+          <div class="ip-empty"><div class="ip-empty-icon">◌</div>No topics configured</div>
         </template>
-        <template x-for="t in $store.intelligence.topics" :key="t.tag ?? t">
-          <div class="ip-topic-row">
-            <span x-text="t.tag ?? t"></span>
-            <span class="ip-topic-count" x-text="t.claim_count != null ? t.claim_count.toLocaleString() : '0'"></span>
-          </div>
-        </template>
+        <div class="ip-topic-row">
+          <template x-for="t in $store.intelligence.topics" :key="t.tag ?? t">
+            <span class="ip-topic-chip">
+              <span x-text="t.tag ?? t"></span>
+              <span class="ip-topic-chip-count"
+                    x-text="t.claim_count != null ? t.claim_count.toLocaleString() : '0'"></span>
+            </span>
+          </template>
+        </div>
       </div>
 
-      <!-- Source health summary -->
+      <!-- Sources -->
       <template x-if="$store.intelligence.sources.length">
         <div class="ip-section">
-          <div class="ip-section-header"><span>Sources</span></div>
-          <div class="ip-source-compact">
-            <template x-for="s in $store.intelligence.sources.slice(0,10)" :key="s.id ?? s.name">
-              <div class="ip-source-compact-row">
+          <div class="ip-section-hdr"><span class="ip-section-lbl">Sources</span></div>
+          <div class="ip-src-list">
+            <template x-for="s in $store.intelligence.sources.slice(0,12)" :key="s.id ?? s.name">
+              <div class="ip-src-row">
                 <span class="ip-src-dot"
-                      :class="s.last_fetch_error ? 'err' : (s.claim_count === 0 ? 'stale' : 'ok')"></span>
-                <span class="ip-source-name" x-text="s.name"></span>
-                <span class="ip-source-count" x-text="(s.claim_count ?? 0).toLocaleString()"></span>
+                      :class="s.last_fetch_error ? 'err' : (s.claim_count === 0 ? 'stale' : 'ok')">●</span>
+                <span class="ip-src-name" x-text="s.name"></span>
+                <span class="ip-src-count" x-text="(s.claim_count ?? 0).toLocaleString()"></span>
               </div>
             </template>
           </div>
         </div>
       </template>
 
+      <!-- Empty state -->
+      <template x-if="!$store.intelligence.health && !$store.intelligence.loading">
+        <div class="ip-empty">
+          <div class="ip-empty-icon">⌖</div>
+          Connecting to intelligence pipeline…
+        </div>
+      </template>
+
     </div>
 
     <!-- ── TRIAGE TAB ──────────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'triage'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'triage' && !$store.intelligence.loading" x-cloak>
 
-      <!-- Controls -->
       <div class="ip-btn-row">
         <select class="ip-select" x-model="$store.intelligence.triageTopic"
                 @change="$store.intelligence.loadStaged()">
@@ -846,28 +857,24 @@
             <option :value="t.tag ?? t" x-text="t.tag ?? t"></option>
           </template>
         </select>
-
         <button class="ip-btn" @click="$store.intelligence.selectAll()">All</button>
         <button class="ip-btn" @click="$store.intelligence.clearSel()">None</button>
       </div>
 
-      <!-- Bulk actions — visible when selection exists -->
       <template x-if="$store.intelligence.triageSel.length > 0">
         <div class="ip-btn-row">
           <button class="ip-btn ok" @click="$store.intelligence.bulkPromote()">
-            ✓ Promote (<span x-text="$store.intelligence.triageSel.length"></span>)
+            ✓ Promote <span x-text="'(' + $store.intelligence.triageSel.length + ')'"></span>
           </button>
         </div>
       </template>
 
-      <!-- Count -->
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-3);margin-bottom:10px;"
-           x-text="$store.intelligence.stagedTotal.toLocaleString() + ' staged'">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--txt-3);margin-bottom:9px;"
+           x-text="$store.intelligence.stagedTotal.toLocaleString() + ' awaiting triage'">
       </div>
 
-      <!-- Claim list -->
-      <template x-if="$store.intelligence.staged.length === 0 && !$store.intelligence.loading">
-        <div class="ip-empty">No staged claims</div>
+      <template x-if="$store.intelligence.staged.length === 0">
+        <div class="ip-empty"><div class="ip-empty-icon">✓</div>No staged claims</div>
       </template>
 
       <template x-for="c in $store.intelligence.staged" :key="c.id">
@@ -889,9 +896,9 @@
     </div>
 
     <!-- ── LEDGER TAB ──────────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'ledger'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'ledger' && !$store.intelligence.loading" x-cloak>
 
-      <div class="ip-btn-row" style="margin-bottom:12px;">
+      <div class="ip-btn-row" style="margin-bottom:10px;">
         <select class="ip-select" x-model="$store.intelligence.ledgerTopic"
                 @change="$store.intelligence.loadLedger()">
           <option value="">— All topics —</option>
@@ -901,12 +908,12 @@
         </select>
       </div>
 
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-3);margin-bottom:10px;"
-           x-text="$store.intelligence.ledgerTotal.toLocaleString() + ' promoted'">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--txt-3);margin-bottom:9px;"
+           x-text="$store.intelligence.ledgerTotal.toLocaleString() + ' promoted claims'">
       </div>
 
-      <template x-if="$store.intelligence.ledger.length === 0 && !$store.intelligence.loading">
-        <div class="ip-empty">No promoted claims</div>
+      <template x-if="$store.intelligence.ledger.length === 0">
+        <div class="ip-empty"><div class="ip-empty-icon">◌</div>No promoted claims</div>
       </template>
 
       <template x-for="c in $store.intelligence.ledger" :key="c.id">
@@ -915,13 +922,11 @@
             <span x-text="c.source_name ?? '—'"></span>
             <span x-text="$store.intelligence.fmtDate(c.published_at ?? c.extracted_at)"></span>
             <span class="ip-pill promoted">✓</span>
-            <span class="ip-pill"
-                  style="background:rgba(255,255,255,.06);color:var(--txt-3);border:1px solid var(--border);"
-                  x-text="$store.intelligence.techniqueLabel(c.technique_class)"></span>
+            <span class="ip-pill tag" x-text="$store.intelligence.techniqueLabel(c.technique_class)"></span>
           </div>
           <div class="ip-claim-text" x-text="c.claim_text"></div>
           <a :href="c.article_url" target="_blank"
-             style="font-family:var(--font-mono);font-size:10px;color:var(--cyan);text-decoration:none;"
+             style="font-family:var(--font-mono);font-size:9px;color:var(--cyan);text-decoration:none;"
              x-show="c.article_url">↗ source</a>
         </div>
       </template>
@@ -929,9 +934,9 @@
     </div>
 
     <!-- ── ANALYSIS TAB ────────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'analysis'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'analysis' && !$store.intelligence.loading" x-cloak>
 
-      <div class="ip-btn-row" style="margin-bottom:12px;">
+      <div class="ip-btn-row" style="margin-bottom:10px;">
         <select class="ip-select" x-model="$store.intelligence.analysisTopic">
           <option value="">— Select topic —</option>
           <template x-for="t in $store.intelligence.topics" :key="t.tag ?? t">
@@ -942,18 +947,17 @@
       </div>
 
       <template x-if="!$store.intelligence.analysisTopic">
-        <div class="ip-empty">Select a topic to begin analysis</div>
+        <div class="ip-empty"><div class="ip-empty-icon">◎</div>Select a topic to begin</div>
       </template>
 
-      <!-- DRIFT -->
       <template x-if="$store.intelligence.drift">
-        <div class="ip-analysis-block">
-          <div class="ip-analysis-head">
-            <span class="ip-analysis-title">Drift (72h)</span>
-            <span class="ip-analysis-num cyan"
+        <div class="ip-ablock">
+          <div class="ip-ablock-hdr">
+            <span class="ip-ablock-title">Drift (72h)</span>
+            <span class="ip-ablock-num cyan"
                   x-text="($store.intelligence.drift.claims?.length ?? 0) + ' claims'"></span>
           </div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-3);">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--txt-3);">
             <span x-text="($store.intelligence.drift.contradiction_count ?? 0) + ' contradictions'"></span>
             ·
             <span x-text="($store.intelligence.drift.silent_retcon_count ?? 0) + ' silent retractions'"></span>
@@ -961,21 +965,20 @@
         </div>
       </template>
 
-      <!-- SILENCE -->
       <template x-if="$store.intelligence.silence">
-        <div class="ip-analysis-block">
-          <div class="ip-analysis-head">
-            <span class="ip-analysis-title">Silence Flags</span>
-            <span class="ip-analysis-num"
-                  :class="($store.intelligence.silence.total ?? 0) > 0 ? 'warn' : 'ok'"
+        <div class="ip-ablock">
+          <div class="ip-ablock-hdr">
+            <span class="ip-ablock-title">Silence Flags</span>
+            <span class="ip-ablock-num"
+                  :class="($store.intelligence.silence.total ?? 0) > 0 ? 'amber' : 'ok'"
                   x-text="$store.intelligence.silence.total ?? 0"></span>
           </div>
           <template x-if="$store.intelligence.silence.total > 0">
             <div>
               <template x-for="flag in $store.intelligence.silence.flags.slice(0,5)" :key="flag.id">
-                <div class="ip-flag-item">
+                <div class="ip-flag">
                   <div x-text="flag.element"></div>
-                  <div class="ip-flag-cluster"
+                  <div class="ip-flag-sub"
                        x-text="'absent from: ' + (flag.absent_from_clusters ?? []).join(', ')"></div>
                 </div>
               </template>
@@ -984,37 +987,34 @@
         </div>
       </template>
 
-      <!-- ACTIVATION -->
       <template x-if="$store.intelligence.activation">
-        <div class="ip-analysis-block">
-          <div class="ip-analysis-head">
-            <span class="ip-analysis-title">Activation Patterns</span>
-            <span class="ip-analysis-num"
+        <div class="ip-ablock">
+          <div class="ip-ablock-hdr">
+            <span class="ip-ablock-title">Activation Patterns</span>
+            <span class="ip-ablock-num"
                   :class="($store.intelligence.activation.patterns?.length ?? 0) > 0 ? 'danger' : 'ok'"
                   x-text="$store.intelligence.activation.patterns?.length ?? 0"></span>
           </div>
           <template x-for="p in ($store.intelligence.activation.patterns ?? []).slice(0,3)" :key="p.id">
-            <div class="ip-flag-item">
+            <div class="ip-flag">
               <div x-text="p.claim_pattern ?? p.description"></div>
-              <div class="ip-flag-cluster"
-                   x-text="'spread: ' + (p.cluster_spread ?? '?') + ' clusters'"></div>
+              <div class="ip-flag-sub" x-text="'spread: ' + (p.cluster_spread ?? '?') + ' clusters'"></div>
             </div>
           </template>
         </div>
       </template>
 
-      <!-- CONTRADICTIONS -->
       <template x-if="$store.intelligence.contradictions.length > 0">
-        <div class="ip-analysis-block">
-          <div class="ip-analysis-head">
-            <span class="ip-analysis-title">Contradictions</span>
-            <span class="ip-analysis-num danger"
+        <div class="ip-ablock">
+          <div class="ip-ablock-hdr">
+            <span class="ip-ablock-title">Contradictions</span>
+            <span class="ip-ablock-num danger"
                   x-text="$store.intelligence.contradictions.length"></span>
           </div>
           <template x-for="p in $store.intelligence.contradictions.slice(0,3)" :key="p.id">
-            <div class="ip-flag-item">
+            <div class="ip-flag">
               <div x-text="(p.claim_a_text ?? '').substring(0,80) + '…'"></div>
-              <div class="ip-flag-cluster" x-text="p.source_name + ' · ' + p.relationship"></div>
+              <div class="ip-flag-sub" x-text="p.source_name + ' · ' + p.relationship"></div>
             </div>
           </template>
         </div>
@@ -1023,10 +1023,9 @@
     </div>
 
     <!-- ── HYPOTHESES TAB ──────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'hypotheses'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'hypotheses' && !$store.intelligence.loading" x-cloak>
 
-      <!-- Status filter -->
-      <div class="ip-btn-row" style="margin-bottom:12px;">
+      <div class="ip-btn-row" style="margin-bottom:10px;">
         <template x-for="s in ['ACTIVE','PROMOTED','FALSIFIED','SUSPENDED']" :key="s">
           <button class="ip-btn"
                   :class="$store.intelligence.hypStatus === s ? 'cyan' : ''"
@@ -1036,53 +1035,34 @@
         </template>
       </div>
 
-      <template x-if="$store.intelligence.hypotheses.length === 0 && !$store.intelligence.loading">
-        <div class="ip-empty">No hypotheses</div>
+      <template x-if="$store.intelligence.hypotheses.length === 0">
+        <div class="ip-empty"><div class="ip-empty-icon">◌</div>No hypotheses</div>
       </template>
 
       <template x-for="h in $store.intelligence.hypotheses" :key="h.hypothesis_id ?? h.id">
-        <div class="ip-card ip-card-ai">
-          <!-- Header row -->
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <span style="font-family:var(--font-mono);font-size:10px;color:var(--txt-3);"
+        <div class="ip-card accent">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+            <span style="font-family:var(--font-mono);font-size:9px;color:var(--txt-3);"
                   x-text="'#' + (h.hypothesis_id ?? h.id)"></span>
             <span class="ip-pill" :class="(h.status ?? '').toLowerCase()"
                   x-text="h.status"></span>
-            <span class="ip-header-spacer"></span>
+            <span style="flex:1;"></span>
             <span class="ip-hyp-conf" x-text="$store.intelligence.fmtConf(h.current_confidence)"></span>
           </div>
-
-          <!-- Explanation -->
           <div class="ip-claim-text" x-text="h.candidate_explanation ?? h.explanation"></div>
-
-          <!-- Confidence bar -->
-          <div class="ip-conf-bar-track">
-            <div class="ip-conf-bar-fill"
-                 :style="'width:' + $store.intelligence.confBarW(h.current_confidence)">
-            </div>
+          <div class="ip-conf-track">
+            <div class="ip-conf-fill" :style="'width:' + $store.intelligence.confBarW(h.current_confidence)"></div>
           </div>
-
-          <!-- Prediction counts -->
-          <div class="ip-claim-meta" style="margin-bottom:6px;">
+          <div class="ip-claim-meta" style="margin-bottom:5px;">
             <span x-text="'⬛ ' + (h.predictions_generated?.length ?? 0) + ' predictions'"></span>
             <span x-text="'✓ ' + (h.predictions_confirmed ?? 0) + ' confirmed'"></span>
           </div>
-
-          <!-- Action buttons (only for ACTIVE) -->
           <template x-if="h.status === 'ACTIVE'">
-            <div class="ip-btn-row" style="gap:5px;">
+            <div class="ip-btn-row" style="gap:4px;margin-bottom:0;">
               <button class="ip-btn ok"
-                      @click="$store.intelligence.promoteHyp(h.hypothesis_id ?? h.id)">
-                Promote
-              </button>
+                      @click="$store.intelligence.promoteHyp(h.hypothesis_id ?? h.id)">Promote</button>
               <button class="ip-btn danger"
-                      @click="$store.intelligence.falsifyHyp(h.hypothesis_id ?? h.id)">
-                Falsify
-              </button>
-              <button class="ip-btn"
-                      @click="$store.intelligence.suspendHyp(h.hypothesis_id ?? h.id)">
-                Suspend
-              </button>
+                      @click="$store.intelligence.falsifyHyp(h.hypothesis_id ?? h.id)">Falsify</button>
             </div>
           </template>
         </div>
@@ -1091,11 +1071,37 @@
     </div>
 
     <!-- ── PREDICT TAB ─────────────────────────────────────────────── -->
-    <div x-show="$store.intelligence.tab === 'predict'" x-cloak>
+    <div x-show="$store.intelligence.tab === 'predict' && !$store.intelligence.loading" x-cloak>
 
-      <!-- Controls -->
+      <!-- SWARMFISH stats row -->
+      <div class="ip-swf-stats">
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfSessionsTotal > 0
+                         ? $store.intelligence.swfSessionsTotal
+                         : '—'"></span>
+          <span class="ip-swf-lbl">sessions</span>
+        </div>
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfSessions.length > 0
+                         ? Math.round(($store.intelligence.swfSessions[0]?.consensus_confidence ?? 0) * 100) + '%'
+                         : '—'"></span>
+          <span class="ip-swf-lbl">last consensus</span>
+        </div>
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfProfiles.length > 0
+                         ? $store.intelligence.swfProfiles.length
+                         : '—'"></span>
+          <span class="ip-swf-lbl">committee</span>
+        </div>
+      </div>
+
+      <!-- Run controls -->
       <div class="ip-btn-row" style="margin-bottom:12px;">
-        <select class="ip-select" x-model="$store.intelligence.predictTopic">
+        <select class="ip-select" x-model="$store.intelligence.predictTopic"
+                style="flex:1;">
           <option value="">— Select topic —</option>
           <template x-for="t in $store.intelligence.topics" :key="t.tag ?? t">
             <option :value="t.tag ?? t" x-text="t.tag ?? t"></option>
@@ -1108,41 +1114,85 @@
             <span class="ip-spin"></span>
           </template>
           <template x-if="!$store.intelligence.swfRunning">
-            <span>▶ Predict</span>
+            <span>▶ Run</span>
           </template>
         </button>
       </div>
 
+      <!-- Committee working state -->
+      <template x-if="$store.intelligence.swfRunning">
+        <div class="ip-committee-working">
+          <span class="ip-spin" style="width:18px;height:18px;border-width:2px;"></span>
+          <div class="ip-committee-status">committee deliberating…</div>
+        </div>
+      </template>
+
       <!-- Consensus result -->
-      <template x-if="$store.intelligence.swfConsensus">
+      <template x-if="$store.intelligence.swfConsensus && !$store.intelligence.swfRunning">
         <div class="ip-consensus">
           <div style="display:flex;align-items:baseline;gap:10px;">
             <div class="ip-consensus-val"
                  x-text="Math.round(($store.intelligence.swfConsensus.consensus_probability ?? 0) * 100) + '%'">
             </div>
-            <div class="ip-consensus-label">CONSENSUS</div>
-          </div>
-          <div style="font-family:var(--font-mono);font-size:10px;color:var(--txt-3);margin-top:4px;"
-               x-text="'Range: ' + Math.round(($store.intelligence.swfConsensus.range_low ?? 0)*100)
-                        + '–' + Math.round(($store.intelligence.swfConsensus.range_high ?? 0)*100) + '%'">
+            <div>
+              <div class="ip-consensus-lbl">Committee Consensus</div>
+              <div class="ip-consensus-range"
+                   x-text="'Range: '
+                     + Math.round(($store.intelligence.swfConsensus.range_low ?? 0)*100)
+                     + '–'
+                     + Math.round(($store.intelligence.swfConsensus.range_high ?? 0)*100) + '%'">
+              </div>
+            </div>
           </div>
         </div>
       </template>
 
-      <!-- Profile cards -->
-      <template x-for="p in $store.intelligence.swfProfiles" :key="p.profile_id ?? p.name">
-        <div class="ip-profile-card">
-          <div>
-            <span class="ip-profile-conf"
-                  x-text="Math.round((p.probability ?? 0) * 100) + '%'"></span>
-            <div class="ip-profile-name" x-text="p.profile_name ?? p.name"></div>
-          </div>
-          <div class="ip-profile-brief" x-text="p.brief ?? p.reasoning"></div>
+      <!-- Profile assessment cards -->
+      <template x-if="$store.intelligence.swfProfiles.length > 0 && !$store.intelligence.swfRunning">
+        <div class="ip-section">
+          <div class="ip-section-hdr"><span class="ip-section-lbl">Assessments</span></div>
+          <template x-for="p in $store.intelligence.swfProfiles" :key="p.profile_id ?? p.name">
+            <div class="ip-profile-card">
+              <div class="ip-profile-hdr">
+                <span class="ip-profile-name" x-text="p.profile_name ?? p.name"></span>
+                <span class="ip-profile-conf"
+                      x-text="Math.round((p.probability ?? 0) * 100) + '%'"></span>
+              </div>
+              <div class="ip-profile-brief" x-text="p.brief ?? p.reasoning"></div>
+            </div>
+          </template>
         </div>
       </template>
 
-      <template x-if="$store.intelligence.swfProfiles.length === 0 && !$store.intelligence.swfRunning">
-        <div class="ip-empty">Select a topic and run predict</div>
+      <!-- Session history -->
+      <template x-if="$store.intelligence.swfSessions.length > 0 && !$store.intelligence.swfRunning">
+        <div class="ip-section">
+          <div class="ip-section-hdr"><span class="ip-section-lbl">Recent Sessions</span></div>
+          <div class="ip-card" style="padding:6px 10px;">
+            <template x-for="s in $store.intelligence.swfSessions.slice(0,8)" :key="s.id">
+              <div class="ip-session-row">
+                <span class="ip-session-q"
+                      x-text="s.question ?? '—'"></span>
+                <span class="ip-session-conf"
+                      x-text="s.consensus_confidence != null
+                               ? Math.round(s.consensus_confidence * 100) + '%'
+                               : '—'"></span>
+                <span class="ip-session-date"
+                      x-text="$store.intelligence.fmtDate(s.created_at)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- Empty state -->
+      <template x-if="$store.intelligence.swfProfiles.length === 0
+                       && $store.intelligence.swfSessions.length === 0
+                       && !$store.intelligence.swfRunning">
+        <div class="ip-empty">
+          <div class="ip-empty-icon">◎</div>
+          Select a topic and run the committee
+        </div>
       </template>
 
     </div>

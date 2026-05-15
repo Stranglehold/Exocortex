@@ -3,12 +3,15 @@
 # Deploys the idle-time engine to both Agent Zero containers.
 #
 # Deploys:
-#   _70_idle_trigger.py   → profile extension path (tool_execute_after)
-#   idle_activation.md    → /a0/usr/Exocortex/prompts/
-#   interests.md          → /a0/usr/Exocortex/   (if not already present)
-#   config.json update    → merges idle_time_engine section
-#   office_feed.py        → /a0/api/
-#   office.html           → /a0/webui/
+#   _70_idle_trigger.py     → profile extension path (tool_execute_after)
+#   idle_activation.md      → /a0/usr/Exocortex/prompts/
+#   interests.md            → /a0/usr/Exocortex/   (if not already present)
+#   config.json update      → merges idle_time_engine section
+#   office_feed.py          → /a0/api/
+#   idle_control.py         → /a0/api/
+#   office.html             → /a0/webui/
+#   register-workshop.js    → exocortex plugin right_canvas_register_surfaces/
+#   workshop-panel.html     → exocortex plugin right-canvas-panels/
 #
 # Creates runtime directories:
 #   /a0/usr/Exocortex/office/
@@ -24,6 +27,7 @@ EXT_DEST="/a0/usr/agents/agent0/extensions/python/tool_execute_after"
 EXOCORTEX_DEST="/a0/usr/Exocortex"
 API_DEST="/a0/api"
 WEBUI_DEST="/a0/webui"
+PLUGIN_WEBUI="/a0/usr/plugins/exocortex/extensions/webui"
 ERRORS=0
 
 # Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
@@ -131,7 +135,9 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "${EXOCORTEX_DEST}/prompts" \
         "${EXOCORTEX_DEST}/field-reports" \
         "${EXOCORTEX_DEST}/self-improvement" \
-        "${EXOCORTEX_DEST}/self-improvement/checkpoints"
+        "${EXOCORTEX_DEST}/self-improvement/checkpoints" \
+        "${PLUGIN_WEBUI}/right_canvas_register_surfaces" \
+        "${PLUGIN_WEBUI}/right-canvas-panels"
     do
         _exec "${CONTAINER}" mkdir -p "${dir}" 2>/dev/null || true
     done
@@ -183,13 +189,27 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "office.html" \
         "${CONTAINER}"
 
+    # ── Right-canvas tab: surface registrar ──
+    install_file \
+        "${REPO_DIR}/patches/webui/right_canvas_register_surfaces/register-workshop.js" \
+        "${PLUGIN_WEBUI}/right_canvas_register_surfaces/register-workshop.js" \
+        "register-workshop.js" \
+        "${CONTAINER}"
+
+    # ── Right-canvas tab: panel HTML ──
+    install_file \
+        "${REPO_DIR}/patches/webui/right-canvas-panels/workshop-panel.html" \
+        "${PLUGIN_WEBUI}/right-canvas-panels/workshop-panel.html" \
+        "workshop-panel.html" \
+        "${CONTAINER}"
+
     # ── config.json: merge idle_time_engine section ──
     # Read-merge-write: only adds the section if it doesn't already exist.
     _exec "${CONTAINER}" python3 - <<'PYEOF'
 import json, os, sys
 path = "/a0/usr/Exocortex/config.json"
 default_section = {
-    "enabled": True,
+    "enabled": False,
     "idle_threshold_seconds": 1800,
     "cooldown_seconds": 3600,
     "max_steps_per_cycle": 20,
@@ -252,8 +272,11 @@ if [[ $ERRORS -eq 0 ]]; then
     echo "  Restart both containers to activate:"
     echo "    docker restart exocortex_v16 exocortex_v17"
     echo ""
-    echo "  Office panel (after restart):"
+    echo "  Office panel (standalone):"
     echo "    http://localhost:<port>/office.html"
+    echo ""
+    echo "  Office canvas tab:"
+    echo "    Open Agent Zero UI → right-canvas → 'Office' tab"
     echo ""
     echo "  Testing (set idle threshold to 2 min):"
     echo "    Edit config.json → idle_time_engine.idle_threshold_seconds: 120"

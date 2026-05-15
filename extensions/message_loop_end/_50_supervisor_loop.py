@@ -177,11 +177,16 @@ STAGNATION_MAX_UNIQUE = 2      # Max unique output hashes before stagnation is d
 # A separate LLM call with compressed context only. No agent history, no Einstellung.
 # The LLM advises. The deterministic tier system enforces.
 
-PHASE4_LM_ENDPOINT = "http://host.docker.internal:1234/v1/chat/completions"
-# PHASE4_MODEL is NOT hardcoded — read from Agent Zero's live model config at call time
-# so Phase 4 always uses whatever model the user has selected, not a stale constant.
+# PHASE4_MODEL and PHASE4_LM_ENDPOINT are NOT hardcoded — both are read from
+# Agent Zero's live model config at call time so Phase 4 automatically follows
+# whatever backend (model + endpoint) the user has selected.
 _MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
 _MODEL_CONFIG_FALLBACK = ""  # no fallback — Phase 4 skips if model cannot be resolved
+
+# Default endpoint used only when the model config provides no api_base.
+# Update this if the primary backend changes and the config path is unavailable.
+_PHASE4_LM_ENDPOINT_DEFAULT = "http://host.docker.internal:1235/v1/chat/completions"
+
 
 def _get_phase4_model(agent=None) -> str:
     """Read the current chat model name — agent.config (live UI state) takes priority."""
@@ -205,6 +210,52 @@ def _get_phase4_model(agent=None) -> str:
     except Exception:
         pass
     return _MODEL_CONFIG_FALLBACK
+
+
+def _get_phase4_endpoint(agent=None) -> str:
+    """
+    Read the active inference endpoint for Phase 4 from the same source as
+    the primary LLM — so Phase 4 follows backend changes automatically.
+
+    Resolution order (mirrors _get_phase4_model):
+      1. get_chat_model_config(agent): the model config plugin's live view,
+         which reflects UI changes immediately.
+      2. Plugin config file (_MODEL_CONFIG_PATH): stale if UI was used,
+         but more reliable than a hardcoded constant.
+      3. _PHASE4_LM_ENDPOINT_DEFAULT: last-resort fallback.
+
+    Appends /chat/completions to api_base if not already present.
+    BST uses setattr, so we read via getattr — confirmed correct.
+    """
+    import json as _json
+
+    def _base_to_endpoint(api_base: str) -> str:
+        base = api_base.rstrip("/")
+        if not base.endswith("/chat/completions"):
+            base += "/chat/completions"
+        return base
+
+    # Layer 1: model config plugin (live UI state)
+    try:
+        from plugins._model_config.helpers.model_config import get_chat_model_config
+        cfg = get_chat_model_config(agent) if agent else {}
+        api_base = cfg.get("api_base", "") or ""
+        if api_base:
+            return _base_to_endpoint(api_base)
+    except Exception:
+        pass
+
+    # Layer 2: plugin config file
+    try:
+        with open(_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = _json.load(f)
+        api_base = cfg.get("chat_model", {}).get("api_base", "") or ""
+        if api_base:
+            return _base_to_endpoint(api_base)
+    except Exception:
+        pass
+
+    return _PHASE4_LM_ENDPOINT_DEFAULT
 
 PHASE4_MAX_TOKENS = 200
 PHASE4_TEMPERATURE = 0.0
@@ -406,8 +457,12 @@ class SupervisorLoop(Extension):
                 # watchdog, org dispatcher, and supervisor context-fill detection all
                 # use the real limit rather than a hardcoded fallback.
                 try:
-                    from plugins._model_config.helpers.model_config import get_chat_model_config
+                    from plugins._model_config.helpers.model_config import get_chat_model_config, get_config
                     _ctx = int(get_chat_model_config(self.agent).get("ctx_length", 0))
+                    if not _ctx:
+                        # Per-agent config had no ctx_length — read from global plugin config
+                        # (what the user set in the model config UI for the chat model).
+                        _ctx = int(get_config().get("chat_model", {}).get("ctx_length", 0))
                     if _ctx > 0:
                         self.agent.set_data("context_window_size", _ctx)
                 except Exception:
@@ -526,8 +581,18 @@ class SupervisorLoop(Extension):
             if not injected and _cooldown_ok(state, ANOMALY_STAGNATION):
                 stag_result = _detect_output_stagnation(ctx.get("tool_output_hashes", []))
                 if stag_result.get("stagnating"):
-                    stag_fires = state.get("_stagnation_fires", 0) + 1
+                    current_tool = stag_result.get("tool", "")
+                    last_stag_tool = state.get("_stagnation_tool", "")
+                    # Reset counter when the stagnating tool changes — different tool means
+                    # a different stagnation episode, not escalation of the current one.
+                    # Do NOT reset when stagnation briefly returns False (oscillation due to
+                    # one non-identical read mixed in) — that was preventing Tier 2 escalation.
+                    if current_tool != last_stag_tool:
+                        stag_fires = 1
+                    else:
+                        stag_fires = state.get("_stagnation_fires", 0) + 1
                     state["_stagnation_fires"] = stag_fires
+                    state["_stagnation_tool"] = current_tool
                     if stag_fires >= 2 and not state.get(LOOP_SURGERY_DONE_KEY):
                         _execute_tier2(
                             self.agent,
@@ -542,6 +607,7 @@ class SupervisorLoop(Extension):
                     injected = True
                 else:
                     state["_stagnation_fires"] = 0  # reset on recovery
+                    state["_stagnation_tool"] = ""
 
             # 3.6. Phase 4: parallel LLM supervisor — strategic pattern detection.
             # Fires only when trigger conditions are met and Phases 1-3 have not
@@ -552,8 +618,9 @@ class SupervisorLoop(Extension):
                     compressed = _build_phase4_context(
                         self.agent, ctx, effective_domain, state
                     )
-                    p4_model = _get_phase4_model(self.agent)
-                    p4_rec = await _call_phase4_supervisor(compressed, p4_model)
+                    p4_model    = _get_phase4_model(self.agent)
+                    p4_endpoint = _get_phase4_endpoint(self.agent)
+                    p4_rec = await _call_phase4_supervisor(compressed, p4_model, p4_endpoint)
                     _log_phase4_decision(self.agent, compressed, p4_rec)
                     _update_phase4_strategy_hashes(self.agent, state)
                     if p4_rec.get("action") == "ESCALATE":
@@ -824,7 +891,12 @@ def _gather_context(agent, role: dict) -> dict:
         from agent import Agent
         ctx_window = agent.get_data(Agent.DATA_NAME_CTX_WINDOW) or {}
         tokens = ctx_window.get("tokens", 0)
-        window_size = agent.get_data("context_window_size") or 100000
+        window_size = agent.get_data("context_window_size")
+        if not window_size:
+            # context_window_size not yet set (first turn before supervisor init) —
+            # read ctx_length from the model config plugin's global config.
+            from plugins._model_config.helpers.model_config import get_config
+            window_size = int(get_config().get("chat_model", {}).get("ctx_length", 0))
         if tokens and window_size:
             ctx["context_fill"] = tokens / window_size
     except Exception:
@@ -1093,6 +1165,14 @@ def _detect_output_stagnation(tool_output_hashes: list) -> dict:
     successful = [o for o in recent if o.get("status") == "success"]
 
     if len(successful) < STAGNATION_MIN_SUCCESSES:
+        return {"stagnating": False}
+
+    # Require all window entries to be from the same tool. Mixed-tool windows mean
+    # the agent is exploring alternatives — that is not stagnation. Without this check,
+    # old identical hashes from tool X pollute the window after the agent switches to
+    # tool Y, causing stagnation to be reported for a tool no longer in use.
+    tools_in_window = {o.get("tool") for o in successful}
+    if len(tools_in_window) > 1:
         return {"stagnating": False}
 
     hashes = [o.get("output_hash") for o in successful if o.get("output_hash") is not None]
@@ -2151,11 +2231,16 @@ def _should_trigger_phase4(ctx: dict, state: dict, agent) -> bool:
     return False
 
 
-async def _call_phase4_supervisor(compressed_context: str, model: str) -> dict:
+async def _call_phase4_supervisor(
+    compressed_context: str,
+    model: str,
+    endpoint: str = _PHASE4_LM_ENDPOINT_DEFAULT,
+) -> dict:
     """
     Fire the parallel LLM supervisor with compressed context only.
     Returns structured recommendation dict. Never raises — HOLD on any failure.
-    model is passed in from the call site (resolved via _get_phase4_model).
+    model and endpoint are passed in from the call site so Phase 4 follows the
+    active backend automatically (resolved via _get_phase4_model/_get_phase4_endpoint).
     """
     import re as _re
     import json as _json
@@ -2178,7 +2263,7 @@ async def _call_phase4_supervisor(compressed_context: str, model: str) -> dict:
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                PHASE4_LM_ENDPOINT,
+                endpoint,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=PHASE4_TIMEOUT),
             ) as resp:

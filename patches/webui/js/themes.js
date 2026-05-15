@@ -33,7 +33,8 @@ const ThemeManager = {
     async init() {
         try {
             this._setupPerformanceListeners();
-            const savedTheme = localStorage.getItem('agent-zero-theme') || 'dark';
+            const cookieTheme = document.cookie.split('; ').find(r => r.startsWith('agent-zero-theme='))?.split('=')[1];
+            const savedTheme = localStorage.getItem('agent-zero-theme') || cookieTheme || 'dark';
             await this.applyTheme(savedTheme);
             console.log(`[ThemeManager] Initialized with theme: ${savedTheme}`);
         } catch (error) {
@@ -398,6 +399,7 @@ const ThemeManager = {
 
             this.currentTheme = themeName;
             localStorage.setItem('agent-zero-theme', themeName);
+            document.cookie = `agent-zero-theme=${themeName}; path=/; max-age=31536000; SameSite=Lax`;
             console.log(`[ThemeManager] Applied theme: ${themeData.name} by ${themeData.author}`);
             return true;
         } catch (error) {

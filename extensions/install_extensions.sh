@@ -26,10 +26,11 @@
 #   monologue_end/_55_memory_classifier.py                   — 5-axis classification
 #   message_loop_prompts_after/_56_memory_enhancement.py     — 6-stage retrieval pipeline
 #   before_main_llm_call/_11_belief_state_tracker.py         — BST classification only
+#   before_main_llm_call/_15_karpathy_rules.py               — BST-gated coding standards
 #
 # DO NOT ADD without Opus architectural review:
 #   BST enrichment injection, metacognitive injection, tool registry injection,
-#   HTN plan selector, injection gate, operator profile per-turn.
+#   injection gate, operator profile per-turn.
 #
 # Safe to re-run. Removes stale heartbeat from wrong hook on first run.
 
@@ -74,16 +75,25 @@ echo ""
 PLUGIN_EXT="/a0/usr/plugins/exocortex/extensions/python"
 if [ -d "$PLUGIN_EXT" ]; then
   echo "Removing stale extensions from plugin path..."
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_16_tool_registry.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_18_injection_budget.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_15_htn_plan_selector.py"
+  rm -f "$PLUGIN_EXT/before_main_llm_call/_12_proactive_supervisor.py"
   rm -f "$PLUGIN_EXT/message_loop_prompts_after/_16_tool_registry.py"
   rm -f "$PLUGIN_EXT/message_loop_prompts_after/_18_memory_catalog.py"
   rm -f "$PLUGIN_EXT/message_loop_prompts_after/_19_skill_suggester.py"
   rm -f "$PLUGIN_EXT/message_loop_prompts_after/_58_ontology_query.py"
   rm -f "$PLUGIN_EXT/message_loop_prompts_after/_95_tiered_tool_injection.py"
-  rm -f "$PLUGIN_EXT/before_main_llm_call/_18_injection_budget.py"
-  rm -f "$PLUGIN_EXT/before_main_llm_call/_15_htn_plan_selector.py"
-  rm -f "$PLUGIN_EXT/before_main_llm_call/_12_proactive_supervisor.py"
   echo "  done."
   echo ""
+fi
+
+# ── Remove from Exocortex source dir (archived — prevent accidental re-activation) ──
+EXO_EXT="/a0/usr/Exocortex/extensions"
+if [ -d "$EXO_EXT" ]; then
+  rm -f "$EXO_EXT/before_main_llm_call/_16_tool_registry.py"
+  rm -f "$EXO_EXT/message_loop_prompts_after/_16_tool_registry.py"
+  rm -f "$EXO_EXT/message_loop_prompts_after/_95_tiered_tool_injection.py"
 fi
 
 # ── Curated install list ──────────────────────────────────────────────────────
@@ -106,6 +116,7 @@ declare -A INSTALL_LIST=(
   ["monologue_end/_55_memory_classifier.py"]="monologue_end"
   ["message_loop_prompts_after/_56_memory_enhancement.py"]="message_loop_prompts_after"
   ["before_main_llm_call/_11_belief_state_tracker.py"]="before_main_llm_call"
+  ["before_main_llm_call/_15_karpathy_rules.py"]="before_main_llm_call"
 )
 
 INSTALLED=0
