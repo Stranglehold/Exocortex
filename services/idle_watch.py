@@ -223,9 +223,12 @@ def _fire_fresh_cycle(activation: str) -> bool:
     POST activation prompt to A0's REST API without a context_id.
     A0 creates a new context per request when no context_id is supplied.
 
-    Uses raw TCP — never reads the response. A0 holds the connection open
-    while the agent processes; any approach that waits for response headers
-    will time out (cycles take minutes). Connected = request delivered.
+    Uses raw TCP. After sending the request we peek at the status line with a
+    short timeout:
+    - No data / timeout: A0 is processing (expected — cycles take minutes).
+    - 4xx response: A0 rejected the request — treat as failure so cold-start
+      grace can roll back counters and retry next poll.
+    - Connection refused: A0 not up yet.
     """
     connected = False
     try:
@@ -250,6 +253,27 @@ def _fire_fresh_cycle(activation: str) -> bool:
         sock.settimeout(None)
         sock.sendall(request)
         sock.shutdown(socket.SHUT_WR)
+
+        # Peek at the HTTP status line. A0 holds the connection while it processes,
+        # so normally we get nothing (timeout) — that means success. If A0 returns
+        # a 4xx quickly it rejected the request.
+        sock.settimeout(2)
+        try:
+            peek = sock.recv(32)
+            if peek:
+                status_line = peek.decode("ascii", errors="replace")
+                # e.g. "HTTP/1.1 400 Bad Request"
+                parts = status_line.split()
+                if len(parts) >= 2 and parts[1].startswith("4"):
+                    print(
+                        f"[IDLE-WATCH] Fire rejected by A0 ({parts[1]}) — will retry.",
+                        flush=True,
+                    )
+                    sock.close()
+                    return False
+        except (socket.timeout, OSError):
+            pass  # timeout = A0 is processing (good)
+
         sock.close()
         return True
 
