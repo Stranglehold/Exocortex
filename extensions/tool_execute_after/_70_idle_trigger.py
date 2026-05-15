@@ -104,10 +104,11 @@ class IdleTrigger(Extension):
                 _write_state(state)
                 _write_status({"state": "idle", "label": "Available"})
             else:
-                # Idle cycle completed normally — clear the active flag
+                # Idle cycle completed normally — clear the active flag and charge budget
                 state = _read_state()
                 if state.get("cycle_active", False):
-                    state["cycle_active"] = False
+                    state["cycle_active"]             = False
+                    state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
                     _write_state(state)
                     print("[IDLE] Cycle complete — cycle_active cleared.", flush=True)
                 _write_status({"state": "idle", "label": "Available"})

@@ -127,7 +127,8 @@ def _atomic_check_and_fire(config: dict) -> bool:
         if state.get("cycle_active", False):
             if _is_stale_cycle(state, now):
                 print("[IDLE-WATCH] Stale cycle detected — clearing. Will fire next poll.", flush=True)
-                state["cycle_active"] = False
+                state["cycle_active"]             = False
+                state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
                 _write_state(state)
             return False
 
@@ -168,7 +169,6 @@ def _atomic_check_and_fire(config: dict) -> bool:
 
         # Save pre-increment values for cold-start grace rollback
         pre_cycle_count     = state.get("cycle_count", 0)
-        pre_total           = state.get("total_cycles_since_clear", 0)
         pre_consec_maintain = state.get("consecutive_maintain_count", 0)
         pre_build_count     = state.get("build_cycle_count", 0)
 
@@ -178,13 +178,15 @@ def _atomic_check_and_fire(config: dict) -> bool:
             flush=True,
         )
 
-        # Set cycle_active BEFORE firing — prevents parallel fires from other polls
-        state["cycle_active"]             = True
-        state["cycle_heartbeat"]          = now
-        state["last_cycle_start"]         = now
-        state["cycle_count"]              = pre_cycle_count + 1
-        state["last_cycle_type"]          = cycle_type
-        state["total_cycles_since_clear"] = pre_total + 1
+        # Set cycle_active BEFORE firing — prevents parallel fires from other polls.
+        # total_cycles_since_clear is NOT incremented here — only on completion (sensor)
+        # or stale detection (above). A running cycle occupies the slot but consumes
+        # no budget unit until it finishes.
+        state["cycle_active"]    = True
+        state["cycle_heartbeat"] = now
+        state["last_cycle_start"] = now
+        state["cycle_count"]     = pre_cycle_count + 1
+        state["last_cycle_type"] = cycle_type
         if cycle_type == "MAINTAIN":
             state["consecutive_maintain_count"] = pre_consec_maintain + 1
         elif cycle_type == "BUILD":
@@ -198,15 +200,14 @@ def _atomic_check_and_fire(config: dict) -> bool:
         # Fire failed — clear cycle_active
         state["cycle_active"] = False
         if state.get("cold_start_grace", True):
-            # One grace retry per window — roll back all counters so next poll retries
+            # One grace retry per window — roll back type-selection counters
             print("[IDLE-WATCH] Cold start grace — will retry once next poll.", flush=True)
             state["cycle_count"]                = pre_cycle_count
-            state["total_cycles_since_clear"]   = pre_total
             state["consecutive_maintain_count"] = pre_consec_maintain
             state["build_cycle_count"]          = pre_build_count
             state["cold_start_grace"]           = False
         else:
-            print("[IDLE-WATCH] Fire failed — attempt counts against total cap.", flush=True)
+            print("[IDLE-WATCH] Fire failed — skipped, no budget consumed.", flush=True)
         _write_state(state)
         return False
 
