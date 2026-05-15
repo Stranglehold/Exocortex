@@ -45,7 +45,7 @@ _ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"
 _STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20}
 _POLL_INTERVAL       = 60   # seconds between polls
 _STARTUP_GRACE       = 30   # seconds to wait on boot before first poll (A0 startup time)
-MAX_TOTAL_CYCLES     = 10   # absolute cap — requires manual reset to clear
+MAX_TOTAL_CYCLES     = 50   # absolute cap — requires manual reset to clear (~3 nights at 16 cycles/night)
 
 
 def main() -> None:
@@ -131,23 +131,19 @@ def _atomic_check_and_fire(config: dict) -> bool:
                 _write_state(state)
             return False
 
-        # Guard: window cap
-        max_cycles        = config.get("max_cycles_per_window", 1)
-        cycles_this_window = state.get("cycles_this_window", 0)
-        if cycles_this_window >= max_cycles:
-            return False
-
         # Guard: blast radius cap
-        if state.get("total_cycles_since_clear", 0) >= MAX_TOTAL_CYCLES:
+        max_total = config.get("max_total_cycles", MAX_TOTAL_CYCLES)
+        if state.get("total_cycles_since_clear", 0) >= max_total:
             print(
-                f"[IDLE-WATCH] Total cycle cap ({MAX_TOTAL_CYCLES}) reached — engine halted. "
+                f"[IDLE-WATCH] Total cycle cap ({max_total}) reached — engine halted. "
                 "Reset: set total_cycles_since_clear=0 in engine_state.json",
                 flush=True,
             )
             return False
 
-        # Guard: min gap between cycles within a window
-        if cycles_this_window > 0:
+        # Guard: min gap between fires (replaces window-based cap)
+        # Allows continuous cycling during long absences — one cycle per gap interval.
+        if state.get("last_cycle_start", 0) > 0:
             min_gap = config.get("min_gap_between_cycles_seconds", 1800)
             if now - state.get("last_cycle_start", 0) < min_gap:
                 return False
@@ -172,7 +168,6 @@ def _atomic_check_and_fire(config: dict) -> bool:
 
         # Save pre-increment values for cold-start grace rollback
         pre_cycle_count     = state.get("cycle_count", 0)
-        pre_cycles_window   = cycles_this_window
         pre_total           = state.get("total_cycles_since_clear", 0)
         pre_consec_maintain = state.get("consecutive_maintain_count", 0)
         pre_build_count     = state.get("build_cycle_count", 0)
@@ -189,7 +184,6 @@ def _atomic_check_and_fire(config: dict) -> bool:
         state["last_cycle_start"]         = now
         state["cycle_count"]              = pre_cycle_count + 1
         state["last_cycle_type"]          = cycle_type
-        state["cycles_this_window"]       = cycles_this_window + 1
         state["total_cycles_since_clear"] = pre_total + 1
         if cycle_type == "MAINTAIN":
             state["consecutive_maintain_count"] = pre_consec_maintain + 1
@@ -207,13 +201,12 @@ def _atomic_check_and_fire(config: dict) -> bool:
             # One grace retry per window — roll back all counters so next poll retries
             print("[IDLE-WATCH] Cold start grace — will retry once next poll.", flush=True)
             state["cycle_count"]                = pre_cycle_count
-            state["cycles_this_window"]         = pre_cycles_window
             state["total_cycles_since_clear"]   = pre_total
             state["consecutive_maintain_count"] = pre_consec_maintain
             state["build_cycle_count"]          = pre_build_count
             state["cold_start_grace"]           = False
         else:
-            print("[IDLE-WATCH] Fire failed — attempt counts against window.", flush=True)
+            print("[IDLE-WATCH] Fire failed — attempt counts against total cap.", flush=True)
         _write_state(state)
         return False
 
