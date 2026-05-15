@@ -22,10 +22,12 @@ Logs:  docker logs exocortex_v16 | grep IDLE-WATCH
 """
 
 import fcntl
+import http.client
 import json
 import os
 import socket
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -224,67 +226,59 @@ def _fire_fresh_cycle(activation: str) -> bool:
     POST activation prompt to A0's REST API without a context_id.
     A0 creates a new context per request when no context_id is supplied.
 
-    Uses raw TCP. After sending the request we peek at the status line with a
-    short timeout:
-    - No data / timeout: A0 is processing (expected — cycles take minutes).
-    - 4xx response: A0 rejected the request — treat as failure so cold-start
-      grace can roll back counters and retry next poll.
-    - Connection refused: A0 not up yet.
+    Uses http.client in a daemon thread so the connection stays open while A0
+    processes (cycles take minutes). Raw-socket close caused Uvicorn to discard
+    requests; keeping the connection alive ensures delivery.
+
+    The thread waits up to 3 seconds for a quick rejection (4xx). If no response
+    arrives in that window, A0 is processing — return True.
     """
-    connected = False
     try:
         from helpers.settings import create_auth_token
         token   = create_auth_token()
         port    = _A0_PORT
         payload = json.dumps({"message": activation}).encode("utf-8")
-        request = (
-            f"POST /api/api_message HTTP/1.1\r\n"
-            f"Host: localhost:{port}\r\n"
-            f"X-API-KEY: {token}\r\n"
-            f"Content-Type: application/json\r\n"
-            f"Content-Length: {len(payload)}\r\n"
-            f"Connection: close\r\n"
-            f"\r\n"
-        ).encode("ascii") + payload
+        headers = {
+            "X-API-KEY":    token,
+            "Content-Type": "application/json",
+        }
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        sock.connect(("localhost", port))
-        connected = True
-        sock.settimeout(None)
-        sock.sendall(request)
-        sock.shutdown(socket.SHUT_WR)
-
-        # Peek at the HTTP status line. A0 holds the connection while it processes,
-        # so normally we get nothing (timeout) — that means success. If A0 returns
-        # a 4xx quickly it rejected the request.
-        sock.settimeout(2)
+        # Quick synchronous check — is A0 listening?
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.settimeout(5)
         try:
-            peek = sock.recv(32)
-            if peek:
-                status_line = peek.decode("ascii", errors="replace")
-                # e.g. "HTTP/1.1 400 Bad Request"
-                parts = status_line.split()
-                if len(parts) >= 2 and parts[1].startswith("4"):
-                    print(
-                        f"[IDLE-WATCH] Fire rejected by A0 ({parts[1]}) — will retry.",
-                        flush=True,
-                    )
-                    sock.close()
-                    return False
-        except (socket.timeout, OSError):
-            pass  # timeout = A0 is processing (good)
+            probe.connect(("localhost", port))
+            probe.close()
+        except ConnectionRefusedError:
+            print("[IDLE-WATCH] A0 not reachable (connection refused).", flush=True)
+            return False
 
-        sock.close()
+        rejected = threading.Event()
+
+        def _send() -> None:
+            try:
+                conn = http.client.HTTPConnection("localhost", port, timeout=3600)
+                conn.request("POST", "/api/api_message", body=payload, headers=headers)
+                resp = conn.getresponse()
+                if resp.status >= 400:
+                    rejected.set()
+                conn.close()
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_send, daemon=True)
+        t.start()
+        t.join(timeout=3)  # wait briefly for quick rejection; timeout = A0 is processing
+
+        if rejected.is_set():
+            print("[IDLE-WATCH] Fire rejected by A0 — will retry next poll.", flush=True)
+            return False
         return True
 
     except ConnectionRefusedError:
         print("[IDLE-WATCH] A0 not reachable (connection refused).", flush=True)
         return False
     except Exception as e:
-        if connected:
-            print(f"[IDLE-WATCH] Fire warning (request likely delivered): {e}", flush=True)
-            return True
         print(f"[IDLE-WATCH] Fire failed: {e}", flush=True)
         return False
 
