@@ -81,6 +81,15 @@ class IdleTrigger(Extension):
                 if state.get("cycle_active", False):
                     state["cycle_heartbeat"] = time.time()
                     _write_state(state)
+            else:
+                # Activity signal — keep idle timer fresh during long user tasks.
+                # Throttled to once per 60s so we don't write JSON on every tool call.
+                # Prevents idle cycle firing while the agent is actively working.
+                if tool_name != "response":
+                    state = _read_state()
+                    if time.time() - state.get("last_user_ts", 0) > 60:
+                        state["last_user_ts"] = time.time()
+                        _write_state(state)
 
             # Session and cycle tracking — only on response tool
             if tool_name != "response":
