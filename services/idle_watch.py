@@ -222,6 +222,9 @@ def _atomic_check_and_fire(config: dict) -> bool:
         lock_fd.close()
 
 
+_A0_PORT = 80  # A0 always starts with --port=80 inside the container (run_A0.sh → self_update_manager.py)
+
+
 def _fire_fresh_cycle(activation: str) -> bool:
     """
     POST activation prompt to A0's REST API without a context_id.
@@ -234,9 +237,8 @@ def _fire_fresh_cycle(activation: str) -> bool:
     connected = False
     try:
         from helpers.settings import create_auth_token
-        from helpers.runtime  import get_web_ui_port
         token   = create_auth_token()
-        port    = get_web_ui_port()
+        port    = _A0_PORT
         payload = json.dumps({"message": activation}).encode("utf-8")
         request = (
             f"POST /api/api_message HTTP/1.1\r\n"
