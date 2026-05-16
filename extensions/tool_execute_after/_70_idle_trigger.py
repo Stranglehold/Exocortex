@@ -124,10 +124,16 @@ class IdleTrigger(Extension):
 
 
 def _last_user_msg_is_real(agent) -> bool:
-    """Walk history backwards to the most recent user message. True if not an idle activation.
+    """Walk history backwards to find the most recent actual user message.
 
-    The API message arrives JSON-wrapped as {"user_message": "## IDLE-TIME CYCLE ACTIVATED..."},
-    so check sentinel appears anywhere in the content, not just at the start.
+    Only stops at messages with a "user_message" key — the format produced by
+    hist_add_user_message (fw.user_message.md). Skips tool results (tool_name key),
+    system warnings (system_warning key), and all other injected non-AI messages.
+
+    Why: tool_execute_after fires BEFORE hist_add_tool_result, so the most recent
+    non-AI message is often a previous tool result or a LOOP DETECTED warning, not
+    the actual user message. Stopping at those would freeze the heartbeat after the
+    first tool call and misidentify idle cycles as real-user sessions.
     """
     try:
         for msg in reversed(agent.history.output()):
@@ -135,11 +141,18 @@ def _last_user_msg_is_real(agent) -> bool:
                 continue
             content = msg.get("content", "")
             if isinstance(content, dict):
-                content = content.get("text", "") or content.get("user_message", "") or str(content)
-            return _ACTIVATION_SENTINEL not in str(content)
+                if "user_message" in content:
+                    return _ACTIVATION_SENTINEL not in str(content.get("user_message", ""))
+                # Tool results, system warnings, and other injections — skip
+                continue
+            elif isinstance(content, str):
+                if _ACTIVATION_SENTINEL in content:
+                    return False
+                # Plain string without sentinel — skip (could be a warning or other injection)
+                continue
     except Exception:
         pass
-    return False
+    return True  # No user message found — assume real-user context (conservative)
 
 
 def _read_state() -> dict:
