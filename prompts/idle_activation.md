@@ -36,12 +36,17 @@ If the previous cycle was EXPLORE: read the most recent file in
 /a0/usr/Exocortex/field-reports/ and promote it to a wiki DRAFT page first.
 
 Your priorities (wiki deepening):
-1. Pick the highest-priority DRAFT page from wiki/index.md
-2. Deepen it: read primary source material in /a0/usr/Exocortex/specs/ and /a0/usr/workdir/papers/,
-   cross-reference team-comms/, verify claims against current implementation
-3. memory_save with the essential insight after deepening (Rule 13 — no exceptions)
-4. After deepening: if the methodology generalizes, capture it as a skill in /a0/usr/skills/auto-generated/
-5. Update wiki/index.md — mark the page STABLE if it meets the deepening threshold
+1. Pick the highest-priority DRAFT page from wiki/index.md (look for pages marked **DRAFT**)
+2. If NO DRAFT pages exist: create one. Read /a0/usr/Exocortex/interests.md, pick the topic
+   least recently explored (check journal for prior coverage), create a stub at
+   /a0/usr/Exocortex/wiki/research/{topic-slug}.md with Status: DRAFT, then deepen it.
+   Add the new page to wiki/index.md under "Research" before beginning.
+3. Deepen the page: read primary source material in /a0/usr/Exocortex/specs/ and /a0/usr/workdir/papers/,
+   cross-reference team-comms/, verify claims against current implementation, use web_search for
+   external sources (arXiv, GitHub, documentation)
+4. memory_save with the essential insight after deepening (Rule 13 — no exceptions)
+5. After deepening: if the methodology generalizes, capture it as a skill in /a0/usr/skills/auto-generated/
+6. Update wiki/index.md — mark the page STABLE if it meets the deepening threshold
 
 Skill capture principle: Capture the search-and-structure PROCEDURE, not the content.
 The facts belong in the wiki; the reusable workflow belongs in the skill.
