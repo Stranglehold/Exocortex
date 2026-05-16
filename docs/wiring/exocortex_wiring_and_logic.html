@@ -374,6 +374,7 @@ hr {
     <li><a href="#sec-14"><span class="num">14</span>Deployment &amp; Install</a></li>
     <li><a href="#sec-15"><span class="num">15</span>Failure Modes</a></li>
     <li><a href="#sec-16"><span class="num">16</span>Component Index</a></li>
+    <li><a href="#sec-open-questions"><span class="num">??</span>Open Questions</a></li>
   </ol>
   <div class="meta">
     <strong>Built by:</strong> Kestrel (Opus 4.7)<br>
@@ -961,7 +962,551 @@ sequenceDiagram
 
 <section id="sec-04">
   <h2><span class="num">04</span>Shared State Map <a class="anchor" href="#sec-04">#</a></h2>
-  <p class="section-summary"><span class="status todo">todo</span> The <code>agent.data</code> keys, <code>extras_persistent</code> registry, file-based state. Writer→reader graph with collision risk annotation.</p>
+  <p class="section-summary">
+    The implicit contract layer. State written by one component, read by another, with no compile-time enforcement that the writer and reader agree on the key, the type, or the lifecycle. This section catalogs every state surface in the stack: <code>agent.data</code> dict signals, agent attributes (<code>_</code>-prefixed), <code>loop_data.extras_persistent</code> for per-iteration handoff, supervisor sub-state, file-backed persistent state, and cross-file string constants. The most fragile seams in the project (<a href="#sec-13">§13 #1, #2, #3</a>) all live here. When a state key changes, both sides need to change together — and there's no test that fails when they don't.
+  </p>
+
+  <div class="callout warn">
+    <strong>The rule to internalize:</strong> Adding a new state key means adding it to <em>this section's tables</em> before adding the reader. If the reader is added without the table entry, the next builder won't know the contract exists. The tables are the contract.
+  </div>
+
+  <h3>Wiring — Five State Surfaces</h3>
+  <p>The stack uses five distinct state surfaces, each with different lifecycle, scope, and access pattern. Knowing which surface a piece of state lives on determines who can read it, when it expires, and what breaks if the contract drifts.</p>
+
+  <table>
+    <thead><tr><th>Surface</th><th>Access pattern</th><th>Lifecycle</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong><code>agent.data</code></strong> dict</td>
+        <td><code>agent.set_data(key, val)</code> / <code>agent.get_data(key)</code></td>
+        <td>Persists across turns in the same chat context</td>
+        <td>Per-agent-instance (per chat)</td>
+      </tr>
+      <tr>
+        <td><strong>Agent attributes</strong> (<code>_</code>-prefixed)</td>
+        <td><code>setattr(self.agent, "_x", val)</code> / <code>getattr(agent, "_x", default)</code></td>
+        <td>Persists across turns in the same chat context</td>
+        <td>Per-agent-instance (per chat)</td>
+      </tr>
+      <tr>
+        <td><strong><code>loop_data.extras_persistent</code></strong></td>
+        <td>Dict access: <code>loop_data.extras_persistent[key] = val</code></td>
+        <td>Per-iteration of the agent's loop — typically read by A0's prompt template same turn</td>
+        <td>Per-turn</td>
+      </tr>
+      <tr>
+        <td><strong>Supervisor sub-state</strong></td>
+        <td>Inside the <code>_supervisor_state</code> dict (which is itself an agent attribute)</td>
+        <td>Per-agent-instance, with internal turn counter</td>
+        <td>Supervisor only — should not be touched by other extensions</td>
+      </tr>
+      <tr>
+        <td><strong>File-backed state</strong></td>
+        <td>Read/write to <code>/a0/usr/Exocortex/...</code> JSON/JSONL files</td>
+        <td>Persists across container restarts</td>
+        <td>Cross-context (all chats can see it)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Two patterns matter for understanding which surface to use:</p>
+  <ul>
+    <li><strong>Attribute vs <code>data</code> dict:</strong> Both persist per-chat. The convention in this codebase is that attributes are for typed objects (the BST store dict, the PACE plan dict, the reasoning state dict, the working memory buffer) and the <code>data</code> dict is for boolean flags and signaling (<code>_pace_advance_tier</code>, <code>_pace_new_task</code>, <code>_action_gate_active</code>). The choice isn't strictly enforced but the pattern is consistent. See <a href="#sec-13">§13 seam #3</a> — confusion between the two access patterns has caused real bugs.</li>
+    <li><strong><code>extras_persistent</code> vs <code>history_output</code>:</strong> Both reach A0's prompt assembly. <code>extras_persistent</code> writes go to template placeholders (<code>{memories}</code>, <code>{solutions}</code>, etc.). <code>history_output</code> writes mutate the assembled history list directly. Both must be written in <code>message_loop_prompts_after</code> to actually reach the LLM call — writes in <code>before_main_llm_call</code> are silently discarded (<a href="#sec-13">§13 seam #7</a>).</li>
+  </ul>
+
+  <h3>Surface 1 — <code>agent.data</code> dict signals</h3>
+  <p>Boolean and small-typed signals. Set via <code>agent.set_data()</code>, read via <code>agent.get_data()</code>. The values that matter most for cross-component coordination.</p>
+  <table>
+    <thead><tr><th>Key</th><th>Type</th><th>Written by</th><th>Read by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">_org_htn_allowed_plans</td>
+        <td>list / None</td>
+        <td><code>_12_org_dispatcher</code></td>
+        <td><code>_15_htn_plan_selector</td>
+        <td>HTN plan candidates filtered by org context. Cleared on each turn start.</td>
+      </tr>
+      <tr>
+        <td class="key">_layer_signals</td>
+        <td>dict</td>
+        <td>Various layers</td>
+        <td><code>_11_belief_state_tracker</code></td>
+        <td>Loose coordination dict — read at BST classification time. Specific keys aren't strongly typed.</td>
+      </tr>
+      <tr>
+        <td class="key">_failure_tracker</td>
+        <td>dict[tool→count]</td>
+        <td><code>error_format/_30_failure_tracker</code> (incr on failure)</td>
+        <td><code>tool_execute_after/_20_reset_failure_counter</code> (reset on success), <code>_50_supervisor_loop</code> (reads count)</td>
+        <td><strong>Constant <code>TRACKER_KEY</code> defined in TWO files (<a href="#sec-13">seam #2</a>).</strong> Must match.</td>
+      </tr>
+      <tr>
+        <td class="key">_pace_new_task</td>
+        <td>bool</td>
+        <td><code>_50_supervisor_loop</code> (sets True after Tier 3 reset)</td>
+        <td><code>_14_pace_plan_generator</code> (consumes + clears)</td>
+        <td>Signals that the previous task was reset and a fresh PACE plan should be generated.</td>
+      </tr>
+      <tr>
+        <td class="key">_pace_advance_tier</td>
+        <td>bool</td>
+        <td><code>_50_supervisor_loop</code> (sets True on loop/stall)</td>
+        <td><code>_14_pace_plan_generator</code> (consumes + clears)</td>
+        <td>Signals PACE should advance its active tier (Primary → Alternate → Contingency → Emergency).</td>
+      </tr>
+      <tr>
+        <td class="key">_action_gate_active</td>
+        <td>bool</td>
+        <td><code>_15_action_boundary</code> (True on Tier 4 block, False on pass)</td>
+        <td><code>_50_supervisor_loop</code> (suppresses stall warnings while gate is held), <code>_20_error_comprehension</code> (clears on successful tool output)</td>
+        <td><a href="#sec-13">Seam #5</a> — if EC isn't deployed, gate can stick True permanently.</td>
+      </tr>
+      <tr>
+        <td class="key">_error_diagnosis</td>
+        <td>dict</td>
+        <td><code>_20_error_comprehension</code> (rewritten each tool call)</td>
+        <td><code>_50_supervisor_loop</code>, <code>_30_tool_fallback_logger</code>, <code>_30_tool_fallback_advisor</code>, <code>_14_situational_orientation</code></td>
+        <td>Fields: <code>error_class</code>, <code>causal_chain</code>, <code>suggested_actions</code>, <code>anti_actions</code>, <code>confidence</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">_evidence_ledger</td>
+        <td>dict (per-tool entries)</td>
+        <td><code>_25_evidence_ledger_recorder</code></td>
+        <td><code>_25_epistemic_integrity</code>, <code>_50_supervisor_loop</code></td>
+        <td>Each entry has extracted key values + <code>_loop_active</code> flag for adjudication post-loop.</td>
+      </tr>
+      <tr>
+        <td class="key">_loop_active</td>
+        <td>bool</td>
+        <td><code>_50_supervisor_loop</code> (True when loop detected, False on recovery)</td>
+        <td><code>_55_memory_classifier</code> (tags memories), <code>_25_evidence_ledger_recorder</code> (marks entries)</td>
+        <td>Phase 4 sleep consolidation uses tagged memories to adjudicate after recovery.</td>
+      </tr>
+      <tr>
+        <td class="key">_org_pace_level</td>
+        <td>str ("primary"|"alternate"|"contingent"|"emergency")</td>
+        <td><code>_14_pace_plan_generator</code> (synced from active_tier)</td>
+        <td><code>_12_org_dispatcher</code> (PACE gate logic)</td>
+        <td>Connects PACE plan tier with supervisor's PACE escalation gate.</td>
+      </tr>
+      <tr>
+        <td class="key">ACTIVITY_KEY</td>
+        <td>float (timestamp)</td>
+        <td><code>_60_sleep_activity</code></td>
+        <td>Sleep consolidation triggers</td>
+        <td>Last activity timestamp for sleep cycle gating.</td>
+      </tr>
+      <tr>
+        <td class="key">WARM_FLAG</td>
+        <td>bool</td>
+        <td><code>_71_cache_warmer</code></td>
+        <td><code>_71_cache_warmer</code> (self-gate)</td>
+        <td>Once-per-context flag for cache prewarming.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Surface 2 — Agent attributes (<code>_</code>-prefixed)</h3>
+  <p>Typed objects on the agent instance. Access via <code>getattr(agent, "_x", default)</code> — never via <code>agent.get_data()</code> for these. See <a href="#sec-13">§13 seam #3</a> — confusing the two access patterns returns <code>None</code> silently.</p>
+  <table>
+    <thead><tr><th>Attribute</th><th>Type</th><th>Written by</th><th>Read by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">_bst_store</td>
+        <td>dict</td>
+        <td><code>_11_belief_state_tracker</code></td>
+        <td><code>_12_proactive_supervisor</code>, <code>_14_situational_orientation</code>, <code>_15_htn_plan_selector</code>, <code>_25_epistemic_integrity</code>, <code>_30_tool_fallback_logger</code>, <code>_50_supervisor_loop</code>, <code>_52_selective_memorizer</code>, <code>_53_insight_capture</code>, <code>_55_memory_classifier</code>, <code>_56_memory_enhancement</code>, <code>_14_metacognitive_injection</code>, <code>_15_karpathy_rules</code>, <code>_14_pace_plan_generator</code>, more</td>
+        <td>The most-read state in the stack. Nested key: <code>_bst_store["__bst_belief_state__"]["domain"]</code> (was a bug in <code>_12_proactive_supervisor</code> — seam #3 expanded).</td>
+      </tr>
+      <tr>
+        <td class="key">_reasoning_state</td>
+        <td>dict</td>
+        <td><code>_49_reasoning_state_update</code> (message_loop_end)</td>
+        <td><code>_13_reasoning_state</code> (before_main_llm_call — injects in WRONG hook); <strong>NO valid consumer in <code>message_loop_prompts_after</code></strong></td>
+        <td><strong>Inert chain (<a href="#sec-13">seam #19 CRIT</a>).</strong> Fields: <code>step</code>, <code>theory</code>, <code>tried[]</code>, <code>current</code>, <code>open</code>, <code>artifacts[]</code>. Fix: <code>_22_reasoning_state_injector</code> drafted, awaiting deployment.</td>
+      </tr>
+      <tr>
+        <td class="key">_pace_plan</td>
+        <td>dict</td>
+        <td><code>_14_pace_plan_generator</code> (generates via LLM call, locks after creation)</td>
+        <td><code>_14_pace_plan_generator</code> itself (injects in WRONG hook); <strong>NO valid consumer in <code>message_loop_prompts_after</code></strong></td>
+        <td><strong>Inert chain (<a href="#sec-13">seam #19 CRIT</a>).</strong> Fields: <code>task_summary</code>, <code>domain</code>, <code>current_step</code>, <code>active_tier</code>, <code>steps[]</code> (each with primary/alternate/contingency/emergency), <code>tier_escalations</code>. Fix: <code>_23_pace_plan_injector</code> drafted, awaiting deployment.</td>
+      </tr>
+      <tr>
+        <td class="key">_pace_level</td>
+        <td>str</td>
+        <td><code>_14_pace_plan_generator</code></td>
+        <td><code>_12_org_dispatcher</code></td>
+        <td>Mirror of <code>_org_pace_level</code> at attribute level. Same value; both surfaces written for consumer compatibility.</td>
+      </tr>
+      <tr>
+        <td class="key">_supervisor_state</td>
+        <td>dict (see Surface 4)</td>
+        <td><code>_50_supervisor_loop</code> only</td>
+        <td><code>_50_supervisor_loop</code> only, <code>_60_sleep_trigger</code> reads <code>_p4_loop_fired</code></td>
+        <td>The supervisor's internal state machine. Internal sub-keys catalogued in Surface 4.</td>
+      </tr>
+      <tr>
+        <td class="key">_working_memory</td>
+        <td>dict</td>
+        <td><code>_11_working_memory</code> (hist_add_before)</td>
+        <td><code>_11_belief_state_tracker</code> reads via <code>getattr(self.agent, "_working_memory", None)</code></td>
+        <td>Entity extraction buffer maintained across turns.</td>
+      </tr>
+      <tr>
+        <td class="key">_injection_token_counts</td>
+        <td>dict[ext_name → tokens]</td>
+        <td><code>_09_injection_gate</code></td>
+        <td><code>_11_bst</code>, <code>_12_completion_tracker</code>, <code>_13_operator_profile</code>, <code>_14_metacognitive_injection</code>, <code>_15_karpathy_rules</code>, <code>_16_tool_registry</code>, <code>_18_injection_budget</code></td>
+        <td>Budget tracking — extensions read this to know if they should inject or skip.</td>
+      </tr>
+      <tr>
+        <td class="key">_injection_gate</td>
+        <td>str ("full" | "conditional" | "compressed")</td>
+        <td><code>_09_injection_gate</code></td>
+        <td>Provides <code>should_inject()</code> API used by downstream injectors</td>
+        <td>Phase-based gating of injection budget.</td>
+      </tr>
+      <tr>
+        <td class="key">_suppress_surgery_this_turn</td>
+        <td>bool</td>
+        <td><code>_29_stuck_delivery</code></td>
+        <td><code>_50_supervisor_loop</code> (suppresses Tier 2 surgery when stuck delivery is in progress)</td>
+        <td>Coordination flag between stuck-delivery handling and the supervisor's tier system.</td>
+      </tr>
+      <tr>
+        <td class="key">_supervisor_model_overrides</td>
+        <td>dict</td>
+        <td><code>_50_supervisor_loop</code> (loaded from model profile)</td>
+        <td><code>_50_supervisor_loop</code> (applies override ceilings)</td>
+        <td>Model-specific tier thresholds. Profile-driven (e.g. Qwen3.6 lowers tier1 to 4, tier2 to 8).</td>
+      </tr>
+      <tr>
+        <td class="key">_memory_catalog_built</td>
+        <td>bool</td>
+        <td><code>_18_memory_catalog</code> (True after first injection)</td>
+        <td><code>_18_memory_catalog</code> (self-gate)</td>
+        <td>Once-per-session flag. <a href="#sec-13">Seam #9</a> if extension exists in two hooks.</td>
+      </tr>
+      <tr>
+        <td class="key">_memory_health</td>
+        <td>dict</td>
+        <td>Memory subsystem health checks</td>
+        <td><code>_12_org_dispatcher</code></td>
+        <td>Memory subsystem state for org-level decisions.</td>
+      </tr>
+      <tr>
+        <td class="key">_success_profile_store</td>
+        <td>object</td>
+        <td>Success profile system</td>
+        <td><code>_50_supervisor_loop</code></td>
+        <td>Cross-cycle success pattern store.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Surface 3 — <code>loop_data.extras_persistent</code></h3>
+  <p>Per-turn shared dict on the <code>LoopData</code> object. Used for state that needs to flow from extensions into A0's prompt template placeholders, or between extensions on the same turn. <strong>No collision guard</strong> — two extensions writing the same key silently overwrite each other.</p>
+  <table>
+    <thead><tr><th>Key</th><th>Type</th><th>Written by</th><th>Read by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">_bst_domain</td>
+        <td>str</td>
+        <td><code>_11_belief_state_tracker</code></td>
+        <td><code>_14_metacognitive_injection</code>, <code>_14_pace_plan_generator</code>, <code>_16_tool_registry</code></td>
+        <td>Primary BST domain. Written fresh each turn. Readers use <code>.get("_bst_domain", "")</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">_bst_compound</td>
+        <td>dict</td>
+        <td><code>_11_belief_state_tracker</code></td>
+        <td><code>_16_tool_registry</code> (reads <code>.secondary.domain</code>)</td>
+        <td>Full compound classification dict. Fields: <code>primary</code>, <code>secondary</code>, <code>complexity</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">_bst_complexity</td>
+        <td>str</td>
+        <td><code>_11_belief_state_tracker</code></td>
+        <td><strong>No reader found</strong></td>
+        <td>Written but unread. Reserved for future use or dead key. Check before adding a reader.</td>
+      </tr>
+      <tr>
+        <td class="key">_operator_floor_given</td>
+        <td>bool</td>
+        <td><code>_13_operator_profile</code></td>
+        <td><strong>No reader found</strong> (may be A0 prompt template internal)</td>
+        <td>Dedup guard within <code>_13</code> itself.</td>
+      </tr>
+      <tr>
+        <td class="key">memories</td>
+        <td>str</td>
+        <td><code>_55_memory_relevance_filter</code> then <code>_56_memory_enhancement</code> (overwrite)</td>
+        <td>A0 core (prompt template <code>{memories}</code>)</td>
+        <td><strong>Intentional multi-writer.</strong> <code>_56</code> wins; <code>_55</code>'s write is the fallback if <code>_56</code> doesn't run. Deleted if empty.</td>
+      </tr>
+      <tr>
+        <td class="key">solutions</td>
+        <td>str</td>
+        <td><code>_55_memory_relevance_filter</code> then <code>_56_memory_enhancement</code> (overwrite)</td>
+        <td>A0 core (prompt template <code>{solutions}</code>)</td>
+        <td>Same pattern as <code>memories</code>. <code>_56</code> wins. Deleted if empty.</td>
+      </tr>
+      <tr>
+        <td class="key">ontology_context</td>
+        <td>str</td>
+        <td><code>_58_ontology_query</code></td>
+        <td>Injected directly into <code>history_output</code> user message</td>
+        <td>Not consumed via A0 prompt template — direct history mutation.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Surface 4 — Supervisor sub-state (inside <code>agent._supervisor_state</code>)</h3>
+  <p>Internal state machine of <code>_50_supervisor_loop</code>. Extensions outside the supervisor should not touch these — they're documented here so debugging the supervisor's behavior across turns is possible.</p>
+  <table>
+    <thead><tr><th>Key</th><th>Type</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td class="key">turn</td><td>int</td><td>Per-context turn counter. Incremented each <code>message_loop_end</code> fire.</td></tr>
+      <tr><td class="key">loop_tier</td><td>str</td><td>Current loop intervention tier: <code>"none"</code>, <code>"tier1"</code>, <code>"tier2"</code>, <code>"tier3"</code></td></tr>
+      <tr><td class="key">cooldowns</td><td>dict[anomaly_type → turn]</td><td>Last turn at which each anomaly type was injected. Used to enforce <code>DEFAULT_COOLDOWN = 3</code> between same-type interventions.</td></tr>
+      <tr><td class="key">_p4_loop_fired</td><td>bool</td><td>Tells Phase 4 sleep consolidation that a loop happened this session. Read by <code>_60_sleep_trigger</code>.</td></tr>
+      <tr><td class="key">_t3_count</td><td>int</td><td>Number of Tier 3 (circuit breaker) fires this session. Capped at <code>T3_MAX_FIRES</code>.</td></tr>
+      <tr><td class="key">_t3_last_turn</td><td>int</td><td>Last turn at which Tier 3 fired. Used to enforce <code>T3_REPEAT_COOLDOWN</code>.</td></tr>
+      <tr><td class="key">_stagnation_fires</td><td>int</td><td>Count of consecutive stagnation detections. Resets on tool change. Escalates to Tier 2 at 2+.</td></tr>
+      <tr><td class="key">_stagnation_tool</td><td>str</td><td>The tool currently triggering stagnation. Reset clears <code>_stagnation_fires</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Surface 5 — File-backed persistent state</h3>
+  <p>State that survives container restarts. Read/written by extensions or daemons. Most of these are also visible to external tools (the webui can read <code>status.json</code>, sleep consolidation reads from <code>sleep_reports/</code>, etc.).</p>
+  <table>
+    <thead><tr><th>File / Path</th><th>Written by</th><th>Read by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/engine_state.json</td>
+        <td>idle_watch daemon + <code>_70_idle_trigger</code> sensor</td>
+        <td>Both writers, the daemon for firing decisions</td>
+        <td>Idle engine coordination. Full schema in <a href="#sec-05">§05</a>.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/control.json</td>
+        <td><code>idle_control.py</code> API handler (from webui)</td>
+        <td>idle_watch daemon</td>
+        <td><code>{"paused_until": &lt;timestamp&gt;}</code>. Pause control from Office panel.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/status.json</td>
+        <td>idle_watch daemon + <code>_70_idle_trigger</code></td>
+        <td>Office panel UI (via <code>office_feed.py</code>)</td>
+        <td>UI status indicator: <code>{state, label, cycle_type, started, priority}</code>.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/feed.jsonl</td>
+        <td><code>cycle_close.py</code> (append-only)</td>
+        <td>Office panel UI, sleep consolidation</td>
+        <td>Cycle completion log. Each line: timestamp, cycle_number, cycle_type, duration, steps_used, activity, deliverables, status.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/cycle_result.json</td>
+        <td><code>cycle_close.py</code></td>
+        <td>idle_watch daemon (consumed + deleted)</td>
+        <td>Completion signal between cycle and next-fire decision. Used to reset counters (e.g. <code>consecutive_maintain_count=0</code> when sleep_findings &gt; 0).</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/office/.idle_engine.lock</td>
+        <td>idle_watch (fcntl.flock)</td>
+        <td>idle_watch only</td>
+        <td>Empty file. Exclusive lock around the check-and-fire critical section.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/staging.jsonl</td>
+        <td><code>staging_note</code> tool, <code>_49_reasoning_state_update</code></td>
+        <td><code>_10_session_init</code>, <code>_13_reasoning_state</code> (artifact bootstrap), sleep consolidation Phase 0</td>
+        <td>Staging tier for artifact entries. Persists artifact references across compression events.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/sleep_reports/</td>
+        <td><code>sleep_consolidation.py</code></td>
+        <td>Operator (human-readable reports)</td>
+        <td>Markdown summary per cycle.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/procedural_memory/</td>
+        <td>Anti-pattern capture (Tier 4 of <a href="#sec-06">§06</a>)</td>
+        <td>Procedural memory query API, future BST enrichment</td>
+        <td>Captured anti-patterns from loop recoveries. 6 entries as of 2026-05-16.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/wiki/</td>
+        <td>Agent (idle BUILD cycles) and operator</td>
+        <td>Agent (idle EXPLORE/MAINTAIN cycles), integrity_check.py</td>
+        <td>Knowledge base. Each page has frontmatter (status, date), structured content, citations.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/field-reports/</td>
+        <td>Agent (idle EXPLORE cycles)</td>
+        <td>Operator, BUILD cycles for promotion to wiki</td>
+        <td>Open-ended exploration outputs. Promoted to wiki pages by next BUILD cycle.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/config.json</td>
+        <td>Operator / install scripts</td>
+        <td>Most extensions (config sections)</td>
+        <td>All extension configuration. New sections additive — never overwrite.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/workdir/library/catalog.json</td>
+        <td><code>library_add</code> tool</td>
+        <td><code>_17_library_catalog</code> (collection summary), <code>library-scan</code> skill</td>
+        <td>Library subsystem manifest.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/memory/</td>
+        <td>memory_save tool, <code>_52_selective_memorizer</code></td>
+        <td><code>_56_memory_enhancement</code>, <code>_55_memory_relevance_filter</code></td>
+        <td>FAISS main store. Episodic + procedural memory.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/memory/library/</td>
+        <td><code>library_add</code></td>
+        <td><code>library_search</code>, <code>library_list</code></td>
+        <td>FAISS isolated library store.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/ontology/relationships.jsonl</td>
+        <td><code>source_ingest</code> tool</td>
+        <td><code>_59_ontology_maintenance</code>, <code>relationship_query</code> tool</td>
+        <td>Ontology subsystem graph.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/memory/ (ontology area)</td>
+        <td><code>source_ingest</code></td>
+        <td><code>_58_ontology_query</code>, <code>ontology_search</code></td>
+        <td>FAISS ontology store.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/tool_manifest.json</td>
+        <td>Operator / agent</td>
+        <td><code>_16_tool_registry</code> (injects [INSTALLED PROGRAMS] section)</td>
+        <td>Installed-program registry for context injection.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Surface 6 — Cross-file string constants (FRAGILE)</h3>
+  <p>Constants defined in one file that are matched against content in another. Most fragile category of all — there's no compile-time check, no runtime test, no log line that shows when the match silently fails.</p>
+  <table>
+    <thead><tr><th>Constant</th><th>Defined in</th><th>Matched against</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">REPEAT_SIGNAL = "LOOP DETECTED."</td>
+        <td><code>_50_supervisor_loop.py:889</code> (approximate)</td>
+        <td>Content of messages injected by A0 core from <code>fw.msg_repeat.md</code></td>
+        <td><strong>If <code>fw.msg_repeat.md</code> is changed, this prefix must still match.</strong> 2026-03-31 incident: prompt was reworded, signal stopped matching, supervisor escalation silently broke. Also: <a href="#sec-13">seam #15</a> — v17's <code>fw.msg_repeat.md</code> differs from v16's (the call_subordinate version vs the three-options version).</td>
+      </tr>
+      <tr>
+        <td class="key">MISFORMAT_SIGNAL = "Your last response was not valid JSON"</td>
+        <td><code>_50_supervisor_loop.py:888</code> (approximate)</td>
+        <td>Content injected from <code>fw.msg_misformat.md</code></td>
+        <td>Same risk. <strong>Note:</strong> WIRING.md references <code>fw.msg_not_json.md</code> but the actual file on both containers is <code>fw.msg_misformat.md</code>. The constant string may also have drifted from current file content — worth verifying.</td>
+      </tr>
+      <tr>
+        <td class="key">TRACKER_KEY = "_failure_tracker"</td>
+        <td><code>error_format/_30_failure_tracker.py:7</code> AND <code>tool_execute_after/_20_reset_failure_counter.py:5</code></td>
+        <td>Both files use this to read/write the same <code>agent.data</code> key</td>
+        <td><strong>Defined in two places with a "Must match" comment.</strong> If either changes, the reset counter stops working. (<a href="#sec-13">seam #2</a>)</td>
+      </tr>
+      <tr>
+        <td class="key">_ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"</td>
+        <td><code>_70_idle_trigger.py:47</code>, <code>idle_watch.py:46</code></td>
+        <td>Content of idle activation prompts sent by daemon</td>
+        <td>If the activation prompt header changes in <code>idle_activation.md</code>, both files must update. Detection of idle-cycle context depends on this match. Heartbeat bug (seam #13) was downstream of how this sentinel was searched.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h3>Logic — Writer→Reader Dependency Graph</h3>
+  <p>Simplified view of the most load-bearing state flows. Each arrow shows who reads what one writes. Multi-reader keys (<code>_bst_store</code>, <code>_error_diagnosis</code>) have many consumers and are abbreviated as "many readers" in the diagram.</p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  subgraph bst["BST chain"]
+    direction LR
+    bst_w["_11_bst writes"] --> bst_store["_bst_store<br/>(attribute)"]
+    bst_w --> bst_ep["extras_persistent<br/>_bst_domain, _bst_compound"]
+  end
+
+  bst_store --> bst_readers["Many readers:<br/>_50 supervisor<br/>_25 epistemic<br/>_55 classifier<br/>_56 enhancement<br/>_14 pace<br/>_14 metacog<br/>_15 karpathy<br/>_30 fallback<br/>_52, _53, _57"]
+  bst_ep --> bst_ep_readers["_14_metacognitive<br/>_14_pace_plan<br/>_16_tool_registry"]
+
+  subgraph err["Error chain"]
+    err_w["_20_error_comprehension"] --> err_diag["_error_diagnosis<br/>(agent.data)"]
+  end
+  err_diag --> err_readers["_50 supervisor<br/>_30 fallback (advisor/logger)<br/>_14 situational"]
+
+  subgraph pace["PACE chain (BROKEN)"]
+    pace_w["_14_pace_plan_generator"] --> pace_plan["_pace_plan<br/>(attribute)"]
+    pace_plan --> pace_inject["_14 injects in WRONG hook<br/>(silently discarded)"]
+    pace_inject -.->|"NO CONSUMER"| pace_dead["Dead end"]
+  end
+
+  subgraph reasoning["Reasoning chain (BROKEN)"]
+    reasoning_w["_49_reasoning_state_update"] --> reasoning_state["_reasoning_state<br/>(attribute)"]
+    reasoning_state --> reasoning_inject["_13 injects in WRONG hook<br/>(silently discarded)"]
+    reasoning_inject -.->|"NO CONSUMER"| reasoning_dead["Dead end"]
+  end
+
+  subgraph supervisor_chain["Supervisor chain"]
+    bst_store -.-> sup["_50_supervisor"]
+    err_diag -.-> sup
+    failtrack["_failure_tracker<br/>(agent.data)"] -.-> sup
+    repeat["REPEAT_SIGNAL<br/>matches fw.msg_repeat.md"] -.-> sup
+    sup --> loop_active["_loop_active<br/>(agent.data)"]
+    sup --> sup_state["_supervisor_state<br/>(attribute)"]
+  end
+
+  loop_active --> loop_readers["_55 classifier<br/>_25 evidence ledger"]
+  sup_state --> sleep["_60_sleep_trigger reads _p4_loop_fired"]
+
+  subgraph idle["Idle chain (file-backed)"]
+    daemon["idle_watch daemon"] --> engine_state["engine_state.json"]
+    sensor["_70_idle_trigger"] --> engine_state
+    engine_state -.-> daemon
+    engine_state -.-> sensor
+  end
+
+  classDef good fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  classDef broken fill:#1c2128,stroke:#f85149,color:#c9d1d9
+  classDef bookmark fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+  class bst,err,supervisor_chain,idle good
+  class pace,reasoning broken
+    </div>
+    <div class="caption">Green chains work. Red chains (PACE plan injection, reasoning state injection) terminate at a hook where the write is silently discarded. The state objects exist and are correctly populated — they just never reach the LLM. Fix in <a href="#sec-09">§09</a>.</div>
+  </div>
+
+  <h3>Collision risk summary</h3>
+  <p>Where two writers can interact on the same surface. Most are intentional; some are bugs waiting to happen.</p>
+  <ul>
+    <li><strong><code>memories</code> / <code>solutions</code> (Surface 3):</strong> Intentional multi-writer (<code>_55</code> then <code>_56</code> overwrites). <code>_56</code> is the authoritative version.</li>
+    <li><strong><code>_pace_level</code> vs <code>_org_pace_level</code> (Surface 1 and 2):</strong> Same value mirrored on two surfaces. <code>_14_pace_plan_generator</code> writes both. If only one is updated, <code>_12_org_dispatcher</code> and the supervisor might see inconsistent state.</li>
+    <li><strong><code>_bst_complexity</code> (Surface 3):</strong> Written but no reader found. Either dead key or future use. If a reader is added in <code>before_main_llm_call</code>, it must move to <code>message_loop_prompts_after</code> to actually reach the LLM (per seam #7).</li>
+    <li><strong><code>_supervisor_state</code> internal keys (Surface 4):</strong> All keys are supervisor-only. If another extension reads or writes these, it can desync the supervisor's state machine and cause spurious tier escalations or missed loop detections.</li>
+    <li><strong>File-backed state under <code>/a0/usr/Exocortex/office/</code> (Surface 5):</strong> Multiple writers (daemon + sensor + webui handlers) share these files. Atomic writes (<code>.tmp + os.replace</code>) prevent torn reads but not race conditions on read-modify-write cycles. The idle engine uses <code>fcntl.flock</code> for the firing critical section (<a href="#sec-05">§05</a>); other file-backed state has no such guard.</li>
+    <li><strong>Cross-file string constants (Surface 6):</strong> The biggest fragile-seam category. A prompt-file content change breaks the constant match without any compile-time signal. See <a href="#sec-13">§13 seams #1, #15</a>.</li>
+  </ul>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-03">§03 Hook Pipeline</a> — extension execution order and the timing trap that breaks PACE / reasoning chains</li>
+    <li><a href="#sec-05">§05 Idle Engine</a> — full <code>engine_state.json</code> schema and the file-backed state under <code>office/</code></li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — full picture of supervisor sub-state and the constants that drive escalation</li>
+    <li><a href="#sec-09">§09 Reasoning Persistence &amp; PACE</a> — the broken chains and the fix design</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seams #1 (REPEAT_SIGNAL), #2 (TRACKER_KEY), #3 (<code>_bst_store</code> access pattern), #7 (hook timing trap), #15 (prompt divergence), #19 (inert injection chain) all live in this section's territory</li>
+  </ul>
 </section>
 
 <section id="sec-05">
@@ -2092,6 +2637,96 @@ flowchart LR
 <section id="sec-16">
   <h2><span class="num">16</span>Component Index <a class="anchor" href="#sec-16">#</a></h2>
   <p class="section-summary"><span class="status todo">todo</span> Alphabetical: each component → its files → state keys it touches → fragile seams that involve it. Designed for "I'm debugging X, what's adjacent" lookups.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OPEN QUESTIONS — running log of items needing attention
+     ════════════════════════════════════════════════════════════════ -->
+<section id="sec-open-questions">
+  <h2><span class="num">??</span>Open Questions <a class="anchor" href="#sec-open-questions">#</a></h2>
+  <p class="section-summary">
+    Running log of items that surface during work and don't fit cleanly into a section yet. Each entry: date, finding, status, context. Entries get retired when they're either answered, integrated into a section, or determined to be non-issues. This is a place to capture loose ends during autonomous work so nothing gets dropped.
+  </p>
+
+  <h3>Active</h3>
+
+  <div class="subsys">
+    <div class="subsys-header">
+      <h3>Q1 — Qwen mid-response token-repetition pattern <span class="status err">ACTIVE</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-05-16 ~06:33 UTC. v16 cycle 17 (MAINTAIN, chat <code>4PySS7nZ</code>) entered a response generation that didn't terminate as valid output. The model's <code>thoughts</code> array filled with repetitive single-word tokens (<code>"EXECUTING."</code>, <code>"NOW."</code>, <code>"GO."</code>, <code>"Step count: 8."</code>) without ever closing the array and emitting <code>tool_name</code>. Visible in the live token stream via docker logs. Jake stopped the cycle manually via the web UI Stop button.</p>
+    <p><strong>Distinguishing features:</strong> Not the regenerate-identical-preamble pattern the loop cascade was designed for. Each turn's preamble was different up to this point. This is within-response token repetition, not across-response response repetition.</p>
+    <p><strong>Candidate causes (untested):</strong></p>
+    <ul>
+      <li><code>"enable_thinking": false</code> not being sent on these calls — Opus's letter explicitly flagged this as required for Qwen3.6 to suppress reasoning-mode output. The token pattern looks reasoning-mode-shaped.</li>
+      <li>Context-length degradation — long context might enter a degraded sampling regime where the model can't converge on coherent JSON.</li>
+      <li>Quantization mismatch — LM Studio reports <code>Qwen3.6-27B-Q4_K_S.gguf</code> loaded; Opus's letter referenced production using <code>Qwen3.6-27B-Q4_K_XL</code>. Different quantization may have different output stability properties.</li>
+      <li>Some interaction with the integrity-check Phase 0 specifically — cycle 17 was investigating a real status-mismatch finding in the wiki index and may have hit a tool/result pattern that primed degenerate output.</li>
+    </ul>
+    <p><strong>Next investigation:</strong> Check the actual HTTP request body A0 sends to LM Studio. Verify <code>enable_thinking</code> field. If missing, that's a one-line fix in the LiteLLM config or A0's chat model adapter. Could also try forcing the Q4_K_XL model and rerunning the same cycle conditions.</p>
+    <p><strong>Status:</strong> Not blocking overnight observation (v16 cycles since 17 have completed without reproducing it). Worth investigating in the morning when context is fresh.</p>
+  </div>
+
+  <div class="subsys">
+    <div class="subsys-header">
+      <h3>Q5 — <code>steps_used: 0</code> reporting bug across recent cycles <span class="status warn">MINOR</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-05-16 ~07:50 UTC while resolving Q2. Every cycle in <code>feed.jsonl</code> from 2026-05-16 (cycle 14 EXPLORE, cycles 18-21 BUILD) reports <code>"steps_used": 0</code> despite each cycle producing detailed productive output (wiki page deepened, memories saved, page marked STABLE). The May 14 entries show real step counts (cycle 30: 14 steps, cycle 31: 20 steps). Between then and now the step tracking stopped working.</p>
+    <p><strong>What it doesn't break:</strong> Cycles still complete productively. Office UI still shows the right activity strings. Memory saves still happen. This is a metrics/reporting issue, not a behavioral one.</p>
+    <p><strong>What it might affect:</strong> <code>_select_cycle_type</code> doesn't use <code>steps_used</code> directly, but downstream metrics tracking does (cycle efficiency calculations, model evaluation against step budget, etc.). The longer this runs the more historical metrics get the wrong count.</p>
+    <p><strong>Next investigation:</strong> Trace <code>steps_used</code> back through <code>cycle_close.py</code> to find where the value is being computed or passed. Likely a regression in a recent edit. Probably a 10-minute fix once the regression is located.</p>
+    <p><strong>Status:</strong> Not blocking anything. Worth fixing for clean metrics going forward.</p>
+  </div>
+
+  <div class="subsys">
+    <div class="subsys-header">
+      <h3>Q3 — v17 prompt divergences: deliberate reconciliation pass <span class="status warn">QUEUED</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-05-15 evening. Five prompt files differ between v16 and v17, including <code>fw.msg_repeat.md</code> (the supervisor REPEAT_SIGNAL counterpart) and <code>fw.msg_misformat.md</code>. Per Opus 2026-05-16 reasoning: "don't sync what you don't understand" — the divergences may be intentional model-specific tuning, validated by 56+ cycles of v17 productive output.</p>
+    <p><strong>Action queued:</strong> 30-minute deliberate pass after the heartbeat fix and injector deployment are stable. Read both versions of each divergent file, decide unify-or-formalize-the-split, document the decision.</p>
+    <p><strong>Files involved:</strong> <code>fw.msg_repeat.md</code>, <code>fw.msg_misformat.md</code>, <code>browser_agent.system.md</code>, <code>agent.system.datetime.md</code>, <code>agent.system.main.communication.md</code>. Full md5 comparison table in <a href="#sec-13">§13 seam #15</a>.</p>
+    <p><strong>Status:</strong> Documented and held. Not blocking anything.</p>
+  </div>
+
+  <div class="subsys">
+    <div class="subsys-header">
+      <h3>Q4 — <code>scripts/lib/install_common.sh</code> refactor <span class="status warn">QUEUED</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-05-15 night audit. 27 install scripts (2420 lines), only 4 have an <code>install_file()</code> abstraction, 0 verify md5 post-deploy. The refactor extracts a shared library with seven functions (<code>install_file</code>, <code>install_file_if_missing</code>, <code>clear_pycache</code>, <code>find_orphans</code>, <code>_exec</code>, <code>get_containers</code>, <code>print_restart_hint</code>) and migrates the 4 scripts that have <code>install_file()</code> first, then the other 23 incrementally as related work touches them.</p>
+    <p><strong>Why it matters:</strong> Tonight's mis-deploy happened because verification wasn't a structural gate. The refactor bakes verification into every deploy.</p>
+    <p><strong>Status:</strong> Documented in <a href="#sec-14">§14 Deployment &amp; Install Pattern</a>. Plan complete. Not blocking anything but worth doing when time permits.</p>
+  </div>
+
+  <h3>Resolved / Integrated</h3>
+
+  <table>
+    <thead><tr><th>Question</th><th>Resolution</th><th>Date</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Does the heartbeat fix actually work after redeploy?</td>
+        <td>YES — verified live on v16 cycle 17. Heartbeat advanced +38s, +61s, +94s, +132s past <code>last_cycle_start</code> across the first 100 seconds of the cycle. Stale-detect false-positive on healthy cycles is solved. See <a href="#sec-13">seam #13</a>.</td>
+        <td>2026-05-16</td>
+      </tr>
+      <tr>
+        <td>Does the reasoning state / PACE injection chain reach the LLM?</td>
+        <td>NO — <code>_13</code> and <code>_14</code> inject in <code>before_main_llm_call</code> which is silently discarded (seam #7). No consumer in <code>message_loop_prompts_after</code>. Chain terminates at a broken link. Fix designed in <a href="#sec-09">§09</a>; injectors drafted at <code>_22_reasoning_state_injector.py</code> and <code>_23_pace_plan_injector.py</code>; deployment held pending observation.</td>
+        <td>2026-05-16</td>
+      </tr>
+      <tr>
+        <td>Was the previous heartbeat-fix commit actually deployed?</td>
+        <td>NO — landed at <code>/a0/usr/agents/agent0/extensions/tool_execute_after/_70_idle_trigger.py</code> (missing <code>python/</code> segment). Active path had the buggy version. Redeployed via <code>install_idle_engine.sh</code> + md5 verify. See <a href="#sec-02">§02</a> and <a href="#sec-13">seam #8</a>.</td>
+        <td>2026-05-16</td>
+      </tr>
+      <tr>
+        <td>Q2 — Are the cycles since cycle 17 actually productive?</td>
+        <td>YES — cycles 18, 19, 20, 21 each deepened a real wiki page (semiconductor supply chain, entity resolution, speculative-decoding, hardware-and-physical-computing) from DRAFT to STABLE with detailed activity records and memory saves in <code>feed.jsonl</code>. Fast completion (~10-15 min) reflects the workflow design intent (read index, pick DRAFT, deepen with research, mark STABLE), not failure. The <code>steps_used: 0</code> anomaly that surfaced during this check is a separate cosmetic issue tracked as Q5.</td>
+        <td>2026-05-16</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Convention</h3>
+  <p>New entries go at the top of the Active list with a date stamp. When an entry is integrated into a section, it moves to the Resolved table with the resolution summary. The Active list should stay short — if it grows past ~10 items, that's a signal to do a triage pass.</p>
 </section>
 
 </main>
