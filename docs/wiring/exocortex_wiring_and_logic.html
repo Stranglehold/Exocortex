@@ -2250,7 +2250,147 @@ anti_unknown_planning_2026-05-16T00:18:51.md</code></pre>
 
 <section id="sec-07">
   <h2><span class="num">07</span>BST &amp; Compound Classification <a class="anchor" href="#sec-07">#</a></h2>
-  <p class="section-summary"><span class="status todo">todo</span> Where classification is produced (<code>_11_belief_state_tracker</code>), what enrichment it injects, momentum tracking, the deep nested <code>__bst_belief_state__</code> key bug history.</p>
+  <p class="section-summary">
+    The Belief State Tracker is Layer 1 of the 12-layer stack — the deterministic preprocessing step that classifies user intent before the model sees it. Lives in <code>extensions/before_main_llm_call/_11_belief_state_tracker.py</code>. Currently v3.8 (phrase-signal architecture). Produces a compound classification (primary domain + secondary domain + complexity) that drives enrichment template injection, action gate calibration, memory recall scoping, supervisor threshold lookups, and supervisor PACE escalation. <strong>The BST is the most-read component in the stack</strong> — over a dozen extensions depend on its output (full reader list in <a href="#sec-04">§04 Surface 2, <code>_bst_store</code></a>).
+  </p>
+
+  <h3>Wiring — Where the BST's output goes</h3>
+  <p>The BST writes to three state surfaces and is read by extensions across most hooks. The full reader list is catalogued in <a href="#sec-04">§04</a>; this is the abbreviated view of what each surface carries.</p>
+  <table>
+    <thead><tr><th>Output</th><th>Surface</th><th>What it carries</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>_bst_store</code></td>
+        <td>Agent attribute</td>
+        <td>Full classification state object. Nested keys: <code>__bst_belief_state__</code> (the belief dict with <code>domain</code>, <code>primary_domain</code>, etc.), <code>_compound_sig</code> (signature string like <code>"investigation+analysis"</code>), <code>_compound_turns</code> (momentum count), <code>_user_msg_count</code>.</td>
+      </tr>
+      <tr>
+        <td><code>_bst_domain</code></td>
+        <td><code>extras_persistent</code></td>
+        <td>Plain string of the primary domain. Convenience surface for components that only need the domain label.</td>
+      </tr>
+      <tr>
+        <td><code>_bst_compound</code></td>
+        <td><code>extras_persistent</code></td>
+        <td>Full compound classification dict. Fields: <code>primary</code>, <code>secondary</code>, <code>complexity</code>.</td>
+      </tr>
+      <tr>
+        <td><code>_bst_complexity</code></td>
+        <td><code>extras_persistent</code></td>
+        <td>Complexity scalar. <strong>No reader found currently</strong> — reserved or dead key. See <a href="#sec-04">§04 Surface 3</a>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>The Two Access Patterns (and the bug they caused)</h3>
+  <p>The most consequential BST seam — confused access patterns to the nested classification — caused a real production bug. It's worth explicit treatment because the fix is established and the trap remains for new code.</p>
+
+  <div class="callout warn">
+    <strong>The trap:</strong> The BST writes its primary classification to <code>agent._bst_store["__bst_belief_state__"]["domain"]</code> — two levels deep inside the store dict. Code that reads <code>bst_store.get("domain", "")</code> (one level too shallow) gets an empty string and falls back to "default" — silently, no error. The supervisor's <code>_12_proactive_supervisor</code> had this exact bug at line 191 until 2026-05-14: <code>bst_domain</code> was always empty string, so all PACE threshold lookups used the default tier instead of the model-specific one.
+  </div>
+
+  <p>The correct read patterns:</p>
+  <pre><code># Wrong — returns empty string silently
+bst_domain = bst_store.get("domain", "")
+
+# Right — reads the nested key
+bst_store = getattr(self.agent, "_bst_store", {}) or {}
+belief    = bst_store.get("__bst_belief_state__")
+if belief and hasattr(belief, "primary_domain"):
+    bst_domain = str(belief.primary_domain)
+elif isinstance(belief, dict):
+    bst_domain = str(belief.get("domain", "unknown"))
+else:
+    bst_domain = "unknown"
+
+# Also right — read from extras_persistent if message_loop_prompts_after
+domain = loop_data.extras_persistent.get("_bst_domain", "")</code></pre>
+
+  <p>Note also <a href="#sec-13">seam #3</a>: always use <code>getattr(agent, "_bst_store", {})</code>, never <code>agent.get_data("_bst_store")</code>. The first works; the second returns <code>None</code> because the BST writes to the attribute surface, not the <code>data</code> dict surface.</p>
+
+  <h3>Compound Classification</h3>
+  <p>The BST doesn't just emit a single domain. It emits a <em>compound signature</em> — primary domain plus optional secondary domain plus complexity. The compound enables downstream components to make finer distinctions than a flat domain label would allow.</p>
+  <pre><code>// Example _bst_store contents:
+{
+  "__bst_belief_state__": {
+    "domain": "investigation",
+    "primary_domain": "investigation",
+    "secondary_domain": "analysis",
+    "confidence": 0.84,
+    "slots": { ... }
+  },
+  "_compound_sig": "investigation+analysis",
+  "_compound_turns": 3,        // momentum: 3 consecutive turns in this signature
+  "_user_msg_count": 7
+}
+
+// And in extras_persistent (same turn):
+loop_data.extras_persistent["_bst_domain"]    = "investigation"
+loop_data.extras_persistent["_bst_compound"]  = {
+  "primary":    "investigation",
+  "secondary":  "analysis",
+  "complexity": "complex"
+}</code></pre>
+  <p>The compound signature drives:</p>
+  <ul>
+    <li><strong>Enrichment template selection</strong> — different domain combinations select different scaffolding (e.g. <code>investigation+analysis</code> gets epistemic-integrity hints; <code>config_edit</code> gets meta-reasoning gate parameter checks)</li>
+    <li><strong>Tool registry filtering</strong> — <code>_16_tool_registry</code> reads <code>_bst_compound.secondary.domain</code> to surface tools relevant to both primary and secondary domains</li>
+    <li><strong>Supervisor model overrides</strong> — domain-specific tier thresholds applied via model profile lookup</li>
+    <li><strong>Memory recall scoping</strong> — <code>_56_memory_enhancement</code> reads the domain to weight relevance signals</li>
+  </ul>
+
+  <h3>Momentum tracking</h3>
+  <p>The <code>_compound_turns</code> counter increments when consecutive turns share the same compound signature. The agent's domain "momentum" is information beyond the current classification — it tells downstream components whether the agent has been stable in one domain for a while (high confidence) or just shifted (low confidence, treat domain hint as provisional).</p>
+  <p>Momentum was directly implicated in <code>specs/LOOP_FEEDBACK_CASCADE_DESIGN_NOTE.md</code>'s motivating incident: the 14B model looped for 43 turns with momentum locked at <code>config_edit+prompt_engineering</code> (the wrong domain for the task). The design note proposed breaking momentum on loop detection so reclassification could surface a more appropriate domain. Implementation status of that coordination: BST does the writing; loop cascade hasn't been observed reading <code>_compound_turns</code> to break momentum — worth a verification pass.</p>
+
+  <h3>v3.8 Phrase Signal Architecture (2026-04-26)</h3>
+  <p>Current BST version. Replaced an earlier unigram-based signal system with phrase-level patterns. Eval result: 68/68 = 1.00 (up from 60/65 on the previous version). Three new false-positive guard tests added to <code>eval/bst_eval.py</code>.</p>
+  <p>Key changes documented in MEMORY.md:</p>
+  <ul>
+    <li>Phase 1 (4 fixes): meta_cognitive prefix matching (<code>debug\w*</code>); planning bare <code>\bapproach\b</code> removed; investigation constrained phrase signals restored (verify/find_out/research); analysis <code>\breview\b</code> phrase restored.</li>
+    <li>Phase 2 (system_admin audit): <code>\bservice\b</code> narrowed with negative lookahead on coding qualifiers; <code>\bnetwork\b</code> → phrase patterns + connectivity; <code>\bmount\b</code> → phrase.</li>
+  </ul>
+
+  <h3>Where the BST runs</h3>
+  <p>Hook: <code>before_main_llm_call</code> at prefix <code>_11</code> — fires after <code>prepare_prompt()</code> assembly so any <code>history_output</code> writes here are discarded. But the BST's primary outputs go to <code>_bst_store</code> (attribute), <code>_bst_domain</code> and <code>_bst_compound</code> (<code>extras_persistent</code>), and <code>_layer_signals</code> (agent.data) — none of which depend on the discarded-injection hook timing. Readers in <code>message_loop_prompts_after</code> (e.g. <code>_56_memory_enhancement</code>) get the BST's output via the agent attribute, which is fine.</p>
+
+  <h3>Known issues</h3>
+  <table>
+    <thead><tr><th>Issue</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Nested key bug (<code>bst_store["__bst_belief_state__"]["domain"]</code>)</td>
+        <td><span class="status ok">fixed in proactive supervisor 2026-05-14</span></td>
+        <td>Other components that read the BST should be audited for the same pattern. <a href="#sec-13">Seam #3</a> in the broader form (attribute vs data dict).</td>
+      </tr>
+      <tr>
+        <td>BST in <code>before_main_llm_call</code> with no consumer chain breaks visible</td>
+        <td><span class="status ok">working as designed</span></td>
+        <td>BST writes are state-only, not history injections. Hook timing doesn't break this. Unlike <code>_13_reasoning_state</code> and <code>_14_pace_plan_generator</code>, which DO depend on injection reaching the LLM.</td>
+      </tr>
+      <tr>
+        <td><code>_bst_complexity</code> in extras_persistent has no reader</td>
+        <td><span class="status warn">documented in §04</span></td>
+        <td>Either dead key or reserved for future use.</td>
+      </tr>
+      <tr>
+        <td>Momentum-breaking coordination with loop cascade</td>
+        <td><span class="status warn">unverified</span></td>
+        <td>Design note says supervisor should write <code>_layer_signals</code> on loop detection to break BST momentum; not confirmed live. Worth checking.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Compound BST (cross-cutting extension)</h3>
+  <p>The Compound BST referenced in <a href="#sec-00">§00</a> as a cross-cutting system is the multi-domain classification with primary/secondary routing, momentum signatures, and enrichment. It's not a separate extension — it's the BST itself producing the <code>_compound_sig</code> + <code>_compound_turns</code> fields and the <code>_bst_compound</code> dict. The "Compound BST" name was used during development when the multi-domain capability was being added on top of single-domain classification. Now those are integrated and the term refers to the BST's current architecture.</p>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-04">§04 Shared State Map</a> — full reader list for <code>_bst_store</code> (over a dozen extensions) and the <code>extras_persistent</code> BST keys</li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — how the supervisor reads the BST domain for model-profile threshold lookups</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #3 (attribute vs data dict access), seam #4 (numeric prefix collisions at <code>_11</code>)</li>
+    <li><code>specs/COMPOUND_BST_SPEC_L3.md</code> (if present) and the eval harness at <code>eval/bst_eval.py</code></li>
+  </ul>
 </section>
 
 <section id="sec-08">
