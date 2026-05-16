@@ -1950,7 +1950,302 @@ stateDiagram-v2
 
 <section id="sec-06">
   <h2><span class="num">06</span>Supervisor Loop <a class="anchor" href="#sec-06">#</a></h2>
-  <p class="section-summary"><span class="status todo">todo</span> Tier 1 (silent) / Tier 2 (surgery) / Tier 3 (reset) / Tier 4 (anti-pattern capture). The fragile REPEAT_SIGNAL / MISFORMAT_SIGNAL string match. Cooldown logic.</p>
+  <p class="section-summary">
+    The supervisor is the XO. It runs in <code>message_loop_end</code> after each agent loop iteration and watches for anomalies — stalls, loops, cascading failures, context exhaustion, output stagnation, completion stalls. When it detects one, it injects steering via <code>hist_add_warning()</code>. The escalation is graduated: <strong>Tier 1</strong> is silent monitoring (since SFX-001, 2026-04-15), <strong>Tier 2</strong> is context surgery (removes loop messages, injects diagnostic), <strong>Tier 3</strong> is circuit breaker (forces response), <strong>Tier 4</strong> is anti-pattern capture (stores the loop-and-recovery pair to procedural memory for cross-session prevention). The supervisor reads from many state surfaces (<a href="#sec-04">§04</a>) and writes <code>_supervisor_state</code>, <code>_loop_active</code>, and history injections.
+  </p>
+
+  <div class="callout info">
+    <strong>Design lineage:</strong> The supervisor's behavior was specified across <code>specs/LOOP_FEEDBACK_CASCADE_DESIGN_NOTE.md</code> (Session 049 — Tiers 1-3), <code>LOOP_FEEDBACK_CASCADE_ADDENDUM.md</code> (Session 055 — Tier 4), and <code>SUPERVISOR_LOOP_SPEC_L3.md</code>. SFX-001 (2026-04-15) silenced Tier 1 after evidence that injecting "LOOP DETECTED" into a context heavy with failed attempts produces meta-loops — the agent reads the prescription, tries the prescribed action, that also looks repetitive, the detector fires again. Tier 2's context surgery is now the first substantive intervention.
+  </div>
+
+  <h3>Wiring — Inputs and Outputs</h3>
+  <table>
+    <thead><tr><th>Direction</th><th>State surface</th><th>What it carries</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>READ</td>
+        <td><code>_bst_store</code> (attribute)</td>
+        <td>Domain classification — drives anomaly threshold lookups via model overrides</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_action_gate_active</code> (agent.data)</td>
+        <td>Suppress stall/loop tier 4/5 while gate is held (action_boundary is waiting for auth)</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_error_diagnosis</code> (agent.data)</td>
+        <td>Inject diagnostic context into stall/loop/cascade injections — gives the model concrete error info instead of just "do something different"</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_evidence_ledger</code> (agent.data)</td>
+        <td>Cross-reference with claims for epistemic integrity coordination</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_failure_tracker</code> (agent.data)</td>
+        <td>Per-tool consecutive failure count drives tier escalation</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td>History for REPEAT_SIGNAL / MISFORMAT_SIGNAL (string constants)</td>
+        <td>Native A0 loop/misformat warnings injected by core — supervisor reads them as escalation triggers (<a href="#sec-13">seam #1</a>)</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_suppress_surgery_this_turn</code> (attribute)</td>
+        <td>From <code>_29_stuck_delivery</code> — prevents double-intervention when stuck-delivery handling is in progress</td>
+      </tr>
+      <tr>
+        <td>READ</td>
+        <td><code>_supervisor_model_overrides</code> (attribute)</td>
+        <td>Profile-driven threshold overrides (lowers, never raises). Qwen3.6 lowers tier1→4, tier2→8.</td>
+      </tr>
+      <tr>
+        <td>WRITE</td>
+        <td><code>_loop_active</code> (agent.data)</td>
+        <td>True when loop detected, False on recovery. Tags downstream memory and ledger entries.</td>
+      </tr>
+      <tr>
+        <td>WRITE</td>
+        <td><code>_supervisor_state</code> (attribute, sub-state)</td>
+        <td>Internal turn counter, tier state, cooldown timestamps, T3 fire count, stagnation tracking</td>
+      </tr>
+      <tr>
+        <td>WRITE</td>
+        <td><code>_pace_advance_tier</code>, <code>_pace_new_task</code> (agent.data)</td>
+        <td>Signals to PACE plan generator — set on loop/stall (advance tier) and Tier 3 reset (new task)</td>
+      </tr>
+      <tr>
+        <td>WRITE</td>
+        <td>History via <code>agent.hist_add_warning()</code></td>
+        <td>The actual steering message injected into the agent's next iteration</td>
+      </tr>
+      <tr>
+        <td>WRITE</td>
+        <td><code>/a0/usr/Exocortex/procedural_memory/</code> (file)</td>
+        <td>Tier 4 anti-pattern capture — markdown files with loop signature, recovery path, pre-action check</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Logic — Per-Turn Decision Sequence</h3>
+  <p>Every <code>message_loop_end</code> fire walks this decision tree. The order matters: higher-tier interventions are evaluated first and set <code>injected = True</code> to suppress lower-tier checks for the same turn (one intervention per turn maximum, with exceptions for emergency cases).</p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TD
+  start([message_loop_end fires]) --> gather["_gather_context()<br/>read all state surfaces<br/>compute pace_level, failing_tool,<br/>consecutive count, tier"]
+  gather --> check_int{check_interval<br/>(every Nth turn)?}
+  check_int -- skip --> done0[no check this turn]
+  check_int -- check --> t3{Tier 3: consecutive ≥<br/>T3_THRESHOLD AND<br/>not LOOP_SURGERY_DONE?}
+  t3 -- yes --> t3_fire["_execute_tier3()<br/>circuit breaker<br/>force response with progress<br/>set _supervisor_state[loop_tier]='tier3'"]
+  t3_fire --> injected[injected=True]
+  t3 -- no --> t2{Tier 2: consecutive ≥<br/>T2_THRESHOLD AND<br/>not LOOP_SURGERY_DONE AND<br/>not suppress_surgery?}
+  t2 -- yes --> t2_fire["_execute_tier2()<br/>context surgery<br/>remove loop messages from history topic<br/>inject diagnostic summary"]
+  t2_fire --> injected
+  t2 -- no --> pace{org_active AND<br/>pace_level emergency/contingent?}
+  pace -- emergency --> pace_e["_inject_pace_emergency()"]
+  pace -- contingent --> pace_c{"cooldown_ok<br/>(ANOMALY_PACE)?"}
+  pace_c -- yes --> pace_c_fire["_inject_pace_contingent()"]
+  pace_e --> injected
+  pace_c_fire --> injected
+  pace -- no --> cascade{cooldown_ok(CASCADE)<br/>AND _detect_cascade?}
+  cascade -- yes --> cascade_fire["_inject_cascade()"]
+  cascade_fire --> injected
+  cascade -- no --> ctx{cooldown_ok(CONTEXT)<br/>AND _detect_context_exhaustion?}
+  ctx -- yes --> ctx_fire["_inject_context_warning()<br/>(at 90%+)"]
+  ctx_fire --> injected
+  ctx -- no --> stag{cooldown_ok(STAGNATION)<br/>AND _detect_output_stagnation?}
+  stag -- yes --> stag_check{"_stagnation_fires ≥ 2<br/>AND not surgery_done?"}
+  stag_check -- yes --> stag_t2["Escalate to Tier 2 surgery<br/>(stagnation-specific note)"]
+  stag_check -- no --> stag_inject["_inject_stagnation()<br/>increment _stagnation_fires"]
+  stag_t2 --> injected
+  stag_inject --> injected
+  stag -- no --> p4{cooldown_ok(PHASE4)<br/>AND _should_trigger_phase4?}
+  p4 -- yes --> p4_llm["_build_phase4_context()<br/>10s LLM call → ESCALATE/DEESCALATE/HOLD"]
+  p4_llm --> p4_apply["_apply_phase4_recommendation()<br/>(if ESCALATE/DEESCALATE)"]
+  p4_apply --> injected
+  p4 -- no --> stall{org_active AND<br/>NOT action_gate AND<br/>cooldown_ok(STALL) AND<br/>_detect_stall?}
+  stall -- yes --> stall_fire["_inject_stall()<br/>with task context"]
+  stall_fire --> injected
+  stall -- no --> loop_t1{NOT action_gate AND<br/>NOT proactive_fired AND<br/>tier='warn' AND cooldown_ok?}
+  loop_t1 -- yes --> loop_silent["Tier 1 SILENT<br/>(SFX-001):<br/>log internally, mark cooldown,<br/>NO injection"]
+  loop_t1 -- no --> compl{NOT action_gate AND<br/>cooldown_ok(COMPLETION_STALL) AND<br/>completion signals ≥ threshold?}
+  compl -- yes --> compl_fire["_inject_completion_stall()"]
+  compl_fire --> injected
+  compl -- no --> set_state
+  loop_silent --> set_state
+  injected --> set_state["_set_state()<br/>persist supervisor_state"]
+  done0 --> set_state
+  set_state --> done([return])
+
+  style t3_fire fill:#1c2128,stroke:#f85149,color:#c9d1d9
+  style t2_fire fill:#1c2128,stroke:#d29922,color:#c9d1d9
+  style loop_silent fill:#161b22,stroke:#8b949e,color:#c9d1d9
+  style p4_apply fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+    </div>
+    <div class="caption">Decision order matters. Tier 3 (red) is evaluated first because it's the circuit breaker. Tier 2 (amber) is the first substantive intervention since Tier 1 went silent. PACE escalation, cascade, context exhaustion, and stagnation each have their own detection paths with cooldowns. Tier 1 (gray) is silent — logs but doesn't inject. Phase 4 (violet) is the only path that makes an LLM call from inside the supervisor — bounded by 10s timeout, default HOLD.</div>
+  </div>
+
+  <h3>The Tier System</h3>
+  <table>
+    <thead><tr><th>Tier</th><th>Threshold</th><th>Action</th><th>Defaults</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Tier 1 — Silent</strong></td>
+        <td><code>consecutive ≥ WARN_THRESHOLD</code> (default 2)</td>
+        <td>Log internally, mark cooldown, no injection (SFX-001).</td>
+        <td>WARN_THRESHOLD = 2; cooldown 3 turns</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 2 — Context Surgery</strong></td>
+        <td><code>consecutive ≥ T2_THRESHOLD</code> (default 4)</td>
+        <td>Remove the looping turns from the current history topic, inject diagnostic summary with failing tool + suggested alternative + anti-action.</td>
+        <td>T2_THRESHOLD = 4; clears via <code>LOOP_SURGERY_DONE_KEY</code></td>
+      </tr>
+      <tr>
+        <td><strong>Tier 3 — Circuit Breaker</strong></td>
+        <td><code>consecutive ≥ T3_THRESHOLD</code> (default 7)</td>
+        <td>Force response tool call with progress snapshot. Trip the breaker. Subsumes Tier 2 (sets <code>LOOP_SURGERY_DONE_KEY = True</code>).</td>
+        <td>T3_THRESHOLD = 7; T3_MAX_FIRES per session; T3_REPEAT_COOLDOWN between fires</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 4 — Anti-Pattern Capture</strong></td>
+        <td>After any tier intervention that resolves to a recovery</td>
+        <td>Capture loop signature + recovery path to <code>/a0/usr/Exocortex/procedural_memory/</code>. Cross-session prevention via BST enrichment retrieval (currently not wired — open question).</td>
+        <td>6 anti-patterns captured as of 2026-05-16</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Detection Paths</h3>
+  <p>Five distinct anomaly detectors run inside the supervisor each turn, each with its own cooldown and threshold. Each can trigger an intervention; the decision sequence above determines which one wins when multiple fire on the same turn.</p>
+  <table>
+    <thead><tr><th>Anomaly</th><th>Trigger</th><th>Detection signal</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Loop (native)</strong></td>
+        <td><code>REPEAT_SIGNAL = "LOOP DETECTED."</code> prefix appears in history</td>
+        <td>A0 core injects this from <code>fw.msg_repeat.md</code> on identical-response detection</td>
+        <td><a href="#sec-13">Seam #1</a>. Constant must match prompt file content. v17 has different prompt (<a href="#sec-13">seam #15</a>).</td>
+      </tr>
+      <tr>
+        <td><strong>Misformat (native)</strong></td>
+        <td><code>MISFORMAT_SIGNAL</code> appears in history</td>
+        <td>A0 core injects from <code>fw.msg_misformat.md</code> on JSON parse failure</td>
+        <td>Same risk as Loop. WIRING.md referenced wrong filename (<code>fw.msg_not_json.md</code> — doesn't exist).</td>
+      </tr>
+      <tr>
+        <td><strong>Tool failure cascade</strong></td>
+        <td><code>_failure_tracker[tool_name]</code> consecutive count</td>
+        <td>Same tool failing N times in a row</td>
+        <td>Drives Tier 2/3 escalation directly via <code>consecutive</code> count.</td>
+      </tr>
+      <tr>
+        <td><strong>Output stagnation</strong></td>
+        <td>Same tool returning identical output multiple times</td>
+        <td>Hash window over <code>_tool_output_tracker</code> (populated by <code>_30_tool_fallback_logger</code>)</td>
+        <td><a href="#sec-13">Seam #12</a>: requires <code>_30_tool_fallback_logger</code> to be deployed. Without it, tracker is empty and stagnation never fires.</td>
+      </tr>
+      <tr>
+        <td><strong>Completion stall</strong></td>
+        <td>Agent text signals completion but <code>response</code> tool not called for N consecutive turns</td>
+        <td><code>_detect_completion_stall()</code> scans recent messages for completion language</td>
+        <td>ST-004 class of failure: task done, response tool blocked. Threshold <code>COMPLETION_STALL_THRESHOLD</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Cascade failure</strong></td>
+        <td>Multiple distinct failures in rapid succession</td>
+        <td><code>_detect_cascade()</code> looks at recent failure patterns across tools</td>
+        <td>Different from single-tool cascade — catches diffuse failure that single-tool count misses.</td>
+      </tr>
+      <tr>
+        <td><strong>Context exhaustion</strong></td>
+        <td>Context window fill ≥ 90%</td>
+        <td><code>_detect_context_exhaustion()</code> reads <code>ctx_window_data</code></td>
+        <td>Watchdog already warns at 70%/85% (<code>_20_context_watchdog</code>). Supervisor adds the 90% urgent injection.</td>
+      </tr>
+      <tr>
+        <td><strong>PACE level escalation</strong></td>
+        <td><code>ctx["pace_level"]</code> is "emergency" or "contingent"</td>
+        <td>Derived from <code>_org_pace_level</code> in <a href="#sec-04">§04</a></td>
+        <td>Emergency is exempt from cooldown. Contingent respects ANOMALY_PACE cooldown.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Tier 2 Context Surgery — How It Works</h3>
+  <p>The mechanism that makes the loop cascade architecturally distinct from a simple warning injector. The loop messages aren't ignored — they're <em>removed</em> from the current history topic. The model's next inference sees its pre-loop progress plus a single diagnostic summary, not 4-7 identical failure attempts reinforcing the pattern.</p>
+  <pre><code># In _execute_tier2():
+#   1. Locate the "incision point" — turn before the loop began
+#   2. Truncate history topic from incision_idx forward
+#   3. Build summary: failing tool + suggested alternative + anti-action
+#   4. Insert summary as a system warning at incision_idx
+#   5. agent.context.log.log() the surgery for audit trail
+
+# Result: model continues from pre-loop progress with a clear note
+# about what failed, what alternative to try, and what not to retry.</code></pre>
+  <p>Change 1F (Session 116 territory) added <strong>false recovery detection</strong>: before performing surgery, check whether a previous surgery has already been attempted on this exact tool and is failing again. If so, escalate to Tier 3 directly rather than repeating a Tier 2 that didn't hold. This is the first time the supervisor maintained a model of its own action history rather than just current state.</p>
+
+  <h3>Tier 4 — Anti-Pattern Capture</h3>
+  <p>After a loop has been broken (by any tier or by the operator), the loop-and-recovery pair is captured as a markdown file in <code>/a0/usr/Exocortex/procedural_memory/</code>. Each entry contains:</p>
+  <ul>
+    <li><strong>Loop signature:</strong> failing tool, task description, error message, repetition count</li>
+    <li><strong>Recovery path:</strong> what eventually worked (tool, approach, who triggered the change)</li>
+    <li><strong>Pre-action check:</strong> deterministic rule like "before calling [failing_tool] in [this context], check [condition]; if [fails], use [alternative]"</li>
+  </ul>
+  <p>Filename pattern: <code>anti_&lt;tool&gt;_&lt;domain&gt;_&lt;timestamp&gt;.md</code>. Current entries on v16 (as of 2026-05-16):</p>
+  <pre><code>anti_unknown_analysis_2026-05-15T00:24:44.md
+anti_unknown_bugfix_2026-05-16T00:50:08.md
+anti_unknown_config_edit_2026-05-10T01:21:10.md
+anti_unknown_investigation_2026-05-09T23:30:36.md
+anti_unknown_investigation_2026-05-16T01:06:05.md
+anti_unknown_planning_2026-05-16T00:18:51.md</code></pre>
+  <p><strong>Open question:</strong> The retrieval side — pulling matching anti-patterns into the next session's BST enrichment to <em>prevent</em> the next instance of the loop — is documented in the addendum design note but the wiring isn't verified live. The captures are happening; the recall to prevent recurrence may or may not be active. Worth a check.</p>
+
+  <h3>Model-Profile Overrides</h3>
+  <p>Different models have different per-token coherence under loop pressure. The supervisor reads <code>/a0/usr/plugins/_model_config/config.json</code> and applies model-specific override <em>ceilings</em> — never raises, only lowers — so smaller or less-coherent models get earlier intervention.</p>
+  <table>
+    <thead><tr><th>Model</th><th>tier1</th><th>tier2</th><th>diversity_suppress</th></tr></thead>
+    <tbody>
+      <tr><td>Default</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>jackrong/qwen3.6-27b</td><td>4 (down from default)</td><td>8 (down)</td><td>2 (down)</td></tr>
+    </tbody>
+  </table>
+  <p>Loaded by <code>_load_supervisor_overrides()</code> with normalization (<code>jackrong/qwen3.6-27b</code> → filename <code>jackrong_qwen3.6-27b.json</code>). Applied at <code>execute()</code> start.</p>
+
+  <h3>Cooldown System</h3>
+  <p>Same-type anomalies don't re-inject too quickly. Each anomaly type has a cooldown counter (turns since last fire of that type). <code>DEFAULT_COOLDOWN = 3</code> turns. Emergency PACE is exempt from cooldown. Tier 3 has its own <code>T3_REPEAT_COOLDOWN</code> between consecutive fires.</p>
+  <p>Cooldowns live in <code>_supervisor_state["cooldowns"]</code> as <code>{anomaly_type: turn_number}</code>. <code>_cooldown_ok(state, anomaly_type)</code> returns True iff <code>state["turn"] - state["cooldowns"].get(anomaly_type, 0) ≥ DEFAULT_COOLDOWN</code>.</p>
+
+  <h3>Phase 4 — LLM-Driven Adjudication</h3>
+  <p>The only path in the supervisor that makes an LLM call. Phase 4 fires when:</p>
+  <ul>
+    <li>No higher-tier intervention has already fired this turn</li>
+    <li><code>_should_trigger_phase4()</code> returns True (specific multi-signal trigger)</li>
+    <li><code>cooldown_ok(ANOMALY_PHASE4)</code> is True</li>
+  </ul>
+  <p>It builds a compressed context (recent failures, BST domain, effective domain, prior state), then calls an LLM with a 10-second timeout. Returns one of three actions:</p>
+  <table>
+    <thead><tr><th>Action</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>ESCALATE</code></td><td>Apply tier escalation (set <code>_pace_advance_tier</code> or move tier state)</td></tr>
+      <tr><td><code>DEESCALATE</code></td><td>Apply tier deescalation (relax intervention)</td></tr>
+      <tr><td><code>HOLD</code></td><td>Default. Any failure (LLM unavailable, timeout, malformed response) → HOLD.</td></tr>
+    </tbody>
+  </table>
+  <p>This is the supervisor's only probabilistic component. Everything else is deterministic threshold logic. Phase 4 is an opt-in LLM judgment layer that operates only when the deterministic system isn't sure.</p>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-04">§04 Shared State Map</a> — full catalog of supervisor reads and writes, especially <code>_supervisor_state</code> sub-keys (Surface 4)</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seams #1 (REPEAT_SIGNAL), #5 (action gate stuck), #12 (stagnation blind without fallback logger), #15 (v17 prompt divergence)</li>
+    <li><a href="#sec-09">§09 Reasoning &amp; PACE</a> — the inert chain that's the model-side complement to the supervisor's outside-in interventions</li>
+    <li><code>specs/LOOP_FEEDBACK_CASCADE_DESIGN_NOTE.md</code> — Tier 1-3 original design</li>
+    <li><code>specs/LOOP_FEEDBACK_CASCADE_ADDENDUM.md</code> — Tier 4 anti-pattern learning addendum</li>
+    <li><code>specs/SUPERVISOR_LOOP_SPEC_L3.md</code> — implementation spec</li>
+  </ul>
 </section>
 
 <section id="sec-07">
