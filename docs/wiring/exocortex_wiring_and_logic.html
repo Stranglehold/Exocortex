@@ -526,9 +526,211 @@ sequenceDiagram
 <section id="sec-01">
   <h2><span class="num">01</span>Container Architecture <a class="anchor" href="#sec-01">#</a></h2>
   <p class="section-summary">
-    <span class="status todo">todo</span> Docker layout, port mapping behavior on restart, persistence boundaries (<code>/per/</code> vs <code>/a0/usr/</code>), what survives container restart vs run_ui restart vs image rebuild.
+    Two active containers — <code>exocortex_v16</code> (Qwen3.6-27B on local GPU) and <code>exocortex_v17</code> (DeepSeek-V4-Pro API). Both run the same Exocortex extension stack but against different inference backends. Container scope discipline (<a href="https://github.com/Stranglehold/Exocortex">MEMORY.md</a> + playbook): v16 is the working container; v17 is secondary and currently used for PACE-related testing where API spend is acceptable. The "deploy to both containers" rule covers extension code; it explicitly does NOT cover model config, API keys, or container-specific settings.
   </p>
-  <div class="todo-note">Pending verification pass. Key items to cover: port re-randomization on every restart; what files persist outside container (<code>/per/etc/supervisor/conf.d/</code>); the <code>flamboyant_bell</code> / <code>intelligent_villani</code> historical names that show up in old docs but aren't active.</div>
+
+  <h3>Active vs historical containers</h3>
+  <table>
+    <thead><tr><th>Name</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>exocortex_v16</code></td>
+        <td><span class="status ok">active</span></td>
+        <td>Production. Qwen3.6-27B-Q4_K_S (sometimes Q4_K_XL) via LM Studio :1235 on Windows host. Currently running idle cycles overnight on free GPU.</td>
+      </tr>
+      <tr>
+        <td><code>exocortex_v17</code></td>
+        <td><span class="status warn">paused</span></td>
+        <td>DeepSeek-V4-Pro external API. Used for PACE testing and second-substrate comparison. Currently paused (idle_watch stopped + <code>control.json</code> paused_until 24h forward) to spare DeepSeek API tokens.</td>
+      </tr>
+      <tr>
+        <td><code>intelligent_villani</code></td>
+        <td><span class="status info">retired</span></td>
+        <td>Exited 2 months ago. Referenced in older docs (including Opus's welcome letter) but no longer active. <strong>Do not assume any operation targets this container.</strong></td>
+      </tr>
+      <tr>
+        <td><code>flamboyant_bell</code></td>
+        <td><span class="status info">retired</span></td>
+        <td>Mentioned in playbook history. Stopped.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Filesystem layout</h3>
+  <table>
+    <thead><tr><th>Path</th><th>Purpose</th><th>Persistence</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="path-col">/a0/</td>
+        <td>A0 framework root</td>
+        <td>Per-image — wiped on image rebuild</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/python/extensions/</td>
+        <td>A0 core extensions (default load path)</td>
+        <td>Per-image</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/</td>
+        <td>User persistent space — sovereignty boundary per DEC-030</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/python/</td>
+        <td>Profile path for Exocortex extensions (canonical, wins dedup)</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/plugins/exocortex/</td>
+        <td>Plugin path (loaded after profile for dedup)</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/</td>
+        <td>Exocortex working data (wiki, journals, sleep reports, office state, procedural memory)</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/memory/</td>
+        <td>FAISS stores (main + library + ontology areas)</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/chats/</td>
+        <td>Per-chat directories. <strong>Filesystem-visible at chat creation time</strong> — exploited by idle_watch lifecycle ownership work in <a href="#sec-13">seam #14</a>.</td>
+        <td>Per-container, survives restart</td>
+      </tr>
+      <tr>
+        <td class="path-col">/per/</td>
+        <td>Volume-mounted persistent area surviving image rebuild</td>
+        <td>Survives container destroy + rebuild</td>
+      </tr>
+      <tr>
+        <td class="path-col">/per/etc/supervisor/conf.d/supervisord.conf</td>
+        <td>Supervisord program list (run_ui, idle_watch, etc.)</td>
+        <td>Survives rebuild — symlinked from /etc/supervisor/conf.d/</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What survives what</h3>
+  <table>
+    <thead><tr><th>Event</th><th>Kills</th><th>Preserves</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>supervisorctl restart run_ui</code></td>
+        <td>All in-memory A0 contexts (chats currently being processed), Python module cache, extension class cache</td>
+        <td>Filesystem state (chats on disk, engine_state, FAISS, configs), other supervisord programs (idle_watch keeps running)</td>
+      </tr>
+      <tr>
+        <td><code>supervisorctl restart idle_watch</code></td>
+        <td>The daemon's in-memory state (poll counter etc.)</td>
+        <td>Everything else. run_ui untouched. State files persist.</td>
+      </tr>
+      <tr>
+        <td><code>docker restart exocortex_v16</code></td>
+        <td>All running processes. Random new port mapping (32793 → some new high port). LM Studio connection state.</td>
+        <td>Everything in <code>/a0/usr/</code> and <code>/per/</code>. Supervisord auto-starts all configured programs again.</td>
+      </tr>
+      <tr>
+        <td><code>docker stop</code> then <code>docker rm</code> then <code>docker compose up</code> (rebuild)</td>
+        <td>Everything in <code>/a0/</code> that came from the image. Default A0 paths and files.</td>
+        <td>Only <code>/per/</code>. <strong>This is why <code>/a0/usr/Exocortex/</code> outside of <code>/per/</code> would be lost on rebuild</strong> — but DEC-030 moved the extension stack to <code>/a0/usr/</code> which is volume-mounted in current docker-compose config. Verify before destructive operations.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Port mapping</h3>
+  <p>A0 listens on <strong>port 80 internally</strong>. Docker maps it to a random high port on the host on every container start. The mapped port changes on every <code>docker restart</code>. Operators (and the browser) must check the current port:</p>
+  <pre><code>docker port exocortex_v16 | grep '80/tcp'
+# Example: 0.0.0.0:32793-&gt;80/tcp
+
+docker port exocortex_v17 | grep '80/tcp'
+# Example: 0.0.0.0:32794-&gt;80/tcp</code></pre>
+  <p>Inside the container, <code>idle_watch.py</code> hardcodes <code>_A0_PORT = 80</code> for the daemon's HTTP calls to A0's API — the daemon is in the same network namespace and addresses A0 by its internal port, not the host mapping. (This was a real bug earlier in May where <code>get_web_ui_port()</code> returned 5000 from the daemon's argv context instead of A0's 80 — fixed by hardcoding.)</p>
+
+  <h3>External dependencies</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  subgraph host["Windows Host"]
+    direction TB
+    lmstudio["LM Studio :1235<br/>Qwen3.6-27B Q4_K_S<br/>(production: Q4_K_XL with<br/>Indras-Mirror MTP+TurboQuant)"]
+    repo["D:\Vibecode\Agent-Zero\Exocortex\<br/>Source of truth"]
+  end
+
+  subgraph external["External APIs"]
+    deepseek["DeepSeek V4 Pro<br/>API (cost: per-token)"]
+  end
+
+  subgraph v16["exocortex_v16"]
+    v16_a0["A0 :80 → host :32793"]
+    v16_idle["idle_watch (running)"]
+    v16_oss["OSS service plugins"]
+    v16_swarm["SWARMFISH plugins"]
+  end
+
+  subgraph v17["exocortex_v17"]
+    v17_a0["A0 :80 → host :32794"]
+    v17_idle["idle_watch (STOPPED + paused)"]
+  end
+
+  subgraph services["Standalone Service Containers"]
+    oss_app["oss_app :7731<br/>(host network)"]
+    oss_db["oss_postgres :5433"]
+    swarmfish["swarmfish :7732"]
+  end
+
+  v16_a0 -- LLM calls --> lmstudio
+  v17_a0 -- LLM calls --> deepseek
+  repo -- install scripts --> v16_a0
+  repo -- install scripts --> v17_a0
+
+  v16_a0 -- HTTP --> oss_app
+  v16_a0 -- HTTP --> swarmfish
+  oss_app -- SQL --> oss_db
+  oss_app -- HTTP --> swarmfish
+  oss_app -- LLM calls --> lmstudio
+
+  classDef ok fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  classDef paused fill:#1c2128,stroke:#d29922,color:#c9d1d9
+  classDef external fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+  class v16,v16_a0,v16_idle ok
+  class v17,v17_a0,v17_idle paused
+  class lmstudio,deepseek,oss_app,oss_db,swarmfish external
+    </div>
+    <div class="caption">v16 (green) is active and serving idle cycles. v17 (amber) is paused for cost reasons. Both containers can talk to OSS/SWARMFISH services and LM Studio. DeepSeek is external API-only.</div>
+  </div>
+
+  <h3>Supervisord programs (inside each A0 container)</h3>
+  <p>Defined in <code>/per/etc/supervisor/conf.d/supervisord.conf</code>:</p>
+  <ul>
+    <li><code>run_ui</code> — the A0 web server + agent loop. Listens on :80 internally.</li>
+    <li><code>idle_watch</code> — Exocortex idle-time engine daemon. See <a href="#sec-05">§05</a>.</li>
+    <li><code>run_cron</code>, <code>run_searxng</code>, <code>run_sshd</code>, <code>run_tunnel_api</code>, <code>the_listener</code> — A0 standard auxiliaries.</li>
+  </ul>
+
+  <h3>Deploy targets summary</h3>
+  <p>Quick reference for where things go (full detail in <a href="#sec-14">§14</a>):</p>
+  <table>
+    <thead><tr><th>Artifact type</th><th>Path inside container</th><th>Install script</th></tr></thead>
+    <tbody>
+      <tr><td>Extension (Python)</td><td class="path-col">/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</td><td>various, see <a href="#sec-14">§14</a></td></tr>
+      <tr><td>Tool</td><td class="path-col">/a0/usr/plugins/exocortex/tools/</td><td>Manual <code>docker cp</code> or feature-specific installer</td></tr>
+      <tr><td>Prompt file</td><td class="path-col">/a0/usr/Exocortex/prompts/</td><td>install_idle_engine.sh deploys idle_activation.md</td></tr>
+      <tr><td>WebUI / panel</td><td class="path-col">/a0/usr/plugins/exocortex/extensions/webui/</td><td>install_idle_engine.sh and others</td></tr>
+      <tr><td>API handler</td><td class="path-col">/a0/api/</td><td>install_idle_engine.sh deploys office_feed.py, idle_control.py</td></tr>
+      <tr><td>Config (idle engine, etc.)</td><td class="path-col">/a0/usr/Exocortex/config.json</td><td>install scripts use read-merge-write (never overwrite)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-02">§02 Extension Load Path Resolution</a> — the path-with-<code>python</code>-segment finding for extension files</li>
+    <li><a href="#sec-05">§05 Idle Engine</a> — daemon configuration and the office state files at <code>/a0/usr/Exocortex/office/</code></li>
+    <li><a href="#sec-14">§14 Deployment &amp; Install Pattern</a> — full install script audit and DEC-026 refactor plan</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #8 (wrong path deploy) was tonight's incident in this surface</li>
+  </ul>
 </section>
 
 <!-- ════════════════════════════════════════════════════════════════
