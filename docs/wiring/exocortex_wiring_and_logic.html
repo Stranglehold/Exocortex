@@ -2395,7 +2395,166 @@ loop_data.extras_persistent["_bst_compound"]  = {
 
 <section id="sec-08">
   <h2><span class="num">08</span>Memory Subsystem <a class="anchor" href="#sec-08">#</a></h2>
-  <p class="section-summary"><span class="status todo">todo</span> FAISS stores (main + library + ontology), classification axes, recall path, decay, procedural memory and anti-pattern retrieval (is it wired to BST enrichment?).</p>
+  <p class="section-summary">
+    Two FAISS stores plus an ontology area plus a file-based procedural memory. Memories are written by the agent via the <code>memory_save</code> tool and by the selective memorizer (Layer 10); they're recalled via the relevance filter and enhancement extensions in <code>message_loop_prompts_after</code> (Layer 11). The recall path reads BST domain to expand queries semantically, applies temporal decay, deduplicates, and writes into <code>loop_data.extras_persistent["memories"]</code> and <code>["solutions"]</code> for A0's prompt template to pick up. Classification happens at write time (4-axis classifier) and is stored inline in the FAISS metadata, not in a sidecar file.
+  </p>
+
+  <h3>Stores</h3>
+  <table>
+    <thead><tr><th>Store</th><th>Path</th><th>What's in it</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Main FAISS</strong></td>
+        <td class="path-col">/a0/usr/memory/</td>
+        <td>Episodic and procedural memory. Each entry has metadata: domain, timestamp, axes from the classifier, ontology references, source.</td>
+      </tr>
+      <tr>
+        <td><strong>Library FAISS</strong></td>
+        <td class="path-col">/a0/usr/memory/library/</td>
+        <td>Isolated document library. Separate store so library lookups don't pollute episodic recall. Populated by <code>library_add</code>, queried by <code>library_search</code> and <code>library_list</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Ontology area</strong></td>
+        <td class="path-col">/a0/usr/memory/ (with <code>area="ontology"</code> metadata)</td>
+        <td>Entity vectors. Same physical FAISS as main, isolated by metadata. See <a href="#sec-10">§10 Ontology</a>.</td>
+      </tr>
+      <tr>
+        <td><strong>Procedural memory</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/procedural_memory/</td>
+        <td>File-based (markdown), not FAISS. Captured anti-patterns from loop recoveries. See <a href="#sec-06">§06 Tier 4</a>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>FAISS access pattern</h3>
+  <p>FAISS stores vectors only. All metadata lives in an InMemoryDocstore where each <code>Document.metadata</code> dict holds the per-entry attributes. Critical operational details for code touching memory:</p>
+  <ul>
+    <li><code>Memory.get(self.agent)</code> returns the Memory wrapper for this agent context</li>
+    <li><code>memory.db</code> is a <code>MyFaiss</code> instance</li>
+    <li><code>memory.db.get_all_docs()</code> returns the docstore dict</li>
+    <li><code>search_similarity_threshold()</code> returns <code>List[Document]</code>, <strong>NOT tuples</strong> — scores are stripped by LangChain</li>
+    <li><code>memory.db._save_db()</code> persists modified metadata to disk</li>
+  </ul>
+
+  <h3>Logic — Write Path</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  agent["Agent calls<br/>memory_save tool<br/>(or auto-save via _52)"] --> classify["_55_memory_classifier<br/>(monologue_end)<br/>4-axis classification:<br/>signal/noise, domain,<br/>temporal volatility,<br/>provenance"]
+  classify --> write["Write to FAISS<br/>vector + metadata dict<br/>(classification stored INLINE)"]
+  write --> persist["_save_db() persists<br/>metadata changes"]
+
+  selective["_52_selective_memorizer<br/>(monologue_end)<br/>reads _bst_store<br/>selects high-signal content"] --> classify
+
+  loop["_50_supervisor<br/>writes _loop_active=True"] -.tags.-> classify
+  classify --> ledger["_25_evidence_ledger_recorder<br/>marks loop_period entries"]
+
+  classDef store fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+  classDef write fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  class persist store
+  class selective,classify,write write
+    </div>
+    <div class="caption">Memories don't go to FAISS as raw text — they're classified first, the classification is stored inline in the docstore metadata, and the classifier reads BST domain plus loop-active state to tag entries appropriately. Loop-period memories get tagged for Phase 4 sleep adjudication (Tier 4 anti-pattern capture).</div>
+  </div>
+
+  <h3>Logic — Recall Path</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  trigger["message_loop_prompts_after fires<br/>(prepare_prompt phase)"] --> filter["_55_memory_relevance_filter<br/>reads BST domain<br/>candidate memory list<br/>relevance scoring<br/>writes extras_persistent<br/>memories, solutions (FALLBACK)"]
+  filter --> enhance["_56_memory_enhancement<br/>reads BST domain<br/>query expansion<br/>temporal decay<br/>related linking<br/>dedup<br/>writes extras_persistent<br/>memories, solutions (AUTHORITATIVE)"]
+  enhance --> template["A0 prompt template<br/>substitutes {memories}<br/>and {solutions} placeholders"]
+  template --> llm["LLM call sees<br/>relevant memories<br/>in system prompt"]
+
+  classDef filter fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+  classDef enhance fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  class filter filter
+  class enhance enhance
+    </div>
+    <div class="caption">Two writers in sequence, by design. <code>_55</code> writes the relevance-filtered candidate set first. <code>_56</code> overwrites with the enhanced set (BST-domain-expanded queries, temporal decay, dedup, related linking). The overwrite is intentional — see <a href="#sec-04">§04 Surface 3</a>. <code>_56</code> is the authoritative version reaching the LLM.</div>
+  </div>
+
+  <h3>The 4-axis classifier</h3>
+  <p>Layer 10 (<code>monologue_end</code> hook, <code>_55_memory_classifier</code>). Classifies each candidate memory along four axes before storage:</p>
+  <table>
+    <thead><tr><th>Axis</th><th>Values</th><th>What it controls</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Signal vs noise</td>
+        <td>signal | noise | mixed</td>
+        <td>Whether the memory is worth keeping. Noise gets dropped or stored at minimum priority.</td>
+      </tr>
+      <tr>
+        <td>Domain</td>
+        <td>investigation | analysis | bugfix | config_edit | etc.</td>
+        <td>Drives recall scoping. <code>_56</code> matches against BST domain at recall time.</td>
+      </tr>
+      <tr>
+        <td>Temporal volatility</td>
+        <td>stable | volatile | dated</td>
+        <td>Drives decay. Volatile memories decay fast; stable memories persist.</td>
+      </tr>
+      <tr>
+        <td>Provenance</td>
+        <td>direct | inferred | external</td>
+        <td>Confidence weighting at recall. Inferred memories carry caveats; external memories include source.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Configuration: <code>/a0/usr/memory/classification_config.json</code>. The classifier reads BST store and <code>_loop_active</code> from agent state.</p>
+
+  <h3>Selective memorizer (Layer 10)</h3>
+  <p><code>_52_selective_memorizer.py</code> in <code>monologue_end</code>. Reads <code>_bst_store</code> and selects which content from the just-completed monologue is worth storing. Not every conversation produces memories — the selective memorizer filters by signal density and BST domain. Loop-period content is suppressed via <code>_loop_active</code> flag check (memories from loop-time don't pollute the long-term store).</p>
+
+  <h3>Procedural memory (anti-patterns)</h3>
+  <p>Different storage shape from FAISS. Each anti-pattern is a markdown file at <code>/a0/usr/Exocortex/procedural_memory/anti_&lt;tool&gt;_&lt;domain&gt;_&lt;timestamp&gt;.md</code>. The Tier 4 capture (<a href="#sec-06">§06</a>) writes here. The retrieval side — pulling matching anti-patterns into the next session's BST enrichment to prevent recurrence — is documented in <code>specs/LOOP_FEEDBACK_CASCADE_ADDENDUM.md</code> but the wiring may not be live. See open question.</p>
+
+  <h3>Sleep consolidation interaction</h3>
+  <p>Sleep consolidation (<code>sleep_consolidation.py</code> in <code>/a0/usr/Exocortex/</code>) runs in phases triggered by <code>_60_sleep_trigger</code>:</p>
+  <ul>
+    <li><strong>Phase 1:</strong> Deduplication — finds near-duplicate memories, merges or discards</li>
+    <li><strong>Phase 2:</strong> Episode chunking + missed anti-pattern capture</li>
+    <li><strong>Phase 3:</strong> Promotion — surfaces high-utility memories into active recall</li>
+    <li><strong>Phase 4:</strong> Loop-period memory adjudication — fires when <code>_supervisor_state[_p4_loop_fired]</code> was set. Reads <code>_loop_active</code>-tagged entries, decides whether each should be promoted, deprecated, or dropped based on whether the recovery confirmed or refuted the memory.</li>
+  </ul>
+  <p>Sleep reports written to <code>/a0/usr/Exocortex/sleep_reports/</code> in markdown for human review.</p>
+
+  <h3>Known issues</h3>
+  <table>
+    <thead><tr><th>Issue</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Procedural memory retrieval wiring to BST enrichment</td>
+        <td><span class="status warn">unverified</span></td>
+        <td>Capture happens (6 entries on v16). Retrieval to inject pre-action checks at task start — not confirmed live. Worth a verification check.</td>
+      </tr>
+      <tr>
+        <td><code>_56_memory_enhancement</code> location verified in profile path</td>
+        <td><span class="status ok">verified</span></td>
+        <td>Lives in <code>extensions/message_loop_prompts_after/</code>. Reaches the LLM. (Not affected by the hook-timing trap from §07.)</td>
+      </tr>
+      <tr>
+        <td>Memory writes during loop period need <code>_loop_active</code> tagging</td>
+        <td><span class="status ok">designed</span></td>
+        <td>Tagged entries get adjudicated in sleep Phase 4. The flag is set by supervisor and read by classifier/recorder.</td>
+      </tr>
+      <tr>
+        <td>Library and main stores share docstore but different areas</td>
+        <td><span class="status info">design</span></td>
+        <td>Isolation via <code>area</code> metadata field. Library queries filter on <code>area="library"</code>; ontology queries on <code>area="ontology"</code>; main queries omit or filter to main.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-04">§04 Shared State Map</a> — <code>memories</code> and <code>solutions</code> in <code>extras_persistent</code> (Surface 3) and the file paths under <code>/a0/usr/memory/</code> (Surface 5)</li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — <code>_loop_active</code> tagging and Tier 4 anti-pattern capture</li>
+    <li><a href="#sec-10">§10 Ontology Layer</a> — the ontology area inside FAISS plus the relationships JSONL graph</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #11 (tombstoning from one path only) applies to memory extensions</li>
+    <li><code>specs/LOOP_FEEDBACK_CASCADE_ADDENDUM.md</code> — procedural memory anti-pattern design</li>
+    <li><code>sleep_consolidation.py</code> — phase-by-phase implementation</li>
+  </ul>
 </section>
 
 <section id="sec-09">
