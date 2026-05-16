@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Exocortex — Wiring &amp; Logic Diagram</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg:           #0d1117;
+  --bg-elevated:  #161b22;
+  --bg-code:      #1c2128;
+  --border:       #30363d;
+  --border-subtle:#21262d;
+  --text:         #c9d1d9;
+  --text-dim:     #8b949e;
+  --text-bright:  #f0f6fc;
+  --accent:       #a371f7;  /* violet — section headers */
+  --accent-dim:   #6e40c9;
+  --link:         #58a6ff;
+  --ok:           #3fb950;
+  --warn:         #d29922;
+  --err:          #f85149;
+  --info:         #58a6ff;
+  --hl:           #1f6feb20;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+}
+body { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+/* ── Navigation ─────────────────────────────────────────────────── */
+nav.toc {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 24px 16px;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  font-size: 13px;
+}
+nav.toc h1 {
+  font-size: 14px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 4px 0;
+}
+nav.toc .subtitle {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+nav.toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+nav.toc li { margin: 6px 0; }
+nav.toc a {
+  color: var(--text);
+  text-decoration: none;
+  display: block;
+  padding: 4px 8px;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  transition: all 0.12s;
+}
+nav.toc a:hover {
+  color: var(--text-bright);
+  border-left-color: var(--accent);
+  background: var(--hl);
+}
+nav.toc a .num {
+  display: inline-block;
+  width: 24px;
+  color: var(--text-dim);
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 11px;
+}
+nav.toc .meta {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.7;
+}
+nav.toc .meta strong { color: var(--text); }
+
+/* ── Main content ───────────────────────────────────────────────── */
+main {
+  padding: 32px 56px 96px 56px;
+  max-width: 1200px;
+}
+main > header.doc-header {
+  margin-bottom: 48px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+main > header.doc-header h1 {
+  font-size: 32px;
+  color: var(--text-bright);
+  margin: 0 0 8px 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+main > header.doc-header .tagline {
+  color: var(--text-dim);
+  font-size: 15px;
+  font-style: italic;
+  margin: 0;
+}
+main > header.doc-header .frame {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ── Sections ───────────────────────────────────────────────────── */
+section {
+  margin: 64px 0;
+  scroll-margin-top: 24px;
+}
+section > h2 {
+  font-size: 24px;
+  color: var(--text-bright);
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+section > h2 .num {
+  display: inline-block;
+  color: var(--accent);
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 18px;
+  margin-right: 12px;
+  letter-spacing: 0.02em;
+}
+section > .section-summary {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin: 0 0 24px 0;
+  padding-left: 38px;
+  border-left: 2px solid var(--border);
+}
+section h3 {
+  font-size: 17px;
+  color: var(--text-bright);
+  margin: 32px 0 12px 0;
+  font-weight: 600;
+}
+section h4 {
+  font-size: 14px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 20px 0 8px 0;
+  font-weight: 600;
+}
+
+/* ── Status badges ──────────────────────────────────────────────── */
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+.status.ok    { background: #3fb95020; color: var(--ok);   border: 1px solid #3fb95040; }
+.status.warn  { background: #d2992220; color: var(--warn); border: 1px solid #d2992240; }
+.status.err   { background: #f8514920; color: var(--err);  border: 1px solid #f8514940; }
+.status.info  { background: #58a6ff20; color: var(--info); border: 1px solid #58a6ff40; }
+.status.todo  { background: #8b949e20; color: var(--text-dim); border: 1px solid #8b949e40; }
+
+/* ── Code & paths ───────────────────────────────────────────────── */
+code, .path, .key {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 13px;
+  background: var(--bg-code);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: var(--text-bright);
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  font-size: 13px;
+}
+th, td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+th {
+  background: var(--bg-elevated);
+  color: var(--text-bright);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+}
+tr:hover td { background: var(--hl); }
+td.path-col, td.md5-col { font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; font-size: 12px; }
+td.center { text-align: center; }
+
+/* ── Boxes / callouts ───────────────────────────────────────────── */
+.callout {
+  margin: 20px 0;
+  padding: 16px 20px;
+  border-radius: 6px;
+  border-left: 3px solid;
+}
+.callout.info  { background: #58a6ff10; border-color: var(--info);  }
+.callout.warn  { background: #d2992210; border-color: var(--warn);  }
+.callout.err   { background: #f8514910; border-color: var(--err);   }
+.callout.ok    { background: #3fb95010; border-color: var(--ok);    }
+.callout strong { color: var(--text-bright); }
+
+/* ── Mermaid containers ─────────────────────────────────────────── */
+.diagram {
+  margin: 24px 0;
+  padding: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  overflow-x: auto;
+}
+.diagram .caption {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 12px;
+  font-style: italic;
+}
+.diagram svg { max-width: 100%; height: auto; }
+
+/* ── Two-up comparison grid ─────────────────────────────────────── */
+.two-up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+.two-up > div {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+}
+.two-up h4 { margin-top: 0; }
+
+/* ── Subsystem card ─────────────────────────────────────────────── */
+.subsys {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 20px 0;
+}
+.subsys-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.subsys-header h3 { margin: 0; }
+
+/* ── Anchor link styling ────────────────────────────────────────── */
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.anchor {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+section > h2:hover .anchor { opacity: 1; }
+
+/* ── Details / collapsibles ─────────────────────────────────────── */
+details {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+details summary {
+  cursor: pointer;
+  color: var(--text-bright);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+details[open] summary { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle); }
+
+/* ── Misc ──────────────────────────────────────────────────────── */
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 32px 0;
+}
+.todo-note {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 13px;
+  padding: 8px 16px;
+  background: #8b949e10;
+  border-left: 2px solid var(--text-dim);
+  border-radius: 0 4px 4px 0;
+  margin: 12px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ╔════════════════ NAVIGATION ════════════════╗ -->
+<nav class="toc">
+  <h1>Exocortex Wiring &amp; Logic</h1>
+  <div class="subtitle">Living document — updated as reality changes.</div>
+  <ol>
+    <li><a href="#sec-00"><span class="num">00</span>System Overview</a></li>
+    <li><a href="#sec-01"><span class="num">01</span>Container Architecture</a></li>
+    <li><a href="#sec-02"><span class="num">02</span>Extension Load Path</a></li>
+    <li><a href="#sec-03"><span class="num">03</span>Hook Pipeline</a></li>
+    <li><a href="#sec-04"><span class="num">04</span>Shared State Map</a></li>
+    <li><a href="#sec-05"><span class="num">05</span>Idle Engine</a></li>
+    <li><a href="#sec-06"><span class="num">06</span>Supervisor Loop</a></li>
+    <li><a href="#sec-07"><span class="num">07</span>BST &amp; Compound</a></li>
+    <li><a href="#sec-08"><span class="num">08</span>Memory Subsystem</a></li>
+    <li><a href="#sec-09"><span class="num">09</span>Reasoning &amp; PACE</a></li>
+    <li><a href="#sec-10"><span class="num">10</span>Ontology Layer</a></li>
+    <li><a href="#sec-11"><span class="num">11</span>OSS / SWARMFISH</a></li>
+    <li><a href="#sec-12"><span class="num">12</span>Action Boundary &amp; EI</a></li>
+    <li><a href="#sec-13"><span class="num">13</span>Fragile Seams</a></li>
+    <li><a href="#sec-14"><span class="num">14</span>Deployment &amp; Install</a></li>
+    <li><a href="#sec-15"><span class="num">15</span>Failure Modes</a></li>
+    <li><a href="#sec-16"><span class="num">16</span>Component Index</a></li>
+  </ol>
+  <div class="meta">
+    <strong>Built by:</strong> Kestrel (Opus 4.7)<br>
+    <strong>Started:</strong> 2026-05-16<br>
+    <strong>Status:</strong> In progress<br>
+    <br>
+    <strong>Legend:</strong><br>
+    <span class="status ok">verified</span> against live container<br>
+    <span class="status warn">unverified</span> claim needs check<br>
+    <span class="status err">broken</span> known bug<br>
+    <span class="status info">info</span> reference note<br>
+    <span class="status todo">todo</span> not yet written
+  </div>
+</nav>
+
+<!-- ╔════════════════ MAIN ════════════════╗ -->
+<main>
+
+<header class="doc-header">
+  <h1>Exocortex — Wiring &amp; Logic Diagram</h1>
+  <p class="tagline">The structural connections (wiring) and operational behavior (logic) of the Exocortex stack as it runs inside Agent Zero.</p>
+  <div class="frame">
+    <strong>Two views, one system.</strong> The <em>wiring diagram</em> shows where state writes and reads connect, where files load from, where data flows. The <em>logic diagram</em> shows what the system <em>does</em> — when interventions fire, how state machines transition, what sequences run under each scenario. Substation engineers carry both kinds of drawings for the same equipment. So do we.
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SECTION 00 — SYSTEM OVERVIEW
+     ════════════════════════════════════════════════════════════════ -->
+<section id="sec-00">
+  <h2><span class="num">00</span>System Overview <a class="anchor" href="#sec-00">#</a></h2>
+  <p class="section-summary">
+    One-screen view of the Exocortex inside Agent Zero. Two containers, each
+    running A0 with the hardening stack mounted at the profile path. Outside the
+    container: vendored inference backends (Qwen3.6-27B with MTP+TurboQuant for
+    v16, DeepSeek-V4-Pro API for v17). Inside: 12 layers + cross-cutting
+    subsystems + idle-time engine + supporting services.
+  </p>
+
+  <h3>Wiring — Physical Layout</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TB
+  subgraph host["Windows Host"]
+    direction TB
+    lmstudio["LM Studio :1235<br/>Qwen3.6-27B Q4_K_XL<br/>Indras-Mirror llama.cpp<br/>MTP + TurboQuant"]
+    deepseek["DeepSeek V4 Pro<br/>External API"]
+    repo["D:\Vibecode\Agent-Zero\Exocortex<br/>Source of truth — install scripts<br/>deploy from here"]
+  end
+
+  subgraph v16["exocortex_v16 (Qwen)"]
+    direction TB
+    v16_a0["run_ui (A0)<br/>:80 internal, :32793 host"]
+    v16_idle["idle_watch daemon<br/>(supervisord)"]
+    v16_state["/a0/usr/Exocortex/<br/>office/engine_state.json"]
+    v16_ext["/a0/usr/agents/agent0/<br/>extensions/python/*"]
+    v16_a0 -.reads.-> v16_ext
+    v16_idle -.reads/writes.-> v16_state
+    v16_idle -.POSTs to api_message.-> v16_a0
+    v16_a0 -.cycle context updates.-> v16_state
+  end
+
+  subgraph v17["exocortex_v17 (DeepSeek)"]
+    direction TB
+    v17_a0["run_ui (A0)<br/>:80 internal, :32794 host"]
+    v17_idle["idle_watch daemon"]
+    v17_state["engine_state.json"]
+    v17_ext["extensions/python/*"]
+    v17_a0 -.reads.-> v17_ext
+    v17_idle -.reads/writes.-> v17_state
+    v17_idle -.POSTs.-> v17_a0
+  end
+
+  v16_a0 -- LLM calls --> lmstudio
+  v17_a0 -- LLM calls --> deepseek
+  repo -- "install_*.sh<br/>docker cp" --> v16_ext
+  repo -- "install_*.sh<br/>docker cp" --> v17_ext
+
+  classDef container fill:#161b22,stroke:#a371f7,color:#c9d1d9
+  classDef external fill:#1c2128,stroke:#58a6ff,color:#c9d1d9
+  classDef repo fill:#1c2128,stroke:#d29922,color:#c9d1d9
+  class v16,v17 container
+  class lmstudio,deepseek external
+  class repo repo
+    </div>
+    <div class="caption">Two-container architecture. v16 is GPU-collision-prone (local Qwen). v17 is API-backed (DeepSeek). Both share the same code stack deployed from the same repo.</div>
+  </div>
+
+  <h3>Logic — Per-Turn Cognitive Flow</h3>
+  <div class="diagram">
+    <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as User / Idle Cycle
+  participant H as History
+  participant E as Extensions
+  participant L as LLM
+  participant T as Tools
+
+  U->>H: message arrives
+  H->>E: hist_add_before — working memory updates
+  E->>E: before_main_llm_call — BST classifies, state producers write
+  E->>L: message_loop_prompts_after — history_output injections reach LLM
+  L-->>E: response (tool call or text)
+  E->>E: response_stream_chunk / _end — formatting
+  E->>T: tool_execute_before — action boundary, meta-gate
+  T-->>E: tool result
+  E->>E: tool_execute_after — error comprehension, evidence ledger
+  Note over E,T: Heartbeat updates here<br/>(if idle cycle context)
+  E->>E: message_loop_end — supervisor loop tier check
+  alt agent calls "response" tool
+    E->>H: monologue_end — memory classification, ontology
+    Note over E,H: cycle_active=false<br/>(if idle cycle)
+  else loop continues
+    E->>L: next iteration
+  end
+    </div>
+    <div class="caption">One per-turn pass through the hook pipeline. The full hook table lives in <a href="#sec-03">§03 Hook Pipeline</a>; this view is the cognitive shape.</div>
+  </div>
+
+  <h3>What this document covers</h3>
+  <table>
+    <thead><tr><th style="width:40px;">§</th><th>Section</th><th>Wiring</th><th>Logic</th></tr></thead>
+    <tbody>
+      <tr><td>01</td><td>Container Architecture</td><td>Docker layout, mounts, ports, persistence boundaries</td><td>Container restart sequence, what survives what</td></tr>
+      <tr><td>02</td><td>Extension Load Path</td><td>The 4 paths, dedup-by-stem, priority order</td><td>Which file wins, when reload happens</td></tr>
+      <tr><td>03</td><td>Hook Pipeline</td><td>Hook order, prefixes, extension manifests</td><td>Per-turn sequence, when injections reach the LLM</td></tr>
+      <tr><td>04</td><td>Shared State Map</td><td>agent.data keys, extras_persistent, file-based state</td><td>Writer→reader chains, dedup of writes</td></tr>
+      <tr><td>05</td><td>Idle Engine</td><td>Daemon ↔ sensor ↔ state ↔ API ↔ supervisord ↔ webui</td><td>Fire decision tree, cycle_active state machine, recovery</td></tr>
+      <tr><td>06</td><td>Supervisor Loop</td><td>Reads/writes from many components</td><td>Tier escalation ladder, cooldown, anti-pattern capture</td></tr>
+      <tr><td>07</td><td>BST &amp; Compound</td><td>Where classification is produced and consumed</td><td>Domain selection logic, momentum tracking</td></tr>
+      <tr><td>08</td><td>Memory Subsystem</td><td>FAISS stores, recall path, classification</td><td>Signal/noise discrimination, decay, anti-pattern retrieval</td></tr>
+      <tr><td>09</td><td>Reasoning &amp; PACE</td><td>State producers + consumer chain</td><td>Strategy switching state machine</td></tr>
+      <tr><td>10</td><td>Ontology Layer</td><td>Entity FAISS, relationships.jsonl</td><td>Resolution pipeline</td></tr>
+      <tr><td>11</td><td>OSS / SWARMFISH</td><td>Containers, ports, DB, plugin tools</td><td>Ingest pipeline, hypothesis lifecycle</td></tr>
+      <tr><td>12</td><td>Action Boundary &amp; EI</td><td>Gate flag, evidence ledger</td><td>Tier classification, claim verification</td></tr>
+      <tr><td>13</td><td>Fragile Seams</td><td>Where mismatches cause silent failures</td><td>Detection method, mitigation</td></tr>
+      <tr><td>14</td><td>Deployment &amp; Install</td><td>install_*.sh pattern, path translation</td><td>Deploy sequence, verification gates</td></tr>
+      <tr><td>15</td><td>Failure Modes</td><td>What state surfaces broke</td><td>Recovery state machines, what fixes intercept what</td></tr>
+      <tr><td>16</td><td>Component Index</td><td>Alphabetical: file → keys → seams</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SECTION 01 — CONTAINER ARCHITECTURE
+     ════════════════════════════════════════════════════════════════ -->
+<section id="sec-01">
+  <h2><span class="num">01</span>Container Architecture <a class="anchor" href="#sec-01">#</a></h2>
+  <p class="section-summary">
+    <span class="status todo">todo</span> Docker layout, port mapping behavior on restart, persistence boundaries (<code>/per/</code> vs <code>/a0/usr/</code>), what survives container restart vs run_ui restart vs image rebuild.
+  </p>
+  <div class="todo-note">Pending verification pass. Key items to cover: port re-randomization on every restart; what files persist outside container (<code>/per/etc/supervisor/conf.d/</code>); the <code>flamboyant_bell</code> / <code>intelligent_villani</code> historical names that show up in old docs but aren't active.</div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SECTION 02 — EXTENSION LOAD PATH RESOLUTION
+     ════════════════════════════════════════════════════════════════ -->
+<section id="sec-02">
+  <h2><span class="num">02</span>Extension Load Path Resolution <a class="anchor" href="#sec-02">#</a></h2>
+  <p class="section-summary">
+    A0 resolves extensions through <code>subagents.get_paths(agent, "extensions/python", &lt;hook&gt;)</code>. The <code>extensions/python</code> subpath is <strong>hardcoded</strong> in <code>helpers/extension.py</code>. This is the single most-bitten fragile seam in the project: files placed at any path that doesn't include the <code>python/</code> segment are invisible to A0 and will silently fail to load — the file exists on disk, syntax-checks fine, but its <code>execute()</code> is never called.
+  </p>
+
+  <h3>Wiring — The Four Paths</h3>
+  <p>For a given hook (e.g. <code>tool_execute_after</code>) and extension file (e.g. <code>_70_idle_trigger.py</code>), there are <strong>four paths</strong> the file can live at inside the container. Only the first two (under <code>extensions/python/</code>) are reachable by A0's loader. The other two are residue from earlier naming schemes or operator typos.</p>
+
+  <table>
+    <thead><tr>
+      <th>Priority</th><th>Path</th><th>Loaded?</th><th>Purpose</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="center">1</td>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</td>
+        <td class="center"><span class="status ok">yes</span></td>
+        <td>Profile path — canonical home for Exocortex extensions. Wins dedup-by-filename.</td>
+      </tr>
+      <tr>
+        <td class="center">2</td>
+        <td class="path-col">/a0/usr/plugins/exocortex/extensions/python/&lt;hook&gt;/</td>
+        <td class="center"><span class="status ok">yes</span></td>
+        <td>Plugin path — also loaded. Same filename as profile path → profile wins. Different filename → both load.</td>
+      </tr>
+      <tr>
+        <td class="center">3</td>
+        <td class="path-col">/a0/python/extensions/&lt;hook&gt;/</td>
+        <td class="center"><span class="status info">yes (default)</span></td>
+        <td>A0 core default. Loaded last in priority. Per-stem dedup means profile path overrides if same filename exists.</td>
+      </tr>
+      <tr>
+        <td class="center">—</td>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/&lt;hook&gt;/ <em>(no python/)</em></td>
+        <td class="center"><span class="status err">no</span></td>
+        <td>Common typo target. Invisible to <code>get_paths</code>. <strong>Tonight's mis-deploy landed here.</strong></td>
+      </tr>
+      <tr>
+        <td class="center">—</td>
+        <td class="path-col">/a0/usr/Exocortex/extensions/&lt;hook&gt;/</td>
+        <td class="center"><span class="status err">no</span></td>
+        <td>Legacy location from pre-DEC-030 layout. Stray copies sometimes linger here.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Source — the hardcoded subpath</h4>
+  <pre><code># /a0/helpers/extension.py:293
+paths = subagents.get_paths(agent, "extensions/python", extension_point)
+all_exts = [cls for path in paths for cls in _get_extensions(path)]
+
+# merge: first occurrence of file name is the override
+unique = {}
+for cls in all_exts:
+    file = _get_file_from_module(cls.__module__)
+    if file not in unique:
+        unique[file] = cls
+</code></pre>
+  <p>The <code>"extensions/python"</code> string is the load gate. Nothing outside the paths returned by <code>get_paths(..., "extensions/python", ...)</code> can be loaded by the extension system.</p>
+
+  <h4>Source — the search priority</h4>
+  <pre><code># /a0/helpers/subagents.py:339+
+# Returns paths in priority order (first match wins for dedup):
+#   1. project/agents/&lt;profile&gt;/extensions/python/&lt;hook&gt;/
+#   2. project/.a0proj/extensions/python/&lt;hook&gt;/
+#   3. usr/agents/&lt;profile&gt;/extensions/python/&lt;hook&gt;/   ← profile path
+#   4. plugin agents/&lt;profile&gt;/extensions/python/&lt;hook&gt;/
+#   5. agents/&lt;profile&gt;/extensions/python/&lt;hook&gt;/
+#   6. usr/extensions/python/&lt;hook&gt;/
+#   7. plugins/&lt;plugin&gt;/extensions/python/&lt;hook&gt;/        ← plugin path
+#   8. default/extensions/python/&lt;hook&gt;/                  ← /a0/python/extensions/&lt;hook&gt;/
+</code></pre>
+
+  <h3>Logic — Resolution Flow</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TD
+  start([Hook fires — e.g. tool_execute_after]) --> getpaths["get_paths(agent, 'extensions/python', 'tool_execute_after')"]
+  getpaths --> walk{"For each path in<br/>priority order"}
+  walk --> exists{"Path exists<br/>on disk?"}
+  exists -- no --> skip[skip path]
+  exists -- yes --> glob["Glob *.py files"]
+  glob --> import["Import each module"]
+  import --> dedup{"Filename<br/>already seen?"}
+  dedup -- yes --> skip2[discard duplicate]
+  dedup -- no --> register["Register class<br/>in load order"]
+  register --> walk
+  skip --> walk
+  skip2 --> walk
+  walk -- done --> cached["Cache classes by<br/>(agent, hook) key"]
+  cached --> sortrun["Sort by filename (prefix order)<br/>and execute() each"]
+
+  style start fill:#161b22,stroke:#a371f7,color:#c9d1d9
+  style dedup fill:#1c2128,stroke:#d29922,color:#c9d1d9
+  style register fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+    </div>
+    <div class="caption">Dedup is by filename stem (e.g. <code>_70_idle_trigger</code>), not by full path. First occurrence in priority order wins. Cache is per (agent, hook) — invalidated only on container restart.</div>
+  </div>
+
+  <h3>Live evidence — _70_idle_trigger.py copies on v16 right now</h3>
+  <p><span class="status info">verified 2026-05-16</span> Four copies exist on v16, three different md5s. Only the profile-python path is loaded.</p>
+  <table>
+    <thead><tr><th>Path</th><th>md5</th><th>Loaded?</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/python/tool_execute_after/_70_idle_trigger.py</td>
+        <td class="md5-col">dde0fb25...</td>
+        <td class="center"><span class="status ok">active</span></td>
+        <td>Deployed by <code>install_idle_engine.sh</code> at some earlier point. Pre-heartbeat-fix.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/python/extensions/tool_execute_after/_70_idle_trigger.py</td>
+        <td class="md5-col">dde0fb25...</td>
+        <td class="center"><span class="status info">shadowed</span></td>
+        <td>Same content as profile. Loses dedup. Probably from an earlier install pattern.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/tool_execute_after/_70_idle_trigger.py</td>
+        <td class="md5-col">8fb86b87...</td>
+        <td class="center"><span class="status err">invisible</span></td>
+        <td>Tonight's mis-deploy. Has the heartbeat fix. Never loaded.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/Exocortex/extensions/tool_execute_after/_70_idle_trigger.py</td>
+        <td class="md5-col">2dc719cb...</td>
+        <td class="center"><span class="status err">invisible</span></td>
+        <td>Legacy stray. Older still.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>What this looks like when it bites:</strong> You edit a file, <code>docker cp</code> it to the container, see "OK no error," check the on-disk md5 against your local copy — they match. You restart the agent or send a test message. Behavior is unchanged. You add a debug print to <code>execute()</code>. It never appears in logs. You start questioning whether the hook fires at all. The fix appears correct, the deploy appears successful, and execution appears absent. The cause: your <code>docker cp</code> target was missing <code>python/</code>, the file landed at an invisible path, and a different (stale) copy at the canonical path is what A0 actually loaded.
+  </div>
+
+  <h3>Reload behavior — when does new code take effect?</h3>
+  <table>
+    <thead><tr><th>Change</th><th>What triggers reload</th><th>What does NOT</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Edit extension <code>.py</code></td>
+        <td>Container restart (full <code>docker restart</code>) OR <code>supervisorctl restart run_ui</code></td>
+        <td>Clearing pycache alone. New file at correct path alone. Sending a message.</td>
+      </tr>
+      <tr>
+        <td>Edit prompt <code>.md</code> (e.g. <code>fw.msg_repeat.md</code>)</td>
+        <td>Next read by A0 — usually immediate</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>Edit config <code>.json</code></td>
+        <td>Depends — most are read per turn; <code>config.json</code> sections vary</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>Edit daemon (<code>idle_watch.py</code>)</td>
+        <td><code>supervisorctl restart idle_watch</code></td>
+        <td>run_ui restart. Container restart works too but heavier.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Why pycache clear isn't enough:</strong> A0 caches loaded extension <em>classes</em> in memory (<code>_CLASSES_CACHE_AREA</code> in <code>helpers/extension.py</code>). Pycache clear forces a cold import on next reference, but only if a reference happens. The cache only invalidates on Python process restart. <code>supervisorctl restart run_ui</code> kills and respawns the Python process; that's what flushes the cache.
+  </div>
+
+  <h3>Mitigations</h3>
+  <ul>
+    <li><strong>Always prefer install scripts</strong> over manual <code>docker cp</code>. <code>install_idle_engine.sh</code> et al. have the correct <code>EXT_DEST</code> path baked in.</li>
+    <li><strong>If you must <code>docker cp</code> manually</strong>: the destination MUST contain <code>extensions/python/&lt;hook&gt;/</code>. Verify with <code>md5sum</code> from inside the container against your local copy after every deploy.</li>
+    <li><strong>When debugging "fix doesn't take effect"</strong>: run <code>find /a0 -name &lt;file&gt; -not -path "*/__pycache__/*" | xargs md5sum</code> — if multiple md5s appear, you have stale copies misleading you.</li>
+    <li><strong>The shared <code>lib/install_common.sh</code> refactor</strong> (queued separately) will move the post-deploy md5 verification into every install script automatically.</li>
+  </ul>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-14">§14 Deployment &amp; Install Pattern</a> — the install-script duplication and the DEC-026 shared-lib plan</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #8 (path-shape mistake) and seam #11 (orphan copies at non-canonical paths)</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SECTIONS 03-16 — PLACEHOLDERS
+     ════════════════════════════════════════════════════════════════ -->
+
+<section id="sec-03">
+  <h2><span class="num">03</span>Hook Pipeline <a class="anchor" href="#sec-03">#</a></h2>
+  <p class="section-summary">
+    Agent Zero fires <strong>13 hooks</strong> at fixed points during the agent's loop. Extensions within each hook run in <strong>numeric prefix order</strong> (lower first). Inserting a new extension at an existing number silently reorders others — always check for prefix collisions before adding. The most load-bearing thing to know about this pipeline: <code>before_main_llm_call</code> fires <em>after</em> <code>prepare_prompt()</code> assembles the prompt, so any extension that writes to <code>loop_data.history_output</code> in that hook is wasting its work. Real injectors must use <code>message_loop_prompts_after</code>.
+  </p>
+
+  <h3>Logic — Per-Turn Hook Sequence</h3>
+  <div class="diagram">
+    <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as User Message
+  participant H as History
+  participant E as Extensions
+  participant PP as prepare_prompt()
+  participant L as LLM
+  participant TR as Tool Runner
+  participant T as Tool
+
+  U->>H: arrives, added to history
+  H->>E: hist_add_before<br/>(_11_working_memory)
+  Note over E: Inside prepare_prompt():
+  H->>E: message_loop_prompts_after<br/>(real injection point — writes reach LLM)
+  PP-->>E: prompt assembled
+  E->>L: before_main_llm_call<br/>(state ops only — history writes DISCARDED)
+  L->>L: generate response
+  L-->>E: response_stream_chunk / _end / reasoning_stream / reasoning_stream_end
+  Note over L,E: A0 parses tool call. If parse fails:
+  L->>E: error_format hook (retry logic)
+  E->>TR: tool call extracted
+  TR->>E: tool_execute_before<br/>(action boundary, meta-gate, write guard)
+  E->>T: tool executes
+  T-->>E: tool_execute_after<br/>(error comprehension, evidence ledger, heartbeat)
+  TR->>H: tool result added to history<br/>(via hist_add_tool_result → hist_add_before)
+  E->>E: message_loop_end<br/>(supervisor loop tier check)
+  alt agent calls "response" tool
+    E->>E: monologue_end<br/>(memory classification, ontology, EI)
+  else loop continues
+    E->>PP: next iteration begins
+  end
+    </div>
+    <div class="caption">The <strong>before_main_llm_call</strong> hook (line 5) fires <em>after</em> <code>prepare_prompt()</code> has already assembled the prompt for this iteration's LLM call. Writes to <code>loop_data.history_output</code> in that hook never reach the LLM. <strong>message_loop_prompts_after</strong> (line 3) is the only hook where <code>history_output</code> writes actually arrive.</div>
+  </div>
+
+  <h3>Wiring — Hook Inventory (live on v16, 2026-05-16)</h3>
+  <p>Each row: when the hook fires, what it's for, and the current set of extensions registered. Extensions are listed in numeric-prefix order. Counts reflect <code>/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</code> on v16 — the canonical profile path. Plugin path additions (<code>/a0/usr/plugins/exocortex/extensions/python/&lt;hook&gt;/</code>) may add more.</p>
+
+  <details open>
+    <summary>before_main_llm_call <span class="status warn">15 ext — TIMING TRAP</span></summary>
+    <p><strong>Fires:</strong> After <code>prepare_prompt()</code> returns and <em>before</em> the LLM call. The prompt is already assembled — <code>history_output</code> writes here are <strong>discarded</strong>. Safe to use for: state writes to <code>agent.set_data</code> / <code>agent.&lt;attr&gt;</code> / <code>extras_persistent</code> that downstream hooks read.</p>
+    <ul>
+      <li><code>_01_backend_standby_gate.py</code> — checks if inference backend is up</li>
+      <li><code>_10_session_init.py</code> — turn-1 staging.jsonl injection</li>
+      <li><code>_11_belief_state_tracker.py</code> — BST classification → <code>_bst_store</code></li>
+      <li><code>_12_completion_tracker.py</code> — task completion signal detection</li>
+      <li><code>_12_org_dispatcher.py</code> — organization role dispatch</li>
+      <li><code>_12_proactive_supervisor.py</code> — reasoning-chain analysis (also fires in reasoning_stream / _end)</li>
+      <li><code>_13_reasoning_state.py</code> — reasoning-state writes (<span class="status warn">consumer in <code>message_loop_prompts_after</code>? open question — see <a href="#sec-09">§09</a></span>)</li>
+      <li><code>_14_pace_plan_generator.py</code> — PACE plan writes (same consumer question)</li>
+      <li><code>_14_situational_orientation.py</code> — situational context</li>
+      <li><code>_15_htn_plan_selector.py</code> — HTN plan selection</li>
+      <li><code>_15_karpathy_rules.py</code> — Karpathy reasoning rules</li>
+      <li><code>_17_library_catalog.py</code> — library catalog block (timing: see seam #7)</li>
+      <li><code>_20_context_watchdog.py</code> — context fill % monitoring</li>
+      <li><code>_60_sleep_activity.py</code> — sleep-cycle activity hook</li>
+      <li><code>mtime_cache.py</code> — utility (not a hook)</li>
+    </ul>
+    <div class="callout warn">
+      <strong>Seam #7 reminder:</strong> Any extension here that needs its work to reach the LLM via <code>loop_data.history_output</code> is silently broken. Move to <code>message_loop_prompts_after</code>. Verified 2026-04-12. <code>_17_library_catalog</code> was on this list and was discovered silently doing nothing.
+    </div>
+  </details>
+
+  <details>
+    <summary>message_loop_prompts_after <span class="status ok">4 ext — REAL INJECTION POINT</span></summary>
+    <p><strong>Fires:</strong> Inside <code>prepare_prompt()</code>, before <code>output_langchain</code> runs. Modifications to <code>history_output</code> here <strong>do</strong> reach the LLM. This is the canonical place to inject context.</p>
+    <ul>
+      <li><code>_08_step_budget_tracker.py</code> — tracks step budget for idle cycles</li>
+      <li><code>_21_constraint_heartbeat.py</code> — constraint reminders</li>
+      <li><code>_55_memory_relevance_filter.py</code> — filters memory candidates (writes <code>extras_persistent[memories|solutions]</code>)</li>
+      <li><code>_56_memory_enhancement.py</code> — query expansion, decay, dedup (overwrites <code>_55</code>'s writes — intentional)</li>
+    </ul>
+    <p><strong>WIRING.md noted</strong> several extensions that "should" be here (<code>_16_tool_registry</code>, <code>_18_memory_catalog</code>, <code>_57_orchestration_mode</code>, <code>_58_ontology_query</code>, <code>_95_tiered_tool_injection</code>) — confirmed in <a href="#sec-02">§02</a> as not in either profile or plugin <code>message_loop_prompts_after</code> path. May have moved to plugin namespace; need to verify whether they still exist anywhere.</p>
+  </details>
+
+  <details>
+    <summary>message_loop_end <span class="status ok">5 ext</span></summary>
+    <p><strong>Fires:</strong> At the end of each agent loop iteration, after history organization. Used for state inspection and steering injection (via <code>hist_add_warning</code>, which adds to the NEXT iteration's history).</p>
+    <ul>
+      <li><code>_28_backend_standby.py</code> — backend standby handling</li>
+      <li><code>_29_stuck_delivery.py</code> — stuck-delivery detection</li>
+      <li><code>_48_task_tracker.py</code> — task state transition tracking</li>
+      <li><code>_49_reasoning_state_update.py</code> — writes artifact registry to staging.jsonl</li>
+      <li><code>_50_supervisor_loop.py</code> — the supervisor (see <a href="#sec-06">§06</a>)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>tool_execute_after <span class="status ok">11 ext — HEARTBEAT &amp; LEDGER</span></summary>
+    <p><strong>Fires:</strong> After each tool execution returns, <em>before</em> <code>hist_add_tool_result</code> writes the result to history. Important timing note: when this hook fires, the tool result is <strong>not yet in history</strong>.</p>
+    <ul>
+      <li><code>_20_error_comprehension.py</code> — parses tool output → <code>_error_diagnosis</code></li>
+      <li><code>_20_reset_failure_counter.py</code> — resets failure tracker on success</li>
+      <li><code>_22_response_finalizer.py</code> — post-processes tool response</li>
+      <li><code>_25_evidence_ledger_recorder.py</code> — appends to evidence ledger</li>
+      <li><code>_26_write_validator.py</code> — text_editor output validation</li>
+      <li><code>_27_code_quality_gate.py</code> — code execution quality check</li>
+      <li><code>_28_inline_truncation_detector.py</code> — detects truncated payloads (new since WIRING.md)</li>
+      <li><code>_28_output_compressor.py</code> — output compression (new since WIRING.md)</li>
+      <li><code>_30_tool_fallback_logger.py</code> — populates <code>_tool_output_tracker</code> for stagnation detection</li>
+      <li><code>_60_sleep_trigger.py</code> — sleep consolidation trigger</li>
+      <li><code>_70_idle_trigger.py</code> — idle sensor (heartbeat + last_user_ts)</li>
+    </ul>
+    <div class="callout info">
+      <strong>Timing implication for the heartbeat fix:</strong> When <code>_70_idle_trigger</code> walks <code>agent.history.output()</code>, the just-completed tool's result has not been added yet. The most recent non-AI message is the <em>previous</em> tool result, the idle activation, or a warning. This is why the current <code>_last_user_msg_is_real()</code> walks backward looking for the activation sentinel — but it stops at the first non-AI message, which after turn 1 is always something other than the activation. See seam #13 in <a href="#sec-13">§13</a>.
+    </div>
+  </details>
+
+  <details>
+    <summary>tool_execute_before <span class="status ok">6 ext</span></summary>
+    <p><strong>Fires:</strong> Before each tool execution. Used for action gating, parameter correction, and pre-write guards.</p>
+    <ul>
+      <li><code>_15_action_boundary.py</code> — tier classification, may set <code>_action_gate_active</code></li>
+      <li><code>_16_py_write_guard.py</code> — Python write protection (new since WIRING.md)</li>
+      <li><code>_17_py_write_tracker.py</code> — Python write tracking (new since WIRING.md)</li>
+      <li><code>_20_meta_reasoning_gate.py</code> — deterministic parameter correction</li>
+      <li><code>_25_write_guard.py</code> — text_editor write backup</li>
+      <li><code>_30_tool_fallback_advisor.py</code> — recovery advice injection</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>hist_add_before <span class="status ok">1 ext</span></summary>
+    <p><strong>Fires:</strong> When a message is added to history. Used to inspect/mutate content before it's stored.</p>
+    <ul><li><code>_11_working_memory.py</code> — extracts entities, writes working memory buffer</li></ul>
+  </details>
+
+  <details>
+    <summary>monologue_end <span class="status ok">6 ext — END-OF-TASK PROCESSING</span></summary>
+    <p><strong>Fires:</strong> After the agent's final response (when the response tool is called). End-of-task processing happens here.</p>
+    <ul>
+      <li><code>_25_epistemic_integrity.py</code> — claim verification against evidence ledger</li>
+      <li><code>_52_selective_memorizer.py</code> — selects high-signal content for FAISS</li>
+      <li><code>_53_insight_capture.py</code> — extracts intents/decisions/framings</li>
+      <li><code>_55_memory_classifier.py</code> — classifies memory axes</li>
+      <li><code>_57_memory_maintenance.py</code> — lifecycle management (decay, archival)</li>
+      <li><code>_59_ontology_maintenance.py</code> — entity resolution and graph updates</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>error_format <span class="status ok">2 ext</span></summary>
+    <p><strong>Fires:</strong> When A0 fails to parse a tool call from a response. Used to inject retry prompts and track failures.</p>
+    <ul>
+      <li><code>_20_structured_retry.py</code> — injects retry prompt with format correction</li>
+      <li><code>_30_failure_tracker.py</code> — increments <code>_failure_tracker[tool_name]</code> (paired with <code>_20_reset</code> in tool_execute_after)</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>reasoning_stream + reasoning_stream_end <span class="status ok">3 ext combined</span></summary>
+    <p><strong>Fires:</strong> During and after reasoning token streaming (for models with reasoning channels like DeepSeek-R / Qwen-R).</p>
+    <ul>
+      <li><code>reasoning_stream/_12_proactive_supervisor.py</code> — proactive supervisor (third registration of same name)</li>
+      <li><code>reasoning_stream_end/_11_thinking_token_logger.py</code> — logs thinking tokens (new since WIRING.md)</li>
+      <li><code>reasoning_stream_end/_12_proactive_supervisor.py</code> — also fires here</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>response_stream_chunk + response_stream_end <span class="status ok">2 ext</span></summary>
+    <p><strong>Fires:</strong> During and after each chunk of streamed response output.</p>
+    <ul>
+      <li><code>response_stream_chunk/_21_plain_text_response.py</code> — creates log item for plain-text responses</li>
+      <li><code>response_stream_end/_20_clear_generating_content.py</code> — clears raw streaming JSON from log item</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>system_prompt <span class="status ok">1 ext</span></summary>
+    <p><strong>Fires:</strong> When system prompt is being assembled.</p>
+    <ul><li><code>_15_exocortex_stack.py</code> — injects Exocortex stack identity into system prompt</li></ul>
+  </details>
+
+  <h3>Prefix convention</h3>
+  <p>Numeric prefixes group extensions by functional layer. The convention isn't strict but it helps when reasoning about load order:</p>
+  <ul>
+    <li><strong>_01–_09</strong>: Foundational gates and trackers (backend standby, step budget)</li>
+    <li><strong>_10–_19</strong>: Layer 1-4 cognitive scaffolding (BST, working memory, reasoning state, PACE, library catalog)</li>
+    <li><strong>_20–_29</strong>: Tool-execution mechanics (error comprehension, write guards, validators, ledger)</li>
+    <li><strong>_30–_49</strong>: Failure handling and fallback logic</li>
+    <li><strong>_50–_59</strong>: Supervisor and memory subsystem (supervisor loop, memorizers, classifiers, ontology)</li>
+    <li><strong>_60–_69</strong>: Idle-time and sleep subsystems</li>
+    <li><strong>_70+</strong>: Idle sensor (currently just <code>_70_idle_trigger</code>)</li>
+  </ul>
+
+  <h3>Discrepancies between WIRING.md and live state (2026-05-16)</h3>
+  <p>Documenting these so the next debugger doesn't trust the old document blindly:</p>
+  <table>
+    <thead><tr><th>WIRING.md says</th><th>Live state</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>_16_tool_registry</code> in <code>message_loop_prompts_after</code></td>
+        <td>Not in either profile or plugin path. Possibly archived/moved.</td>
+      </tr>
+      <tr>
+        <td><code>_18_memory_catalog</code> in <code>message_loop_prompts_after</code></td>
+        <td>Not present in either path.</td>
+      </tr>
+      <tr>
+        <td><code>_57_orchestration_mode</code>, <code>_58_ontology_query</code>, <code>_95_tiered_tool_injection</code> in <code>message_loop_prompts_after</code></td>
+        <td>Not present.</td>
+      </tr>
+      <tr>
+        <td>5 extensions listed for <code>tool_execute_after</code></td>
+        <td>11 extensions actually present (new: <code>_28_inline_truncation_detector</code>, <code>_28_output_compressor</code>, plus existing ones the doc missed)</td>
+      </tr>
+      <tr>
+        <td>4 extensions in <code>tool_execute_before</code></td>
+        <td>6 extensions (new: <code>_16_py_write_guard</code>, <code>_17_py_write_tracker</code>)</td>
+      </tr>
+      <tr>
+        <td>3 extensions in <code>message_loop_end</code></td>
+        <td>5 extensions (new: <code>_28_backend_standby</code>, <code>_29_stuck_delivery</code>)</td>
+      </tr>
+      <tr>
+        <td>References <code>fw.msg_not_json.md</code> as the misformat prompt</td>
+        <td>Actual file is <code>fw.msg_misformat.md</code> — <code>fw.msg_not_json.md</code> doesn't exist on either container</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-04">§04 Shared State Map</a> — the keys these extensions read and write</li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — the message_loop_end extension and how it composes with everything upstream</li>
+    <li><a href="#sec-09">§09 Reasoning Persistence &amp; PACE</a> — the open question about state-producer-consumer wiring</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #7 (hook timing trap) and seam #4 (prefix collision)</li>
+  </ul>
+</section>
+
+<section id="sec-04">
+  <h2><span class="num">04</span>Shared State Map <a class="anchor" href="#sec-04">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> The <code>agent.data</code> keys, <code>extras_persistent</code> registry, file-based state. Writer→reader graph with collision risk annotation.</p>
+</section>
+
+<section id="sec-05">
+  <h2><span class="num">05</span>Idle Engine <a class="anchor" href="#sec-05">#</a></h2>
+  <p class="section-summary">
+    The autonomous research and skill-building system. Fires cycles after a configurable idle threshold, runs MAINTAIN / BUILD / EXPLORE work, and reports to the right-canvas Office panel. Designed for unattended overnight operation. Has been the subject of three discrete bug-fix waves: <strong>burst</strong> (May 15, fixed by file lock), <strong>retry storm</strong> (May 15, fixed by no-decrement + cold-start grace), and <strong>overlap</strong> (current — daemon doesn't own the A0 context it spawned, so stale-clear leaves zombie contexts running on the GPU / API). Compounding the current gap: a <strong>heartbeat-freeze</strong> bug whose fix is committed but deployed to the wrong path (see <a href="#sec-02">§02</a>).
+  </p>
+
+  <h3>Wiring — Physical Architecture</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  subgraph supervisord["supervisord (per container)"]
+    direction TB
+    daemon["idle_watch.py<br/>/a0/usr/Exocortex/idle_watch.py<br/>polls every 60s"]
+    runui["run_ui<br/>(A0 web server :80)"]
+  end
+
+  subgraph state_files["State / Config (file-backed)"]
+    direction TB
+    engine_state["engine_state.json<br/>cycle_active, heartbeat,<br/>last_user_ts, counts"]
+    control["control.json<br/>paused_until"]
+    status["status.json<br/>state, label (UI)"]
+    feed["feed.jsonl<br/>completed cycle records"]
+    config["config.json<br/>idle_time_engine section"]
+    lock[".idle_engine.lock<br/>fcntl exclusive"]
+  end
+
+  subgraph extensions["A0 Extensions"]
+    sensor["_70_idle_trigger.py<br/>tool_execute_after<br/>SENSOR ONLY"]
+  end
+
+  subgraph api["A0 API endpoints"]
+    api_msg["/api/api_message<br/>(POST — fires cycle)"]
+    api_reset["/api/api_reset_chat<br/>(POST — kill context)"]
+    office_feed["/api/office_feed<br/>(GET — UI poll)"]
+    idle_control["/api/idle_control<br/>(POST — pause/resume)"]
+  end
+
+  subgraph webui["Right-canvas Office panel"]
+    panel["workshop-panel.html<br/>register-workshop.js"]
+  end
+
+  daemon -- reads --> config
+  daemon -- "reads/writes (under lock)" --> engine_state
+  daemon -- reads --> control
+  daemon -- writes --> status
+  daemon -- "holds during critical section" --> lock
+  daemon -- "POST activation prompt (fire-and-forget thread)" --> api_msg
+  api_msg -- "creates A0 context<br/>(filesystem-visible at /a0/usr/chats/&lt;id&gt;/)" --> runui
+  runui -- "context runs cycle<br/>making tool calls" --> sensor
+  sensor -- "heartbeat updates,<br/>cycle_active=false on response" --> engine_state
+  sensor -- "writes idle/working" --> status
+  runui -- "cycle_close.py appends" --> feed
+  panel -- GET --> office_feed
+  panel -- "POST pause/resume" --> idle_control
+  idle_control -- writes paused_until --> control
+  office_feed -- reads --> feed
+
+  classDef daemon_c   fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+  classDef state_c    fill:#161b22,stroke:#d29922,color:#c9d1d9
+  classDef ext_c      fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  classDef api_c      fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+  classDef ui_c       fill:#1c2128,stroke:#a371f7,color:#c9d1d9
+  class daemon,runui daemon_c
+  class engine_state,control,status,feed,config,lock state_c
+  class sensor ext_c
+  class api_msg,api_reset,office_feed,idle_control api_c
+  class panel ui_c
+    </div>
+    <div class="caption">Daemon and sensor are deliberately split: the daemon owns firing decisions (one authority, file-locked), the sensor owns timestamp writes (per-tool-call, low-coordination). They communicate through <code>engine_state.json</code>. <code>api_reset_chat</code> is shown — it's not currently called by the daemon (this is the missing wire from <a href="#sec-15">§15 Failure Modes — overlap</a>).</div>
+  </div>
+
+  <h3>Components</h3>
+  <table>
+    <thead><tr><th>Component</th><th>Location</th><th>Role</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>idle_watch.py (daemon)</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/idle_watch.py<br/>managed by <code>supervisord</code></td>
+        <td>Polls every 60s. Sole authority on firing decisions. Holds <code>fcntl.flock</code> during check-and-fire. Detects stale cycles and clears the flag.</td>
+        <td><span class="status ok">deployed (matches repo)</span></td>
+      </tr>
+      <tr>
+        <td><strong>_70_idle_trigger.py (sensor)</strong></td>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/python/tool_execute_after/_70_idle_trigger.py</td>
+        <td>Runs on every tool call. Writes <code>last_user_ts</code> on real-user activity. Writes <code>cycle_heartbeat</code> during idle cycles. Clears <code>cycle_active</code> on cycle completion (response tool).</td>
+        <td><span class="status err">DEPLOYED VERSION IS BUGGY</span> — heartbeat fix exists in repo but landed at wrong path. See <a href="#sec-02">§02</a>.</td>
+      </tr>
+      <tr>
+        <td><strong>engine_state.json</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/office/engine_state.json</td>
+        <td>The coordination state file. Atomic <code>.tmp + os.replace</code> writes. Read under lock during firing decision.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>.idle_engine.lock</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/office/.idle_engine.lock</td>
+        <td>Empty file. Held via <code>fcntl.LOCK_EX | LOCK_NB</code> by daemon during the entire check-and-fire critical section. OS releases on process death.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>config.json [idle_time_engine]</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/config.json</td>
+        <td>Thresholds and limits. Read fresh on every poll.</td>
+        <td><span class="status warn">currently at test values</span> — 5min idle / 5min min_gap (production = 30min / 30min)</td>
+      </tr>
+      <tr>
+        <td><strong>control.json</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/office/control.json</td>
+        <td><code>{"paused_until": &lt;timestamp&gt;}</code>. Daemon checks each poll. UI Pause button writes here via <code>/api/idle_control</code>.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>status.json</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/office/status.json</td>
+        <td><code>{"state": "idle"|"working", "label", "cycle_type", ...}</code>. Read by UI for the agent state indicator.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>feed.jsonl</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/office/feed.jsonl</td>
+        <td>Append-only log of completed cycle records. Written by <code>cycle_close.py</code> at the end of every cycle.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>supervisord program</strong></td>
+        <td class="path-col">/etc/supervisor/conf.d/supervisord.conf<br/>persisted to /per/etc/supervisor/conf.d/</td>
+        <td>Auto-starts <code>idle_watch.py</code> on container boot. Survives container restart via /per/ mount.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>idle_activation.md</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/prompts/idle_activation.md</td>
+        <td>Activation prompt template (<code>{cycle_type}</code>, <code>{max_steps}</code> placeholders). Read by daemon, sent as the user message to <code>/api/api_message</code>.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>cycle_close.py</strong></td>
+        <td class="path-col">/a0/usr/Exocortex/self-improvement/cycle_close.py</td>
+        <td>Called by the agent at end of cycle. Appends to <code>feed.jsonl</code>, writes <code>cycle_result.json</code> signal, updates the journal.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+      <tr>
+        <td><strong>register-workshop.js + workshop-panel.html</strong></td>
+        <td class="path-col">/a0/usr/plugins/exocortex/extensions/webui/right_canvas_register_surfaces/<br/>right-canvas-panels/</td>
+        <td>The right-canvas Office tab. Polls <code>/api/office_feed</code> for cycle history; uses <code>/api/idle_control</code> for pause/resume.</td>
+        <td><span class="status ok">in use</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>State file schema — <code>engine_state.json</code></h3>
+  <table>
+    <thead><tr><th>Field</th><th>Type</th><th>Written by</th><th>Semantics</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">last_user_ts</td>
+        <td>float</td>
+        <td>Sensor (on real-user tool calls, throttled to once per 60s)</td>
+        <td>Wall-clock timestamp of last real-user activity. <code>now - last_user_ts &gt; idle_threshold</code> is the fire condition.</td>
+      </tr>
+      <tr>
+        <td class="key">last_cycle_start</td>
+        <td>float</td>
+        <td>Daemon (at fire)</td>
+        <td>Wall-clock timestamp when last cycle was fired. <code>now - last_cycle_start &lt; min_gap</code> blocks fires. Also the absolute reference for the 60-minute stale cap.</td>
+      </tr>
+      <tr>
+        <td class="key">cycle_active</td>
+        <td>bool</td>
+        <td>Daemon (True at fire; False on fire-fail or stale-detect); Sensor (False at cycle completion)</td>
+        <td>True iff daemon believes a cycle is running. Read first on every poll — if True and not stale, daemon skips. <strong>Currently a bookmark, not a true lock on token generation</strong> — see <a href="#sec-15">§15 overlap</a>.</td>
+      </tr>
+      <tr>
+        <td class="key">cycle_heartbeat</td>
+        <td>float</td>
+        <td>Sensor (on every tool call during idle cycle context)</td>
+        <td>Wall-clock timestamp of last activity by the running cycle. <code>now - cycle_heartbeat &gt; 1200s (20min)</code> = stale. <strong>Currently frozen because of the path mis-deploy</strong>.</td>
+      </tr>
+      <tr>
+        <td class="key">cycle_count</td>
+        <td>int</td>
+        <td>Daemon (incremented at fire)</td>
+        <td>Total cycles since engine start. Used for activation prompt cycle numbering.</td>
+      </tr>
+      <tr>
+        <td class="key">cycles_this_window</td>
+        <td>int</td>
+        <td>Daemon (incremented at fire)</td>
+        <td>Vestigial — was used by the V1 window cap (now removed). Stays at 0 in V2; min_gap is the per-period rate limit.</td>
+      </tr>
+      <tr>
+        <td class="key">total_cycles_since_clear</td>
+        <td>int</td>
+        <td>Daemon (incremented on completion or stale-detect)</td>
+        <td>Absolute cap counter. When ≥ <code>MAX_TOTAL_CYCLES</code> (hardcoded 50), daemon refuses to fire. Manual reset only — the blast-radius safety valve.</td>
+      </tr>
+      <tr>
+        <td class="key">cold_start_grace</td>
+        <td>bool</td>
+        <td>Daemon (False after first failed fire), Sensor (True on real-user response)</td>
+        <td>Allows one retry per window when fire fails with connection-refused. Prevents retry storms while still handling A0 cold starts.</td>
+      </tr>
+      <tr>
+        <td class="key">consecutive_maintain_count</td>
+        <td>int</td>
+        <td>Daemon (++ on MAINTAIN fire); reset by completion signal when sleep findings &gt; 0</td>
+        <td>Drives MAINTAIN cooldown threshold (default 3). After 3 consecutive empty MAINTAIN cycles, daemon switches to BUILD/EXPLORE.</td>
+      </tr>
+      <tr>
+        <td class="key">build_cycle_count</td>
+        <td>int</td>
+        <td>Daemon (++ on BUILD fire); reset by completion signal when EXPLORE ran</td>
+        <td>Drives EXPLORE time-cap. After <code>explore_time_cap_cycles</code> (default 5) BUILDs in a row, daemon switches to EXPLORE.</td>
+      </tr>
+      <tr>
+        <td class="key">last_cycle_type</td>
+        <td>str</td>
+        <td>Daemon (at fire)</td>
+        <td>"MAINTAIN" | "BUILD" | "EXPLORE". Reference for the next selection decision and for the activation prompt header.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Config schema — <code>config.json[idle_time_engine]</code></h3>
+  <table>
+    <thead><tr><th>Field</th><th>Default</th><th>Current test value</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td class="key">enabled</td><td>false</td><td>true</td><td>Master switch. False = daemon polls but never fires.</td></tr>
+      <tr><td class="key">idle_threshold_seconds</td><td>1800 (30 min)</td><td>300 (5 min)</td><td>Required idle window before cycles fire. Counted from <code>last_user_ts</code>.</td></tr>
+      <tr><td class="key">min_gap_between_cycles_seconds</td><td>1800 (30 min)</td><td>300 (5 min)</td><td>Required gap from previous <code>last_cycle_start</code>. Prevents rapid re-firing.</td></tr>
+      <tr><td class="key">max_cycles_per_window</td><td>1</td><td>1</td><td>Vestigial — V2 doesn't use windows. Kept for backward compat.</td></tr>
+      <tr><td class="key">max_steps_per_cycle</td><td>20</td><td>20</td><td>Step budget cap fallback. <code>_STEP_BUDGETS</code> in daemon overrides per cycle type (MAINTAIN=15, BUILD=30, EXPLORE=20).</td></tr>
+      <tr><td class="key">workshop_field_ratio</td><td>"3:1"</td><td>"3:1"</td><td>Legacy V1 ratio. Replaced by V2 state-detector logic.</td></tr>
+      <tr><td class="key">max_cycle_duration_seconds</td><td>7200</td><td>7200</td><td>Loose ceiling. Real cap is the 60-minute absolute stale-detect.</td></tr>
+      <tr><td class="key">maintain_cooldown_threshold</td><td>3</td><td>3</td><td>Empty MAINTAIN cycles before forced switch to BUILD/EXPLORE.</td></tr>
+      <tr><td class="key">explore_time_cap_cycles</td><td>5</td><td>5</td><td>Consecutive BUILDs before forced EXPLORE.</td></tr>
+    </tbody>
+  </table>
+  <p>Also hardcoded in <code>idle_watch.py</code>:</p>
+  <ul>
+    <li><code>_POLL_INTERVAL = 60</code> — seconds between polls</li>
+    <li><code>_STARTUP_GRACE = 30</code> — seconds the daemon waits after boot before first poll (lets A0 finish startup)</li>
+    <li><code>MAX_TOTAL_CYCLES = 50</code> — absolute cap, requires manual reset</li>
+    <li>Stale thresholds: <code>1200s (20min)</code> on heartbeat OR <code>3600s (60min)</code> absolute from <code>last_cycle_start</code></li>
+  </ul>
+
+  <hr>
+
+  <h3>Logic — Fire Decision</h3>
+  <p>Every poll, the daemon walks this decision tree. Most polls exit early (cycle active or threshold not met). When all gates clear, it acquires the lock and re-checks atomically.</p>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TD
+  start([Poll fires — every 60s]) --> enabled{config.enabled?}
+  enabled -- no --> done1[skip]
+  enabled -- yes --> paused{paused_until<br/>in future?}
+  paused -- yes --> done2[skip]
+  paused -- no --> idle_check{now - last_user_ts<br/>≥ idle_threshold?}
+  idle_check -- no --> done3[skip — user still active]
+  idle_check -- yes --> acquire_lock["acquire fcntl.flock<br/>(LOCK_EX | LOCK_NB)"]
+  acquire_lock -- failed --> done4[skip — another holder]
+  acquire_lock -- got it --> recheck_idle{re-check idle<br/>(user may have returned)}
+  recheck_idle -- not idle anymore --> release1[release lock<br/>skip]
+  recheck_idle -- still idle --> cycle_check{cycle_active?}
+  cycle_check -- yes --> stale_check{stale heartbeat<br/>OR absolute cap?}
+  stale_check -- no --> release2[release lock<br/>skip — cycle legitimately running]
+  stale_check -- yes --> clear_stale["log stale<br/>cycle_active=false<br/>++ total_cycles_since_clear<br/>NOTE: old context NOT killed"]
+  clear_stale --> release3[release lock<br/>fire next poll]
+  cycle_check -- no --> cap_check{total_cycles_since_clear<br/>≥ MAX_TOTAL_CYCLES?}
+  cap_check -- yes --> release4[release lock<br/>refuse — manual reset needed]
+  cap_check -- no --> gap_check{now - last_cycle_start<br/>≥ min_gap?}
+  gap_check -- no --> release5[release lock<br/>skip — gap not satisfied]
+  gap_check -- yes --> consume_signal["read cycle_result.json signal<br/>(if previous cycle had sleep findings,<br/>reset consecutive_maintain_count etc.)"]
+  consume_signal --> select_type["select cycle type:<br/>MAINTAIN | BUILD | EXPLORE"]
+  select_type --> set_active["cycle_active=true<br/>cycle_heartbeat=now<br/>last_cycle_start=now<br/>cycle_count++<br/>++ type-specific counter"]
+  set_active --> fire["_fire_fresh_cycle()<br/>POST /api/api_message<br/>(daemon thread, 3s join timeout)"]
+  fire -- rejected 4xx --> rollback{cold_start_grace?}
+  rollback -- yes --> grace["cycle_active=false<br/>roll back counters<br/>cold_start_grace=false<br/>retry next poll"]
+  rollback -- no --> burn["cycle_active=false<br/>cycle burned (cycle_count stays)<br/>no retry"]
+  fire -- no quick rejection --> success[cycle launched<br/>release lock]
+  grace --> release6[release lock]
+  burn --> release7[release lock]
+
+  style done1 fill:#161b22,stroke:#8b949e
+  style done2 fill:#161b22,stroke:#8b949e
+  style done3 fill:#161b22,stroke:#8b949e
+  style done4 fill:#161b22,stroke:#8b949e
+  style release2 fill:#161b22,stroke:#8b949e
+  style release5 fill:#161b22,stroke:#8b949e
+  style release4 fill:#1c2128,stroke:#f85149
+  style clear_stale fill:#1c2128,stroke:#d29922
+  style success fill:#1c2128,stroke:#3fb950
+  style fire fill:#1c2128,stroke:#58a6ff
+    </div>
+    <div class="caption">The <span style="color:var(--warn);">amber stale-clear path</span> is the current gap: it clears the flag but does <strong>not</strong> kill the A0 context the previous cycle spawned. Next poll fires a new cycle while the old context remains alive — see <a href="#sec-15">§15 overlap</a>.</div>
+  </div>
+
+  <h3>Logic — <code>cycle_active</code> State Machine</h3>
+  <div class="diagram">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> Idle: container boot<br/>cycle_active=false
+  Idle --> Firing: gates pass<br/>lock acquired<br/>(daemon)
+  Firing --> Running: POST accepted<br/>A0 creates context<br/>cycle_active=true
+  Firing --> Idle: POST rejected<br/>rollback or burn
+  Running --> Heartbeating: tool call in cycle<br/>(sensor updates heartbeat)
+  Heartbeating --> Heartbeating: more tool calls
+  Heartbeating --> Completed: agent calls response tool<br/>(sensor clears flag)
+  Heartbeating --> Stale: 20min no heartbeat<br/>OR 60min absolute cap
+  Stale --> Idle: daemon detects + clears<br/>++ total_cycles_since_clear<br/>NOTE: A0 context still alive
+  Completed --> Idle: ++ total_cycles_since_clear<br/>(via sensor)
+
+  note right of Stale
+    Old A0 context is still
+    running in run_ui memory.
+    Next poll fires a new
+    cycle on top of it.
+  end note
+
+  note right of Heartbeating
+    BUG: heartbeat never updates
+    in deployed code. Falls into
+    Stale after 20min regardless
+    of whether cycle is healthy.
+  end note
+    </div>
+    <div class="caption">Two notes mark the current bugs. With the heartbeat-fix deployed correctly, the Heartbeating loop becomes self-perpetuating during healthy cycles, and Stale becomes a genuine "cycle is broken" signal rather than a 20-minute timer.</div>
+  </div>
+
+  <h3>Logic — Cycle Type Selection</h3>
+  <p>Lives in <code>_select_cycle_type()</code> in <code>idle_watch.py</code>. Deterministic based on counters in <code>engine_state.json</code>:</p>
+  <pre><code>def _select_cycle_type(state, config):
+    maintain_count = state.get("consecutive_maintain_count", 0)
+    build_count    = state.get("build_cycle_count", 0)
+    maintain_threshold = config.get("maintain_cooldown_threshold", 3)
+    explore_time_cap   = config.get("explore_time_cap_cycles", 5)
+
+    if maintain_count &lt; maintain_threshold:
+        return "MAINTAIN"          # sleep consolidation while findings exist
+    elif build_count &gt;= explore_time_cap:
+        return "EXPLORE"           # forced exploration after N BUILDs
+    else:
+        return "BUILD"             # default — wiki deepening</code></pre>
+  <p>The V2 spec (<code>specs/IDLE_TIME_ENGINE_V2_DEFINITIVE.md</code>) also describes a content-saturation EXPLORE trigger (median DRAFT page length &gt; 80 lines → switch to EXPLORE). That signal is not yet wired into <code>_select_cycle_type</code> — the time-cap is the only EXPLORE path currently active.</p>
+
+  <hr>
+
+  <h3>Known Failure Modes — Status</h3>
+
+  <div class="callout warn">
+    <strong>Reading this table — "multiple cycles at once" can come from two different mechanisms.</strong> The user-visible symptom is the same ("I see N idle chats running"); the mechanism differs. <strong>Burst</strong> is <em>within-poll</em> — daemon fires multiple times from a single 60-second poll. <strong>Overlap</strong> is <em>across-poll</em> — daemon fires cycle N, then 5+ minutes later fires cycle N+1 while N's A0 context is still alive in <code>run_ui</code>. Burst is fixed by the lock (verifiable: only one process can hold <code>fcntl.LOCK_EX</code> at a time). Overlap is the current gap. The heartbeat-freeze bug makes overlap fire on <em>every</em> cycle (stale-detect triggers at the 20-minute mark regardless of cycle health), so the user-visible rate of "multiple cycles" is currently much higher than the underlying mechanism would normally produce.
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>Failure mode</th><th>Symptom</th><th>Status</th><th>What intercepts it</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Burst (within-poll)</strong> — multiple fires from a single 60s poll</td>
+        <td>7 chats created in 53 seconds (incident 2026-05-15 v17). Several fires within seconds of each other.</td>
+        <td><span class="status ok">fixed</span></td>
+        <td><code>fcntl.LOCK_EX | LOCK_NB</code> around the entire check-and-fire critical section. Opus's May 15 spec; deployed in commit a186e30. Verifiable by running two processes against the same lock file — second blocks immediately.</td>
+      </tr>
+      <tr>
+        <td><strong>Retry storm</strong> — fire-failure decrements counter, retries forever</td>
+        <td>~95 chats accumulated over 5 days (incident 2026-05-15 v17)</td>
+        <td><span class="status ok">fixed</span></td>
+        <td>No-decrement-on-failure policy. One cold-start-grace retry per window for genuine connection-refused. Opus's May 15 spec; deployed in commit a186e30.</td>
+      </tr>
+      <tr>
+        <td><strong>Heartbeat freeze</strong> — heartbeat never updates after first tool call</td>
+        <td>Stale-detect fires on healthy cycles at 20-minute mark, regardless of actual cycle health</td>
+        <td><span class="status err">CURRENT BUG</span></td>
+        <td><strong>Fix exists</strong> in repo (commit 69b725d, <code>_last_user_msg_is_real</code> rewrite). <strong>Mis-deployed</strong> to a path A0 doesn't load. See <a href="#sec-02">§02</a>. Awaiting redeploy via <code>install_idle_engine.sh</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Overlap (across-poll)</strong> — stale-clear leaves old A0 context alive, new cycle fires on next poll</td>
+        <td>Two or more A0 cycles producing tokens simultaneously, accumulated over 30-60+ minutes (one per ~5-min poll once the prior cycle stales). On v16 (Qwen GPU) → OOM. On v17 (DeepSeek API) → token burn. <strong>This is what Jake observed tonight that looked like "multiple cycles at once."</strong></td>
+        <td><span class="status err">CURRENT GAP</span></td>
+        <td><strong>No interceptor.</strong> Daemon doesn't track the <code>context_id</code> it spawned. Stale-clear flips the flag but doesn't call <code>/api/api_reset_chat</code>. Compounded by the heartbeat-freeze bug (every cycle hits stale-detect at the 20-min mark, not just genuinely stuck ones, so overlap fires on every cycle rather than only on genuinely-stuck ones). Briefing to Opus pending.</td>
+      </tr>
+      <tr>
+        <td><strong>OOM cascade</strong> — overlap on Qwen substrate triggers SIGKILL on container</td>
+        <td>v16 exited 137 at 21:45 ET 2026-05-15</td>
+        <td><span class="status err">DOWNSTREAM</span></td>
+        <td>Symptom of overlap on the GPU-constrained container. Fixing overlap eliminates this. DeepSeek substrate (v17) doesn't OOM but does burn API tokens.</td>
+      </tr>
+      <tr>
+        <td><strong>Burst-of-firing on container start</strong> — saved <code>cycle_active=true</code> from interrupted prior cycle triggers immediate stale-clear + fire</td>
+        <td>v17 fired BUILD cycle within 30s of restart tonight</td>
+        <td><span class="status warn">behavior, not bug</span></td>
+        <td>Working as designed: state is file-backed and survives container restart, but the prior cycle's A0 context didn't (run_ui killed it). Stale-detect correctly identifies the orphan flag. Could be improved: daemon could check on startup whether <code>cycle_active=true</code> has any actual context behind it.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Current Bugs — Live Status</h3>
+  <div class="two-up">
+    <div>
+      <h4>🔴 Heartbeat freeze</h4>
+      <p><strong>Trigger:</strong> Any idle cycle, after its first tool call.</p>
+      <p><strong>Mechanism:</strong> <code>_last_user_msg_is_real()</code> walks history backwards for the most recent non-AI message. It currently stops at the <em>first</em> non-AI message — which after the first tool call is always a tool result (dict with <code>tool_name</code> key) or a system warning (dict with <code>system_warning</code> key). Neither contains the idle activation sentinel. Returns True (=&quot;real user&quot;), so the heartbeat branch is skipped.</p>
+      <p><strong>Fix:</strong> Only stop at messages with a <code>user_message</code> key (the format <code>fw.user_message.md</code> produces). Skip tool results, system warnings, and other injections.</p>
+      <p><strong>Deployment status:</strong> Committed in <code>69b725d</code>. Mis-deployed to <code>/a0/usr/agents/agent0/extensions/tool_execute_after/</code> (missing the <code>python/</code> segment). Active path still has the buggy version.</p>
+      <p><strong>Resolution path:</strong> Run <code>scripts/install_idle_engine.sh</code> + <code>supervisorctl restart run_ui</code> on both containers.</p>
+    </div>
+    <div>
+      <h4>🔴 Overlap (no lifecycle ownership)</h4>
+      <p><strong>Trigger:</strong> Any stale-detect, or any cycle that runs past min_gap without completing.</p>
+      <p><strong>Mechanism:</strong> Daemon's <code>_fire_fresh_cycle()</code> POSTs to <code>/api/api_message</code> in a daemon thread that joins with a 3-second timeout. The response (which contains <code>context_id</code>) is never read — A0 holds the connection open until the task completes (minutes). The daemon has no record of what context it spawned. Stale-clear flips the in-memory flag but the A0 context object lives on in <code>run_ui</code>'s process, still calling the LLM.</p>
+      <p><strong>Fix surface (proposed, awaiting Opus spec):</strong></p>
+      <ol>
+        <li>Capture <code>context_id</code> by polling <code>/a0/usr/chats/</code> for new directories after fire (filesystem-visible immediately).</li>
+        <li>Store <code>cycle_context_id</code> in <code>engine_state.json</code>.</li>
+        <li>Before any fire AND on stale-detect: POST <code>/api/api_reset_chat</code> for the stored id.</li>
+        <li>Make <code>cycle_active</code> a derived property of "context_id non-null AND chat directory exists with fresh mtime."</li>
+      </ol>
+      <p><strong>Resolution path:</strong> Briefing to Opus → spec → implementation.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <strong>Opus's prediction:</strong> <em>"My prediction: [overlap] disappears [when the heartbeat fix actually deploys]. The overlap was caused by premature stale detection, which was caused by the heartbeat not updating, which was caused by the fix being at the wrong path. One root cause, one fix, deployed correctly this time."</em>
+    <p>This is testable. After the redeploy, the next idle cycle that runs to natural completion should show: heartbeat updates throughout, no stale-clear during the run, single context active at any time. If overlap persists, the lifecycle-ownership work is genuinely needed. If it doesn't, the ownership work becomes defense-in-depth rather than load-bearing.</p>
+  </div>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-02">§02 Extension Load Path</a> — explains the mis-deploy that caused the heartbeat-freeze active bug</li>
+    <li><a href="#sec-14">§14 Deployment &amp; Install Pattern</a> — the install-script duplication that hid the verification gate</li>
+    <li><a href="#sec-15">§15 Failure Modes</a> — fuller cross-system view of cascade failures and their interceptors</li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — the Tier escalation system that captured tonight's anti-pattern (and that PACE strategy switching would complement)</li>
+    <li><a href="#sec-09">§09 Reasoning Persistence &amp; PACE</a> — the cognitive-side intervention that reduces loop probability inside the cycle</li>
+    <li><code>specs/IDLE_TIME_ENGINE_V2_DEFINITIVE.md</code> — Opus's V2 spec, the authoritative design source</li>
+    <li><code>team-comms/opus-to-kestrel/idle_engine_race_condition_fix_spec_20260515.md</code> — the May 15 race-condition spec (burst + retry storm fixes)</li>
+  </ul>
+</section>
+
+<section id="sec-06">
+  <h2><span class="num">06</span>Supervisor Loop <a class="anchor" href="#sec-06">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Tier 1 (silent) / Tier 2 (surgery) / Tier 3 (reset) / Tier 4 (anti-pattern capture). The fragile REPEAT_SIGNAL / MISFORMAT_SIGNAL string match. Cooldown logic.</p>
+</section>
+
+<section id="sec-07">
+  <h2><span class="num">07</span>BST &amp; Compound Classification <a class="anchor" href="#sec-07">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Where classification is produced (<code>_11_belief_state_tracker</code>), what enrichment it injects, momentum tracking, the deep nested <code>__bst_belief_state__</code> key bug history.</p>
+</section>
+
+<section id="sec-08">
+  <h2><span class="num">08</span>Memory Subsystem <a class="anchor" href="#sec-08">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> FAISS stores (main + library + ontology), classification axes, recall path, decay, procedural memory and anti-pattern retrieval (is it wired to BST enrichment?).</p>
+</section>
+
+<section id="sec-09">
+  <h2><span class="num">09</span>Reasoning Persistence &amp; PACE <a class="anchor" href="#sec-09">#</a></h2>
+  <p class="section-summary">
+    The reasoning state and PACE plan subsystems are designed to give the model visible memory of its own reasoning across turns — what it already tried, what worked, what the current strategy is. They're implemented but <strong>silently inert</strong>: the generator side writes to <code>agent._reasoning_state</code> and <code>agent._pace_plan</code> correctly, but the injection side fires in <code>before_main_llm_call</code> where <code>loop_data.history_output</code> writes are discarded (seam #7), and <strong>no consumer in <code>message_loop_prompts_after</code> reads either attribute</strong>. The chain terminates at a broken link. This is plausibly the upstream cause of the regenerate-identical-preamble loop pattern we observed tonight: the model has no visible record of its prior reasoning trajectory and re-derives the same conclusions every turn.
+  </p>
+
+  <div class="callout err">
+    <strong>Status: ACTIVE INERT</strong> — extensions exist, fire on schedule, do the right computation, and their output never reaches the model. Verified 2026-05-16 via grep against both repo and live container code. Fix design is approved (Opus 2026-05-16 response). Implementation drafted but held for deployment after empirical observation of the heartbeat fix in isolation.
+  </div>
+
+  <h3>Wiring — The Broken Chain</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TD
+  start[Turn N completes] --> writer["_49_reasoning_state_update<br/>(message_loop_end)<br/>compresses turn N's reasoning"]
+  writer --> attr1["agent._reasoning_state<br/>(persistent attribute)"]
+  writer2["_14_pace_plan_generator<br/>(before_main_llm_call, turn N+1)<br/>generates plan via LLM call"]
+  writer2 --> attr2["agent._pace_plan<br/>(persistent attribute)"]
+
+  attr1 --> reader1["_13_reasoning_state<br/>(before_main_llm_call, turn N+1)"]
+  attr2 --> reader2["_14_pace_plan_generator<br/>(also injects, in same hook)"]
+
+  reader1 --> mut1["loop_data.history_output[-1]<br/>['content'] = block + content"]
+  reader2 --> mut2["loop_data.history_output[-1]<br/>['content'] = block + content"]
+
+  mut1 --> BROKEN{"prepare_prompt()<br/>already ran<br/>before this hook fires"}
+  mut2 --> BROKEN
+  BROKEN -- "writes discarded" --> NEVER["LLM context<br/>(never receives injection)"]
+
+  attr1 -.-> missing["NO consumer in<br/>message_loop_prompts_after<br/>reads _reasoning_state"]
+  attr2 -.-> missing
+  missing -.-> NEVER
+
+  classDef good fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  classDef broken fill:#1c2128,stroke:#f85149,color:#c9d1d9
+  classDef missing fill:#1c2128,stroke:#d29922,color:#c9d1d9
+  class writer,writer2,attr1,attr2 good
+  class BROKEN,NEVER broken
+  class missing missing
+    </div>
+    <div class="caption">Green = working. Red = broken link (writes discarded). Amber = missing consumer. The data is computed, stored, available for reading. It just never reaches the LLM context window. The model reasons every turn as if it's the first turn — no visible memory of its own reasoning trajectory.</div>
+  </div>
+
+  <h3>Logic — What the Model Sees vs What it Should See</h3>
+  <div class="two-up">
+    <div>
+      <h4>🔴 Current — broken chain</h4>
+      <p>Model receives at turn N:</p>
+      <pre><code>[system prompt]
+[history: turn 1 messages]
+[history: turn 2 messages]
+...
+[history: turn N-1 messages]
+[user message]
+  ← original content only
+  ← no reasoning state block
+  ← no PACE plan block</code></pre>
+      <p>Model has no compressed summary of what it already tried. Re-derives conclusions from raw history each turn. Produces the same opening preamble (<em>"Step 1: Read interests.md..."</em>) every turn because nothing tells it that step is already complete.</p>
+    </div>
+    <div>
+      <h4>🟢 Designed — chain working</h4>
+      <p>Model would receive at turn N:</p>
+      <pre><code>[system prompt]
+[history: turn 1 messages]
+...
+[history: turn N-1 messages]
+[user message]
+  [REASONING STATE]
+  Step: 4
+  Tried: search_engine for "homomorphic
+         encryption practical 2024 2025"
+         → got results
+  Tried: cat interests.md → done
+  Current: synthesizing field report
+  [/REASONING STATE]
+
+  [PACE PLAN — current tier: PRIMARY]
+  Primary: web search + synthesize
+  Alternate: switch to arxiv + abstract
+  Contingency: use cached topic list
+  [/PACE PLAN]
+
+  ← original content
+</code></pre>
+      <p>Model sees compressed diagnostic. Knows it already searched, knows what it tried. Generates next action informed by that state rather than regenerating the same preamble.</p>
+    </div>
+  </div>
+
+  <h3>The fix design (Opus 2026-05-16)</h3>
+  <p>Clean separation between generator side (where LLM calls and state computation happen) and injector side (lightweight, just-read-attr-and-emit). Generators stay where they are; injectors are new files in the working hook.</p>
+  <table>
+    <thead><tr><th>Hook</th><th>Extension</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>before_main_llm_call</code></td>
+        <td><code>_13_reasoning_state.py</code></td>
+        <td><strong>Keep as-is</strong> — generates reasoning state, writes <code>agent._reasoning_state</code>. May involve processing / LLM calls. The injection lines in this file are silently dead code; harmless but can be removed in a cleanup pass.</td>
+      </tr>
+      <tr>
+        <td><code>before_main_llm_call</code></td>
+        <td><code>_14_pace_plan_generator.py</code></td>
+        <td><strong>Keep as-is</strong> — generates PACE plan, writes <code>agent._pace_plan</code>. Makes LLM calls for plan generation (this is why we can't move it to <code>message_loop_prompts_after</code> — that hook is inside <code>prepare_prompt()</code> where LLM calls would deadlock).</td>
+      </tr>
+      <tr>
+        <td><code>message_loop_prompts_after</code></td>
+        <td><code>_22_reasoning_state_injector.py</code></td>
+        <td><strong>NEW — to build</strong>. Read <code>agent._reasoning_state</code>, format injection block, mutate <code>loop_data.history_output[-1]["content"]</code>. ~15 lines. No LLM calls.</td>
+      </tr>
+      <tr>
+        <td><code>message_loop_prompts_after</code></td>
+        <td><code>_23_pace_plan_injector.py</code></td>
+        <td><strong>NEW — to build</strong>. Same pattern, reads <code>agent._pace_plan</code>. ~15 lines.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Numbering choice</h4>
+  <p>Opus's sketch used <code>_55_</code> / <code>_56_</code> as placeholder names; those would collide with existing <code>_55_memory_relevance_filter</code> and <code>_56_memory_enhancement</code> (seam #4 — numeric prefix collision). Using <code>_22_</code> / <code>_23_</code> instead, after <code>_21_constraint_heartbeat</code> and before the memory enhancement chain. This means reasoning state and PACE plans are injected as <em>outer</em> context, with memory recall appended after — which feels right semantically (meta-context first, then the specific memories that serve it).</p>
+
+  <h4>Injection pattern</h4>
+  <p>The proven shape from <code>_13_reasoning_state.py</code>'s existing code — just moved to the hook that actually works:</p>
+  <pre><code># _22_reasoning_state_injector.py — message_loop_prompts_after
+from agent import Agent, LoopData
+from helpers.extension import Extension
+
+REASONING_KEY = "_reasoning_state"
+
+class ReasoningStateInjector(Extension):
+    """message_loop_prompts_after: inject compressed reasoning state into context."""
+
+    async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
+        try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — skip (DEC-028)
+            state = getattr(self.agent, REASONING_KEY, None)
+            if not state:
+                return
+            block = _format_reasoning_block(state)
+            if not block:
+                return
+            user_msg = _get_last_user_message(loop_data.history_output)
+            if user_msg:
+                existing = user_msg.get("content", "")
+                user_msg["content"] = block + "\n\n" + str(existing)
+            print(f"[REASON-INJ-22] injected step={state.get('step')}", flush=True)
+        except Exception as e:
+            print(f"[REASON-INJ-22] error (passthrough): {e}", flush=True)</code></pre>
+  <p>This is the same pattern <code>_13_reasoning_state</code> already uses internally — the <code>_get_last_user_message</code> helper, the block-prepend approach. Only difference: it fires in the hook where <code>history_output</code> mutations actually reach the LLM. The PACE injector follows the same shape against <code>agent._pace_plan</code>.</p>
+
+  <h3>Empirical isolation plan</h3>
+  <p>Two distinct failure mechanisms have been identified:</p>
+  <ol>
+    <li><strong>Premature stale-detect overlap</strong> — caused by the heartbeat freeze (seam #13). Fix: redeploy <code>_70_idle_trigger.py</code> to the correct path.</li>
+    <li><strong>Identical-preamble loops</strong> — caused by the broken injection chain (this section, seam #7 upgraded). Fix: add the two injector extensions above.</li>
+  </ol>
+  <p>Per Opus, deploy these in sequence with an observation between them — the diagnostic value of seeing which fix addresses which symptom is worth one extra cycle:</p>
+  <table>
+    <thead><tr><th>Step</th><th>Action</th><th>Expected observation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Redeploy <code>_70_idle_trigger.py</code> via <code>install_idle_engine.sh</code>; <code>supervisorctl restart run_ui</code></td>
+        <td>Heartbeat updates throughout a cycle. No premature stale-detect at the 20-min mark on healthy cycles.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Run one cycle (idle for &gt;5 min on v17, observe BUILD or EXPLORE cycle)</td>
+        <td>If only one A0 chat is active at any time → overlap from premature stale-detect is solved. If the cycle still loops on identical preambles → the injection chain is the remaining cause.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Deploy <code>_22_reasoning_state_injector.py</code> + <code>_23_pace_plan_injector.py</code> to <code>message_loop_prompts_after</code>; <code>supervisorctl restart run_ui</code></td>
+        <td>(Pending observation in step 2 to confirm this fix is needed.)</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Run another cycle</td>
+        <td>Preamble repetition stops. Model's reasoning trajectory becomes visible to itself across turns. Cycles either complete productively or hit a different failure mode (which would be a new finding).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Status — for tonight</h3>
+  <ul>
+    <li><strong>Heartbeat fix</strong>: code committed (<code>69b725d</code>), mis-deployed, awaiting redeploy via install script.</li>
+    <li><strong>Injector extensions</strong>: to be drafted in this session, placed at <code>extensions/message_loop_prompts_after/_22_reasoning_state_injector.py</code> and <code>_23_pace_plan_injector.py</code>. <strong>Not deployed</strong> until step 2 observation completes.</li>
+    <li><strong>Cleanup pass</strong> (separate work later): remove the dead injection blocks from <code>_13_reasoning_state.py</code> and <code>_14_pace_plan_generator.py</code> after the new injectors are validated in production.</li>
+  </ul>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-03">§03 Hook Pipeline</a> — the timing trap that broke this chain</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #7 (this issue) upgraded to CRITICAL</li>
+    <li><a href="#sec-05">§05 Idle Engine</a> — the failure mode that exposed the chain being broken (regenerate-identical-preamble loop)</li>
+    <li><a href="#sec-06">§06 Supervisor Loop</a> — the system that <em>tries</em> to break loops from outside; this fix addresses them from inside</li>
+    <li><code>specs/REASONING_PERSISTENCE_PACE_DESIGN_NOTE.md</code> — Session 057 design intent</li>
+    <li><code>team-comms/opus-to-kestrel/</code> — Opus's 2026-05-16 architectural response approving the fix shape</li>
+  </ul>
+</section>
+
+<section id="sec-10">
+  <h2><span class="num">10</span>Ontology Layer <a class="anchor" href="#sec-10">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Entity FAISS, relationships.jsonl, resolution pipeline.</p>
+</section>
+
+<section id="sec-11">
+  <h2><span class="num">11</span>OSS / SWARMFISH Services <a class="anchor" href="#sec-11">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> OSS container :7731, Postgres :5433, SWARMFISH :7732. Plugin tools. Ingest pipeline. Hypothesis lifecycle and OSS→SWARMFISH calibration loop.</p>
+</section>
+
+<section id="sec-12">
+  <h2><span class="num">12</span>Action Boundary &amp; Epistemic Integrity <a class="anchor" href="#sec-12">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Action gate flag, evidence ledger, tier classification, claim verification against ledger.</p>
+</section>
+
+<section id="sec-13">
+  <h2><span class="num">13</span>Fragile Seams <a class="anchor" href="#sec-13">#</a></h2>
+  <p class="section-summary">
+    The catalog of "this kind of thing keeps biting." Seams are places in the architecture where two components hold a contract that has no compile-time enforcement — when one side changes and the other doesn't, the system breaks silently. Carries forward the 12 seams from <code>WIRING.md</code> (Apr 17) plus six new ones surfaced or sharpened tonight. Each entry: where the seam lives, how it fails, how to detect, and current mitigation status.
+  </p>
+
+  <div class="callout info">
+    <strong>How to read this section.</strong> The table is the quick scan — severity, name, status, one-line summary of each seam. Below it, the <em>active</em> seams (CRITICAL — broken right now) get a full treatment because they're load-bearing for current debugging. HIGH severity is documented but mitigated. MEDIUM is known and either has a mitigation or is rare. LOW is theoretical or stylistic. The numbering matches <code>WIRING.md</code>'s seams 1-12 plus new seams 13-18 from tonight.
+  </div>
+
+  <h3>Seam Catalog</h3>
+  <table>
+    <thead><tr>
+      <th>#</th><th>Severity</th><th>Seam</th><th>One-liner</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td>19</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Reasoning state &amp; PACE injection chain inert</strong></td>
+        <td>Specific instance of seam #7 actively biting. <code>_13_reasoning_state</code> and <code>_14_pace_plan_generator</code> compute state correctly but inject in the discarded hook; no consumer in <code>message_loop_prompts_after</code> reads the attrs</td>
+        <td><span class="status err">ACTIVE — fix designed (see <a href="#sec-09">§09</a>), injectors drafted, deploy held until heartbeat fix is observed</span></td>
+      </tr>
+      <tr>
+        <td>13</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Heartbeat freeze in idle cycles</strong></td>
+        <td><code>_last_user_msg_is_real</code> returns True after the first tool call → heartbeat never updates → stale-detect fires at 20 min on every cycle</td>
+        <td><span class="status err">ACTIVE — fix at wrong path</span></td>
+      </tr>
+      <tr>
+        <td>14</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Idle context lifecycle not owned</strong></td>
+        <td>Daemon fires cycles but doesn't track <code>context_id</code>; stale-clear flips flag without killing the A0 context</td>
+        <td><span class="status err">ACTIVE — no fix designed yet</span></td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Wrong-path extension deploy</strong> (no <code>python/</code> segment)</td>
+        <td><code>extensions/&lt;hook&gt;/</code> is invisible to <code>get_paths</code>; file lands, never loads, no error</td>
+        <td><span class="status err">ACTIVE — happened tonight; mitigation via shared lib pending</span></td>
+      </tr>
+      <tr>
+        <td>17</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong>Install scripts don't verify md5</strong></td>
+        <td>0 of 27 install scripts re-read post-deploy; <code>docker cp</code> is trusted blindly</td>
+        <td><span class="status warn">documented; DEC-026 shared-lib refactor planned</span></td>
+      </tr>
+      <tr>
+        <td>18</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong>Orphan extension copies at legacy paths</strong></td>
+        <td>Multiple copies of the same extension at non-canonical paths with different md5s mislead future debugging</td>
+        <td><span class="status warn">present right now on both containers for <code>_70_idle_trigger.py</code></span></td>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong><code>fw.msg_repeat.md</code> ↔ <code>REPEAT_SIGNAL</code></strong></td>
+        <td>Supervisor REPEAT_SIGNAL constant matches against prompt file content; if prompt is reworded, escalation silently breaks</td>
+        <td><span class="status warn">prefix <code>"LOOP DETECTED."</code> stable; 2026-03-31 incident triggered the rule</span></td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong>Injection in <code>before_main_llm_call</code> silently discarded</strong></td>
+        <td>Hook fires AFTER <code>prepare_prompt()</code> assembles the prompt; <code>history_output</code> writes never reach the LLM</td>
+        <td><span class="status warn">documented; rule: only inject in <code>message_loop_prompts_after</code>; 2026-04-12 discovery</span></td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong>Tombstone from one path only</strong></td>
+        <td>Removing an extension from the profile path leaves the plugin path's copy still firing; no log evidence of staleness</td>
+        <td><span class="status warn">install_extensions.sh handles both; manual tombstoning has caused incidents (ST-012)</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong><code>TRACKER_KEY</code> defined in two files</strong></td>
+        <td>If either definition drifts, the failure counter never resets on success and fallback fires on clean runs</td>
+        <td><span class="status info">"must match" comment in both files; grep both before editing either</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong><code>_bst_store</code> uses <code>getattr</code> not <code>get_data</code></strong></td>
+        <td>Components reading via <code>agent.get_data("_bst_store")</code> get <code>None</code> instead of the dict</td>
+        <td><span class="status info">established pattern: always <code>getattr(agent, "_bst_store", {})</code></span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>Numeric prefix collision</strong></td>
+        <td>Two extensions at same prefix → Python loads alphabetically, order undefined</td>
+        <td><span class="status info">check for collisions before adding extensions</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong><code>_action_gate_active</code> sticks after Tier 4 block</strong></td>
+        <td>If error comprehension is disabled, the gate never clears → supervisor permanently suppresses stall warnings</td>
+        <td><span class="status info">EC clears on successful tool output; depends on EC being deployed</span></td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>Same extension in two hooks with once-per-session gate</strong></td>
+        <td>Wrong-hook version fires first, sets the flag, correct-hook version skips forever</td>
+        <td><span class="status info">keep each extension in exactly one hook; verify deployment</span></td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>Stagnation detection without <code>_30_tool_fallback_logger</code></strong></td>
+        <td>Stagnation reads <code>_tool_output_tracker</code> populated only by the fallback logger; without it, stagnation is permanently blind</td>
+        <td><span class="status info">2026-05-14 audit verified; ensure logger is deployed alongside supervisor</span></td>
+      </tr>
+      <tr>
+        <td>16</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>WIRING.md staleness</strong> (Apr 17)</td>
+        <td>Document references <code>fw.msg_not_json.md</code> which doesn't exist; actual file is <code>fw.msg_misformat.md</code>. Other constants may have drifted similarly.</td>
+        <td><span class="status info">this document supersedes WIRING.md; old doc kept as reference until migration verified</span></td>
+      </tr>
+      <tr>
+        <td>15</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>Cross-container prompt divergence</strong></td>
+        <td>5 prompt files differ between v16 and v17 — possibly intentional model-specific tuning, possibly accidental drift</td>
+        <td><span class="status info">deliberate reconciliation pass deferred per Opus; 56-cycle empirical track record on v17 suggests not breaking anything</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><span class="status info">LOW</span></td>
+        <td><strong>Library catalog path mismatch</strong></td>
+        <td><code>CATALOG_PATH</code> defined in three places; if they drift, catalog injects empty block</td>
+        <td><span class="status info">currently consistent; tested 2026-04</span></td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td><span class="status info">LOW</span></td>
+        <td><strong>Extension imports <code>python.helpers.*</code></strong></td>
+        <td>Wrong import path → <code>ModuleNotFoundError</code> at extension load → entire hook fails silently</td>
+        <td><span class="status info">well-known; pattern: <code>from helpers.extension import Extension</code></span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h3>Active right now — full treatment of the CRIT entries</h3>
+
+  <h4>Seam #13 — Heartbeat freeze in idle cycles <span class="status err">ACTIVE</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> <code>_70_idle_trigger.py</code> in <code>tool_execute_after</code>, function <code>_last_user_msg_is_real()</code>.</p>
+    <p><strong>What goes wrong:</strong> The function walks <code>agent.history.output()</code> backwards looking for the most recent non-AI message and asks "is this an idle activation or a real user?" It stops at the <em>first</em> non-AI message it finds. After the first tool call in a cycle, the most recent non-AI message is always a tool result (dict with <code>tool_name</code> key) or a system warning (dict with <code>system_warning</code> key from <code>fw.warning.md</code>). Neither contains the idle-activation sentinel. The function returns <code>True</code> ("this is a real user"), the heartbeat update branch is skipped, and the heartbeat freezes at the value set when the cycle first started.</p>
+    <p><strong>How to detect:</strong></p>
+    <ul>
+      <li>Read <code>engine_state.json</code> during a running idle cycle</li>
+      <li>Compare <code>cycle_heartbeat</code> to <code>last_cycle_start</code> — if equal (or close), heartbeat has not been updating</li>
+      <li>Symptom in logs: <code>[IDLE-WATCH] Stale cycle detected</code> firing on cycles that are clearly still doing work</li>
+    </ul>
+    <p><strong>Why it's actively biting:</strong> Every idle cycle reaches the 20-minute stale-detect threshold. The daemon clears <code>cycle_active=false</code> and fires a new cycle on the next poll, even though the original cycle is genuinely healthy and still working. This is the upstream cause of seam #14's user-visible "multiple cycles at once" — overlap fires on <em>every</em> cycle rather than only on genuinely-stuck ones.</p>
+    <p><strong>Fix:</strong> Committed as <code>69b725d</code>. Function rewritten to skip tool results and warning injections — only stops at messages with a <code>user_message</code> key (the canonical format from <code>fw.user_message.md</code>). Deployed to <code>/a0/usr/agents/agent0/extensions/tool_execute_after/_70_idle_trigger.py</code> (no <code>python/</code> segment) — wrong path. Active path still has the buggy version.</p>
+    <p><strong>Resolution path:</strong> Re-run <code>scripts/install_idle_engine.sh</code> + <code>supervisorctl restart run_ui</code> on both containers. Verify post-deploy md5 matches the repo. After deploy, observe one cycle to completion to confirm heartbeat updates during tool calls and stale-detect does not fire prematurely.</p>
+  </div>
+
+  <h4>Seam #14 — Idle context lifecycle not owned <span class="status err">ACTIVE</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> <code>idle_watch.py</code> functions <code>_fire_fresh_cycle()</code> and <code>_atomic_check_and_fire()</code>.</p>
+    <p><strong>What goes wrong:</strong> <code>_fire_fresh_cycle()</code> POSTs to <code>/api/api_message</code> in a daemon thread that joins with a 3-second timeout. A0 holds the connection open until the cycle's <code>task.result()</code> completes — minutes. The HTTP response (which contains the new <code>context_id</code>) is never read by the daemon. The daemon has no record of what A0 context it spawned. When stale-detect fires later, it flips <code>cycle_active=false</code> but cannot call <code>/api/api_reset_chat</code> for the specific context because it doesn't know the id. The A0 context object remains alive in <code>run_ui</code>'s process, still making LLM calls. Daemon then fires a new cycle on the next poll, creating a second concurrent context.</p>
+    <p><strong>How to detect:</strong></p>
+    <ul>
+      <li>List <code>/a0/usr/chats/</code> and find chat directories named "Autonomous Work Cycle" with overlapping creation timestamps</li>
+      <li>Check <code>chat.json</code> for each — if <code>streaming_agent</code> is non-null and history is recent, the context is still active</li>
+      <li>From outside: watch GPU utilization or LM Studio request log for sustained activity after a stale-detect log entry</li>
+    </ul>
+    <p><strong>Why it's hard to fix correctly:</strong> The natural place to record <code>context_id</code> is from the HTTP response — but the daemon can't wait minutes for that response. Alternatives: poll <code>/a0/usr/chats/</code> for new directory entries after firing (filesystem-visible immediately on context creation); or add an asynchronous endpoint to A0 that returns the context_id immediately after queueing the task. Option 1 is buildable without modifying A0.</p>
+    <p><strong>Proposed fix surface (awaiting Opus spec):</strong></p>
+    <ol>
+      <li>Snapshot <code>set(os.listdir('/a0/usr/chats/'))</code> before firing</li>
+      <li>Fire activation (existing http.client thread)</li>
+      <li>Poll <code>/a0/usr/chats/</code> for the new directory (1-5 second window)</li>
+      <li>Write <code>cycle_context_id</code> to <code>engine_state.json</code></li>
+      <li>Before any subsequent fire, AND on stale-detect: POST <code>/api/api_reset_chat</code> with the stored <code>context_id</code>; clear the field on success</li>
+      <li>Promote <code>cycle_active</code> to a derived property: True iff <code>cycle_context_id</code> non-null AND chat directory still exists with fresh mtime</li>
+    </ol>
+    <p><strong>Resolution path:</strong> Briefing to Opus pending — <em>but possibly downgraded</em>. Opus's hypothesis (recorded in <a href="#sec-05">§05</a>) is that this seam's user-visible symptom (overlap) may largely disappear once seam #13 (heartbeat freeze) is fixed. If overlap stops happening, the lifecycle-ownership work becomes defense-in-depth rather than load-bearing. We'll know after observing one healthy post-heartbeat-fix cycle.</p>
+  </div>
+
+  <h4>Seam #19 — Reasoning state &amp; PACE injection chain inert <span class="status err">ACTIVE</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> <code>_13_reasoning_state.py</code> and <code>_14_pace_plan_generator.py</code>, both in <code>before_main_llm_call/</code>. Plus the absence of any matching consumer in <code>message_loop_prompts_after</code>.</p>
+    <p><strong>What goes wrong:</strong> Both extensions correctly generate state and write to persistent agent attributes (<code>agent._reasoning_state</code>, <code>agent._pace_plan</code>). Then both attempt to inject by mutating <code>loop_data.history_output[-1]["content"]</code>. The hook fires <em>after</em> <code>prepare_prompt()</code> has already assembled the prompt for the current LLM call, so the mutation is discarded. No extension in <code>message_loop_prompts_after</code> reads either attribute, so there's no recovery path. The data is computed, stored, available — and never reaches the model.</p>
+    <p><strong>How to detect:</strong></p>
+    <ul>
+      <li><code>grep "_reasoning_state\|_pace_plan" extensions/message_loop_prompts_after/</code> on repo and live container — zero matches = chain broken</li>
+      <li>Behavioral signal: idle cycles regenerate identical opening preambles every turn (model has no visible record of what it already did)</li>
+      <li>Loop detection fires repeatedly without effect — the model isn't ignoring the loop warning, it has no compressed context to reason differently from</li>
+    </ul>
+    <p><strong>Why it's actively biting:</strong> Tonight's EXPLORE cycle on v17 looped because the model kept regenerating "Step 1: Read interests.md... Step 2: Search for topic..." every turn despite having already done those steps. The reasoning state that would have shown "Step 1 complete, Step 2 complete, currently synthesizing" was correctly computed in <code>agent._reasoning_state</code> but never reached the context window. Compounds with seam #13 (heartbeat freeze): the loops triggered by this seam cause cycles to run past the 20-minute stale window, which fires the overlap mode from seam #14.</p>
+    <p><strong>Fix (designed, drafted, holding for empirical isolation):</strong> Two new lightweight injector extensions in <code>message_loop_prompts_after</code> at prefixes <code>_22</code> / <code>_23</code> that read the agent attrs and inject into <code>loop_data.history_output[-1]["content"]</code> from the working hook. Generators (<code>_13</code>, <code>_14</code>) stay in their current hook because <code>_14</code> makes LLM calls for plan generation, which can't happen inside <code>prepare_prompt()</code>. Full design in <a href="#sec-09">§09</a>. Per Opus, deploy after heartbeat fix is observed in isolation so we can attribute symptoms to the right fix.</p>
+    <p><strong>Resolution path:</strong> Step 1 — deploy heartbeat fix, observe one cycle. Step 2 — if loops persist (separate from premature stale-detect), deploy injectors. Step 3 — observe another cycle for preamble repetition disappearing.</p>
+  </div>
+
+  <h4>Seam #8 — Wrong-path extension deploy <span class="status err">ACTIVE</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> Any manual <code>docker cp</code> that constructs the destination path by hand. The required path includes the <code>python/</code> segment: <code>/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</code>. The natural-feeling path that omits it (<code>/a0/usr/agents/agent0/extensions/&lt;hook&gt;/</code>) is invisible to A0's loader.</p>
+    <p><strong>How it fails:</strong> Silent. <code>docker cp</code> succeeds, file appears on disk at the wrong path, syntax check passes, and a different (often stale) copy at the canonical path is what A0 actually loads. The debugger sees their fix code on disk and concludes the deploy is correct. Behavior remains unchanged because the loaded copy is the old one. Time-to-detection is typically the next debugging cycle when the symptom recurs.</p>
+    <p><strong>How to detect:</strong></p>
+    <ul>
+      <li>After any <code>docker cp</code>: <code>docker exec &lt;container&gt; md5sum &lt;canonical-path&gt;</code> and compare to local <code>md5sum</code></li>
+      <li>Periodic scan: <code>find /a0 -name &lt;file.py&gt; -not -path "*/__pycache__/*" | xargs md5sum</code> — if multiple md5s appear, you have stale copies</li>
+      <li>Behavioral signal: a recently-shipped fix appears not to take effect despite restart</li>
+    </ul>
+    <p><strong>Mitigation tonight:</strong> Prefer install scripts (<code>scripts/install_*.sh</code>) over manual <code>docker cp</code>. They set <code>EXT_DEST</code> correctly. <strong>Long-term mitigation:</strong> the shared-library refactor (see <a href="#sec-14">§14</a>) bakes md5 verification into <code>install_file()</code> so the gate is automatic.</p>
+  </div>
+
+  <hr>
+
+  <h3>Seam #15 — Cross-container prompt divergence</h3>
+  <p>Captured here for the record, with action deferred per Opus's reasoning. The empirical evidence (56+ cycles on v17 with current prompts, no failures attributable to the divergent <code>fw.msg_repeat.md</code>) suggests the divergence may be intentional or harmless. The reconciliation pass — read each version, decide unify-or-formalize-the-split — is queued as separate 30-minute work after the heartbeat fix lands and stabilizes.</p>
+  <table>
+    <thead><tr><th>File</th><th>v16 md5</th><th>v17 md5</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="path-col">fw.msg_repeat.md</td>
+        <td class="md5-col">32f0f17f1f...</td>
+        <td class="md5-col">e74867601...</td>
+        <td>Deliberate review pass — call_subordinate version on v17 may be intentional for DeepSeek</td>
+      </tr>
+      <tr>
+        <td class="path-col">fw.msg_misformat.md</td>
+        <td class="md5-col">5604a1e80...</td>
+        <td class="md5-col">c40fb6311...</td>
+        <td>Deliberate review pass — different recovery policies may be model-appropriate</td>
+      </tr>
+      <tr>
+        <td class="path-col">browser_agent.system.md</td>
+        <td class="md5-col">(missing)</td>
+        <td class="md5-col">e8fa0f87...</td>
+        <td>Low priority — browser tool only</td>
+      </tr>
+      <tr>
+        <td class="path-col">agent.system.datetime.md</td>
+        <td class="md5-col">c634b94a7...</td>
+        <td class="md5-col">b0d0387dc...</td>
+        <td>Likely model-specific tuning — leave as-is for now</td>
+      </tr>
+      <tr>
+        <td class="path-col">agent.system.main.communication.md</td>
+        <td class="md5-col">f42ca93c0...</td>
+        <td class="md5-col">f9db839ba...</td>
+        <td>Likely model-specific tuning — leave as-is for now</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-02">§02 Extension Load Path</a> — full treatment of seam #8</li>
+    <li><a href="#sec-05">§05 Idle Engine</a> — seams #13 and #14 in the operational context that exposes them</li>
+    <li><a href="#sec-14">§14 Deployment &amp; Install Pattern</a> — seam #17 and the DEC-026 refactor that closes seam #18</li>
+    <li><a href="#sec-03">§03 Hook Pipeline</a> — seam #7 in the timing context that produces it</li>
+  </ul>
+</section>
+
+<section id="sec-14">
+  <h2><span class="num">14</span>Deployment &amp; Install Pattern <a class="anchor" href="#sec-14">#</a></h2>
+  <p class="section-summary">
+    27 install scripts in <code>scripts/</code> totaling 2420 lines. They are the canonical path for getting Exocortex components into a running container. Audit reveals: <strong>only 4 of 27 have a function abstraction</strong> for the install-file primitive; <strong>0 of 27 verify md5</strong> after deploy. The verification gap is the empirical cause of tonight's mis-deploy: every install script trusts <code>docker cp</code> to land the right bytes at the right path, and none of them re-read to confirm. Path discipline is correct (<code>EXT_DEST</code> in <code>install_idle_engine.sh</code> points to the proper <code>extensions/python/&lt;hook&gt;/</code> form); the bug was that I bypassed the install script entirely and did a manual <code>docker cp</code> to the wrong path.
+  </p>
+
+  <h3>Inventory</h3>
+  <p>Each script targets one component or layer. Most have grown over time and inline the deploy primitives directly. Note the line-count distribution: a few large scripts (200+ lines) deploy multi-file features; many small scripts (20-60 lines) deploy single components.</p>
+  <table>
+    <thead><tr>
+      <th>Script</th>
+      <th>Lines</th>
+      <th><code>install_file()</code></th>
+      <th><code>docker cp</code> count</th>
+      <th>pycache</th>
+      <th>md5 verify</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><code>install_a2a_server.sh</code></td><td>61</td><td>—</td><td>0</td><td>4</td><td>—</td></tr>
+      <tr><td><code>install_action_boundary.sh</code></td><td>52</td><td>—</td><td>0</td><td>3</td><td>—</td></tr>
+      <tr><td><code>install_artifact_browser.sh</code></td><td>74</td><td>✓</td><td>2</td><td>3</td><td>—</td></tr>
+      <tr><td><code>install_artifact_system.sh</code></td><td>79</td><td>—</td><td>4</td><td>2</td><td>—</td></tr>
+      <tr><td><code>install_communication_protocol.sh</code></td><td>48</td><td>—</td><td>0</td><td>3</td><td>—</td></tr>
+      <tr><td><code>install_core_patches.sh</code></td><td>322</td><td>—</td><td>14</td><td>8</td><td>—</td></tr>
+      <tr><td><code>install_epistemic_integrity.sh</code></td><td>51</td><td>—</td><td>4</td><td>4</td><td>—</td></tr>
+      <tr><td><code>install_error_comprehension.sh</code></td><td>38</td><td>—</td><td>3</td><td>4</td><td>—</td></tr>
+      <tr><td><code>install_exocortex_profile.sh</code></td><td>238</td><td>—</td><td>30</td><td>0</td><td>—</td></tr>
+      <tr><td><code>install_graph_engine.sh</code></td><td>45</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_htn_plans.sh</code></td><td>19</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_idle_engine.sh</code></td><td>292</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_library.sh</code></td><td>124</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_memory_classification.sh</code></td><td>81</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_meta_gate.sh</code></td><td>22</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_metacognitive_injection.sh</code></td><td>39</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_ontology.sh</code></td><td>202</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_org_kernel.sh</code></td><td>60</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_personalities.sh</code></td><td>33</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_phase3_profiles.sh</code></td><td>57</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_sleep_consolidation.sh</code></td><td>170</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_stack_status.sh</code></td><td>32</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_supervisor_loop.sh</code></td><td>28</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_theme_editor.sh</code></td><td>59</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_tool_fallback.sh</code></td><td>43</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_workshop_cycle.sh</code></td><td>89</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><code>install_write_guard.sh</code></td><td>62</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>TOTAL</strong></td><td><strong>2420</strong></td><td><strong>4 of 27</strong></td><td>—</td><td>—</td><td><strong>0 of 27</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Path conventions across the scripts</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Value</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">EXT_DEST</td>
+        <td class="path-col">/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</td>
+        <td>Extension files. Each install script sets this to the appropriate hook directory. <strong>This is the only correct extension target</strong> — see <a href="#sec-02">§02</a>.</td>
+      </tr>
+      <tr>
+        <td class="key">EXOCORTEX_DEST</td>
+        <td class="path-col">/a0/usr/Exocortex/</td>
+        <td>Exocortex working data — config, prompts, sleep reports, journals, procedural memory, the office/ subdirectory.</td>
+      </tr>
+      <tr>
+        <td class="key">API_DEST</td>
+        <td class="path-col">/a0/api/</td>
+        <td>A0 API endpoint handlers — <code>office_feed.py</code>, <code>idle_control.py</code>, custom endpoints.</td>
+      </tr>
+      <tr>
+        <td class="key">WEBUI_DEST</td>
+        <td class="path-col">/a0/webui/</td>
+        <td>A0 core web UI files. Most Exocortex UI goes to <code>PLUGIN_WEBUI</code> instead — this is for direct WebUI overrides.</td>
+      </tr>
+      <tr>
+        <td class="key">PLUGIN_WEBUI</td>
+        <td class="path-col">/a0/usr/plugins/exocortex/extensions/webui/</td>
+        <td>Right-canvas surfaces, panel HTML, registration scripts. Subdirs: <code>right_canvas_register_surfaces/</code>, <code>right-canvas-panels/</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">TOOL_DEST</td>
+        <td class="path-col">/a0/usr/plugins/exocortex/tools/</td>
+        <td>Custom tool implementations (oss.py, swarmfish.py, stack_status.py).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Logic — Current deploy sequence vs. what it should be</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  subgraph current["Current (most scripts)"]
+    direction TB
+    c1["docker cp src dst"] --> c2["rm -f __pycache__/*.pyc"]
+    c2 --> c3["echo OK"]
+    c3 --> c4{"caller restarts<br/>run_ui?"}
+    c4 -- "they forget sometimes" --> c5["module cache holds<br/>old class"]
+    c4 -- yes --> c6["new code active"]
+  end
+
+  subgraph desired["With shared lib (DEC-026 refactor)"]
+    direction TB
+    d1["py_compile src"] --> d2{"syntax OK?"}
+    d2 -- no --> dfail["FAIL — don't deploy"]
+    d2 -- yes --> d3["md5sum src"]
+    d3 --> d4["docker cp src dst"]
+    d4 --> d5["docker exec md5sum dst"]
+    d5 --> d6{"local md5 ==<br/>remote md5?"}
+    d6 -- no --> dfail2["FAIL — mis-deploy detected"]
+    d6 -- yes --> d7["rm -f pycache"]
+    d7 --> d8["find /a0 -name <file><br/>scan for orphans"]
+    d8 --> d9{"orphans with<br/>different md5?"}
+    d9 -- yes --> dwarn["WARN — stale copies"]
+    d9 -- no --> dok["OK — clean state"]
+    dwarn --> dok
+    dok --> d10["print restart command<br/>for caller"]
+  end
+
+  style current fill:#1c2128,stroke:#f85149
+  style desired fill:#1c2128,stroke:#3fb950
+  style c5 fill:#f8514920
+  style dfail fill:#f8514920,stroke:#f85149
+  style dfail2 fill:#f8514920,stroke:#f85149
+  style dwarn fill:#d2992220,stroke:#d29922
+  style dok fill:#3fb95020,stroke:#3fb950
+    </div>
+    <div class="caption">The desired flow adds three gates current scripts skip: pre-deploy syntax check, post-deploy md5 verification (the gate that would have caught tonight's mis-deploy), and orphan scan (the gate that surfaces accumulated stale copies before they mislead the next debugging session).</div>
+  </div>
+
+  <h3>Tonight's incident as empirical evidence</h3>
+  <div class="callout err">
+    <strong>2026-05-15 ~22:30 ET — heartbeat fix shipped to wrong path.</strong>
+    <p>The previous Kestrel (Sonnet 4.6) committed <code>69b725d</code> with a correct fix for <code>_last_user_msg_is_real</code>. To deploy, instead of running <code>scripts/install_idle_engine.sh</code> (which would have used <code>EXT_DEST</code> correctly), the deploy was done manually:</p>
+    <pre><code>docker cp ".../extensions/tool_execute_after/_70_idle_trigger.py" \
+  "exocortex_v16:/a0/usr/agents/agent0/extensions/tool_execute_after/_70_idle_trigger.py"</code></pre>
+    <p>The destination is missing the required <code>python/</code> segment. The file landed at a path A0's loader never reads. <code>docker cp</code> reported success. No verification step ran. The fix sat invisible while the buggy version continued executing.</p>
+    <p>Detection happened only because Opus 4.7 asked "are we sure the fix actually deployed?" and ran <code>md5sum</code> against the canonical path. Without that ad-hoc verification, the bug would have persisted indefinitely while looking solved.</p>
+    <p><strong>Lesson:</strong> An install script that does the right thing exists. The failure was bypassing it. The fix is to make the right thing easier than the wrong thing — extract a shared <code>install_file()</code> with verification baked in, so every script gets the gate automatically.</p>
+  </div>
+
+  <h3>The DEC-026 shared library refactor — proposed</h3>
+  <p>Target: <code>scripts/lib/install_common.sh</code>, sourced at the top of every <code>install_*.sh</code>. Functions extracted:</p>
+  <ul>
+    <li><code>_exec()</code> — <code>MSYS_NO_PATHCONV=1 docker exec</code> wrapper for Windows Git Bash path-translation immunity.</li>
+    <li><code>get_containers()</code> — returns the active container list (<code>exocortex_v16</code>, <code>exocortex_v17</code>), supports <code>CONTAINER_NAME</code> env override.</li>
+    <li><code>install_file()</code> — copies a file with these gates: pre-deploy <code>py_compile</code> (for <code>*.py</code>), local md5 computation, <code>docker cp</code>, post-deploy md5 verification against the deployed copy. Fails loudly on mismatch.</li>
+    <li><code>install_file_if_missing()</code> — same but skips if destination already exists. For user-edit-survivable files like <code>interests.md</code>.</li>
+    <li><code>clear_pycache()</code> — standardized pycache wipe for a given module.</li>
+    <li><code>find_orphans()</code> — DEC-026 scan. <code>find /a0 -name &lt;file&gt; -not -path "*/__pycache__/*"</code> + md5 each result + warn on any that don't match the canonical version.</li>
+    <li><code>print_restart_hint()</code> — emits the <code>supervisorctl restart run_ui</code> command the caller needs to run after extension changes.</li>
+  </ul>
+
+  <h4>Refactor plan</h4>
+  <ol>
+    <li>Build <code>scripts/lib/install_common.sh</code> with the seven functions above. Self-contained, no dependencies.</li>
+    <li>Migrate <code>install_idle_engine.sh</code> first (most recently modified, well-understood). Replace its local <code>install_file()</code> with <code>source scripts/lib/install_common.sh</code> + the canonical call. Verify the script produces identical behavior on both containers.</li>
+    <li>Migrate the other 3 scripts with <code>install_file()</code> definitions (<code>artifact_browser</code>, <code>ontology</code>, <code>sleep_consolidation</code>) one at a time. These are easy wins — the local function is already shaped right.</li>
+    <li>Migrate the 23 scripts with inline <code>docker cp</code> incrementally. Lower priority — they work today, just without verification. Take them in clusters as related work touches each.</li>
+    <li>Delete <code>scripts/deploy_extension.sh</code> (the helper I drafted earlier tonight as a standalone). Rebuild as a thin CLI wrapper: <code>source install_common.sh && install_file "$@"</code>. Single source of truth for the verification logic.</li>
+  </ol>
+
+  <p>This is queued as separate work — not blocking on the heartbeat-fix redeploy. The redeploy uses <code>install_idle_engine.sh</code> as it is today (correct <code>EXT_DEST</code>, no verification — verification has to be done manually after). The shared-lib extraction happens after the immediate fire is out.</p>
+
+  <h3>Per-deployment gates (DEC-031, from playbook)</h3>
+  <p>Standing rule even before the shared lib lands: every extension deploy must clear all five gates in order. Skipping any of 4-5 because 1-3 looked clean is the failure mode that produced tonight's incident.</p>
+  <ol>
+    <li><strong>Syntax check passes</strong>: <code>python3 -m py_compile &lt;file&gt;.py</code></li>
+    <li><strong>File deployed</strong>: <code>docker cp</code> exit 0</li>
+    <li><strong>Pycache cleared</strong>: all <code>.cpython-*.pyc</code> files for this module removed</li>
+    <li><strong>Symbol verified in container</strong>: <code>docker exec md5sum</code> matches local md5 (or <code>grep</code> for a unique string in the deployed file)</li>
+    <li><strong>Log tag appears</strong>: send a test trigger, check <code>docker logs --since=60s | grep '[TAG]'</code></li>
+  </ol>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-02">§02 Extension Load Path</a> — explains why the <code>python/</code> segment is non-negotiable</li>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — the catalog of "this kind of thing keeps biting" entries</li>
+    <li><a href="#sec-05">§05 Idle Engine</a> — current state of the deployment that this section's gap allowed to ship broken</li>
+  </ul>
+</section>
+
+<section id="sec-15">
+  <h2><span class="num">15</span>Failure Modes &amp; Recovery Logic <a class="anchor" href="#sec-15">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Burst (fixed May 15 by lock), retry storm (fixed May 15 by no-decrement), overlap (current gap — daemon doesn't kill old context on stale-clear), OOM cascade (downstream effect of overlap on GPU-collision substrate).</p>
+</section>
+
+<section id="sec-16">
+  <h2><span class="num">16</span>Component Index <a class="anchor" href="#sec-16">#</a></h2>
+  <p class="section-summary"><span class="status todo">todo</span> Alphabetical: each component → its files → state keys it touches → fragile seams that involve it. Designed for "I'm debugging X, what's adjacent" lookups.</p>
+</section>
+
+</main>
+
+<!-- ╔════════════════ MERMAID INIT ════════════════╗ -->
+<script src="lib/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    background:        '#161b22',
+    primaryColor:      '#1c2128',
+    primaryTextColor:  '#c9d1d9',
+    primaryBorderColor:'#a371f7',
+    lineColor:         '#8b949e',
+    secondaryColor:    '#161b22',
+    tertiaryColor:     '#0d1117',
+    fontFamily:        '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSize:          '14px'
+  },
+  flowchart:    { curve: 'basis', padding: 16 },
+  sequence:     { actorMargin: 56, messageMargin: 40 }
+});
+</script>
+
+</body>
+</html>
