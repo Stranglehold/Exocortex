@@ -23,6 +23,12 @@ for arg in "$@"; do
   esac
 done
 
+# Default container target inherited by env-aware child scripts (oss_plugin,
+# swarmfish_plugin, artifact_system, metacognitive, epistemic, write_guard…).
+# In-container runs use the docker shim below, which ignores the name entirely;
+# this only matters for host-side execution. Override with CONTAINER=... .
+export CONTAINER="${CONTAINER:-exocortex_v16}"
+
 # ── Color output ──────────────────────────────────────────────────────────────
 
 GREEN='\033[0;32m'
@@ -119,6 +125,14 @@ LAYERS=(
   "8|Ontology layer                     |scripts/install_ontology.sh"
   "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
   "10|Document library (tools + catalog) |scripts/install_library.sh"
+  "11|OSS V2 plugin (Intel tab + tools) |services/oss_plugin/install.sh"
+  "11|SWARMFISH V2 plugin (committee)   |services/swarmfish_plugin/install.sh"
+  "12|Idle engine + idle_watch daemon   |scripts/install_idle_engine.sh"
+  "13|Theme system (presets + editor)   |scripts/install_theme_editor.sh"
+  "14|Metacognitive injection           |scripts/install_metacognitive_injection.sh"
+  "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
+  "14|Write guard + validator           |scripts/install_write_guard.sh"
+  "15|Artifact system                   |scripts/install_artifact_system.sh"
 )
 
 CHECK_SCRIPTS=(

@@ -76,7 +76,10 @@ docker cp "$TOOLS_SRC/swarmfish_calibration.py" "$A0_TOOLS/"
 docker cp "$TOOLS_SRC/swarmfish_outcome.py"     "$A0_TOOLS/"
 docker cp "$TOOLS_SRC/swarmfish_panel.py"       "$A0_TOOLS/"
 
-# Tool documentation also goes to Exocortex plugin prompts
+# Tool documentation also goes to Exocortex plugin prompts.
+# Ensure the dir exists — on a fresh one-shot install swarmfish may run before
+# the exocortex plugin, and `docker cp` into a missing dir would abort (set -e).
+_exec "$CONTAINER" mkdir -p "/a0/usr/plugins/exocortex/prompts"
 EXOCORTEX_PROMPTS="$CONTAINER:/a0/usr/plugins/exocortex/prompts"
 docker cp "$PROMPT_SRC/agent.system.tool.swarmfish.md" "$EXOCORTEX_PROMPTS/"
 

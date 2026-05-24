@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CONTAINER="${1:-agent-zero}"
+CONTAINER="${1:-${CONTAINER:-exocortex_v16}}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 

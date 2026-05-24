@@ -9,7 +9,7 @@
 
 set -e
 
-CONTAINER="${1:-flamboyant_bell}"
+CONTAINER="${1:-${CONTAINER:-exocortex_v16}}"
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PATCHES="$REPO_DIR/patches"
 

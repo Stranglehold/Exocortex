@@ -136,6 +136,7 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "${EXOCORTEX_DEST}/field-reports" \
         "${EXOCORTEX_DEST}/self-improvement" \
         "${EXOCORTEX_DEST}/self-improvement/checkpoints" \
+        "/a0/usr/skills/auto-generated" \
         "${PLUGIN_WEBUI}/right_canvas_register_surfaces" \
         "${PLUGIN_WEBUI}/right-canvas-panels"
     do
@@ -203,6 +204,52 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "workshop-panel.html" \
         "${CONTAINER}"
 
+    # ── Idle-watch daemon (the supervisord-managed firing engine) ──
+    # Repo source of truth: services/idle_watch.py. Deployed to the persistent
+    # Exocortex dir. This is the daemon that actually runs the idle cycles.
+    install_file \
+        "${REPO_DIR}/services/idle_watch.py" \
+        "${EXOCORTEX_DEST}/idle_watch.py" \
+        "idle_watch.py (supervisord daemon)" \
+        "${CONTAINER}"
+
+    # ── Supervisord program entry for idle_watch ──
+    # /etc/supervisor/conf.d/supervisord.conf is a BASE-image path (wiped on A0
+    # update) — re-applied here on every install so the daemon is always wired.
+    # Idempotent: only appended if [program:idle_watch] is absent.
+    _exec "${CONTAINER}" python3 - <<'PYEOF'
+import os
+conf = "/etc/supervisor/conf.d/supervisord.conf"
+block = """
+[program:idle_watch]
+command=/opt/venv-a0/bin/python3 -u /a0/usr/Exocortex/idle_watch.py
+environment=
+user=root
+stopwaitsecs=5
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+autorestart=true
+startretries=10
+stopasgroup=true
+killasgroup=true
+"""
+try:
+    txt = open(conf).read() if os.path.exists(conf) else ""
+    if "[program:idle_watch]" not in txt:
+        with open(conf, "a") as f:
+            f.write(block)
+        print("  OK    supervisord [program:idle_watch] added")
+    else:
+        print("  OK    supervisord [program:idle_watch] already present")
+except Exception as e:
+    print(f"  ERR   supervisord entry failed: {e}")
+PYEOF
+
+    # Reload supervisord so the daemon is live (no-op if already running).
+    _exec "${CONTAINER}" sh -c 'supervisorctl reread >/dev/null 2>&1; supervisorctl update >/dev/null 2>&1; echo "  OK    supervisorctl reread/update"' || echo "  ~ supervisorctl reload skipped (run manually if needed)"
+
     # ── config.json: merge idle_time_engine section ──
     # Read-merge-write: only adds the section if it doesn't already exist.
     _exec "${CONTAINER}" python3 - <<'PYEOF'
@@ -213,7 +260,10 @@ default_section = {
     "idle_threshold_seconds": 1800,
     "cooldown_seconds": 3600,
     "max_steps_per_cycle": 20,
-    "workshop_field_ratio": "3:1"
+    "workshop_field_ratio": "3:1",
+    "cache_warmer_enabled": False,
+    "cache_keepalive_interval_seconds": 600,
+    "cache_warm_timeout_seconds": 900
 }
 try:
     cfg = {}

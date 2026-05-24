@@ -7,7 +7,7 @@
 
 set -e
 
-CONTAINER="${1:-flamboyant_bell}"
+CONTAINER="${1:-${CONTAINER:-exocortex_v16}}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_14_metacognitive_injection.py"
 EXT_DST="/a0/python/extensions/before_main_llm_call/_14_metacognitive_injection.py"
