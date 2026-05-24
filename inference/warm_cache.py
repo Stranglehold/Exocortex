@@ -130,7 +130,6 @@ def send_warmup(system_prompt: str) -> int:
             {"role": "user", "content": "Respond with OK."},
         ],
         "max_tokens": 1,
-        "enable_thinking": False,
         "cache_prompt": True,
         "stream": False,
     }).encode("utf-8")

@@ -1,0 +1,15 @@
+
+  VRAM + Throughput Sweep
+  Port: 1235  |  Max gen tokens/step: 80
+  Baseline VRAM (server idle): 24,007 MiB
+  Steps: ['2K', '5K', '10K', '20K', '40K', '60K', '80K', '100K', '120K', '130K']
+
+  Ctx (K tok) | Actual toks |  Peak VRAM |  KV delta | Prefill t/s | Decode t/s | Note
+  ------------------------------------------------------------------------------------
+         2.0K |         516 |    24,007 |        +0 |        50.4 |      11.53 | !! VRAM at limit
+         5.0K |       2,232 |    24,009 |        +2 |        54.4 |      15.83 | !! VRAM at limit
+        10.0K |       3,372 |    24,029 |       +22 |        49.8 |      13.59 | !! VRAM at limit
+        20.0K |       6,230 |    24,183 |      +176 |        29.1 |       1.32 | !! VRAM at limit !! CPU offload likely
+        40.0K |      11,946 |    24,194 |      +187 |        33.5 |      10.87 | !! VRAM at limit
+        60.0K |      11,941 |    24,200 |      +193 |        28.3 |      10.80 | !! VRAM at limit
+        80.0K | 

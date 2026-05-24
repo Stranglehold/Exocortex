@@ -19,8 +19,7 @@ import urllib.request
 import urllib.error
 from typing import Any
 
-from python.helpers.extension import Extension
-from python.helpers import log
+from helpers.extension import Extension
 from agent import LoopData
 
 WARM_FLAG = "_cache_warmed"
@@ -51,7 +50,7 @@ def _http_post_json(url: str, payload: dict, timeout: int = 600) -> dict | None:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.URLError as e:
-        log.warning("[CACHE-WARM] HTTP error: %s", e)
+        print(f"[CACHE-WARM] HTTP error: {e}", flush=True)
         return None
 
 
@@ -72,7 +71,7 @@ class CacheWarmer(Extension):
         # assembled — this is the exact same prompt A0 will send (perfect prefix match).
         system_parts = getattr(loop_data, "system", None)
         if not system_parts:
-            log.warning("[CACHE-WARM] loop_data.system empty — skipping warm-up")
+            print("[CACHE-WARM] loop_data.system empty — skipping warm-up", flush=True)
             self.agent.set_data(WARM_FLAG, True)
             return
 
@@ -90,9 +89,9 @@ class CacheWarmer(Extension):
             # n_past can be None in the JSON when the slot is freshly initialized
             n_past = slot.get("n_past") or 0
             if n_past > HOT_THRESHOLD:
-                log.info(
-                    "[CACHE-WARM] Cache already hot (slot n_past=%d) — Turn 1 will be fast",
-                    n_past,
+                print(
+                    f"[CACHE-WARM] Cache already hot (slot n_past={n_past}) — Turn 1 will be fast",
+                    flush=True,
                 )
                 return True
         return False
@@ -100,12 +99,14 @@ class CacheWarmer(Extension):
     def _warm_cache(self, system_prompt: str):
         """
         Send a minimal completion with the full system prompt to populate KV cache.
-        max_tokens=1 stops immediately after prefill. enable_thinking=False avoids
-        generating reasoning tokens in this throw-away request.
+        max_tokens=1 stops immediately after prefill. Thinking is left enabled —
+        the server-side --reasoning off flag suppresses the empty template tags;
+        we don't want to disable genuine reasoning at the request level.
         """
-        log.info(
+        print(
             "[CACHE-WARM] Cache cold — warming KV cache (~3-5 min). "
-            "Turn 1 LLM call will be fast once this completes."
+            "Turn 1 LLM call will be fast once this completes.",
+            flush=True,
         )
         start = time.time()
 
@@ -116,7 +117,6 @@ class CacheWarmer(Extension):
                 {"role": "user", "content": "Respond with OK."},
             ],
             "max_tokens": 1,
-            "enable_thinking": False,
             "cache_prompt": True,
             "stream": False,
         }
@@ -126,10 +126,10 @@ class CacheWarmer(Extension):
 
         if result:
             prompt_tokens = result.get("usage", {}).get("prompt_tokens", 0)
-            log.info(
-                "[CACHE-WARM] Complete in %.1fs. Prefilled %d tokens. Cache is hot.",
-                elapsed,
-                prompt_tokens,
+            print(
+                f"[CACHE-WARM] Complete in {elapsed:.1f}s. "
+                f"Prefilled {prompt_tokens} tokens. Cache is hot.",
+                flush=True,
             )
         else:
-            log.warning("[CACHE-WARM] Warm-up may have failed (%.1fs elapsed).", elapsed)
+            print(f"[CACHE-WARM] Warm-up may have failed ({elapsed:.1f}s elapsed).", flush=True)
