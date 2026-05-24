@@ -84,8 +84,11 @@ export function createIntelStore() {
 
     async connect() {
       this.connected = true;
+      if (this._pollTimer) clearInterval(this._pollTimer);  // guard: re-open must not stack intervals
       await this.refresh();
-      this._pollTimer = setInterval(() => this._tick(), 30_000);
+      // Live auto-update: _tick refreshes health every cycle, and the visible
+      // tab's data when the Intel surface is the active canvas tab.
+      this._pollTimer = setInterval(() => this._tick(), 12_000);
     },
 
     disconnect() {
@@ -127,6 +130,27 @@ export function createIntelStore() {
     async _tick() {
       if (!this.connected) return;
       try { await this._loadHealth(); } catch (_) {}
+
+      // Refresh tab data only while the Intel surface is actually visible —
+      // avoids wasted calls when another canvas tab is open. Falls back to
+      // page-visibility if the canvas store isn't reachable.
+      let visible = true;
+      try {
+        const rc = (typeof Alpine !== "undefined") ? Alpine.store("rightCanvas") : null;
+        visible = rc ? rc.isSurfaceVisible("intelligence") : !document.hidden;
+      } catch (_) {}
+      if (!visible) return;
+
+      // Non-destructive auto-refresh of the visible tab (no loading skeleton).
+      // Skip triage while items are selected (don't clear the user's checkboxes);
+      // skip analysis (heavy, run on demand via the Analyze button).
+      try {
+        if (this.tab === "triage")          { if (this.triageSel.length === 0) await this.loadStaged(); }
+        else if (this.tab === "ledger")     await this.loadLedger();
+        else if (this.tab === "hypotheses") await this.loadHypotheses();
+        else if (this.tab === "predict")    await this.loadSwfSessions();
+        else if (this.tab === "status")     await this._loadSources();
+      } catch (_) {}
     },
 
     // ── Health / Status ───────────────────────────────────────────────────────

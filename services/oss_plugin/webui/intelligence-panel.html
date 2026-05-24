@@ -3,38 +3,42 @@
 <style>
 /* ── Design System Tokens ─────────────────────────────────────── */
 .ip {
-  --void:    #060810;
-  --base:    #0a0f1a;
-  --raised:  #0f1629;
-  --overlay: #151d35;
-  --border:  rgba(255,255,255,.07);
-  --border-hi: rgba(255,255,255,.14);
+  /* ── Theme-aware: tokens map onto the active A0 theme (mgs3/codec/idroid/…),
+        with the original indigo palette as fallback when no theme var is set. ── */
 
-  /* Structural accent — cool indigo-cyan */
-  --cyan:      #4fc3f7;
-  --cyan-dim:  rgba(79,195,247,.12);
-  --cyan-glow: 0 0 12px rgba(79,195,247,.3);
+  /* Structural surfaces */
+  --void:    var(--color-background, #060810);
+  --base:    var(--color-background, #0a0f1a);
+  --raised:  var(--color-panel, #0f1629);
+  --overlay: color-mix(in srgb, var(--color-panel, #151d35) 80%, var(--color-text, #fff) 8%);
+  --border:  var(--color-border, rgba(255,255,255,.07));
+  --border-hi: color-mix(in srgb, var(--color-border, rgba(255,255,255,.14)) 55%, var(--color-text, #fff) 22%);
 
-  /* Attention accent — amber only for signals */
-  --amber:     #f59e0b;
-  --amber-dim: rgba(245,158,11,.12);
-  --amber-glow: 0 0 10px rgba(245,158,11,.3);
+  /* Structural accent → theme accent */
+  --cyan:      var(--color-accent, #4fc3f7);
+  --cyan-dim:  color-mix(in srgb, var(--color-accent, #4fc3f7) 14%, transparent);
+  --cyan-glow: 0 0 12px color-mix(in srgb, var(--color-accent, #4fc3f7) 32%, transparent);
 
-  /* Semantic */
+  /* Attention accent → theme warning */
+  --amber:     var(--color-warning-text, #f59e0b);
+  --amber-dim: color-mix(in srgb, var(--color-warning-text, #f59e0b) 14%, transparent);
+  --amber-glow: 0 0 10px color-mix(in srgb, var(--color-warning-text, #f59e0b) 30%, transparent);
+
+  /* Semantic — themes lack a success token, so --ok keeps its green */
   --ok:       #34d399;
   --ok-dim:   rgba(52,211,153,.12);
-  --danger:   #f87171;
-  --danger-dim: rgba(248,113,113,.12);
-  --info:     #60a5fa;
+  --danger:   var(--color-error-text, #f87171);
+  --danger-dim: color-mix(in srgb, var(--color-error-text, #f87171) 14%, transparent);
+  --info:     var(--color-primary, #60a5fa);
 
-  /* Text hierarchy */
-  --txt-1:  #e8ecf2;
-  --txt-2:  #9ba8bb;
-  --txt-3:  #556070;
-  --txt-dim: #2d3545;
+  /* Text hierarchy → theme text */
+  --txt-1:  var(--color-text, #e8ecf2);
+  --txt-2:  var(--color-text-muted, #9ba8bb);
+  --txt-3:  color-mix(in srgb, var(--color-text-muted, #556070) 72%, transparent);
+  --txt-dim: color-mix(in srgb, var(--color-text-muted, #2d3545) 38%, transparent);
 
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "IBM Plex Mono", "Consolas", monospace;
+  --font-body: var(--font-family-main, "Inter", system-ui, sans-serif);
+  --font-mono: var(--font-family-code, "JetBrains Mono", "IBM Plex Mono", "Consolas", monospace);
 
   /* Spring-eased cubic-bezier for overshoot feel */
   --spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -251,6 +255,8 @@
   padding: 9px 11px;
   margin-bottom: 7px;
   transition: border-color var(--t-fast);
+  /* Enter animation — with keyed x-for, only newly-arrived items animate */
+  animation: ip-slide-up .26s var(--ease-out) both;
 }
 .ip-card:hover { border-color: var(--border-hi); }
 .ip-card.accent { border-color: rgba(79,195,247,.2); box-shadow: 0 0 0 1px rgba(79,195,247,.06) inset; }
@@ -580,6 +586,7 @@
   padding: 5px 0;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
+  animation: ip-slide-up .26s var(--ease-out) both;
 }
 .ip-session-row:last-child { border-bottom: none; }
 .ip-session-q {
