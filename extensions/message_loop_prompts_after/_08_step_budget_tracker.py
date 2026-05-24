@@ -105,11 +105,29 @@ class StepBudgetTracker(Extension):
                 warning = _WARN_50.format(used=step, max=max_steps)
                 fired.add("50")
 
-            existing = str(user_msg.get("content", ""))
-            if warning:
-                user_msg["content"] = f"{warning}\n\n{step_tag} {existing}"
-            else:
-                user_msg["content"] = f"{step_tag} {existing}"
+            # Cache-safe injection (2026-05-18). Previously this prepended
+            # `{step_tag} {warning}` into user_msg["content"] — i.e. into the
+            # last message of loop_data.history_output, which sits inside the
+            # KV-cache-able prefix region. Because the tag rode whatever message
+            # was current each turn, the SAME historical message rendered WITH
+            # the tag the turn it was current and WITHOUT it every later turn —
+            # shifting the prompt prefix and destroying server prefix-cache
+            # reuse (measured: first turn-to-turn divergence at ~82.7%, ~9 min
+            # cold prefill every turn). Volatile per-turn content must live
+            # AFTER the stable prefix. extras_temporary is appended after
+            # history by prepare_prompt() and cleared each turn, so it stays
+            # per-turn fresh without mutating the cacheable prefix.
+            try:
+                if getattr(loop_data, "extras_temporary", None) is None:
+                    loop_data.extras_temporary = {}
+                loop_data.extras_temporary["step_budget"] = (
+                    step_tag if not warning else f"{step_tag}\n{warning}"
+                )
+            except Exception:
+                # Never fall back to history mutation — that reintroduces the
+                # cache-busting prefix shift. Skipping the annotation for one
+                # turn is strictly preferable.
+                pass
 
             if step % 10 == 0 or warning:
                 print(

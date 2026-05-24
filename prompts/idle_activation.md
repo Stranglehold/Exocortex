@@ -92,10 +92,13 @@ python3 /a0/usr/Exocortex/self-improvement/cycle_close.py \
   --pages-deepened <N> \
   --skills-captured <N> \
   --memories-saved <N> \
+  --steps-used <N> \
   --priority <routine|notable|urgent> \
   --activity "<one-line summary of what this cycle accomplished>" \
   --status <completed|interrupted|circuit_breaker>
 ```
+
+`--steps-used` is your tool-call count for this cycle (one step = one tool invocation). An approximate count is fine — even a ballpark gives the office panel useful observability. Out of {max_steps} max.
 
 Priority guide:
 - **routine** — consolidation ran, wiki deepened, no anomalies

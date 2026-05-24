@@ -132,6 +132,21 @@ else
   echo "[PATCH] WARNING: $PROMPT_SRC not found — skipped."
 fi
 
+# ── 2c. Prompt: agent.system.main.solving.md (GAP-004 Phase A) ───────────────
+# Step 1 framing line: tells the model the injected [REASONING STATE] and
+# [PACE] blocks are its own working memory from prior turns, not user status
+# updates — and not to comment on them. Pairs with the _22/_23 injectors.
+
+SOLVING_SRC="$PATCH_DIR/prompts/agent.system.main.solving.md"
+SOLVING_DST="/a0/prompts/agent.system.main.solving.md"
+
+if [ -f "$SOLVING_SRC" ]; then
+  docker cp "$SOLVING_SRC" "$CONTAINER:$SOLVING_DST"
+  echo "[PATCH] prompts/agent.system.main.solving.md deployed (GAP-004 Phase A)."
+else
+  echo "[PATCH] WARNING: $SOLVING_SRC not found — skipped."
+fi
+
 # ── 2d. Prompt: agent.system.datetime.md (safer format for local models) ─────
 # Original: "- current datetime: {{date_time}}\n- rely on this info always up to date"
 # Local models (Gemma 4) treat the "- key: value" bullet pattern as JSON and

@@ -87,10 +87,21 @@ class PacePlanInjector(Extension):
 # ── Inline helpers (no cross-extension imports) ───────────────────────────────
 
 def _build_injection_block(plan: dict) -> str:
-    """Build the [PACE PLAN] read-only context block.
+    """Build the compressed [PACE PLAN] read-only context block.
 
-    Mirrors _14_pace_plan_generator._build_injection_block. Inlined to keep
-    this extension self-contained.
+    Compression decision (Kestrel 2026-05-17, predeployment investigation):
+    the model only needs the *current move* — the active tier's action on the
+    current step. The full multi-step / four-tier plan was ~530 fixed tokens
+    per turn with ~11 of 12 tier-lines irrelevant on any given turn. The full
+    plan still lives on agent._pace_plan for the Supervisor (get_plan_context /
+    get_current_step_action read it directly); only the model's view is trimmed.
+
+    _14_pace_plan_generator._build_injection_block is intentionally NOT changed
+    — that injection is discarded in before_main_llm_call anyway (seam #7), and
+    the Supervisor reads the raw dict, not the rendered block. This trim is
+    scoped to the working-hook consumer only.
+
+    Compressed block ≈ ~180 tokens (was ~530).
     """
     current_step = plan.get("current_step", 1)
     active_tier  = plan.get("active_tier", "primary")
@@ -107,19 +118,29 @@ def _build_injection_block(plan: dict) -> str:
         "",
     ]
 
-    for step in steps:
-        n              = step.get("step", 0)
-        name           = step.get("name", "")
-        current_marker = " ◄ CURRENT" if n == current_step else ""
-        lines.append(f"Step {n} — {name}{current_marker}")
-        for tier in TIERS:
-            label  = f"  {'PACE'[TIERS.index(tier)]}({tier})"
-            action = step.get(tier, "")
-            if tier == active_tier and n == current_step:
-                lines.append(f"{label}: {action}  ← EXECUTE THIS TIER")
-            else:
-                lines.append(f"{label}: {action}")
-        lines.append("")
+    # Find the current step only
+    cur = next((s for s in steps if s.get("step", 0) == current_step), None)
+    if cur is None:
+        # Out-of-range / completed plan — emit header + a safe note rather than nothing
+        lines.append("(No active step — plan complete or step index out of range.)")
+    else:
+        name   = cur.get("name", "")
+        action = cur.get(active_tier, "")
+        lines.append(f"Step {current_step}/{total} — {name} ◄ CURRENT")
+        lines.append(f"  {active_tier.upper()}: {action}  ← EXECUTE THIS")
+        # Escalation path = tiers strictly after the current active tier
+        idx = TIERS.index(active_tier) if active_tier in TIERS else 0
+        remaining = TIERS[idx + 1:]
+        if remaining:
+            lines.append(
+                "  (If blocked, escalate via _pace_advance_tier: "
+                + " → ".join(remaining) + ".)"
+            )
+        else:
+            lines.append(
+                "  (Emergency tier — preserve partial work, acknowledge the gap, do not fabricate.)"
+            )
+    lines.append("")
 
     lines += [
         "RULES:",

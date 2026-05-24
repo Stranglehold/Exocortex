@@ -50,6 +50,7 @@ echo "Installing Exocortex v1.13 curated extension stack..."
 echo ""
 
 # ── Remove stale/wrong-hook extensions (profile path) ────────────────────────
+# Tombstoned: archived to extensions/archived/ — see DEC-026 (audit_extensions.py).
 echo "Removing stale extensions from profile path..."
 rm -f "$TARGET_ROOT/before_main_llm_call/_21_constraint_heartbeat.py"
 rm -f "$TARGET_ROOT/before_main_llm_call/_09_injection_gate.py"
@@ -66,6 +67,40 @@ rm -f "$TARGET_ROOT/message_loop_prompts_after/_19_skill_suggester.py"
 rm -f "$TARGET_ROOT/message_loop_prompts_after/_57_orchestration_mode.py"
 rm -f "$TARGET_ROOT/message_loop_prompts_after/_58_ontology_query.py"
 rm -f "$TARGET_ROOT/message_loop_prompts_after/_95_tiered_tool_injection.py"
+rm -f "$TARGET_ROOT/message_loop_end/_16_verification_gate.py"
+echo "  done."
+echo ""
+
+# ── Remove stale extensions from WRONG-PATH (missing python/ segment) ────────
+# A0's loader only reads /a0/usr/agents/agent0/extensions/python/<hook>/. The
+# path without the python/ segment is invisible to the loader; anything there
+# is silently dead. The 2026-05-16 audit (scripts/audit_extensions.py) found
+# 7 DEAD files at this wrong path on v16 and 10 on v17. Scrub the same set
+# of tombstoned filenames here so the wrong-path no longer fools future
+# debugging.
+WRONG_PATH_ROOT="/a0/usr/agents/agent0/extensions"
+echo "Removing stale extensions from wrong-path (missing python/ segment)..."
+for HOOK_DIR in before_main_llm_call message_loop_prompts_after message_loop_end; do
+  for STALE_FILE in \
+    _09_context_pruner.py \
+    _09_injection_gate.py \
+    _14_metacognitive_injection.py \
+    _16_tool_registry.py \
+    _16_verification_gate.py \
+    _17_orchestration_gate.py \
+    _18_injection_budget.py \
+    _18_memory_catalog.py \
+    _19_context_pruner.py \
+    _19_skill_suggester.py \
+    _21_constraint_heartbeat.py \
+    _57_orchestration_mode.py \
+    _58_ontology_query.py \
+    _71_cache_warmer.py \
+    _95_tiered_tool_injection.py \
+  ; do
+    rm -f "$WRONG_PATH_ROOT/$HOOK_DIR/$STALE_FILE"
+  done
+done
 echo "  done."
 echo ""
 
