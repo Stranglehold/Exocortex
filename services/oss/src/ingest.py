@@ -1019,41 +1019,186 @@ def _init_contradict_cursor() -> int:
 _SWARMFISH_V2_URL     = os.environ.get("SWARMFISH_V2_URL", "")
 _SWARMFISH_V2_API_KEY = os.environ.get("SWARMFISH_V2_API_KEY", "")
 _SWARMFISH_V2_MIN_CLAIMS = int(os.environ.get("SWARMFISH_V2_MIN_NEW_CLAIMS", "10"))
+# Resolution horizon for auto-generated forecasts (RESOLVE cycle web-verifies at deadline).
+_FORECAST_HORIZON_DAYS = int(os.environ.get("OSS_FORECAST_HORIZON_DAYS", "30"))
+# Collection liveness: alarm if newest claim is older than this while ingestion is active.
+_LIVENESS_ALARM_HOURS = float(os.environ.get("OSS_LIVENESS_ALARM_HOURS", "6"))
 
 
 def _trigger_swarmfish_v2_predictions(new_claims: int, topics: list) -> None:
     """
-    Fire SWARMFISH V2 prediction for each active topic after a significant ingest.
+    Fire SWARMFISH V2 prediction for each active topic, then REGISTER the forecast
+    as an OSS hypothesis with real falsification conditions and a resolution
+    deadline so the RESOLVE cycle can web-verify it against reality.
 
-    Runs in a background thread (fire-and-forget). Does not block the ingest loop.
-    Skips gracefully if SWARMFISH_V2_URL is not configured.
+    Prior bug (fixed 2026-05-24, INTELLIGENCE_LOOP_BUILDPLAN_L3 Phase 1a):
+    this only logged consensus_confidence and discarded the forecast — the
+    hypothesis was never registered and the falsification_checklist was thrown
+    away, so nothing could ever be resolved (the loop never closed).
+
+    Crisp dated question (Phase 1b / Decision 2): instead of the old
+    unresolvable "assess trajectory confidence", ask a horizon-bounded outcome
+    question and attach an explicit resolution deadline to each prediction.
+
+    Runs in a background thread (fire-and-forget). Skips gracefully if
+    SWARMFISH_V2_URL is not configured.
     """
     if not _SWARMFISH_V2_URL or not _SWARMFISH_V2_API_KEY:
         return
-    import urllib.request
-    endpoint = f"{_SWARMFISH_V2_URL}/api/plugins/swarmfish/api_swarmfish_predict"
-    headers  = {"Content-Type": "application/json", "X-API-KEY": _SWARMFISH_V2_API_KEY}
+    import urllib.request, hashlib
+    from datetime import timedelta
+    import hypothesis  # local import: hypothesis.py has no dependency on ingest
+
+    predict_ep = f"{_SWARMFISH_V2_URL}/api/plugins/swarmfish/api_swarmfish_predict"
+    headers    = {"Content-Type": "application/json", "X-API-KEY": _SWARMFISH_V2_API_KEY}
+
+    now      = datetime.now(timezone.utc)
+    deadline = (now + timedelta(days=_FORECAST_HORIZON_DAYS)).date().isoformat()
+    month    = now.strftime("%b %Y")
+
     for topic in topics:
         tag   = topic.get("tag",          "unknown")
         label = topic.get("display_name") or tag
-        body  = json.dumps({
-            "question":      (
-                f"Assess the current situation for: {label}. "
-                f"{new_claims} new intelligence items detected in the latest ingest pass. "
-                "Based on recent signal flow, evaluate trajectory confidence."
-            ),
-            "session_label": f"auto_{tag}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}",
+
+        # Crisp, dated, outcome-specific question that yields resolvable
+        # falsification conditions (vs the old "trajectory confidence" vibe).
+        question = (
+            f"Forecast for '{label}' over the next {_FORECAST_HORIZON_DAYS} days "
+            f"(resolution by {deadline}). {new_claims} new intelligence items in the "
+            f"latest ingest pass. Assess the probability that the current baseline "
+            f"trajectory HOLDS — i.e., no material escalation beyond the present "
+            f"state. Provide specific, observable, dated falsification conditions: "
+            f"events that, if they occur by {deadline}, would break the baseline."
+        )
+        body = json.dumps({
+            "question":      question,
+            "session_label": f"auto_{tag}_{now.strftime('%Y%m%d_%H%M')}",
         }).encode()
+
         try:
-            req = urllib.request.Request(endpoint, data=body, method="POST", headers=headers)
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            req = urllib.request.Request(predict_ep, data=body, method="POST", headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read().decode())
-            log.info(
-                f"[SWARMFISH-V2] Auto-prediction for '{label}': "
-                f"consensus={result.get('consensus_confidence', '?')}"
-            )
         except Exception as e:
             log.warning(f"[SWARMFISH-V2] Auto-prediction failed for '{label}': {e}")
+            continue
+
+        if not result.get("ok"):
+            log.warning(f"[SWARMFISH-V2] Prediction not ok for '{label}': {result.get('error')}")
+            continue
+
+        consensus = result.get("consensus_confidence")
+        log.info(f"[SWARMFISH-V2] Auto-prediction for '{label}': consensus={consensus}")
+
+        # --- Phase 1a: capture the forecast (was discarded) -----------------
+        try:
+            _register_swarmfish_hypothesis(tag, label, month, deadline, result)
+        except Exception as e:
+            log.error(f"[SWARMFISH-V2] Failed to register hypothesis for '{label}': {e}")
+
+
+def _register_swarmfish_hypothesis(tag, label, month, deadline, result) -> None:
+    """Register a SWARMFISH forecast as an OSS hypothesis with real falsifiable_by
+    conditions + a resolution deadline. Idempotent per (topic, month)."""
+    import hashlib
+    import hypothesis
+
+    observation_label = f"{label} — {month}"
+    obs_hash = hashlib.sha256(f"{tag}:{observation_label}".encode()).hexdigest()
+    observation_id = int(obs_hash[:8], 16) % (2**31 - 1)
+
+    # Idempotency: one ACTIVE hypothesis per (topic, month) — don't pile duplicates.
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM hypothesis_registry "
+                "WHERE observation_id = %s AND status = 'ACTIVE' "
+                "ORDER BY created_at DESC LIMIT 1",
+                (observation_id,),
+            )
+            existing = cur.fetchone()
+    if existing:
+        log.info(f"[SWARMFISH-V2] Hypothesis already ACTIVE for obs {observation_id} "
+                 f"({observation_label}); skipping duplicate")
+        return
+
+    checklist = result.get("falsification_checklist") or []
+    consensus = result.get("consensus_confidence")
+    brief     = result.get("operator_brief") or ""
+
+    # Each falsification condition becomes an independently web-checkable prediction:
+    # the baseline forecast asserts the condition will NOT occur by the deadline.
+    predictions = [
+        {
+            "prediction":     f"Through {deadline}, the following will NOT occur: {cond}",
+            "falsifiable_by":  cond,
+            "deadline":        deadline,
+            "resolved":        False,
+        }
+        for cond in checklist[:8]
+        if isinstance(cond, str) and cond.strip()
+    ]
+
+    if not predictions:
+        log.warning(f"[SWARMFISH-V2] No falsification conditions returned for '{label}'; "
+                    f"registering baseline with empty checklist (not resolvable)")
+
+    reg = hypothesis.register_hypothesis(
+        observation_id=observation_id,
+        explanation=brief or f"SWARMFISH baseline forecast for {label}",
+        initial_confidence=float(consensus or 0.0),
+        predictions=predictions,
+    )
+    hid = reg["hypothesis_id"]
+
+    # Attribution columns (mirror /api/hypothesis/from_swarmfish).
+    source_profiles = [
+        {
+            "profile_name":  a.get("profile_name") or a.get("profile"),
+            "confidence":    a.get("confidence"),
+            "was_dissenter": a.get("was_dissenter", False),
+        }
+        for a in (result.get("assessments") or [])
+    ]
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE hypothesis_registry "
+                "SET swarmfish_session_id = %s, source_profiles = %s, "
+                "    auto_generated = TRUE, observation_label = %s "
+                "WHERE id = %s",
+                (result.get("session_id"),
+                 psycopg2.extras.Json(source_profiles),
+                 observation_label, hid),
+            )
+    log.info(f"[SWARMFISH-V2] Registered hypothesis #{hid} for '{observation_label}' "
+             f"with {len(predictions)} falsifiable predictions, deadline {deadline}")
+
+
+def _check_collection_liveness() -> None:
+    """Phase 0: alarm if ingestion is active but no claim has landed within
+    _LIVENESS_ALARM_HOURS. Prevents the silent collection-death that blinded the
+    system 3 days before the Apr-18 Hormuz re-closure (it just stopped, unnoticed)."""
+    if _stop_event.is_set():
+        return  # paused on purpose — not an alarm condition
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT EXTRACT(EPOCH FROM (now() - MAX(extracted_at))) "
+                            "AS age_s FROM claims")
+                row = cur.fetchone()
+        age_s = row.get("age_s") if row else None
+        if age_s is None:
+            return
+        age_h = float(age_s) / 3600.0
+        if age_h > _LIVENESS_ALARM_HOURS:
+            log.warning(
+                f"[LIVENESS-ALARM] Collection active but newest claim is {age_h:.1f}h old "
+                f"(> {_LIVENESS_ALARM_HOURS}h). Ingestion may be silently failing — "
+                f"check feed sources / ingest LLM endpoint."
+            )
+    except Exception as e:
+        log.error(f"[LIVENESS-ALARM] liveness check error: {e}")
 
 
 def run_scheduler():
@@ -1065,6 +1210,8 @@ def run_scheduler():
     log.info(f"[CONTRADICT] Forward-scan cursor initialized at claim_id={contradict_cursor}")
 
     while True:
+        # Phase 0: collection liveness alarm (self-guards when paused).
+        _check_collection_liveness()
         if not _stop_event.is_set():
             _new_claims = 0
             try:
