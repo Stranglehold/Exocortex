@@ -339,10 +339,37 @@
 **Instances:** `_13_reasoning_state.py`, `_14_metacognitive_injection.py`, `_14_pace_plan_generator.py`, `_15_htn_plan_selector.py`, `_16_tool_registry.py`, `_21_constraint_heartbeat.py`, `_50_supervisor_loop.py`, `_56_memory_enhancement.py`.
 
 
-<!-- BOOKKEEPING NOTE: DEC-029 through DEC-037 were assigned informally across
-     specs/ROADMAP/journals during the migration era and are not yet transcribed into
-     this formal log (backfill is a queued reconciliation task). The entries below
-     continue past the highest number in use to avoid collision. -->
+<!-- ════════════════════════════════════════════════════════════════════════
+     RECONCILIATION STATUS — DEC-029 through DEC-037 (gap between 028 and 038)
+     ════════════════════════════════════════════════════════════════════════
+     These numbers were used informally across the repo during Mar–Apr 2026 but
+     never transcribed here — AND the informal assignments CONFLICT across sources.
+     A faithful backfill is BLOCKED until Opus declares the canonical assignment
+     (the decision log is his doctrine; picking winners here would be fabrication).
+
+     Conflict map (audited 2026-05-25, Kestrel):
+       DEC-029 — TWO meanings:
+                 (a) chronology/decision_log_complete_20260309.md → "Agent Capability
+                     Awareness (Active-Draft)" (Session 060)
+                 (b) state/STATE.md → "BST v3.2: investigation demoted to tiebreak-only"
+       DEC-030 — TWO meanings:
+                 (a) chronology/decision_log_complete_20260309.md → "Exocortex as A0 Plugin"
+                 (b) state/STATE.md → "Extension path migration → /a0/usr/agents/agent0/
+                     extensions/python/ (persistence)"  ← the heavily-cited "profile migration"
+       DEC-031..037 — single consistent source:
+                 chronology/decisions/decision_log_20260412_session_kestrel.md
+                 031 Structural Gate Discipline · 032 Phase-Aware Context Mgmt ·
+                 033 Spec Completeness Gate · 034 Idempotency Discipline ·
+                 035 Pre-Mortem Gate · 036 Verification-Within-Generation (ReVeal) ·
+                 037 Context Surgery for Loop Breaking
+     (Note: STATE.md also claims "DEC-001 through DEC-030 (main decision log)" — false;
+      this formal log ends at 028. That mis-claim is part of the same drift.)
+
+     RECOMMENDED RESOLUTION (for Opus): pick canonical meanings for 029/030 (the STATE.md
+     pair reflects the most-cited current usage — BST demotion + profile migration), then
+     Kestrel transcribes 029-037 faithfully from the sources above. DEC-038/039/040 below
+     already continue past the highest used number, so they're unaffected by the outcome.
+     ════════════════════════════════════════════════════════════════════════ -->
 
 
 ---
