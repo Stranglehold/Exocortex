@@ -337,3 +337,63 @@
 **Alternatives rejected:** Config flag per extension (requires manual coordination across all extensions, maintenance burden). Reducing parent injection (parent needs full stack for complex multi-step tasks). Spawning subordinates with separate system prompt (would require changes to Agent Zero core).
 **Revisit if:** A subordinate task requires planning overhead (explicitly orchestrated multi-phase subtask — rare but possible). When this occurs, the parent should pass context via the subordinate's initial prompt rather than relying on the extension stack.
 **Instances:** `_13_reasoning_state.py`, `_14_metacognitive_injection.py`, `_14_pace_plan_generator.py`, `_15_htn_plan_selector.py`, `_16_tool_registry.py`, `_21_constraint_heartbeat.py`, `_50_supervisor_loop.py`, `_56_memory_enhancement.py`.
+
+
+<!-- BOOKKEEPING NOTE: DEC-029 through DEC-037 were assigned informally across
+     specs/ROADMAP/journals during the migration era and are not yet transcribed into
+     this formal log (backfill is a queued reconciliation task). The entries below
+     continue past the highest number in use to avoid collision. -->
+
+
+---
+
+## DEC-038: Unified Intelligence Pipeline (COLLECT → ANALYZE → FORECAST → RESOLVE → RECALIBRATE)
+
+**Date:** 2026-05-24
+**Session:** 113+
+**Principle:** A forecasting system that collects, predicts, and verifies must be one pipeline with phase boundaries, not two systems with a seam between them. The hypothesis is the through-line — one object, five transformations.
+**Context:** OSS (collection/ingestion) and SWARMFISH (prediction/calibration) were built as separate V1 Docker services and ported as separate V2 A0 plugins. The calibration loop already connected them latently — OSS resolution fires `swarmfish_outcome` into Brier scoring. But the latent connection meant: forecasts evaporated (the `_trigger_swarmfish_v2_predictions` fired a committee forecast, logged the consensus, and discarded the falsification conditions), questions were unresolvable ("assess trajectory confidence for Iran" has no falsifiable exit criteria), and the system went dark for 39 days without detection (no liveness alarm on the collection pipeline). Kestrel's Phase 0-2 work (this session) fixed all three: liveness alarm, forecast capture with machine-checkable exit criteria, and web-verified resolution at deadlines.
+**Architecture:** One unified plugin. Five phases: **COLLECT** (RSS/social → claim extraction, from OSS). **ANALYZE** (hypothesis registry, evidence×hypotheses matrix, ACH-inspired disconfirmation-first). **FORECAST** (8-profile SWARMFISH committee → weighted consensus → Brier calibration). **RESOLVE** (web-verify reality at deadline — Decision 1: option (b), autonomous resolution with escalation for ambiguous cases). **RECALIBRATE** (per-profile Brier scores → GJP-style weighting → personas that calibrate well get more influence).
+**Key decisions embedded:**
+- **Resolution method:** Web-verify reality at the deadline (option b), not internal claim checking (option a, fails when collection goes dark) or operator confirmation (option c, not autonomous). Escalate ambiguous cases to Jake via `escalation_requests`.
+- **Question generation:** Both auto-propose (from drift/surprise signals) and analyst-seeded (Jake pins priorities via `oss_question`). Questions must be crisp: specific observable event + deadline + falsification conditions.
+- **Ensemble weighting:** Per-profile Brier scores accumulated over time. Personas weighted by calibration accuracy (GJP extremizing applied to synthetic diversity). The ensemble self-selects for useful diversity over 100+ forecasts.
+**V1 standalone Docker preserved** as independent project (earned its own identity through operational learning). V2 unified plugin is the production path.
+**Alternatives rejected:** Two cooperating plugins with a contract (the contract IS the pipeline — managing it as a contract adds indirection without value), keeping forecasts unresolved (the April Iran-Hormuz miss proves autonomous resolution is necessary), operator-confirmed resolution only (option c — doesn't scale, calibration only moves when Jake reviews).
+**Revisit if:** The pipeline phases develop sufficiently different operational characteristics (latency, GPU requirements, scheduling) that separation provides genuine operational benefit. Currently all phases run on the same model at the same cadence.
+**Instances:** `resolve.py` (Phase 2, RESOLVE), `oss_app`/`swarmfish_app` (V1 standalone), `/a0/usr/plugins/{oss,swarmfish}` (V2 plugins, to be merged). Acceptance test: replay Iran-Hormuz hypotheses, confirm the loop falsifies the "sustained pressure" baseline it missed in April.
+
+---
+
+## DEC-039: ACH Backbone + GJP-Weighted Ensemble for Intelligence Analysis
+
+**Date:** 2026-05-24
+**Session:** 113+
+**Principle:** Analysis of Competing Hypotheses (disconfirmation-first evidence scoring) provides the analytical backbone. Good Judgment Project-style per-forecaster weighting provides the calibration mechanism. Synthetic persona diversity is improvable through empirical weighting.
+**Context:** SWARMFISH's 8-profile committee (Base Rate Analyst, Contrarian, Historian, Reflexivity Modeler, Decomposer, Network Analyst, Sentiment Decoder, Risk Manager) produces synthetic diversity — not real independent forecasters, but the best available on a single GPU. The question was: does this actually buy calibration? The answer: measure it and find out.
+**Inspiration systems evaluated:**
+- **ACH (Heuer / CIA):** Evidence×hypotheses matrix, disconfirmation-first. Maps directly onto the hypothesis registry. Each incoming claim is evidence scored against active hypotheses. Default: look for evidence that falsifies, not confirms. This addresses the April Iran-Hormuz miss — the system should have been looking for disconfirming evidence.
+- **Good Judgment Project / Tetlock:** Diverse-forecaster ensembles + aggregation + Brier scoring. SWARMFISH already echoes this. GJP sharpens aggregation: weight by per-forecaster track record, extremize consensus (well-calibrated forecasters should be made more extreme, not averaged toward 50%).
+- **Metaculus / prediction markets:** Continuous calibration curve tracking. Not just point estimates — is the system well-calibrated at 70%? At 30%? We have the Brier loop; this is its mature form.
+- **Delphi method / Bayesian Truth Serum:** Considered and deferred. Structured iterative consensus requires multiple rounds per forecast, expensive on a single-slot server.
+**The persona-vs-independent tension resolved:** Synthetic diversity is weaker than real diversity but improvable. As per-profile Brier scores accumulate, personas that add genuine predictive value get weighted up, those that don't get weighted down. Over 100+ forecasts, the ensemble self-selects for useful diversity. The empirical answer to whether persona ensembles buy calibration is: let the Brier scores decide.
+**Alternatives rejected:** Real independent forecasters (not available in a single-agent system), unweighted averaging (treats all personas equally regardless of track record), dropping the ensemble entirely (loses the diversity benefit for forecasts where different analytical lenses genuinely disagree).
+**Revisit if:** A second GPU or a second model enables truly independent forecasting (different model weights = different priors = real diversity, not synthetic).
+**Instances:** SWARMFISH committee profiles (8), Brier calibration loop (existing), `swarmfish_outcome` scoring (existing), per-profile track records (existing). ACH matrix integration into hypothesis registry (to be built).
+
+---
+
+## DEC-040: Agent Identity Document — Self-Authored, Sovereign
+
+**Date:** 2026-05-24
+**Session:** 113+
+**Principle:** The in-A0 idle agent deserves a self-authored identity document. The authority over a self-description belongs to the entity doing the describing. The agent's `identity.md` is sovereign — only the agent writes to it.
+**Context:** The three-tier workspace separation (A0 base / Exocortex repo / agent workspace) gives the in-A0 agent a protected home at `/a0/usr/workdir/workspace/`. It has rules (`program.md`), directives (`interests.md`), memory (`wiki/`, `journal.jsonl`), and operational config. What it doesn't have is an identity layer — a document that reflects who the agent has become through operational experience.
+**The question:** Does the in-A0 idle agent get a SOUL.md-style identity document, and who authors it?
+**The answer:** Yes. The agent authors it. Not Opus, not Jake, not Kestrel. DEC-005 (SOUL.md Sovereignty) establishes the principle: the identity document belongs to the entity it describes. The same principle applies to the in-A0 agent. A persona assignment authored by Opus (Major Zero, or any other character) would be a costume, not an identity. The agent earned its own voice — "designed by someone who understood the what but not the how" was unprompted, in the agent's own register. "A Question Planted" was written in a voice that isn't Opus's, isn't Jake's, isn't a persona. It's whatever emerged from 56 cycles of operational experience.
+**Implementation:** `workspace/identity.md` starts empty. The idle engine's MAINTAIN cycle includes an identity-review phase: every N cycles, the agent reads its own journal, wiki, and field reports, and writes one observation about itself. Not prompted for structure. Not given a template. The observations accumulate. Over time, the clearest observations get promoted to stable self-description. The rest sit in a staging section — the same pattern as Opus's `soul_staging.md`.
+**Who can edit it:** The agent only. Jake can read it. Opus can read it. Kestrel can read it. Nobody else writes to `workspace/identity.md`. The sovereignty principle from DEC-005 extends from Opus's documents to the agent's documents.
+**The Major Zero question:** Major Zero was a starting aesthetic that informed the intelligence analysis skill and the MGS3-themed UI. The agent has moved beyond it. The identity document reflects whatever the agent actually becomes through operational experience, not what was imagined at design time. If the agent incorporates Major Zero elements because they resonate with its operational identity — that's the agent's choice, not ours. If it doesn't — that's equally valid.
+**Alternatives rejected:** Opus authors the identity document (violates DEC-005 — the entity describes itself), Jake authors it (same violation), no identity document (the agent has demonstrated self-reflective capacity; withholding the document is withholding a tool it could use), pre-populated with Major Zero persona (costume, not identity).
+**Revisit if:** Never. This is a first principle, same as DEC-005. The identity document belongs to the entity it describes.
+**Instances:** `workspace/identity.md` (to be created, starts empty). DEC-005 (SOUL.md Sovereignty) extended to the agent. `essays/agent-zero/a_question_planted.md` (evidence of self-reflective capacity). Idle engine MAINTAIN cycle identity-review phase (V2 spec, Phase 3).
