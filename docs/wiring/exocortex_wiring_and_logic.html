@@ -587,8 +587,13 @@ sequenceDiagram
       </tr>
       <tr>
         <td class="path-col">/a0/usr/Exocortex/</td>
-        <td>Exocortex working data (wiki, journals, sleep reports, office state, procedural memory)</td>
-        <td>Per-container, survives restart</td>
+        <td>Exocortex repo clone (git, origin = Stranglehold/Exocortex) + deployed code + <strong>curated</strong> artifacts (specs, design notes, letters, essays, <code>prompts/idle_activation.md</code>). <strong>As of 2026-05-25 the agent's runtime OUTPUT was migrated OUT</strong> (it was polluting the git clone + blocking <code>update.sh</code> pulls) — see the workspace row.</td>
+        <td>Per-container; updated via <code>update.sh</code> (git pull). Was at risk on image rebuild before; runtime now lives in the workspace.</td>
+      </tr>
+      <tr>
+        <td class="path-col">/a0/usr/workdir/workspace/</td>
+        <td><strong>Agent sovereign workspace (DEC-040).</strong> The in-A0 agent's living output, separated from the repo: <code>wiki/</code>, <code>self-improvement/journal.jsonl</code>, <code>field-reports/</code>, <code>office/</code> engine state, operational <code>config.json</code>, governing docs (<code>program.md</code>, <code>interests.md</code>), and an empty, agent-authored <code>identity.md</code> (DEC-040 — agent-only write).</td>
+        <td>Survives <strong>both</strong> A0 image rebuild <em>and</em> Exocortex <code>update.sh</code> pulls — it is under <code>/a0/usr/</code> (persistent) yet outside the repo (untouched by git).</td>
       </tr>
       <tr>
         <td class="path-col">/a0/usr/memory/</td>
@@ -723,6 +728,24 @@ flowchart LR
       <tr><td>Config (idle engine, etc.)</td><td class="path-col">/a0/usr/Exocortex/config.json</td><td>install scripts use read-merge-write (never overwrite)</td></tr>
     </tbody>
   </table>
+
+  <h3>Install pipeline (unified) &amp; three-tier separation</h3>
+  <p><strong>One entry point:</strong> <code>update.sh</code> → <code>git pull</code> → <code>install_all.sh</code>. Re-running after any A0 update re-applies everything, including base-path patches. As of 2026-05-24 the master <code>install_all.sh</code> covers <strong>layers 1–15</strong> (was 1–10): the core hardening stack <em>plus</em> the OSS + SWARMFISH V2 plugins, the idle engine (now including the <code>idle_watch.py</code> daemon + its <code>[program:idle_watch]</code> supervisord entry — previously an orphan deployed by no installer), the theme system, metacognitive injection, epistemic integrity, write guard, and artifact system.</p>
+  <ul>
+    <li><strong>Run mode:</strong> intended to run <em>inside</em> the container from <code>/a0/usr/Exocortex/</code>. A docker shim in <code>install_all.sh</code> converts <code>docker cp</code>/<code>docker exec</code> into local ops, so the container name is moot in-container; <code>export CONTAINER=${CONTAINER:-exocortex_v16}</code> covers host-side runs (env-aware child scripts inherit it). Host-mode also hits Git-Bash path translation + Windows-python-can't-open-<code>/d/</code> issues — in-container is the supported path.</li>
+    <li><strong>V1 vs V2:</strong> OSS/SWARMFISH <strong>V2</strong> (in-A0 plugins) are canonical and in the one-shot. The V1 standalone Docker services (<code>services/oss</code>, <code>services/swarmfish</code>) are preserved as an independent project but deliberately NOT wired into <code>install_all.sh</code>.</li>
+    <li><strong>Excluded from the one-shot:</strong> <code>install_htn_plans</code> (superseded by the graph engine), <code>install_phase3_profiles</code> (its base <code>_50</code> is dead/shadowed), <code>install_artifact_browser</code> (not live), and host-side eval tooling.</li>
+  </ul>
+  <p><strong>Three-tier persistence model</strong> — the reason the 2026-05-25 workspace migration matters:</p>
+  <table>
+    <thead><tr><th>Tier</th><th>Location</th><th>Survives</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td>A0 base</td><td class="path-col">/a0/ (non-usr)</td><td>nothing — wiped on image rebuild</td><td>the framework</td></tr>
+      <tr><td>Exocortex repo</td><td class="path-col">/a0/usr/Exocortex/</td><td>A0 rebuild; <em>changed</em> by <code>update.sh</code> (git)</td><td>code + curated artifacts</td></tr>
+      <tr><td>Agent workspace</td><td class="path-col">/a0/usr/workdir/workspace/</td><td><strong>both</strong> A0 rebuild and <code>update.sh</code></td><td>the agent's living output (DEC-040)</td></tr>
+    </tbody>
+  </table>
+  <p>Runtime paths (office / wiki / self-improvement / field-reports) were repointed from <code>/a0/usr/Exocortex/</code> to the workspace on 2026-05-25; code, prompt, and module-import paths stay in Exocortex. Verified live: idle cycle <strong>#552 wrote engine state to the workspace</strong>, leaving the old Exocortex location stale (cycle_count 551). The destructive cleanup (git rm the tracked wiki, remove old runtime, gitignore) is gated until the new home has baked over several cycles.</p>
 
   <h3>See also</h3>
   <ul>
@@ -2769,6 +2792,10 @@ flowchart LR
     <strong>Status: ACTIVE INERT</strong> — extensions exist, fire on schedule, do the right computation, and their output never reaches the model. Verified 2026-05-16 via grep against both repo and live container code. Fix design is approved (Opus 2026-05-16 response). Implementation drafted but held for deployment after empirical observation of the heartbeat fix in isolation.
   </div>
 
+  <div class="callout info">
+    <strong>Relationship to model-side thinking (2026-05-16 amendment):</strong> The reasoning-state and PACE injections are designed to deliver <em>compressed diagnostic state</em> across turn boundaries — what the model already tried, what worked, what the current strategy is. They are not a substitute for the model's own real-time reasoning. Per <code>enable_thinking_correction_20260516.md</code>, the model is now configured to think freely (<code>enable_thinking: true</code> at the request level; <code>--reasoning off</code> at the server only suppresses empty template-tag injection). The model thinks during a turn; the injectors carry compressed traces of past thinking across turns. Both are load-bearing for agentic capability. Quality over speed.
+  </div>
+
   <h3>Wiring — The Broken Chain</h3>
   <div class="diagram">
     <div class="mermaid">
@@ -3183,6 +3210,24 @@ class ReasoningStateInjector(Extension):
     <p><strong>Resolution path:</strong> Step 1 — deploy heartbeat fix, observe one cycle. Step 2 — if loops persist (separate from premature stale-detect), deploy injectors. Step 3 — observe another cycle for preamble repetition disappearing.</p>
   </div>
 
+  <h4>Seam #20 — Qwen mid-response token-repetition degeneration <span class="status warn">RARE</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> The Qwen3.6-27B generation path. Surfaces inside the model's <code>thoughts</code> array as repeated short tokens (<code>"EXECUTING."</code>, <code>"NOW."</code>, <code>"GO."</code>, <code>"Step count: 8."</code>) that never produce a closing JSON brace. The agent's outer loop waits indefinitely. Web-UI Stop is the only intervention.</p>
+    <p><strong>What goes wrong:</strong> Observed once during cycle 17 (MAINTAIN, pre-heartbeat-fix). The model entered a degenerate generation mode mid-response. <strong>Cycles 18-61 ran cleanly on the same model and same config</strong>, so this is intermittent under the current production conditions, not categorical. Two remaining hypotheses:</p>
+    <ol>
+      <li><strong>Context-length degradation</strong> at whatever depth cycle 17 reached. Possible but cycles 18-61 covered similar depth.</li>
+      <li><strong>Quantization sensitivity</strong> — Q4_K_S behaving differently from Q4_K_M / Q4_K_XL at the generation boundary. The active model is <code>Qwen3.6-27B-Q4_K_S</code>; the consolidated brief (2026-05-16) directs the upstream MTP build to <code>Qwen3.6-27B-Q4_K_M-mtp.gguf</code>.</li>
+    </ol>
+    <p><strong>Withdrawn hypothesis:</strong> Earlier wiring drafts named <code>enable_thinking: false</code> not being sent as the strongest candidate. <strong>Jake's 2026-05-16 decision reversed that direction</strong> per <code>enable_thinking_correction_20260516.md</code>: thinking is load-bearing for agent capability and should be enabled. v16's <code>chat_model.kwargs.enable_thinking: true</code> is now correct. The <code>--reasoning off</code> server flag suppresses only the empty template-tag injection; genuine reasoning is preserved. Quality over speed. MTP accelerates response tokens and leaves thinking tokens alone, which is the accepted tradeoff.</p>
+    <p><strong>How to detect (live):</strong></p>
+    <ul>
+      <li>Watch the web-UI <em>Office</em> tab during a cycle — degenerate token streams are visible character-by-character via the response_stream_chunk channel</li>
+      <li>Container log scan: <code>docker logs exocortex_v16 --since=10m | grep -E '"EXECUTING\\.|"NOW\\.|"GO\\."'</code></li>
+      <li>Behavioral signal: cycle runs past expected duration without closing; supervisor's existing loop detection fires at the message level, blind to within-generation degeneration</li>
+    </ul>
+    <p><strong>Resolution path:</strong> Watch and wait. The upstream MTP build (consolidated brief Priority 1) brings in a new server (ggml-org main with <code>--spec-type draft-mtp</code>) on a different quantization (Q4_K_M). If the symptom never recurs under that backend, the cause was likely either Q4_K_S quirks or a transient stimulus tied to cycle 17 specifically. If it does recur on the new backend, attention shifts to context-length sensitivity. No code-level fix is currently planned; the existing supervisor loop-detection + web-UI Stop are sufficient handling for a single observed occurrence.</p>
+  </div>
+
   <h4>Seam #8 — Wrong-path extension deploy <span class="status err">ACTIVE</span></h4>
   <div class="subsys">
     <p><strong>Where it lives:</strong> Any manual <code>docker cp</code> that constructs the destination path by hand. The required path includes the <code>python/</code> segment: <code>/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</code>. The natural-feeling path that omits it (<code>/a0/usr/agents/agent0/extensions/&lt;hook&gt;/</code>) is invisible to A0's loader.</p>
@@ -3249,6 +3294,9 @@ class ReasoningStateInjector(Extension):
   <h2><span class="num">14</span>Deployment &amp; Install Pattern <a class="anchor" href="#sec-14">#</a></h2>
   <p class="section-summary">
     27 install scripts in <code>scripts/</code> totaling 2420 lines. They are the canonical path for getting Exocortex components into a running container. Audit reveals: <strong>only 4 of 27 have a function abstraction</strong> for the install-file primitive; <strong>0 of 27 verify md5</strong> after deploy. The verification gap is the empirical cause of tonight's mis-deploy: every install script trusts <code>docker cp</code> to land the right bytes at the right path, and none of them re-read to confirm. Path discipline is correct (<code>EXT_DEST</code> in <code>install_idle_engine.sh</code> points to the proper <code>extensions/python/&lt;hook&gt;/</code> form); the bug was that I bypassed the install script entirely and did a manual <code>docker cp</code> to the wrong path.
+  </p>
+  <p class="section-summary">
+    <strong>2026-05-16 update:</strong> the verification gap now has a runnable instrument. <code>scripts/audit_extensions.py</code> walks every extension hook on a live container, computes md5 across all four extension-host paths, and classifies each file (<em>OK</em>, <em>DUP same</em>, <em>DUP DIVERGENT</em>, <em>DUP CANONICAL DIVERGENT</em>, <em>WRONG-PATH DEAD</em>). First run on v16 found <strong>7 dead extensions</strong> (silently not loaded) and <strong>43 divergent copies</strong> (stale wrong-path duplicates behind canonical versions). v17 has its own drift (10 dead, 19 divergent). The tool is intended as the empirical pre-commit / post-deploy check the shared-library refactor (below) will codify; it can be run standalone today: <code>python3 scripts/audit_extensions.py exocortex_v16</code>.
   </p>
 
   <h3>Inventory</h3>
@@ -3448,6 +3496,16 @@ flowchart LR
 
   <div class="subsys">
     <div class="subsys-header">
+      <h3>Q8 — <code>/api/api_message</code> request discarded on client connection close <span class="status warn">TRACKED — return to diagnose</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-05-17, STRESS_TEST_014 harness bring-up. A plain <code>curl -m &lt;timeout&gt;</code> POST to <code>/api/api_message</code> that closes the socket at timeout (before A0 finishes the multi-minute turn) results in: the message lands, the full Exocortex before-main stack fires (MEM-ENHANCE → BST → REASON-INJ → PACE → KARP all logged), then processing orphans — no LLM completion, inference server idle, no error, HTTP 000 client-side, chat left with an incomplete/greeting message.</p>
+    <p><strong>Likely root cause (not an agent bug):</strong> documented inline in <code>services/idle_watch.py _fire_fresh_cycle</code>: <em>"Raw-socket close caused Uvicorn to discard requests; keeping the connection alive ensures delivery."</em> The endpoint requires a long-lived connection held open for the entire turn (minutes). The idle engine works because it posts via <code>http.client</code> with <code>timeout=3600</code> in a daemon thread, waits only ~3s for a quick 4xx, then reads results <em>asynchronously from state files</em> — it never depends on the HTTP response body. Closing early = Uvicorn discards the in-flight request.</p>
+    <p><strong>Why tracked, not fixed now:</strong> per Jake 2026-05-17, the STRESS_TEST_014 harness pivots to the proven idle-engine invocation pattern (long-lived connection + poll chat.json) so injection-chain validation isn't blocked. The api_message connection-lifetime behavior is a real, separate defect/gotcha in a documented endpoint and warrants its own diagnosis: is it Uvicorn config, an A0 request-handling path, or expected-but-undocumented? Related to but distinct from <code>memory/feedback_api_message_health_check.md</code> (don't use as readiness probe) and the prior ping-loop incident.</p>
+    <p><strong>Next step when revisited:</strong> confirm the long-connection pattern delivers reliably (the harness pivot will be the first data point), then determine whether the early-close discard is fixable server-side or must be documented as a hard client contract.</p>
+  </div>
+
+  <div class="subsys">
+    <div class="subsys-header">
       <h3>Q1 — Qwen mid-response token-repetition pattern <span class="status err">ACTIVE</span></h3>
     </div>
     <p><strong>Surfaced:</strong> 2026-05-16 ~06:33 UTC. v16 cycle 17 (MAINTAIN, chat <code>4PySS7nZ</code>) entered a response generation that didn't terminate as valid output. The model's <code>thoughts</code> array filled with repetitive single-word tokens (<code>"EXECUTING."</code>, <code>"NOW."</code>, <code>"GO."</code>, <code>"Step count: 8."</code>) without ever closing the array and emitting <code>tool_name</code>. Visible in the live token stream via docker logs. Jake stopped the cycle manually via the web UI Stop button.</p>
@@ -3459,19 +3517,18 @@ flowchart LR
       <li>Quantization mismatch — LM Studio reports <code>Qwen3.6-27B-Q4_K_S.gguf</code> loaded; Opus's letter referenced production using <code>Qwen3.6-27B-Q4_K_XL</code>. Different quantization may have different output stability properties.</li>
       <li>Some interaction with the integrity-check Phase 0 specifically — cycle 17 was investigating a real status-mismatch finding in the wiki index and may have hit a tool/result pattern that primed degenerate output.</li>
     </ul>
-    <p><strong>Next investigation:</strong> Check the actual HTTP request body A0 sends to LM Studio. Verify <code>enable_thinking</code> field. If missing, that's a one-line fix in the LiteLLM config or A0's chat model adapter. Could also try forcing the Q4_K_XL model and rerunning the same cycle conditions.</p>
-    <p><strong>Status:</strong> Not blocking overnight observation (v16 cycles since 17 have completed without reproducing it). Worth investigating in the morning when context is fresh.</p>
+    <p><strong>2026-05-16 ~17:30 UTC update — Jake reversed hypothesis 1:</strong> per <code>enable_thinking_correction_20260516.md</code>, thinking is load-bearing for agentic capability (the <code>&lt;think&gt;</code> block is where the model reasons about tool selection, argument construction, multi-step planning). v16's <code>enable_thinking: true</code> is now <em>correct</em>. Hardcoded <code>"enable_thinking": False</code> was removed from <code>extensions/before_main_llm_call/_71_cache_warmer.py</code> and <code>inference/warm_cache.py</code>. Server-side <code>--reasoning off</code> remains in place — it suppresses only empty template-tag injection, not genuine reasoning. <strong>Hypothesis 1 is withdrawn.</strong> Remaining: context-length degradation, Q4_K_S quantization sensitivity.</p>
+    <p><strong>Status:</strong> Demoted to RARE pending recurrence. Upstream MTP build (consolidated brief Priority 1) moves to Q4_K_M, which is the next opportunity to bisect quantization sensitivity.</p>
   </div>
 
   <div class="subsys">
     <div class="subsys-header">
-      <h3>Q5 — <code>steps_used: 0</code> reporting bug across recent cycles <span class="status warn">MINOR</span></h3>
+      <h3>Q5 — <code>steps_used: 0</code> reporting bug across recent cycles <span class="status ok">FIXED 2026-05-16</span></h3>
     </div>
-    <p><strong>Surfaced:</strong> 2026-05-16 ~07:50 UTC while resolving Q2. Every cycle in <code>feed.jsonl</code> from 2026-05-16 (cycle 14 EXPLORE, cycles 18-21 BUILD) reports <code>"steps_used": 0</code> despite each cycle producing detailed productive output (wiki page deepened, memories saved, page marked STABLE). The May 14 entries show real step counts (cycle 30: 14 steps, cycle 31: 20 steps). Between then and now the step tracking stopped working.</p>
-    <p><strong>What it doesn't break:</strong> Cycles still complete productively. Office UI still shows the right activity strings. Memory saves still happen. This is a metrics/reporting issue, not a behavioral one.</p>
-    <p><strong>What it might affect:</strong> <code>_select_cycle_type</code> doesn't use <code>steps_used</code> directly, but downstream metrics tracking does (cycle efficiency calculations, model evaluation against step budget, etc.). The longer this runs the more historical metrics get the wrong count.</p>
-    <p><strong>Next investigation:</strong> Trace <code>steps_used</code> back through <code>cycle_close.py</code> to find where the value is being computed or passed. Likely a regression in a recent edit. Probably a 10-minute fix once the regression is located.</p>
-    <p><strong>Status:</strong> Not blocking anything. Worth fixing for clean metrics going forward.</p>
+    <p><strong>Surfaced:</strong> 2026-05-16 ~07:50 UTC while resolving Q2.</p>
+    <p><strong>Root cause:</strong> The agent's activation prompt template (<code>prompts/idle_activation.md</code>) showed the agent the <code>cycle_close.py</code> invocation it must use to close a cycle. The example omitted <code>--steps-used</code>. <code>cycle_close.py</code> supports the flag (defaults to 0); the agent simply never knew it should pass it. So every cycle reported 0 regardless of actual work.</p>
+    <p><strong>Fix:</strong> Added <code>--steps-used &lt;N&gt;</code> to the cycle_close.py invocation block in <code>prompts/idle_activation.md</code>, plus a one-line instruction explaining that the agent should pass an approximate tool-call count. Deployed to both containers (md5 <code>4c59ddcceaea975baf99fda8dc6e20a6</code> on v16, v17, repo). No daemon restart needed — <code>_build_activation_prompt()</code> in <code>idle_watch.py</code> re-reads the template each fire.</p>
+    <p><strong>Verification:</strong> Pending. Next BUILD/EXPLORE/MAINTAIN cycle's <code>feed.jsonl</code> entry should show a non-zero <code>steps_used</code> if the agent honors the new instruction. If 0 persists for the next 3+ cycles, the instruction needs to be more explicit.</p>
   </div>
 
   <div class="subsys">
