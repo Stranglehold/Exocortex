@@ -62,6 +62,7 @@ docker cp "$SRC/questions.py"            "$DEST/"
 docker cp "$SRC/synthesis.py"            "$DEST/"
 docker cp "$SRC/credibility.py"          "$DEST/"
 docker cp "$SRC/rejection.py"            "$DEST/"
+docker cp "$SRC/narrative_geometry.py"   "$DEST/"
 
 # ── API handlers ───────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ docker cp "$API_SRC/api_oss_credibility.py"   "$API_DEST/"
 docker cp "$API_SRC/api_oss_rejections.py"    "$API_DEST/"
 docker cp "$API_SRC/api_oss_staging.py"       "$API_DEST/"
 docker cp "$API_SRC/api_oss_network.py"       "$API_DEST/"
+docker cp "$API_SRC/api_oss_narrative_geometry.py" "$API_DEST/"
 
 # ── WebUI assets (right-canvas v1.13 surface system) ─────────────────────────
 
@@ -135,7 +137,7 @@ for f in db.py ingest.py audit.py operator_state.py hypothesis.py source_intel.p
           threat_model.py social_ingest.py contamination_cascade.py \
           propagation_dynamics.py meta_detection.py \
           questions.py synthesis.py credibility.py rejection.py \
-          llm_config.py __init__.py; do
+          narrative_geometry.py llm_config.py __init__.py; do
   if _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/src/$f" 2>/dev/null; then
     echo "    ✓ src/$f"
   else
@@ -151,7 +153,8 @@ for f in api_oss_health.py api_oss_feed.py api_oss_drift.py api_oss_contradictio
           api_oss_silence.py api_oss_activation.py api_oss_topics.py api_oss_add_topic.py \
           api_oss_sources.py api_oss_hypotheses.py api_oss_submit.py api_oss_ingest.py \
           api_oss_questions.py api_oss_synthesis.py api_oss_credibility.py \
-          api_oss_rejections.py api_oss_staging.py api_oss_network.py; do
+          api_oss_rejections.py api_oss_staging.py api_oss_network.py \
+          api_oss_narrative_geometry.py; do
   if _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/api/$f" 2>/dev/null; then
     echo "    ✓ api/$f"
   else
