@@ -16,20 +16,34 @@ log = logging.getLogger("[HYPOTHESIS]")
 # Swarmfish notification (best-effort, import-guarded)
 # ---------------------------------------------------------------------------
 
-def _notify_swarmfish(session_id, outcome):
+def _notify_swarmfish(session_id, outcome_label: str):
+    """Feed a hypothesis resolution back into SWARMFISH calibration.
+
+    outcome_label is "promoted" (hypothesis confirmed → prediction correct → 1.0)
+    or "falsified" (→ 0.0). Routes through record_session_outcome so the full
+    Brier scoring + calibration-weight update runs — a raw INSERT into acp_outcomes
+    (outcome is a REAL column) would store a string and skip all scoring.
+
+    NOTE: this only fires when a hypothesis carries a swarmfish_session_id. The V2
+    plugin does not yet link hypotheses to SWARMFISH sessions, so this path is
+    currently dormant — the linkage is an open design item (see OSS↔SWARMFISH merge).
+    """
     try:
         import sys
         sys.path.insert(0, "/a0/usr/plugins/swarmfish")
-        from src.db import get_conn as sf_conn  # noqa: PLC0415
+        from swfsrc.db import get_conn as sf_conn  # noqa: PLC0415
+        from swfsrc.calibration import record_session_outcome  # noqa: PLC0415
+        outcome = 1.0 if outcome_label == "promoted" else 0.0
         conn = sf_conn()
-        conn.execute(
-            "INSERT OR IGNORE INTO acp_outcomes (session_id, outcome) VALUES (?,?)",
-            (session_id, outcome),
+        result = record_session_outcome(
+            conn, session_id, outcome, notes=f"OSS hypothesis {outcome_label}"
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+        if isinstance(result, dict) and result.get("error"):
+            log.warning("swarmfish notify: %s", result["error"])
+    except Exception as e:
+        log.warning("swarmfish notify failed for session %s: %s", session_id, e)
 
 
 # ---------------------------------------------------------------------------

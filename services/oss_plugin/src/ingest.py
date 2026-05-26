@@ -32,7 +32,7 @@ log = logging.getLogger("[INGEST]")
 # Config
 # ---------------------------------------------------------------------------
 
-LLM_URL    = os.environ.get("OSS_LLM_URL",   "http://host.docker.internal:1234/v1")
+LLM_URL    = os.environ.get("OSS_LLM_URL",   "http://host.docker.internal:1236/v1")
 from .llm_config import get_llm_model as _get_llm_model
 LLM_MODEL  = _get_llm_model()
 EMB_MODEL  = os.environ.get("OSS_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
@@ -470,6 +470,14 @@ def fetch_feed(conn, source_row) -> int:
                 tags       = raw_claim.get("topic_tags") or []
                 if not isinstance(tags, list):
                     tags = []
+                # Deterministic taxonomy gate: keep only tags that resolve to a
+                # known topic (case-insensitive), discarding LLM-invented freeform
+                # tags. Without this the off-topic check below is defeated — any
+                # tag at all, even an irrelevant one, lets an article through.
+                if known_topics:
+                    _known_lc = {t.lower(): t for t in known_topics}
+                    tags = [_known_lc[t.lower()] for t in tags
+                            if isinstance(t, str) and t.lower() in _known_lc]
                 tags_json  = jdumps(tags)
 
                 # Embed and dedup
