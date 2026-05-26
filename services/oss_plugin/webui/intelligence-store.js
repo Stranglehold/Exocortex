@@ -80,6 +80,10 @@ export function createIntelStore() {
     swfSessions:     [],
     swfSessionsTotal: 0,
 
+    // ── Calibrate tab ────────────────────────────────────────────────────────
+    swfCalibration:  null,   // raw endpoint payload (session/scored counts)
+    swfCalProfiles:  [],      // merged roster: weights + aggregated brier/accuracy
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async connect() {
@@ -113,6 +117,7 @@ export function createIntelStore() {
           analysis:   () => this.loadAnalysis(),
           hypotheses: () => this.loadHypotheses(),
           predict:    () => this.loadSwfSessions(),
+          calibrate:  () => this.loadCalibration(),
         };
         await (map[this.tab] ?? (() => Promise.resolve()))();
       } catch (e) {
@@ -149,6 +154,7 @@ export function createIntelStore() {
         else if (this.tab === "ledger")     await this.loadLedger();
         else if (this.tab === "hypotheses") await this.loadHypotheses();
         else if (this.tab === "predict")    await this.loadSwfSessions();
+        else if (this.tab === "calibrate")  await this.loadCalibration();
         else if (this.tab === "status")     await this._loadSources();
       } catch (_) {}
     },
@@ -295,7 +301,7 @@ export function createIntelStore() {
         status: this.hypStatus,
         limit:  50,
       });
-      this.hypotheses = d.hypotheses ?? (Array.isArray(d) ? d : []);
+      this.hypotheses = d.result ?? d.hypotheses ?? (Array.isArray(d) ? d : []);
     },
 
     async setHypStatus(s) {
@@ -329,6 +335,51 @@ export function createIntelStore() {
       }
     },
 
+    async loadCalibration() {
+      try {
+        const d = await ossPost("/api/plugins/swarmfish/api_swarmfish_calibration", {});
+        this.swfCalibration = d;
+        // Merge: the profile roster (always all 8) carries n_scored; the
+        // domain breakdown carries Brier/accuracy only where outcomes exist.
+        // Aggregate domain rows per profile, weighted by n_predictions.
+        const byProfile = {};
+        for (const row of (d.calibration_by_domain ?? [])) {
+          const k = row.profile_name;
+          const n = row.n_predictions ?? 0;
+          if (!byProfile[k]) byProfile[k] = { n: 0, brierSum: 0, accSum: 0 };
+          byProfile[k].n        += n;
+          byProfile[k].brierSum += (row.avg_brier ?? 0) * n;
+          byProfile[k].accSum   += (row.avg_accuracy ?? 0) * n;
+        }
+        this.swfCalProfiles = (d.profile_weights ?? []).map(p => {
+          const agg = byProfile[p.name];
+          return {
+            name:         p.name,
+            n_scored:     p.n_scored ?? 0,
+            avg_brier:    (agg && agg.n) ? agg.brierSum / agg.n : null,
+            avg_accuracy: (agg && agg.n) ? agg.accSum   / agg.n : null,
+          };
+        }).sort((a, b) => {
+          // Calibrated profiles (lower Brier) first; unscored sink to the bottom.
+          if (a.avg_brier == null && b.avg_brier == null) return 0;
+          if (a.avg_brier == null) return 1;
+          if (b.avg_brier == null) return -1;
+          return a.avg_brier - b.avg_brier;
+        });
+      } catch (_) {
+        this.swfCalibration = null;
+        this.swfCalProfiles = [];
+      }
+    },
+
+    // Brier quality band → semantic class. Lower is better (0 = perfect).
+    brierBand(v) {
+      if (v == null) return "none";
+      if (v <= 0.15) return "good";
+      if (v <= 0.25) return "ok";
+      return "poor";
+    },
+
     async runPredict() {
       if (!this.predictTopic) { this.notify("Select a topic first", "warn"); return; }
       this.swfRunning   = true;
@@ -340,8 +391,17 @@ export function createIntelStore() {
           question: this.predictTopic,
           domain:   "geopolitical",
         });
+        // Endpoint returns consensus fields at top level (not nested) — build the object.
         this.swfProfiles  = d.assessments ?? [];
-        this.swfConsensus = d.consensus   ?? null;
+        this.swfConsensus = (d && d.consensus_confidence != null) ? {
+          confidence:   d.consensus_confidence,
+          range_low:    d.consensus_range_low,
+          range_high:   d.consensus_range_high,
+          meta:         d.meta_confidence,
+          disagreement: d.disagreement_level,
+          brief:        d.operator_brief,
+          dissenters:   d.dissenters ?? [],
+        } : null;
         this.notify("SWARMFISH committee complete", "ok");
         await this.loadSwfSessions();
       } catch (e) {

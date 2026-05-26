@@ -643,6 +643,122 @@
   margin-top: 3px;
 }
 
+/* ── MAGI committee — consensus verdict + node grid ──────────────── */
+.ip-consensus-top { display: flex; align-items: center; gap: 14px; }
+.ip-consensus-meta { flex: 1; min-width: 0; }
+.ip-gauge-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.ip-gauge-lbl {
+  font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--txt-3); width: 30px; flex-shrink: 0;
+}
+.ip-gauge {
+  flex: 1; height: 4px; background: var(--overlay);
+  border-radius: var(--r-pill); overflow: hidden;
+}
+.ip-gauge-fill {
+  height: 100%; background: var(--cyan); border-radius: var(--r-pill);
+  transition: width .5s var(--ease-out);
+}
+.ip-gauge-fill.warn { background: var(--amber); }
+.ip-gauge-val {
+  font-family: var(--font-mono); font-size: 9px; color: var(--txt-2);
+  width: 30px; text-align: right; flex-shrink: 0;
+}
+.ip-consensus-brief {
+  margin-top: 11px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; line-height: 1.5; color: var(--txt-2);
+}
+.ip-dissent {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 9px;
+}
+.ip-dissent-lbl {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--amber);
+  flex-shrink: 0;
+}
+.ip-dissent-names { font-family: var(--font-mono); font-size: 10px; color: var(--txt-3); }
+
+.ip-section-count {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em;
+  color: var(--txt-3); margin-left: auto;
+}
+
+.ip-node-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px;
+}
+.ip-node {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--cyan);
+  border-radius: var(--r-sm);
+  padding: 8px 9px;
+  animation: ip-node-in .32s var(--ease-out) both;
+}
+.ip-node.err { border-top-color: var(--danger); opacity: .7; }
+@keyframes ip-node-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+.ip-node-hdr { display: flex; align-items: baseline; gap: 6px; }
+.ip-node-name {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--txt-2);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ip-node-conf {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+  color: var(--cyan); flex-shrink: 0;
+}
+.ip-node-bar {
+  height: 3px; background: var(--overlay); border-radius: var(--r-pill);
+  overflow: hidden; margin: 5px 0 6px;
+}
+.ip-node-bar-fill {
+  height: 100%; background: var(--cyan); border-radius: var(--r-pill);
+  transition: width .5s var(--ease-out);
+}
+.ip-node-verdict {
+  font-family: var(--font-mono); font-size: 10px; color: var(--txt-1);
+  margin-bottom: 3px; line-height: 1.3;
+}
+.ip-node-reason { font-size: 10px; color: var(--txt-3); line-height: 1.4; }
+.ip-node-tags { display: flex; gap: 4px; margin-top: 5px; }
+.ip-node-tag {
+  font-family: var(--font-mono); font-size: 8px; letter-spacing: .05em;
+  text-transform: uppercase; padding: 1px 5px; border-radius: var(--r-sm);
+}
+.ip-node-tag.cap { background: var(--amber-dim); color: var(--amber); }
+.ip-node-tag.err { background: var(--danger-dim); color: var(--danger); }
+
+/* ── Calibration ledger ──────────────────────────────────────────── */
+.ip-cal-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; margin-bottom: 5px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--txt-dim);
+  border-radius: var(--r-sm);
+  animation: ip-slide-up .26s var(--ease-out) both;
+}
+.ip-cal-row.b-good { border-left-color: var(--ok); }
+.ip-cal-row.b-ok   { border-left-color: var(--cyan); }
+.ip-cal-row.b-poor { border-left-color: var(--amber); }
+.ip-cal-row.b-none { border-left-color: var(--txt-dim); opacity: .6; }
+.ip-cal-name {
+  flex: 1; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--txt-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ip-cal-metrics { display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
+.ip-cal-brier {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--txt-1);
+}
+.b-good .ip-cal-brier { color: var(--ok); }
+.b-ok   .ip-cal-brier { color: var(--cyan); }
+.b-poor .ip-cal-brier { color: var(--amber); }
+.ip-cal-acc { font-family: var(--font-mono); font-size: 10px; color: var(--txt-2); }
+.ip-cal-n   { font-family: var(--font-mono); font-size: 9px; color: var(--txt-3); }
+
 /* Topics wrap */
 .ip-topic-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .ip-topic-chip {
@@ -746,11 +862,11 @@
 
   <!-- ── Tab Bar ─────────────────────────────────────────────────── -->
   <div class="ip-tabs">
-    <template x-for="t in ['status','triage','ledger','analysis','hypotheses','predict']" :key="t">
+    <template x-for="t in ['status','triage','ledger','analysis','hypotheses','predict','calibrate']" :key="t">
       <button class="ip-tab"
               :class="$store.intelligence.tab === t ? 'active' : ''"
               @click="$store.intelligence.setTab(t)"
-              x-text="t === 'predict' ? 'Predict' : t.charAt(0).toUpperCase() + t.slice(1)">
+              x-text="t === 'predict' ? 'Predict' : t === 'calibrate' ? 'Calibrate' : t.charAt(0).toUpperCase() + t.slice(1)">
       </button>
     </template>
   </div>
@@ -1134,40 +1250,74 @@
         </div>
       </template>
 
-      <!-- Consensus result -->
+      <!-- Consensus verdict — committee centerpiece -->
       <template x-if="$store.intelligence.swfConsensus && !$store.intelligence.swfRunning">
         <div class="ip-consensus">
-          <div style="display:flex;align-items:baseline;gap:10px;">
+          <div class="ip-consensus-top">
             <div class="ip-consensus-val"
-                 x-text="Math.round(($store.intelligence.swfConsensus.consensus_probability ?? 0) * 100) + '%'">
+                 x-text="$store.intelligence.fmtConf($store.intelligence.swfConsensus.confidence)">
             </div>
-            <div>
-              <div class="ip-consensus-lbl">Committee Consensus</div>
+            <div class="ip-consensus-meta">
+              <div class="ip-consensus-lbl">Committee Verdict</div>
               <div class="ip-consensus-range"
-                   x-text="'Range: '
+                   x-text="'Range '
                      + Math.round(($store.intelligence.swfConsensus.range_low ?? 0)*100)
                      + '–'
                      + Math.round(($store.intelligence.swfConsensus.range_high ?? 0)*100) + '%'">
               </div>
+              <!-- Meta-confidence + disagreement gauges -->
+              <div class="ip-gauge-row" x-show="$store.intelligence.swfConsensus.meta">
+                <span class="ip-gauge-lbl">meta</span>
+                <span class="ip-gauge-val" style="width:auto;flex:1;text-align:left;letter-spacing:.08em;"
+                      x-text="$store.intelligence.swfConsensus.meta"></span>
+              </div>
+              <div class="ip-gauge-row" x-show="$store.intelligence.swfConsensus.disagreement != null">
+                <span class="ip-gauge-lbl">split</span>
+                <div class="ip-gauge"><div class="ip-gauge-fill warn"
+                     :style="'width:' + $store.intelligence.confBarW($store.intelligence.swfConsensus.disagreement)"></div></div>
+                <span class="ip-gauge-val" x-text="$store.intelligence.fmtConf($store.intelligence.swfConsensus.disagreement)"></span>
+              </div>
             </div>
+          </div>
+          <div class="ip-consensus-brief" x-show="$store.intelligence.swfConsensus.brief"
+               x-text="$store.intelligence.swfConsensus.brief"></div>
+          <div class="ip-dissent" x-show="($store.intelligence.swfConsensus.dissenters ?? []).length > 0">
+            <span class="ip-dissent-lbl">⚠ dissent</span>
+            <span class="ip-dissent-names"
+                  x-text="($store.intelligence.swfConsensus.dissenters ?? [])
+                            .map(x => (x && x.profile_name) ? x.profile_name : x).join(', ')"></span>
           </div>
         </div>
       </template>
 
-      <!-- Profile assessment cards -->
+      <!-- Committee nodes — MAGI-style assessment grid, staggered reveal -->
       <template x-if="$store.intelligence.swfProfiles.length > 0 && !$store.intelligence.swfRunning">
         <div class="ip-section">
-          <div class="ip-section-hdr"><span class="ip-section-lbl">Assessments</span></div>
-          <template x-for="p in $store.intelligence.swfProfiles" :key="p.profile_id ?? p.name">
-            <div class="ip-profile-card">
-              <div class="ip-profile-hdr">
-                <span class="ip-profile-name" x-text="p.profile_name ?? p.name"></span>
-                <span class="ip-profile-conf"
-                      x-text="Math.round((p.probability ?? 0) * 100) + '%'"></span>
+          <div class="ip-section-hdr">
+            <span class="ip-section-lbl">Committee</span>
+            <span class="ip-section-count" x-text="$store.intelligence.swfProfiles.length + ' nodes'"></span>
+          </div>
+          <div class="ip-node-grid">
+            <template x-for="(p, i) in $store.intelligence.swfProfiles" :key="p.assessment_id ?? p.profile_name">
+              <div class="ip-node" :class="p.error ? 'err' : ''"
+                   :style="'animation-delay:' + (i * 70) + 'ms'">
+                <div class="ip-node-hdr">
+                  <span class="ip-node-name" x-text="p.profile_name"></span>
+                  <span class="ip-node-conf"
+                        x-text="p.error ? '——' : $store.intelligence.fmtConf(p.confidence)"></span>
+                </div>
+                <div class="ip-node-bar" x-show="!p.error">
+                  <div class="ip-node-bar-fill" :style="'width:' + $store.intelligence.confBarW(p.confidence)"></div>
+                </div>
+                <div class="ip-node-verdict" x-show="p.prediction" x-text="p.prediction"></div>
+                <div class="ip-node-reason" x-text="p.reasoning_summary ?? p.prediction ?? p.error ?? ''"></div>
+                <div class="ip-node-tags">
+                  <span class="ip-node-tag cap" x-show="p.confidence_capped">capped</span>
+                  <span class="ip-node-tag err" x-show="p.error">error</span>
+                </div>
               </div>
-              <div class="ip-profile-brief" x-text="p.brief ?? p.reasoning"></div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
       </template>
 
@@ -1199,6 +1349,65 @@
         <div class="ip-empty">
           <div class="ip-empty-icon">◎</div>
           Select a topic and run the committee
+        </div>
+      </template>
+
+    </div>
+
+    <!-- ═══ CALIBRATE TAB ═══════════════════════════════════════════ -->
+    <div x-show="$store.intelligence.tab === 'calibrate' && !$store.intelligence.loading" x-cloak>
+
+      <!-- Track-record summary -->
+      <div class="ip-swf-stats">
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfCalibration?.session_count ?? '—'"></span>
+          <span class="ip-swf-lbl">sessions</span>
+        </div>
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfCalibration?.scored_session_count ?? '—'"></span>
+          <span class="ip-swf-lbl">scored</span>
+        </div>
+        <div class="ip-swf-stat">
+          <span class="ip-swf-val"
+                x-text="$store.intelligence.swfCalProfiles.length || '—'"></span>
+          <span class="ip-swf-lbl">profiles</span>
+        </div>
+      </div>
+
+      <!-- Per-profile calibration ledger (Brier = lower is better) -->
+      <template x-if="($store.intelligence.swfCalibration?.scored_session_count ?? 0) > 0
+                       && $store.intelligence.swfCalProfiles.length > 0">
+        <div class="ip-section">
+          <div class="ip-section-hdr">
+            <span class="ip-section-lbl">Profile Calibration</span>
+            <span class="ip-section-count">Brier ↓ better</span>
+          </div>
+          <template x-for="(p, i) in $store.intelligence.swfCalProfiles" :key="p.name">
+            <div class="ip-cal-row" :class="'b-' + $store.intelligence.brierBand(p.avg_brier)"
+                 :style="'animation-delay:' + (i * 50) + 'ms'">
+              <span class="ip-cal-name" x-text="p.name"></span>
+              <div class="ip-cal-metrics">
+                <span class="ip-cal-brier"
+                      x-text="p.avg_brier != null ? p.avg_brier.toFixed(3) : 'n/a'"></span>
+                <span class="ip-cal-acc"
+                      x-text="p.avg_accuracy != null
+                               ? Math.round(p.avg_accuracy * 100) + '% acc'
+                               : '—'"></span>
+                <span class="ip-cal-n" x-text="(p.n_scored ?? 0) + ' rec'"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Empty / pre-calibration state -->
+      <template x-if="!$store.intelligence.swfCalibration
+                       || ($store.intelligence.swfCalibration?.scored_session_count ?? 0) === 0">
+        <div class="ip-empty">
+          <div class="ip-empty-icon">⊙</div>
+          No scored outcomes yet — calibration accrues as hypotheses resolve.
         </div>
       </template>
 
