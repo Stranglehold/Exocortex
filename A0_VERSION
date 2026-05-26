@@ -1,0 +1,10 @@
+# Agent-Zero version this Exocortex stack is tested against.
+# install_all.sh preflight reads the first non-comment line and compares it to
+# the target container's `git -C /a0 describe --tags`. Mismatch fails loud
+# (override with --force during a deliberate, validated upgrade).
+#
+# Upstream: https://github.com/agent0ai/agent-zero  (formerly frdel/agent-zero)
+# Bump this ONLY after completing the staged upgrade in docs/UPGRADE_A0.md.
+#
+# version            tested_commit   date_pinned
+v1.13

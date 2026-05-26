@@ -20,9 +20,13 @@ log_warn()    { echo -e "${YELLOW}  ⚠ $1${NC}"; }
 log_err()     { echo -e "${RED}  ✗ $1${NC}"; }
 
 CHECK_ONLY=false
-if [ "$1" = "--check-only" ]; then
-  CHECK_ONLY=true
-fi
+FORCE=false
+for arg in "$@"; do
+  case "$arg" in
+    --check-only) CHECK_ONLY=true ;;
+    --force)      FORCE=true ;;   # forwarded to install_all's A0-version preflight
+  esac
+done
 
 # ── Step 1: Git pull ──────────────────────────────────────────────────────────
 log_section "Pulling latest from GitHub"
@@ -58,4 +62,6 @@ if [ "$CHECK_ONLY" = true ]; then
 fi
 
 # ── Step 3: Run full install ──────────────────────────────────────────────────
-bash "$SCRIPT_DIR/install_all.sh"
+INSTALL_ARGS=""
+[ "$FORCE" = true ] && INSTALL_ARGS="--force"
+bash "$SCRIPT_DIR/install_all.sh" $INSTALL_ARGS

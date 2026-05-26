@@ -15,11 +15,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK_ONLY=false
 LAYER_ONLY=""
+FORCE=false
 
 for arg in "$@"; do
   case "$arg" in
     --check-only)  CHECK_ONLY=true ;;
     --layer=*)     LAYER_ONLY="${arg#*=}" ;;
+    --force)       FORCE=true ;;
   esac
 done
 
@@ -44,6 +46,41 @@ log_ok()      { echo -e "${GREEN}    ✓ $1${NC}"; }
 log_warn()    { echo -e "${YELLOW}    ⚠ $1${NC}"; }
 log_err()     { echo -e "${RED}    ✗ $1${NC}"; }
 log_skip()    { echo -e "    ~ $1 (not found — skipped)"; }
+
+# ── A0 version preflight ────────────────────────────────────────────────────
+# The hardening stack patches A0 core files (patches/), so it is only verified
+# against the A0 version recorded in ./A0_VERSION. Deploying onto a different
+# A0 can silently revert A0 changes (incl. security fixes) where our patches
+# overwrite files A0 has since changed. This gate fails loud on mismatch.
+# Override with --force (e.g. during a deliberate, validated upgrade).
+preflight_a0_version() {
+  local pin_file="$SCRIPT_DIR/A0_VERSION"
+  if [ ! -f "$pin_file" ]; then
+    log_warn "No A0_VERSION pin file — skipping version check"
+    return 0
+  fi
+  local pinned
+  pinned="$(grep -vE '^\s*#|^\s*$' "$pin_file" | head -1 | tr -d '[:space:]')"
+  local actual
+  actual="$(docker exec "$CONTAINER" sh -c 'cd /a0 2>/dev/null && git describe --tags 2>/dev/null' 2>/dev/null | tr -d '[:space:]')"
+  if [ -z "$actual" ]; then
+    log_warn "Could not read container A0 version (pinned: $pinned) — proceeding unverified"
+    return 0
+  fi
+  if [ "$actual" = "$pinned" ]; then
+    log_ok "A0 version $actual matches pin"
+    return 0
+  fi
+  if [ "$FORCE" = true ]; then
+    log_warn "A0 version mismatch — container=$actual, pinned=$pinned (continuing: --force)"
+    return 0
+  fi
+  log_err "A0 version mismatch — container=$actual, pinned=$pinned"
+  log_err "This stack is verified only against $pinned. Deploying onto $actual is untested"
+  log_err "and may revert A0 changes where our patches/ overwrite files A0 has changed."
+  log_err "See docs/UPGRADE_A0.md for the staged upgrade procedure. Override with --force."
+  exit 1
+}
 
 # ── Container detection & docker shim ─────────────────────────────────────────
 # When running inside the Agent-Zero container, `docker` is not available.
@@ -175,6 +212,8 @@ echo "  Source : $SCRIPT_DIR"
 echo "  Target : /a0/"
 [ -n "$LAYER_ONLY" ] && echo "  Mode   : Layer $LAYER_ONLY only"
 echo ""
+
+preflight_a0_version
 
 failed=0
 installed=0
