@@ -23,8 +23,8 @@ What this extension does NOT do:
   - Read idle threshold or fire conditions
   - Call the A0 REST API
 
-State file: /a0/usr/Exocortex/office/engine_state.json
-Lock file:  /a0/usr/Exocortex/office/.idle_engine.lock (written by idle_watch only)
+State file: /a0/usr/workdir/workspace/office/engine_state.json
+Lock file:  /a0/usr/workdir/workspace/office/.idle_engine.lock (written by idle_watch only)
 """
 
 import json
@@ -40,9 +40,9 @@ if _EXOCORTEX_PATH not in sys.path:
     sys.path.insert(0, _EXOCORTEX_PATH)
 
 _CONFIG_PATH  = "/a0/usr/Exocortex/config.json"
-_OFFICE_DIR   = "/a0/usr/Exocortex/office"
-_STATUS_PATH  = "/a0/usr/Exocortex/office/status.json"
-_STATE_PATH   = "/a0/usr/Exocortex/office/engine_state.json"
+_OFFICE_DIR   = "/a0/usr/workdir/workspace/office"
+_STATUS_PATH  = "/a0/usr/workdir/workspace/office/status.json"
+_STATE_PATH   = "/a0/usr/workdir/workspace/office/engine_state.json"
 
 _ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"
 

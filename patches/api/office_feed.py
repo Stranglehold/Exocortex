@@ -5,9 +5,9 @@ Serves idle-time engine activity data for the Office panel.
 
 Route (auto-registered by A0's dispatch): GET /api/office_feed
 
-Feed source:    /a0/usr/Exocortex/office/feed.jsonl
-Status source:  /a0/usr/Exocortex/office/status.json
-Control source: /a0/usr/Exocortex/office/control.json
+Feed source:    /a0/usr/workdir/workspace/office/feed.jsonl
+Status source:  /a0/usr/workdir/workspace/office/status.json
+Control source: /a0/usr/workdir/workspace/office/control.json
 Config source:  /a0/usr/Exocortex/config.json
 
 Returns:
@@ -26,11 +26,11 @@ import time
 
 from helpers.api import ApiHandler, Request, Response
 
-_FEED_PATH = "/a0/usr/Exocortex/office/feed.jsonl"
-_STATUS_PATH = "/a0/usr/Exocortex/office/status.json"
-_CONTROL_PATH = "/a0/usr/Exocortex/office/control.json"
+_FEED_PATH = "/a0/usr/workdir/workspace/office/feed.jsonl"
+_STATUS_PATH = "/a0/usr/workdir/workspace/office/status.json"
+_CONTROL_PATH = "/a0/usr/workdir/workspace/office/control.json"
 _CONFIG_PATH = "/a0/usr/Exocortex/config.json"
-_ENGINE_STATE_PATH = "/a0/usr/Exocortex/office/engine_state.json"
+_ENGINE_STATE_PATH = "/a0/usr/workdir/workspace/office/engine_state.json"
 _MAX_ENTRIES = 50
 
 

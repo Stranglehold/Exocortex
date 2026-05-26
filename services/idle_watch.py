@@ -14,8 +14,8 @@ What this is NOT responsible for (owned by _70_idle_trigger.py extension):
   - Writing cycle_heartbeat during running cycles
   - Clearing cycle_active when cycles complete normally
 
-Shared state: /a0/usr/Exocortex/office/engine_state.json
-Coordination: /a0/usr/Exocortex/office/.idle_engine.lock (fcntl.flock)
+Shared state: /a0/usr/workdir/workspace/office/engine_state.json
+Coordination: /a0/usr/workdir/workspace/office/.idle_engine.lock (fcntl.flock)
 
 Start: supervisord [program:idle_watch] in /etc/supervisor/conf.d/supervisord.conf
 Logs:  docker logs exocortex_v16 | grep IDLE-WATCH
@@ -35,13 +35,13 @@ from datetime import datetime, timezone
 sys.path.insert(0, "/a0")
 
 _CONFIG_PATH  = "/a0/usr/Exocortex/config.json"
-_OFFICE_DIR   = "/a0/usr/Exocortex/office"
-_STATUS_PATH  = "/a0/usr/Exocortex/office/status.json"
-_CONTROL_PATH = "/a0/usr/Exocortex/office/control.json"
-_STATE_PATH   = "/a0/usr/Exocortex/office/engine_state.json"
-_LOCK_PATH    = "/a0/usr/Exocortex/office/.idle_engine.lock"
+_OFFICE_DIR   = "/a0/usr/workdir/workspace/office"
+_STATUS_PATH  = "/a0/usr/workdir/workspace/office/status.json"
+_CONTROL_PATH = "/a0/usr/workdir/workspace/office/control.json"
+_STATE_PATH   = "/a0/usr/workdir/workspace/office/engine_state.json"
+_LOCK_PATH    = "/a0/usr/workdir/workspace/office/.idle_engine.lock"
 _PROMPT_PATH  = "/a0/usr/Exocortex/prompts/idle_activation.md"
-_SIGNAL_PATH  = "/a0/usr/Exocortex/office/cycle_result.json"
+_SIGNAL_PATH  = "/a0/usr/workdir/workspace/office/cycle_result.json"
 
 _ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"
 _STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20}
@@ -518,9 +518,9 @@ def _build_activation_prompt(cycle_type: str, max_steps: int) -> str:
         f"{_ACTIVATION_SENTINEL}\n\n"
         f"Cycle type: {cycle_type}\n"
         f"Step budget: {max_steps} steps maximum.\n\n"
-        f"Read /a0/usr/Exocortex/self-improvement/program.md for operating rules.\n"
-        f"Log everything to /a0/usr/workdir/self-improvement/journal.jsonl.\n"
-        f"At cycle end write to /a0/usr/Exocortex/office/feed.jsonl.\n\n"
+        f"Read /a0/usr/workdir/workspace/self-improvement/program.md for operating rules.\n"
+        f"Log everything to /a0/usr/workdir/workspace/self-improvement/journal.jsonl.\n"
+        f"At cycle end write to /a0/usr/workdir/workspace/office/feed.jsonl.\n\n"
         f"Begin."
     )
 

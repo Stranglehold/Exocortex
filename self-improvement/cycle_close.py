@@ -9,7 +9,7 @@ Batches three separate agent tool calls into one:
   3. Write cycle_result.json (signal for idle trigger state machine)
 
 Usage:
-  python3 /a0/usr/Exocortex/self-improvement/cycle_close.py \
+  python3 /a0/usr/workdir/workspace/self-improvement/cycle_close.py \
     --cycle-type MAINTAIN \
     --sleep-findings 3 \
     --pages-deepened 0 \
@@ -29,13 +29,13 @@ import sys
 import time
 from datetime import datetime, timezone
 
-_WORKDIR        = "/a0/usr/workdir/self-improvement"
-_JOURNAL_PATH   = "/a0/usr/workdir/self-improvement/journal.jsonl"
-_CHECKPOINT_DIR = "/a0/usr/workdir/self-improvement/checkpoints"
-_OFFICE_DIR     = "/a0/usr/Exocortex/office"
-_FEED_PATH      = "/a0/usr/Exocortex/office/feed.jsonl"
-_SIGNAL_PATH    = "/a0/usr/Exocortex/office/cycle_result.json"
-_STATE_PATH     = "/a0/usr/Exocortex/office/engine_state.json"
+_WORKDIR        = "/a0/usr/workdir/workspace/self-improvement"
+_JOURNAL_PATH   = "/a0/usr/workdir/workspace/self-improvement/journal.jsonl"
+_CHECKPOINT_DIR = "/a0/usr/workdir/workspace/self-improvement/checkpoints"
+_OFFICE_DIR     = "/a0/usr/workdir/workspace/office"
+_FEED_PATH      = "/a0/usr/workdir/workspace/office/feed.jsonl"
+_SIGNAL_PATH    = "/a0/usr/workdir/workspace/office/cycle_result.json"
+_STATE_PATH     = "/a0/usr/workdir/workspace/office/engine_state.json"
 
 
 def _read_state() -> dict:

@@ -12,9 +12,9 @@ Checks:
 Output: JSON summary + human-readable findings to stdout.
 
 Usage:
-  python3 /a0/usr/Exocortex/self-improvement/integrity_check.py
-  python3 /a0/usr/Exocortex/self-improvement/integrity_check.py --json-only
-  python3 /a0/usr/Exocortex/self-improvement/integrity_check.py --stale-days 60
+  python3 /a0/usr/workdir/workspace/self-improvement/integrity_check.py
+  python3 /a0/usr/workdir/workspace/self-improvement/integrity_check.py --json-only
+  python3 /a0/usr/workdir/workspace/self-improvement/integrity_check.py --stale-days 60
 """
 
 import argparse
@@ -24,8 +24,8 @@ import re
 import sys
 from datetime import datetime, timezone
 
-_WIKI_DIR   = "/a0/usr/Exocortex/wiki"
-_INDEX_PATH = "/a0/usr/Exocortex/wiki/index.md"
+_WIKI_DIR   = "/a0/usr/workdir/workspace/wiki"
+_INDEX_PATH = "/a0/usr/workdir/workspace/wiki/index.md"
 _STALE_DAYS_DEFAULT = 60
 
 

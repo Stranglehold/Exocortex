@@ -25,9 +25,9 @@ from datetime import datetime, timezone
 from helpers.api import ApiHandler, Request, Response
 
 _CONFIG_PATH = "/a0/usr/Exocortex/config.json"
-_CONTROL_PATH = "/a0/usr/Exocortex/office/control.json"
-_STATUS_PATH = "/a0/usr/Exocortex/office/status.json"
-_OFFICE_DIR = "/a0/usr/Exocortex/office"
+_CONTROL_PATH = "/a0/usr/workdir/workspace/office/control.json"
+_STATUS_PATH = "/a0/usr/workdir/workspace/office/status.json"
+_OFFICE_DIR = "/a0/usr/workdir/workspace/office"
 
 
 class IdleControl(ApiHandler):
