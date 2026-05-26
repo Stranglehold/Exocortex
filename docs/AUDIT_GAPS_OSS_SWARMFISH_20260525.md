@@ -17,7 +17,10 @@ Items without ❓ on the FIXED list were verified directly.
 
 ---
 
-## 🔴 HIGH — pending (confirm, then fix)
+## 🔴 HIGH — 5 FIXED (commit 3b69e9b, 2026-05-25), 2 pending
+
+**FIXED:** `source_weights`→source_id (both `_do_promote` and `api_oss_submit`), `OssHealth` tool key/shape, aggregator `domain` threaded from `run_profile`, `api_oss_submit` writes `faiss_id`, activation seed-suppression keyed off matching claim-ids. All deployed to v16 + verified (health endpoint clean; `run_health_check` keys confirmed).
+**Still pending:** the last two bullets (rejection override faiss, hypothesis confirmation=similarity).
 
 - **`source_weights` keyed by source_type, not source_id.** `ingest.py:302-313 _do_promote` writes `{source_type: confidence}`; `contamination_cascade.py:393-422` searches by `source_id`. → every auto-promoted claim is invisible to the contamination cascade; a compromised source never triggers remediation on what it promoted. ❓
 - **`OssHealth` tool readout always blank.** `tools/oss.py:456-491` reads `health_signal`/`metrics`/`z_score`/`low_trust_count`/`resolution_time`; `meta_detection.run_health_check` returns `overall_status` + flat keys (`false_positive_rate`/`source_trust_skew`/`resolution_time_hours`/`volume_anomaly`). → `Status: ?` + empty metrics regardless of real state. ❓
