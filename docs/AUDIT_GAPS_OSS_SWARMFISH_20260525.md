@@ -9,6 +9,10 @@ Items without ❓ on the FIXED list were verified directly.
 
 ---
 
+## Preventing recurrence — `scripts/contract_check.py`
+
+A static contract checker now guards these seams (run `python scripts/contract_check.py`; exit 1 on HIGH). It verifies: (1) every INSERT/UPDATE column exists in the `CREATE TABLE` schema, (2) every `from src/swfsrc.X import Y` resolves to a real module + symbol, (3) every `d.<key>` the webui reads is a key some endpoint returns (heuristic → REVIEW). It currently reports **HIGH: 0** (seams clean post-fix) and is validated to catch real violations. Wire it into CI / pre-deploy so the next silent gap fails the build instead of shipping.
+
 ## Burn-down status (2026-05-25, overnight pass)
 
 - **HIGH: 6 of 7 fixed.** Remaining: hypothesis confirmation = similarity-not-truth (DESIGN — how confirmation should work; ties to the intelligence-loop's own "confirmation theater" warning).
