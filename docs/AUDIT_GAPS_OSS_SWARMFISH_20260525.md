@@ -24,7 +24,7 @@ A static contract checker now guards these seams (run `python scripts/contract_c
 - **Synthesis for/against from `technique_class`** (MED) — needs real stance detection; that's a feature/design call, not a rename.
 - **`COMPROMISED` unreachable on low volume** (MED) — detection-policy tuning (how many of 4 metrics = compromised); Jake/Opus call.
 - **Claims from RSS teasers only** (MED) — fetching full article bodies is a scope/feature expansion.
-- **FAISS↔SQLite two-commit desync** (MED) — needs a reconciliation/atomicity strategy across two stores; architectural.
+- **FAISS↔SQLite two-commit desync** (MED) — needs a single-locked-writer / save-per-add hot-path fix; architectural, still deferred. **Confirmed live** by `wiring_truth.py` (index file lagged the in-memory index by 4 mid-ingest; a restart in that window would collide faiss_id slots). Partial mitigation shipped: `scripts/reconcile_faiss.py` rebuilds the index from claims (re-embed → fresh sequential ids) and `wiring_truth.py` detects the desync. Ran it 2026-05-26 → CONSISTENT (430==430).
 - **Embedder reloaded per call** (MED) — a shared-singleton refactor across 5 files; deferred to avoid a botched refactor overnight (it's latency/OOM, not correctness).
 - **`extract_claims` silent article drop** (MED) — already logs a WARNING; a true health signal needs a failure-rate metric (+ schema, since `rejection_reason` is CHECK-constrained).
 - **Bridge linkage / `register_hypothesis` swarmfish_session_id** (LOW) — same design item as HIGH-7 / the merge.
