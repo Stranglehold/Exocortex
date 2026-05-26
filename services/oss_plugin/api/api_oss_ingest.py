@@ -18,7 +18,7 @@ sys.path.insert(0, "/a0/usr/plugins/oss")
 from helpers.api import ApiHandler, Request
 
 from src.db import get_conn, init_db
-from src.ingest import run_once, is_paused, set_paused, start_background_loop
+from src.ingest import run_once, is_paused, set_paused, start_background_loop, _ingest_lock
 
 
 class OssIngest(ApiHandler):
@@ -54,12 +54,23 @@ class OssIngest(ApiHandler):
                 return {"ok": True, "paused": False}
 
             elif action == "run":
-                start_background_loop()
-                conn = get_conn()
-                init_db(conn)
-                result = run_once(conn)
-                conn.close()
-                return {"ok": True, "action": "run", "result": result}
+                # Run the pass in the background — a full RSS+LLM cycle takes
+                # minutes; blocking the HTTP request times out the browser fetch.
+                # Returns immediately; the UI polls health for progress.
+                import threading, logging
+
+                def _bg_run():
+                    try:
+                        c = get_conn()
+                        init_db(c)
+                        with _ingest_lock:
+                            run_once(c)
+                        c.close()
+                    except Exception as exc:
+                        logging.getLogger("[INGEST]").warning(f"manual run failed: {exc}")
+
+                threading.Thread(target=_bg_run, daemon=True, name="oss-ingest-manual").start()
+                return {"ok": True, "action": "run", "started": True}
 
             else:
                 return {"ok": False, "error": f"Unknown action: {action!r}"}

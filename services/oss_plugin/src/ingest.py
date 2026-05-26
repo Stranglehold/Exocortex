@@ -471,7 +471,10 @@ def fetch_feed(conn, source_row) -> int:
                 if technique not in ("presuasion", "fracture", "emergent", "direct", "none"):
                     technique = "none"
                 cui_bono   = jdumps(raw_claim.get("cui_bono") or [])
-                salience   = float(raw_claim.get("emotional_salience", 0.0) or 0.0)
+                try:
+                    salience = max(0.0, min(1.0, float(raw_claim.get("emotional_salience", 0.0) or 0.0)))
+                except (TypeError, ValueError):
+                    salience = 0.0  # clamp to [0,1]; an out-of-range LLM value would skew drift averaging
                 tags       = raw_claim.get("topic_tags") or []
                 if not isinstance(tags, list):
                     tags = []
@@ -526,6 +529,13 @@ def fetch_feed(conn, source_row) -> int:
 
                 # Update source claim count
                 cur.execute("UPDATE sources SET total_claims=total_claims+1 WHERE id=?", (source_id,))
+                # Keep the topic dashboard live: bump claim_count + last_active for
+                # each matched topic (otherwise both columns stay frozen forever).
+                for _tag in tags:
+                    cur.execute(
+                        "UPDATE topics SET claim_count=claim_count+1, last_active=datetime('now') WHERE tag=?",
+                        (_tag,),
+                    )
                 conn.commit()
 
                 # Auto-promote

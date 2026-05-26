@@ -152,6 +152,18 @@ def override_rejection(conn, rejection_id: int, analyst_note: str) -> dict:
         conn.commit()
         new_claim_id = cur.lastrowid
 
+        # Embed + index the restored claim so it's visible to dedup and synthesis
+        # FAISS retrieval — without faiss_id it would be a second-class claim that
+        # re-duplicates and never surfaces in synthesis. Reuse ingest's shared embedder.
+        try:
+            from .ingest import embed as _embed, add_to_faiss as _add_to_faiss  # noqa: PLC0415
+            vec = _embed([rej.get("claim_text", "")])
+            fid = _add_to_faiss(vec)
+            cur.execute("UPDATE claims SET faiss_id=? WHERE id=?", (fid, new_claim_id))
+            conn.commit()
+        except Exception as e:
+            log.warning(f"override_rejection: FAISS index failed for claim {new_claim_id}: {e}")
+
         # Record override in audit_log
         session_id = str(uuid.uuid4())
         conn.execute("""

@@ -1137,7 +1137,7 @@
           <template x-for="p in $store.intelligence.contradictions.slice(0,3)" :key="p.id">
             <div class="ip-flag">
               <div x-text="(p.claim_a_text ?? '').substring(0,80) + '…'"></div>
-              <div class="ip-flag-sub" x-text="p.source_name + ' · ' + p.relationship"></div>
+              <div class="ip-flag-sub" x-text="(p.source_a_name ?? '?') + ' vs ' + (p.source_b_name ?? '?') + ' · ' + p.relationship"></div>
             </div>
           </template>
         </div>

@@ -83,7 +83,8 @@ def run_health_check(conn) -> dict:
         }
     except Exception as e:
         log.warning(f"run_health_check failed: {e}")
-        return {"overall_status": "NOMINAL", "error": str(e), "degraded_metrics": []}
+        # Don't report NOMINAL on a genuine failure — that masks the outage.
+        return {"overall_status": "UNKNOWN", "error": str(e), "degraded_metrics": []}
 
 
 # ---------------------------------------------------------------------------

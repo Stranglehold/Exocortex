@@ -88,15 +88,17 @@ class OssTopic(Tool):
             conn = _get_conn()
             cur  = conn.cursor()
 
-            sql    = "SELECT c.*, s.name AS source_name FROM claims c JOIN sources s ON s.id=c.source_id WHERE ? IN (c.topic_tags, '') AND c.topic_tags LIKE ?"
-            params = [topic, f"%{topic}%"]
-
+            # Exact tag match via json_each (topic_tags is a JSON array). A plain
+            # LIKE '%topic%' substring-matches — "iran" would wrongly hit "iran-hormuz".
+            tag_match = "EXISTS (SELECT 1 FROM json_each(c.topic_tags) WHERE json_each.value = ?)"
+            base = ("SELECT c.*, s.name AS source_name FROM claims c "
+                    "JOIN sources s ON s.id=c.source_id WHERE ")
             if trust_level:
-                sql    = "SELECT c.*, s.name AS source_name FROM claims c JOIN sources s ON s.id=c.source_id WHERE c.topic_tags LIKE ? AND c.trust_level=? ORDER BY c.extracted_at DESC LIMIT ?"
-                params = [f"%{topic}%", trust_level, limit]
+                sql    = base + f"{tag_match} AND c.trust_level=? ORDER BY c.extracted_at DESC LIMIT ?"
+                params = [topic, trust_level, limit]
             else:
-                sql    = "SELECT c.*, s.name AS source_name FROM claims c JOIN sources s ON s.id=c.source_id WHERE c.topic_tags LIKE ? ORDER BY c.extracted_at DESC LIMIT ?"
-                params = [f"%{topic}%", limit]
+                sql    = base + f"{tag_match} ORDER BY c.extracted_at DESC LIMIT ?"
+                params = [topic, limit]
 
             cur.execute(sql, params)
             rows = [dict(r) for r in cur.fetchall()]
@@ -579,8 +581,10 @@ class OssSubmit(Tool):
                     break_loop=False,
                 )
 
-            # Insert claim
-            now        = __import__("datetime").datetime.utcnow().isoformat()
+            # Insert claim — tz-aware (every other module writes/parses +00:00;
+            # a naive timestamp compares inconsistently in time-window queries).
+            import datetime as _dt
+            now        = _dt.datetime.now(_dt.timezone.utc).isoformat()
             tags_json  = jdumps(topic_tags)
             cur.execute("""
                 INSERT INTO claims
