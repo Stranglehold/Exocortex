@@ -164,9 +164,12 @@ def run_activation_scan(conn, topic_tag: str) -> int:
             except Exception as e:
                 log.warning(f"Insert activation_pattern failed: {e}")
 
-            # Mark participating claims so we don't re-seed from them
+            # Mark participating claims so we don't re-seed from them.
+            # matching_claims (incl. the seed) holds the participating claim rows;
+            # key off claim id, NOT the source-id set (different namespaces).
+            matching_ids = {c["id"] for c in matching_claims}
             for k, m in enumerate(rows):
-                if m["id"] in source_ids_seen:
+                if m["id"] in matching_ids:
                     processed_seeds.add(k)
 
     except Exception as e:

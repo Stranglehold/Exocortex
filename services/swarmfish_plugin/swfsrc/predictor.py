@@ -382,6 +382,7 @@ def run_profile(conn: sqlite3.Connection, profile: dict, question: str,
         return {
             "assessment_id": assessment_id,
             "profile_name": profile_name,
+            "domain": domain,  # aggregator keys per-domain calibration weights off this
             "prediction": parsed.get("prediction", ""),
             "confidence": parsed["confidence"],
             "reasoning_summary": parsed.get("reasoning_summary", ""),

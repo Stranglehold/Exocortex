@@ -453,9 +453,16 @@ class OssHealth(Tool):
         except Exception as e:
             return _oss_error("oss_health failed", e)
 
-        signal   = result.get("health_signal", "?")
+        signal   = result.get("overall_status", "?")
         degraded = result.get("degraded_metrics", [])
-        metrics  = result.get("metrics", {})
+        # run_health_check returns the four metrics as flat top-level keys
+        # (not nested under "metrics"); each value is a {status, ...} dict.
+        metrics  = {
+            k: result[k] for k in (
+                "false_positive_rate", "source_trust_skew",
+                "resolution_time_hours", "volume_anomaly",
+            ) if isinstance(result.get(k), dict)
+        }
 
         signal_prefix = {"NOMINAL": "NOMINAL", "DEGRADED": "DEGRADED", "COMPROMISED": "COMPROMISED"}.get(signal, signal)
         paused_s      = "paused" if is_paused() else "active"
@@ -481,13 +488,13 @@ class OssHealth(Tool):
             if name == "false_positive_rate":
                 detail = f"rate={m.get('rate', 0.0):.3f} ({m.get('promoted', '?')} promoted, {m.get('returned', '?')} returned)"
             elif name == "source_trust_skew":
-                detail = f"{m.get('low_trust_count', '?')}/{m.get('total', '?')} sources below trust floor"
-            elif name == "resolution_time":
+                detail = f"std_dev={m.get('std_dev', 0.0):.3f} across {m.get('source_count', '?')} sources"
+            elif name == "resolution_time_hours":
                 avg = m.get("avg_hours")
                 detail = f"avg={avg:.1f}h" if avg is not None else "no data"
             elif name == "volume_anomaly":
-                z = m.get("z_score")
-                detail = f"z={z:.2f}" if z is not None else "no data"
+                ratio = m.get("ratio")
+                detail = f"today/avg={ratio:.2f}x ({m.get('today_count', '?')} today)" if ratio is not None else "no data"
             lines.append(f"  {icon} {name}: {status}" + (f" — {detail}" if detail else ""))
 
         return Response(message="\n".join(lines), break_loop=False)

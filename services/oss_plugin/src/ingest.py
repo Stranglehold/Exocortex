@@ -288,29 +288,34 @@ def auto_promote_staged(conn, claim_id: int, source_type: str,
 
     # Wire and official sources: unconditional promotion
     if source_type in ("wire", "official"):
-        _do_promote(conn, claim_id, staging_confidence, source_type)
+        _do_promote(conn, claim_id, staging_confidence)
         return True
 
     # Outlet/independent/social: require topic tag + confidence threshold
     if topic_tags and staging_confidence >= threshold:
-        _do_promote(conn, claim_id, staging_confidence, source_type)
+        _do_promote(conn, claim_id, staging_confidence)
         return True
 
     return False
 
 
-def _do_promote(conn, claim_id: int, confidence: float, source_type: str) -> None:
+def _do_promote(conn, claim_id: int, confidence: float) -> None:
     cur = conn.cursor()
     cur.execute(
         "UPDATE claims SET trust_level='PROMOTED' WHERE id=? AND trust_level='STAGED'",
         (claim_id,),
     )
     if cur.rowcount:
+        # source_weights MUST be keyed by source_id — the contamination cascade
+        # looks up a source's contributed promotions by id, not by source_type.
+        cur.execute("SELECT source_id FROM claims WHERE id=?", (claim_id,))
+        r = cur.fetchone()
+        source_id = r["source_id"] if r else None
         cur.execute("""
             INSERT INTO promotion_snapshots
                 (claim_id, promotion_confidence, source_weights, threshold_at_promotion)
             VALUES (?, ?, ?, ?)
-        """, (claim_id, confidence, jdumps({source_type: confidence}), 0.6))
+        """, (claim_id, confidence, jdumps({str(source_id): confidence}), 0.6))
         conn.commit()
         # Check any hypothesis predictions against this newly-promoted claim
         _check_hypothesis_predictions(conn, claim_id)

@@ -72,11 +72,15 @@ def _check_duplicate(vec) -> bool:
         return False
 
 
-def _add_to_faiss(vec, claim_id: int) -> None:
-    """Add a new vector to FAISS index and persist."""
+def _add_to_faiss(vec, claim_id: int):
+    """Add a vector to FAISS, persist, and return its index id (ntotal-1).
+
+    Returns None on failure. The caller MUST write the returned id to
+    claims.faiss_id — without it the claim is invisible to synthesis FAISS
+    retrieval (which filters on faiss_id).
+    """
     try:
         import faiss
-        import numpy as np
         if os.path.exists(_FAISS_PATH):
             idx = faiss.read_index(_FAISS_PATH)
         else:
@@ -84,8 +88,9 @@ def _add_to_faiss(vec, claim_id: int) -> None:
             idx = faiss.IndexFlatIP(vec.shape[1])
         idx.add(vec)
         faiss.write_index(idx, _FAISS_PATH)
+        return idx.ntotal - 1
     except Exception:
-        pass
+        return None
 
 
 class OssSubmit(ApiHandler):
@@ -152,8 +157,12 @@ class OssSubmit(ApiHandler):
             conn.commit()
             claim_id = cur.lastrowid
 
-            # Add to FAISS
-            _add_to_faiss(vec, claim_id)
+            # Add to FAISS and record its index id on the claim (else it's
+            # invisible to synthesis FAISS retrieval).
+            faiss_id = _add_to_faiss(vec, claim_id)
+            if faiss_id is not None:
+                cur.execute("UPDATE claims SET faiss_id=? WHERE id=?", (faiss_id, claim_id))
+                conn.commit()
 
             # Auto-promote: analyst source = high confidence
             conn.execute("""
@@ -164,7 +173,7 @@ class OssSubmit(ApiHandler):
                 VALUES (?,?,?,?,?,?,?)
             """, (
                 claim_id, now, 0.9,
-                jdumps({source_name: 1.0}),
+                jdumps({str(source_id): 1.0}),
                 0.5,
                 jdumps(["Analyst manual entry"]),
                 jdumps([]),
