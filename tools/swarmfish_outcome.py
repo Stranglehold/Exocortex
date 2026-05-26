@@ -57,8 +57,8 @@ class SwarmfishOutcome(Tool):
             return Response(message="Error: outcome must be between 0.0 and 1.0", break_loop=False)
 
         try:
-            from src.db import get_conn
-            from src.calibration import record_session_outcome
+            from swfsrc.db import get_conn
+            from swfsrc.calibration import record_session_outcome
 
             conn = get_conn()
             result = record_session_outcome(conn, session_id, outcome, outcome_date, notes)

@@ -16,8 +16,8 @@ sys.path.insert(0, "/a0/usr/plugins/swarmfish")
 
 from helpers.api import ApiHandler, Request
 
-from src.db import get_conn
-from src.calibration import record_session_outcome
+from swfsrc.db import get_conn
+from swfsrc.calibration import record_session_outcome
 
 
 class SwarmfishOutcome(ApiHandler):

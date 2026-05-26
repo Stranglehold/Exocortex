@@ -47,7 +47,7 @@ class SwarmfishSession(Tool):
             level = 2
 
         try:
-            from src.db import get_conn
+            from swfsrc.db import get_conn
             import json as _json
 
             conn = get_conn()

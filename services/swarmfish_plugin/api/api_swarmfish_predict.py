@@ -21,10 +21,10 @@ import asyncio
 
 from helpers.api import ApiHandler, Request
 
-from src.db import get_conn
-from src.profiles import seed_profiles, load_profiles, PROFILE_NAMES
-from src.predictor import run_all_profiles
-from src.aggregator import finalize_session
+from swfsrc.db import get_conn
+from swfsrc.profiles import seed_profiles, load_profiles, PROFILE_NAMES
+from swfsrc.predictor import run_all_profiles
+from swfsrc.aggregator import finalize_session
 
 
 class SwarmfishPredict(ApiHandler):

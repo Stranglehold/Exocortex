@@ -16,7 +16,7 @@ import json
 
 from helpers.api import ApiHandler, Request
 
-from src.db import get_conn
+from swfsrc.db import get_conn
 
 
 class SwarmfishSession(ApiHandler):

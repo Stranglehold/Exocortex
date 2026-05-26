@@ -24,7 +24,7 @@ echo "  Target: $PLUGIN_BASE"
 # ── Create directory structure ─────────────────────────────────────────────────
 
 _exec "$CONTAINER" mkdir -p \
-  "$PLUGIN_BASE/src" \
+  "$PLUGIN_BASE/swfsrc" \
   "$PLUGIN_BASE/api" \
   "$PLUGIN_BASE/prompts" \
   "$DATA_DIR"
@@ -35,8 +35,8 @@ docker cp "$SCRIPT_DIR/plugin.yaml" "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
 
 # ── Core src modules ───────────────────────────────────────────────────────────
 
-SRC="$SCRIPT_DIR/src"
-DEST="$CONTAINER:$PLUGIN_BASE/src"
+SRC="$SCRIPT_DIR/swfsrc"
+DEST="$CONTAINER:$PLUGIN_BASE/swfsrc"
 
 docker cp "$SRC/__init__.py"     "$DEST/"
 docker cp "$SRC/db.py"           "$DEST/"
@@ -44,6 +44,7 @@ docker cp "$SRC/profiles.py"     "$DEST/"
 docker cp "$SRC/predictor.py"    "$DEST/"
 docker cp "$SRC/aggregator.py"   "$DEST/"
 docker cp "$SRC/calibration.py"  "$DEST/"
+docker cp "$SRC/llm_config.py"   "$DEST/"
 
 # ── API handlers ───────────────────────────────────────────────────────────────
 
@@ -91,8 +92,8 @@ _exec "$CONTAINER" find "$PLUGIN_BASE" -name "__pycache__" -type d -exec rm -rf 
 # ── Syntax check ──────────────────────────────────────────────────────────────
 
 echo "  Syntax checking src modules..."
-for f in db.py profiles.py predictor.py aggregator.py calibration.py; do
-  _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/src/$f" && echo "    ✓ $f" || echo "    ✗ $f FAILED"
+for f in db.py profiles.py predictor.py aggregator.py calibration.py llm_config.py; do
+  _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/swfsrc/$f" && echo "    ✓ $f" || echo "    ✗ $f FAILED"
 done
 
 echo "  Syntax checking API handlers..."

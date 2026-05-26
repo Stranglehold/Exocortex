@@ -37,8 +37,8 @@ class SwarmfishCalibration(Tool):
         print("[SWARMFISH] calibration", flush=True)
 
         try:
-            from src.db import get_conn
-            from src.calibration import get_calibration_summary, get_profile_calibration_state
+            from swfsrc.db import get_conn
+            from swfsrc.calibration import get_calibration_summary, get_profile_calibration_state
 
             conn = get_conn()
 

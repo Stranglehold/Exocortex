@@ -56,10 +56,10 @@ class SwarmfishPredict(Tool):
               f"committee={committee or 'all 8'}", flush=True)
 
         try:
-            from src.db import get_conn
-            from src.profiles import seed_profiles, load_profiles, PROFILE_NAMES
-            from src.predictor import run_all_profiles
-            from src.aggregator import finalize_session
+            from swfsrc.db import get_conn
+            from swfsrc.profiles import seed_profiles, load_profiles, PROFILE_NAMES
+            from swfsrc.predictor import run_all_profiles
+            from swfsrc.aggregator import finalize_session
             import uuid
 
             conn = get_conn()
@@ -153,7 +153,7 @@ class SwarmfishSession(Tool):
             level = 2
 
         try:
-            from src.db import get_conn
+            from swfsrc.db import get_conn
             import json as _json
 
             conn = get_conn()
@@ -245,7 +245,7 @@ class SwarmfishSessions(Tool):
         domain = self.args.get("domain") or None
 
         try:
-            from src.db import get_conn
+            from swfsrc.db import get_conn
 
             conn = get_conn()
 
@@ -303,8 +303,8 @@ class SwarmfishCalibration(Tool):
         print("[SWARMFISH] calibration", flush=True)
 
         try:
-            from src.db import get_conn
-            from src.calibration import get_calibration_summary, get_profile_calibration_state
+            from swfsrc.db import get_conn
+            from swfsrc.calibration import get_calibration_summary, get_profile_calibration_state
 
             conn = get_conn()
 
@@ -390,8 +390,8 @@ class SwarmfishOutcome(Tool):
             return Response(message=f"Error: outcome must be between 0.0 and 1.0", break_loop=False)
 
         try:
-            from src.db import get_conn
-            from src.calibration import record_session_outcome
+            from swfsrc.db import get_conn
+            from swfsrc.calibration import record_session_outcome
 
             conn = get_conn()
             result = record_session_outcome(conn, session_id, outcome, outcome_date, notes)

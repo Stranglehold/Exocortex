@@ -16,7 +16,7 @@ import urllib.request
 
 log = logging.getLogger(__name__)
 
-_LLM_URL   = os.environ.get("SWARMFISH_LLM_URL", "http://host.docker.internal:1234/v1").rstrip("/")
+_LLM_URL   = os.environ.get("SWARMFISH_LLM_URL", "http://host.docker.internal:1235/v1").rstrip("/")
 _MODEL_ENV = os.environ.get("SWARMFISH_LLM_MODEL", "").strip()
 
 _resolved: str | None = None  # None = not yet queried; "" = query failed

@@ -24,10 +24,10 @@ from openai import OpenAI
 # Config — reads env vars or defaults
 # ─────────────────────────────────────────────────────────────
 
-LLM_BASE_URL  = os.environ.get("SWARMFISH_LLM_URL",   "http://host.docker.internal:1234/v1")
+LLM_BASE_URL  = os.environ.get("SWARMFISH_LLM_URL",   "http://host.docker.internal:1235/v1")
 LLM_API_KEY   = os.environ.get("SWARMFISH_LLM_API_KEY","lm-studio")
 
-from llm_config import get_llm_model as _get_llm_model
+from swfsrc.llm_config import get_llm_model as _get_llm_model
 LLM_MODEL     = _get_llm_model()
 LLM_MAX_TOKENS = int(os.environ.get("SWARMFISH_LLM_MAX_TOKENS", "4096"))
 LLM_TEMPERATURE = 0.1
@@ -418,42 +418,41 @@ def run_profile(conn: sqlite3.Connection, profile: dict, question: str,
 
 
 # ─────────────────────────────────────────────────────────────
-# Parallel dispatch (V2: async, runs all profiles concurrently)
+# Sequential dispatch (committee runs on the 27B at :1235, --parallel 1)
 # ─────────────────────────────────────────────────────────────
 
 async def run_all_profiles(conn: sqlite3.Connection, profiles: list,
                            question: str, domain: str,
                            context: Optional[str], session_id: str) -> list:
     """
-    Run all profiles in parallel via asyncio.to_thread().
-    Returns list of assessment dicts (one per profile, including errors).
+    Run the committee one profile at a time.
 
+    The reasoning model (Qwen3.6-27B at :1235) serves --parallel 1, so firing
+    the profiles concurrently just queues 7 behind 1 and they time out. Running
+    sequentially keeps a single request in flight, trading committee latency
+    (~minutes) for reliable 8/8 reasoning. If turbo3's --parallel is ever raised,
+    this can go back to asyncio.gather over a matching number of slots.
+
+    Returns list of assessment dicts (one per profile, including errors).
     V2: configurable committee — pass only the subset of profiles to run.
     """
     context_summary = context[:200] if context else None
 
-    tasks = [
-        asyncio.to_thread(
-            run_profile, conn, profile, question, domain,
-            context, session_id, context_summary
-        )
-        for profile in profiles
-    ]
-
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Convert any unexpected exceptions into error dicts
     assessments = []
-    for profile, result in zip(profiles, results):
-        if isinstance(result, Exception):
+    for profile in profiles:
+        try:
+            result = await asyncio.to_thread(
+                run_profile, conn, profile, question, domain,
+                context, session_id, context_summary
+            )
+            assessments.append(result)
+        except Exception as e:
             assessments.append({
                 "assessment_id": None,
                 "profile_name": profile["name"],
                 "prediction": None,
                 "confidence": None,
-                "error": str(result),
+                "error": str(e),
             })
-        else:
-            assessments.append(result)
 
     return assessments

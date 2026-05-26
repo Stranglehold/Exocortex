@@ -37,7 +37,7 @@ class SwarmfishSessions(Tool):
         domain = self.args.get("domain") or None
 
         try:
-            from src.db import get_conn
+            from swfsrc.db import get_conn
 
             conn = get_conn()
 
