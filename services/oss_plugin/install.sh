@@ -134,7 +134,8 @@ for f in db.py ingest.py audit.py operator_state.py hypothesis.py source_intel.p
           contradict.py silence.py activation.py narrative_drift.py retcon_ledger.py \
           threat_model.py social_ingest.py contamination_cascade.py \
           propagation_dynamics.py meta_detection.py \
-          questions.py synthesis.py credibility.py rejection.py; do
+          questions.py synthesis.py credibility.py rejection.py \
+          llm_config.py __init__.py; do
   if _exec "$CONTAINER" python3 -m py_compile "$PLUGIN_BASE/src/$f" 2>/dev/null; then
     echo "    ✓ src/$f"
   else

@@ -9,6 +9,25 @@ Items without ❓ on the FIXED list were verified directly.
 
 ---
 
+## Burn-down status (2026-05-25, overnight pass)
+
+- **HIGH: 6 of 7 fixed.** Remaining: hypothesis confirmation = similarity-not-truth (DESIGN — how confirmation should work; ties to the intelligence-loop's own "confirmation theater" warning).
+- **MED: 8 of 15 fixed.** Fixed: contradiction source labels, JIT-retry-on-timeout, `LLM_TIMEOUT`→300s, salience clamp, single-profile meta honesty, tz timestamp, exact `json_each` topic match, non-blocking ingest "run". Deferred (below).
+- **LOW: 3 of 6 fixed.** Fixed: live topic counters, health UNKNOWN-on-failure, install.sh syntax-check completeness, graceful confidence coercion (counted under MED). Deferred (below).
+
+### Deferred — need a decision or a refactor, not a mechanical fix (NOT done overnight by design)
+- **Predict heavy-sync → async kickoff+poll** (MED). The real UX fix, but it changes the panel's run behavior and I can't browser-test it — wants a session where Jake QAs. *Highest-value deferral.*
+- **Synthesis for/against from `technique_class`** (MED) — needs real stance detection; that's a feature/design call, not a rename.
+- **`COMPROMISED` unreachable on low volume** (MED) — detection-policy tuning (how many of 4 metrics = compromised); Jake/Opus call.
+- **Claims from RSS teasers only** (MED) — fetching full article bodies is a scope/feature expansion.
+- **FAISS↔SQLite two-commit desync** (MED) — needs a reconciliation/atomicity strategy across two stores; architectural.
+- **Embedder reloaded per call** (MED) — a shared-singleton refactor across 5 files; deferred to avoid a botched refactor overnight (it's latency/OOM, not correctness).
+- **`extract_claims` silent article drop** (MED) — already logs a WARNING; a true health signal needs a failure-rate metric (+ schema, since `rejection_reason` is CHECK-constrained).
+- **Bridge linkage / `register_hypothesis` swarmfish_session_id** (LOW) — same design item as HIGH-7 / the merge.
+- **Non-JSON `topic_tags` defensive validation** (LOW) — minor; current writers all use `jdumps`, so low real risk.
+
+---
+
 ## ✅ FIXED (2026-05-25)
 
 1. **Hypotheses tab permanently empty.** `intelligence-store.js:304` read `d.hypotheses`; endpoint returns `{ok, action, result:[...]}`. → now reads `d.result`. (Verified endpoint shape.)
