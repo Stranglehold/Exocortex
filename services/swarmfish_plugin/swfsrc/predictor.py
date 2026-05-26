@@ -31,7 +31,7 @@ from swfsrc.llm_config import get_llm_model as _get_llm_model
 LLM_MODEL     = _get_llm_model()
 LLM_MAX_TOKENS = int(os.environ.get("SWARMFISH_LLM_MAX_TOKENS", "4096"))
 LLM_TEMPERATURE = 0.1
-LLM_TIMEOUT   = int(os.environ.get("SWARMFISH_LLM_TIMEOUT", "120"))
+LLM_TIMEOUT   = int(os.environ.get("SWARMFISH_LLM_TIMEOUT", "300"))
 
 _llm_client: Optional[OpenAI] = None
 
@@ -198,7 +198,10 @@ def _build_user_message(question: str, domain: str, context: Optional[str]) -> s
 # LLM call
 # ─────────────────────────────────────────────────────────────
 
-_JIT_ERRORS = ("model unloaded", "operation canceled", "failed to load model", "context size")
+# Transient errors worth one retry: JIT model load/unload, and request timeouts
+# (the 27B's deeper reasoning calls can exceed the client timeout under load).
+_JIT_ERRORS = ("model unloaded", "operation canceled", "failed to load model",
+               "context size", "timed out", "timeout")
 
 
 def _call_llm(system_prompt: str, user_message: str) -> str:
@@ -220,7 +223,7 @@ def _call_llm(system_prompt: str, user_message: str) -> str:
         except Exception as e:
             err = str(e).lower()
             if attempt == 0 and any(jit in err for jit in _JIT_ERRORS):
-                print(f"[SWARM] LM Studio JIT unload, retrying in 15s...", flush=True)
+                print(f"[SWARM] transient LLM error ({err[:60]}), retrying in 15s...", flush=True)
                 time.sleep(15)
                 continue
             raise
@@ -366,7 +369,11 @@ def run_profile(conn: sqlite3.Connection, profile: dict, question: str,
         raw = _call_llm(system_prompt, user_message)
         parsed = _extract_json(raw)
 
-        parsed["confidence"] = max(0.01, min(0.99, float(parsed.get("confidence", 0.5))))
+        try:
+            conf = float(parsed.get("confidence", 0.5))
+        except (TypeError, ValueError):
+            conf = 0.5  # non-numeric confidence (e.g. "high") → neutral default, don't drop the whole assessment
+        parsed["confidence"] = max(0.01, min(0.99, conf))
         parsed = _apply_constraints(profile_name, parsed)
 
         assessment_id = _write_assessment(

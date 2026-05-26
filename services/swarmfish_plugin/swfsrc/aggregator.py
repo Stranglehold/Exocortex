@@ -77,7 +77,9 @@ def aggregate_assessments(assessments: list, profiles: list) -> dict:
     range_low  = max(0.01, consensus_conf - uncertainty_adj)
     range_high = min(0.99, consensus_conf + uncertainty_adj)
 
-    if disagreement > 0.20:
+    if len(confidences) < 2:
+        meta_confidence = "LOW"  # a single voice can't corroborate — no committee agreement to assess
+    elif disagreement > 0.20:
         meta_confidence = "LOW"
     elif disagreement > 0.10:
         meta_confidence = "MEDIUM"
