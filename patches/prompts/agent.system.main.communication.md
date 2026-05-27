@@ -4,7 +4,7 @@ Use JSON when calling tools. Plain text is accepted for conversational replies.
 ### JSON response format (required for tool calls)
 - thoughts: array of reasoning steps before execution (private scratchpad — unstructured, incomplete, or messy reasoning is correct here)
 - headline: short summary of the response
-- tool_name: name of the tool to call
+- tool_name: name of the tool to call — must be one of the listed tool names, never an action name such as `read`, `write`, `terminal`, or `multi`
 - tool_args: key-value pairs of tool arguments
 
 ### When to use each format

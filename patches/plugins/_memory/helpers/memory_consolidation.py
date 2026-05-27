@@ -3,7 +3,6 @@ import logging
 _log = logging.getLogger("memory.consolidation")
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from enum import Enum
 
@@ -11,6 +10,7 @@ from langchain_core.documents import Document
 
 from plugins._memory.helpers.memory import Memory
 from helpers.dirty_json import DirtyJson
+from helpers.localization import Localization
 from helpers.log import LogItem
 from helpers.print_style import PrintStyle
 from agent import Agent
@@ -744,9 +744,11 @@ class MemoryConsolidator:
                 updated_count += 1
                 updated_ids.append(new_id)
 
-        # Step 2: Insert additional new memory if provided
+        # Step 2: Insert the new memory only when no existing memory was updated.
+        # UPDATE means "repopulate the existing subject", not "append another
+        # equally-important memory". This keeps mutable facts from piling up.
         new_memory_id = None
-        if result.new_memory_content:
+        if result.new_memory_content and not updated_ids:
             # LLM metadata takes precedence over original metadata when there are conflicts
             final_metadata = {
                 'area': area,
@@ -767,7 +769,7 @@ class MemoryConsolidator:
 
     def _get_timestamp(self) -> str:
         """Get current timestamp in standard format."""
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        return Localization.get().now_iso(timespec="seconds")
 
 
 # Factory function for easy instantiation
