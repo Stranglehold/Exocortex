@@ -7,4 +7,5 @@
 # Bump this ONLY after completing the staged upgrade in docs/UPGRADE_A0.md.
 #
 # version            tested_commit   date_pinned
-v1.18                                 2026-05-27
+# v1.18 pinned 2026-05-27 — validated on nifty_panini + promoted to v16/v17.
+v1.18
