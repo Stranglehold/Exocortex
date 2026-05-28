@@ -3,7 +3,8 @@ stack_status.py — Exocortex Stack Introspection Tool
 =====================================================
 
 Reports the live state of the Exocortex stack: which extensions are present
-in the container, and what runtime state the active layers have accumulated.
+at the canonical profile path, and what runtime state the active layers have
+accumulated.
 
 Call this tool when:
   - Something isn't behaving as expected and you need to confirm which layers
@@ -13,10 +14,17 @@ Call this tool when:
   - After a deployment, to verify all extensions landed correctly.
 
 No arguments required. No LLM calls. No external dependencies.
-Output is deterministic: file presence checks + agent attribute reads.
+Output is deterministic: filesystem scan + agent attribute reads.
 
-Updated 2026-04-15: fixed EXT_ROOT for DEC-030 profile path migration
-and rebuilt EXTENSIONS dict from live container ground truth (42 files).
+Updated 2026-05-27: AUTO-DISCOVER replaces the stale hardcoded EXTENSIONS dict.
+  - A0 v1.18 loads extensions from /a0/usr/agents/agent0/extensions/python/<hook>/
+    only (confirmed by extensions/install_extensions.sh:75 + runtime hook-tag
+    evidence on nifty_panini v1.18). The prior version scanned the DIRECT path
+    /a0/usr/agents/agent0/extensions/<hook>/ and missed 60+ loaded files while
+    seeing 3 orphan-direct-path deploys, reporting a misleading "3/42 present."
+  - Now scans python/<hook>/ as ground truth (auto-discovered, no stale list)
+    and flags any files at the direct path as ORPHANS (deployed but not loaded).
+  - BST reader now handles both dict-stored and object-stored belief states.
 """
 
 import os
@@ -24,83 +32,19 @@ from datetime import datetime, timezone
 
 from helpers.tool import Tool, Response
 
-# ---------------------------------------------------------------------------
-# Extension registry — rebuilt from /a0/usr/agents/agent0/extensions/ 2026-04-15
-# ---------------------------------------------------------------------------
+# A0 v1.18 extension loader paths.
+EXT_ROOT       = "/a0/usr/agents/agent0/extensions"
+CANONICAL_ROOT = f"{EXT_ROOT}/python"   # A0 ONLY loads from here. Direct EXT_ROOT/<hook>/ is orphan.
 
-EXT_ROOT = "/a0/usr/agents/agent0/extensions"
-
-EXTENSIONS = {
-    "before_main_llm_call": [
-        ("_10_session_init",         "_10_session_init.py"),
-        ("_11_bst",                  "_11_belief_state_tracker.py"),
-        ("_12_completion",           "_12_completion_tracker.py"),
-        ("_13_operator_profile",     "_13_operator_profile.py"),
-        ("_13_reasoning_state",      "_13_reasoning_state.py"),
-        ("_14_situational",          "_14_situational_orientation.py"),
-        ("_15_htn",                  "_15_htn_plan_selector.py"),
-        ("_16_tool_registry",        "_16_tool_registry.py"),
-        ("_17_library_catalog",      "_17_library_catalog.py"),
-        ("_17_orchestration_gate",   "_17_orchestration_gate.py"),
-        ("_18_memory_catalog",       "_18_memory_catalog.py"),
-        ("_20_watchdog",             "_20_context_watchdog.py"),
-        ("_60_sleep_activity",       "_60_sleep_activity.py"),
-    ],
-    "hist_add_before": [
-        ("_11_wm", "_11_working_memory.py"),
-    ],
-    "message_loop_end": [
-        ("_48_task_tracker",      "_48_task_tracker.py"),
-        ("_49_reasoning_update",  "_49_reasoning_state_update.py"),
-        ("_50_supervisor",        "_50_supervisor_loop.py"),
-    ],
-    "message_loop_prompts_after": [
-        ("_16_tool_registry",  "_16_tool_registry.py"),
-        ("_18_memory_catalog", "_18_memory_catalog.py"),
-        ("_55_recall",         "_55_memory_relevance_filter.py"),
-        ("_56_enhance",        "_56_memory_enhancement.py"),
-        ("_58_ontology",       "_58_ontology_query.py"),
-        ("_95_tiered_tools",   "_95_tiered_tool_injection.py"),
-    ],
-    "monologue_end": [
-        ("_25_ei",          "_25_epistemic_integrity.py"),
-        ("_52_memorizer",   "_52_selective_memorizer.py"),
-        ("_53_insight",     "_53_insight_capture.py"),
-        ("_55_classifier",  "_55_memory_classifier.py"),
-        ("_57_maint",       "_57_memory_maintenance.py"),
-        ("_59_ontology",    "_59_ontology_maintenance.py"),
-    ],
-    "tool_execute_after": [
-        ("_20_error",        "_20_error_comprehension.py"),
-        ("_20_reset",        "_20_reset_failure_counter.py"),
-        ("_22_finalizer",    "_22_response_finalizer.py"),
-        ("_25_ledger",       "_25_evidence_ledger_recorder.py"),
-        ("_26_write_valid",  "_26_write_validator.py"),
-        ("_27_code_quality", "_27_code_quality_gate.py"),
-        ("_30_fallback",     "_30_tool_fallback_logger.py"),
-        ("_60_sleep",        "_60_sleep_trigger.py"),
-    ],
-    "tool_execute_before": [
-        ("_15_action",       "_15_action_boundary.py"),
-        ("_17_py_write",     "_17_py_write_tracker.py"),
-        ("_20_meta_gate",    "_20_meta_reasoning_gate.py"),
-        ("_25_write_guard",  "_25_write_guard.py"),
-        ("_30_advisor",      "_30_tool_fallback_advisor.py"),
-    ],
-}
-
-
-# ---------------------------------------------------------------------------
-# Tool
-# ---------------------------------------------------------------------------
 
 class StackStatus(Tool):
     """
     Report the live state of the Exocortex extension stack.
 
     Returns:
-      - Which extensions are present in the container (file check at profile path)
-      - Runtime state accumulated by active layers this session
+      - Per-hook inventory of extensions at the canonical profile path (loaded by A0).
+      - Orphan deploys at the direct path (present but NOT loaded by A0 v1.18).
+      - Runtime state accumulated by active layers this session.
     """
 
     async def execute(self, **kwargs) -> Response:
@@ -113,59 +57,89 @@ class StackStatus(Tool):
 
 
 # ---------------------------------------------------------------------------
-# Report builder
+# Deployment inventory — auto-discovered from the live filesystem
 # ---------------------------------------------------------------------------
+
+def _scan_deployment() -> dict:
+    """Return {hook: {'loaded': [names], 'orphan': [names]}} for every hook
+    that has any deploy at either path. `loaded` are .py files at the canonical
+    python/<hook>/ path (A0 v1.18 will load these). `orphan` are .py files at
+    the direct <hook>/ path that A0 does NOT load (a deploy-path bug)."""
+    out: dict = {}
+
+    # Canonical (loaded) — python/<hook>/<file>.py
+    if os.path.isdir(CANONICAL_ROOT):
+        for hook in sorted(os.listdir(CANONICAL_ROOT)):
+            hp = os.path.join(CANONICAL_ROOT, hook)
+            if not os.path.isdir(hp):
+                continue
+            loaded = sorted(
+                f for f in os.listdir(hp)
+                if f.endswith(".py") and not f.startswith("__")
+            )
+            out[hook] = {"loaded": loaded, "orphan": []}
+
+    # Orphans — direct <hook>/<file>.py NOT also present at canonical.
+    if os.path.isdir(EXT_ROOT):
+        for hook in sorted(os.listdir(EXT_ROOT)):
+            if hook == "python" or hook.startswith("."):
+                continue
+            hp = os.path.join(EXT_ROOT, hook)
+            if not os.path.isdir(hp):
+                continue
+            direct = {
+                f for f in os.listdir(hp)
+                if f.endswith(".py") and not f.startswith("__")
+            }
+            loaded_set = set(out.get(hook, {}).get("loaded", []))
+            orphans = sorted(direct - loaded_set)
+            if orphans:
+                out.setdefault(hook, {"loaded": [], "orphan": []})["orphan"] = orphans
+    return out
+
+
+def _short(name: str) -> str:
+    """Strip .py for compact display."""
+    return name[:-3] if name.endswith(".py") else name
+
 
 def _build_report(agent) -> str:
     lines = ["[EXOCORTEX STACK STATUS]", ""]
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines.append(f"Generated: {ts}")
-    lines.append(f"Profile path: {EXT_ROOT}")
+    lines.append(f"Loader path: {CANONICAL_ROOT}   (A0 loads only from python/<hook>/)")
     lines.append("")
 
-    # ── Section 1: Extension presence ──────────────────────────────────────
-    total = sum(len(v) for v in EXTENSIONS.values())
-    present = 0
-    ext_lines = []
+    # ── Section 1: Deployment inventory ────────────────────────────────────
+    scan = _scan_deployment()
+    total_loaded = sum(len(d["loaded"]) for d in scan.values())
+    total_orphan = sum(len(d["orphan"]) for d in scan.values())
+    populated_hooks = sum(1 for d in scan.values() if d["loaded"])
+    lines.append(f"Extensions loaded: {total_loaded} across {populated_hooks} hook dir(s)")
+    if total_orphan:
+        lines.append(f"  ⚠ Orphan deploys at direct path (NOT loaded): {total_orphan}  — see hooks marked ⚠ below")
+    lines.append("")
 
-    for hook, exts in EXTENSIONS.items():
-        row_parts = []
-        for label, filename in exts:
-            path = os.path.join(EXT_ROOT, hook, filename)
-            exists = os.path.exists(path)
-            if exists:
-                present += 1
-            mark = "✓" if exists else "✗"
-            row_parts.append(f"{mark}{label}")
-        ext_lines.append(f"  {hook:<32}  {' | '.join(row_parts)}")
-
-    lines.append(f"Extensions ({present}/{total} present at profile path)")
-    lines.extend(ext_lines)
+    for hook in sorted(scan.keys()):
+        loaded = scan[hook]["loaded"]
+        orphan = scan[hook]["orphan"]
+        if loaded:
+            lines.append(f"  {hook:<28} ({len(loaded):>2}) {', '.join(_short(f) for f in loaded)}")
+        elif orphan:
+            lines.append(f"  {hook:<28} ( 0) (empty — see orphan list below)")
+        if orphan:
+            lines.append(f"    ⚠ orphan: {', '.join(_short(f) for f in orphan)}  (at {EXT_ROOT}/{hook}/, NOT loaded)")
     lines.append("")
 
     # ── Section 2: Runtime state ────────────────────────────────────────────
     lines.append("Runtime state (session-accumulated)")
-
-    bst_line = _read_bst(agent)
-    lines.append(f"  BST            {bst_line}")
-
-    ev_line = _read_evidence(agent)
-    lines.append(f"  Evidence       {ev_line}")
-
-    ei_line = _read_ei(agent)
-    lines.append(f"  EI             {ei_line}")
-
-    gate_line = _read_action_gate(agent)
-    lines.append(f"  Action gate    {gate_line}")
-
-    sup_line = _read_supervisor(agent)
-    lines.append(f"  Supervisor     {sup_line}")
-
-    wm_line = _read_working_memory(agent)
-    lines.append(f"  Working mem    {wm_line}")
-
-    op_line = _read_operator_profile(agent)
-    lines.append(f"  Operator       {op_line}")
+    lines.append(f"  BST            {_read_bst(agent)}")
+    lines.append(f"  Evidence       {_read_evidence(agent)}")
+    lines.append(f"  EI             {_read_ei(agent)}")
+    lines.append(f"  Action gate    {_read_action_gate(agent)}")
+    lines.append(f"  Supervisor     {_read_supervisor(agent)}")
+    lines.append(f"  Working mem    {_read_working_memory(agent)}")
+    lines.append(f"  Operator       {_read_operator_profile(agent)}")
 
     return "\n".join(lines)
 
@@ -174,6 +148,17 @@ def _build_report(agent) -> str:
 # Runtime state readers — all safe, return "not yet fired" on missing attr
 # ---------------------------------------------------------------------------
 
+def _get(obj, key, default=None):
+    """Read `key` from obj whether it's a dict, an object, or neither. Centralises
+    the dict-or-object ambiguity that caused the BST reader's pre-fix "domain=?"
+    when belief was stored as a dict (getattr returns None for dicts)."""
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def _read_bst(agent) -> str:
     try:
         store = getattr(agent, "_bst_store", None)
@@ -181,12 +166,19 @@ def _read_bst(agent) -> str:
             return "not yet fired"
         belief = store.get("__bst_belief_state__")
         if not belief:
-            return "store present, belief state empty"
-        primary = getattr(belief, "primary_domain", None) or store.get("_bst_domain", "?")
-        secondary = getattr(belief, "secondary_domain", None)
+            # BST stored some context fields but never produced a belief state.
+            sig = store.get("_compound_sig")
+            return f"store present, belief empty (compound_sig={sig})" if sig else "store present, belief state empty"
+        primary   = _get(belief, "primary_domain") or store.get("_bst_domain") or "?"
+        secondary = _get(belief, "secondary_domain")
+        confidence = _get(belief, "confidence")
+        bits = [f"domain={primary}"]
         if secondary and secondary != primary:
-            return f"domain={primary} | secondary={secondary}"
-        return f"domain={primary}"
+            bits.append(f"secondary={secondary}")
+        if confidence is not None:
+            try: bits.append(f"conf={float(confidence):.2f}")
+            except Exception: pass
+        return " | ".join(bits)
     except Exception as e:
         return f"read error: {e}"
 
@@ -202,8 +194,8 @@ def _read_evidence(agent) -> str:
             ledger = getattr(agent, "_evidence_ledger", None)
         if not ledger:
             return "not yet fired"
-        entries = ledger.get("entries", [])
-        kv = ledger.get("key_values", [])
+        entries = _get(ledger, "entries", []) or []
+        kv      = _get(ledger, "key_values", []) or []
         return f"{len(entries)} entries | {len(kv)} key values this session"
     except Exception as e:
         return f"read error: {e}"
@@ -220,12 +212,10 @@ def _read_ei(agent) -> str:
             ei = getattr(agent, "_epistemic_integrity", None)
         if not ei:
             return "not yet fired"
-        total   = ei.get("total_claims", 0)
-        high    = ei.get("high_risk_count", 0)
-        claims  = ei.get("claims", [])
-        last_verdict = "none"
-        if claims:
-            last_verdict = claims[-1].get("verdict", "?")
+        total  = _get(ei, "total_claims", 0)
+        high   = _get(ei, "high_risk_count", 0)
+        claims = _get(ei, "claims", []) or []
+        last_verdict = _get(claims[-1], "verdict", "?") if claims else "none"
         return f"{total} claims | {high} high-risk | last={last_verdict}"
     except Exception as e:
         return f"read error: {e}"
@@ -252,12 +242,11 @@ def _read_supervisor(agent) -> str:
         state = getattr(agent, "_supervisor_state", None)
         if not state:
             return "not yet fired"
-        turn      = state.get("turn", 0)
-        loop_tier = state.get("loop_tier", "none") or "none"
-        cooldowns = state.get("cooldowns", {})
+        turn      = _get(state, "turn", 0)
+        loop_tier = _get(state, "loop_tier", "none") or "none"
+        cooldowns = _get(state, "cooldowns", {}) or {}
         fired = [k for k, v in cooldowns.items() if isinstance(v, int) and v > 0]
-        anomaly_str = (", ".join(fired)) if fired else "none"
-        return f"turn={turn} | loop_tier={loop_tier} | anomalies fired={anomaly_str}"
+        return f"turn={turn} | loop_tier={loop_tier} | anomalies fired={', '.join(fired) if fired else 'none'}"
     except Exception as e:
         return f"read error: {e}"
 
@@ -267,8 +256,8 @@ def _read_working_memory(agent) -> str:
         wm = getattr(agent, "_working_memory", None)
         if not wm:
             return "not yet fired"
-        entities  = wm.get("entities", [])
-        promoted  = wm.get("promoted", {})
+        entities = _get(wm, "entities", []) or []
+        promoted = _get(wm, "promoted", {}) or {}
         return f"{len(entities)} entities ({len(promoted)} promoted)"
     except Exception as e:
         return f"read error: {e}"
@@ -279,11 +268,12 @@ def _read_operator_profile(agent) -> str:
         cache = getattr(agent, "_operator_profile_cache", None)
         if not cache:
             return "not loaded (no approved profile)"
-        profile = cache.get("profile", {})
+        profile = _get(cache, "profile", {}) or {}
         if not profile:
             return "cache present, profile empty"
-        comm    = profile.get("communication_patterns", {})
-        avg_len = comm.get("avg_turn_length_chars", 0)
-        return f"loaded (avg {avg_len:.0f} chars/turn)"
+        comm    = _get(profile, "communication_patterns", {}) or {}
+        avg_len = _get(comm, "avg_turn_length_chars", 0) or 0
+        try:    return f"loaded (avg {float(avg_len):.0f} chars/turn)"
+        except Exception: return "loaded"
     except Exception as e:
         return f"read error: {e}"

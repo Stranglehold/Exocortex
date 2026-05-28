@@ -10,15 +10,15 @@
 
 set -e
 
-CONTAINER="${1:-exocortex_v16}"
+CONTAINER="${1:-${CONTAINER:-exocortex_v16}}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 GUARD_SRC="$REPO_ROOT/extensions/tool_execute_before/_25_write_guard.py"
 VALIDATOR_SRC="$REPO_ROOT/extensions/tool_execute_after/_26_write_validator.py"
 
 # Profile path (persistent across container updates — highest priority)
-PROFILE_BEFORE="/a0/usr/agents/agent0/extensions/tool_execute_before"
-PROFILE_AFTER="/a0/usr/agents/agent0/extensions/tool_execute_after"
+PROFILE_BEFORE="/a0/usr/agents/agent0/extensions/python/tool_execute_before"
+PROFILE_AFTER="/a0/usr/agents/agent0/extensions/python/tool_execute_after"
 
 echo "[WRITE-GUARD] Deploying write validation gate to container: $CONTAINER"
 

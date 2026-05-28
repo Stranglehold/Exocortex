@@ -8,7 +8,7 @@
 #     → /a0/usr/agents/agent0/tools/library.py  (profile path, DEC-030)
 #
 #   extensions/before_main_llm_call/_17_library_catalog.py
-#     → /a0/usr/agents/agent0/extensions/before_main_llm_call/_17_library_catalog.py
+#     → /a0/usr/agents/agent0/extensions/python/before_main_llm_call/_17_library_catalog.py
 #
 #   scripts/library_batch_ingest.py
 #     → /a0/usr/Exocortex/library_batch_ingest.py  (runnable inside container)
@@ -63,11 +63,11 @@ fi
 # ── Extension ─────────────────────────────────────────────────────────────────
 
 EXT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_17_library_catalog.py"
-EXT_DST="/a0/usr/agents/agent0/extensions/before_main_llm_call/_17_library_catalog.py"
-EXT_PYCACHE="/a0/usr/agents/agent0/extensions/before_main_llm_call/__pycache__"
+EXT_DST="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_17_library_catalog.py"
+EXT_PYCACHE="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/__pycache__"
 
 if [ -f "$EXT_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/before_main_llm_call
+  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/python/before_main_llm_call
   docker cp "$EXT_SRC" "$CONTAINER:$EXT_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$EXT_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c \

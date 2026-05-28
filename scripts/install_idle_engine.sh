@@ -36,12 +36,23 @@ _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
 # ── Container list ────────────────────────────────────────────────────────────
 
 CONTAINERS=()
-for name in "${CONTAINER_NAME:-}" exocortex_v16 exocortex_v17; do
-    [[ -z "$name" ]] && continue
-    if docker inspect "$name" &>/dev/null 2>&1; then
-        CONTAINERS+=("$name")
-    fi
-done
+if [ -f "/.dockerenv" ] || grep -qE "docker|lxc|containerd" /proc/1/cgroup 2>/dev/null; then
+    # Running INSIDE a container (install_all.sh shim active). `docker inspect`
+    # doesn't exist here, so discovery would fail. The shim intercepts docker
+    # cp/exec to local ops, making the container name a label — set it and move on.
+    CONTAINERS=("${CONTAINER:-in-container}")
+elif [[ -n "${CONTAINER:-}" ]]; then
+    # Host-side targeted install — honor the CONTAINER env (install_all exports it).
+    # Without this, a single-container install would fan out to prod (v16/v17).
+    docker inspect "$CONTAINER" &>/dev/null 2>&1 && CONTAINERS+=("$CONTAINER")
+else
+    for name in "${CONTAINER_NAME:-}" exocortex_v16 exocortex_v17; do
+        [[ -z "$name" ]] && continue
+        if docker inspect "$name" &>/dev/null 2>&1; then
+            CONTAINERS+=("$name")
+        fi
+    done
+fi
 
 if [[ ${#CONTAINERS[@]} -eq 0 ]]; then
     echo "  ERR  No agent zero containers found (exocortex_v16 / exocortex_v17)"

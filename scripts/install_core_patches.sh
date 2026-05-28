@@ -283,18 +283,18 @@ else:
 "
 
 # ── 8. Extension: _20_meta_reasoning_gate.py ─────────────────────────────────
-# Deploys to all known active profile paths. Active path confirmed:
-#   /a0/usr/agents/agent0/extensions/python/tool_execute_before/
-# Other paths deployed as fallback. pycache cleared at each location.
-# Changes: content->code alias, text_editor_remote intercept,
-#          truncation-specific message for missing code arg, strip_unknown_args.
+# Two active targets:
+#   - /a0/usr/plugins/exocortex/extensions/python/.../  (exocortex plugin tree)
+#   - /a0/usr/agents/agent0/extensions/python/.../      (canonical profile path A0 loads from)
+# (Previously also wrote to /a0/usr/Exocortex/extensions/... which is the REPO
+# itself — a self-copy when run in-container — and to the direct profile path
+# /a0/usr/agents/agent0/extensions/.../ which A0 v1.18 doesn't load from.
+# Both removed 2026-05-27.)
 
 GATE_SRC="$REPO_ROOT/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
 
 GATE_PATHS=(
   "/a0/usr/plugins/exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
-  "/a0/usr/Exocortex/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
-  "/a0/usr/agents/agent0/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
   "/a0/usr/agents/agent0/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
 )
 
@@ -302,12 +302,14 @@ if [ -f "$GATE_SRC" ]; then
   for DST in "${GATE_PATHS[@]}"; do
     DIR=$(dirname "$DST")
     _exec "$CONTAINER" mkdir -p "$DIR"
+    # Skip self-copy (src == dst, e.g. when the repo lives at /a0/usr/Exocortex in-container).
+    if [ "$GATE_SRC" = "$DST" ]; then continue; fi
     docker cp "$GATE_SRC" "$CONTAINER:$DST"
     CACHE="$DIR/__pycache__"
     _exec "$CONTAINER" bash -c "rm -rf '$CACHE'" 2>/dev/null || true
   done
-  _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '${GATE_PATHS[3]}' && echo '[PATCH] _20_meta_reasoning_gate.py OK'"
-  echo "[PATCH] extensions/tool_execute_before/_20_meta_reasoning_gate.py deployed (all 4 profile paths)."
+  _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '${GATE_PATHS[-1]}' && echo '[PATCH] _20_meta_reasoning_gate.py OK'"
+  echo "[PATCH] extensions/tool_execute_before/_20_meta_reasoning_gate.py deployed (canonical profile + plugin paths)."
 else
   echo "[PATCH] WARNING: $GATE_SRC not found — skipped."
 fi
