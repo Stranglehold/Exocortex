@@ -112,6 +112,30 @@ DOMAIN_CLASS_MAP = {
 # Minimum severity required to set the _ps_fired flag
 SEVERITY_THRESHOLD_FOR_INTERVENTION = 0.4
 
+# ── Affect layer (AFFECT_LAYER_DESIGN_NOTE — Phase 1) ─────────────────────────
+# Composes the five detectors + cross-hook signals into a single predictive
+# operational state. Deterministic, no LLM call. All cross-hook signal sources
+# verified already-stored-on-agent (2026-05-29); zero new signal wiring.
+#
+# Cross-hook signal sources:
+STEP_COUNT_ATTR     = "_step_budget_count"  # int, set by _08_step_budget_tracker
+PACE_PLAN_ATTR      = "_pace_plan"          # dict w/ ["active_tier"], _14_pace_plan_generator
+FAILURE_TRACKER_KEY = "_failure_tracker"    # {tool: consecutive_count}, _30 (inc) / _20 (reset)
+EI_VERDICT_KEY      = "_ei_last_verdict"    # {cited,high_risk_count,turn}, _25 (previous turn)
+AFFECT_STATE_KEY    = "_affect_state"       # our output — read by sensorium (IDEA-001, Phase 3)
+
+STEP_BUDGET_CONFIG_PATH = "/a0/usr/Exocortex/config.json"
+DEFAULT_STEP_BUDGET     = 80
+
+# Phase 2 gate. FLOW/FRICTION/STAGNATION are calibratable from the existing
+# 5,445-turn trace and are live. FRUSTRATION/DESPERATION are CLASSIFIED and LOGGED
+# now (so the enriched trace accumulates real signal distributions for threshold
+# fitting) but NO consumer acts on them in Phase 1 — there is no affect-intervention
+# path yet; the existing supervisor still owns STAGNATION via _ps_fired. Flip to True
+# (and add the intervention consumer) only after Phase 2 calibration validates
+# thresholds. Config-overridable later if needed.
+AFFECT_PHASE2_ENABLED = False
+
 # ── Signal dataclass ──────────────────────────────────────────────────────────
 
 @dataclass
@@ -203,6 +227,25 @@ class ProactiveSupervisorAnalyzer(Extension):
             # Select the highest-severity signal
             best = max(signals, key=lambda s: s.severity) if signals else None
 
+            # ── Affect layer (Phase 1): classify operational state from the existing
+            # signals + cross-hook reads, store for the sensorium (IDEA-001), log to
+            # the enriched trace. Observational only — no intervention on FRUSTRATION/
+            # DESPERATION until Phase 2 calibration (AFFECT_PHASE2_ENABLED).
+            telemetry = _gather_affect_telemetry(self.agent, text)
+            affect = classify_affect(telemetry)
+            self.agent.set_data(AFFECT_STATE_KEY, affect)
+            if affect != "FLOW":
+                print(
+                    f"[PS-AFFECT] {affect} "
+                    f"step={telemetry['current_step']}/{telemetry['step_budget']} "
+                    f"failures={telemetry['consecutive_tool_failures']} "
+                    f"tier={telemetry['pace_tier']} "
+                    f"hedge:commit={telemetry['hedge_commit_ratio']} "
+                    f"rep_tool={telemetry['repeated_tool_count']} "
+                    f"cited={telemetry['ei_cited']}",
+                    flush=True,
+                )
+
             # Write behavioral trace regardless of whether we intervene
             _write_behavioral_trace(
                 agent=self.agent,
@@ -210,6 +253,8 @@ class ProactiveSupervisorAnalyzer(Extension):
                 task_class=task_class,
                 bst_domain=bst_domain,
                 signals=signals,
+                telemetry=telemetry,
+                affect=affect,
             )
 
             if best and best.severity >= SEVERITY_THRESHOLD_FOR_INTERVENTION:
@@ -380,6 +425,107 @@ def _detect_excessive_deliberation(text: str, task_class: str, out: list) -> Non
         ))
 
 
+# ── Affect Classifier (AFFECT_LAYER_DESIGN_NOTE — Phase 1) ────────────────────
+
+def _read_step_budget() -> int:
+    """Read the step budget from config (single source of truth — same file _08 reads)."""
+    try:
+        with open(STEP_BUDGET_CONFIG_PATH, encoding="utf-8") as fh:
+            cfg = json.load(fh).get("step_budget_tracker", {})
+            return int(cfg.get("max_steps", DEFAULT_STEP_BUDGET))
+    except Exception:
+        return DEFAULT_STEP_BUDGET
+
+
+def _gather_affect_telemetry(agent, text: str) -> dict:
+    """Compose the affect telemetry from this turn's reasoning metrics plus
+    cross-hook signals already maintained on the agent. No new signal production —
+    all four cross-hook inputs are read, not computed (verified 2026-05-29).
+
+    Timing (read at reasoning_stream_end of turn N):
+      - step count / PACE tier  → current turn (set earlier this turn)
+      - failure tracker          → failures through turn N-1's tool execution
+      - EI verdict               → turn N-1's monologue_end (one-turn-forward, option c)
+    """
+    # Text-derived metrics (same formulas as the trace writer — deterministic, cheap).
+    hedge_count  = len(_HEDGE_RX.findall(text))
+    commit_count = len(_COMMIT_RX.findall(text))
+    hedge_commit_ratio = round(hedge_count / max(commit_count, 1), 2)
+    tool_counts: dict = {}
+    for m in _TOOL_ACTION_RX.findall(text.lower()):
+        tool_counts[m] = tool_counts.get(m, 0) + 1
+    repeated_tool_count = max(tool_counts.values()) if tool_counts else 0
+    self_ref_count = len(_SELF_REF_RX.findall(text))
+
+    # Cross-hook reads (all already-stored — no production wiring).
+    tracker = agent.get_data(FAILURE_TRACKER_KEY) or {}
+    consecutive_tool_failures = max(tracker.values()) if tracker else 0
+
+    current_step = getattr(agent, STEP_COUNT_ATTR, 0) or 0
+    step_budget  = _read_step_budget()
+
+    pace_plan = getattr(agent, PACE_PLAN_ATTR, None) or {}
+    pace_tier = pace_plan.get("active_tier", "primary") if isinstance(pace_plan, dict) else "primary"
+
+    ei_verdict = agent.get_data(EI_VERDICT_KEY) or {}
+    ei_cited = bool(ei_verdict.get("cited", True))  # benign default before any verdict
+    uncited_assertions = 0 if ei_cited else 1
+
+    return {
+        "repeated_tool_count": repeated_tool_count,
+        "reasoning_length": len(text),
+        "hedge_commit_ratio": hedge_commit_ratio,
+        "consecutive_tool_failures": consecutive_tool_failures,
+        "current_step": current_step,
+        "step_budget": step_budget,
+        "pace_tier": pace_tier,
+        "self_reference_loops": self_ref_count,
+        "uncited_assertions": uncited_assertions,
+        "ei_cited": ei_cited,
+    }
+
+
+def classify_affect(telemetry: dict) -> str:
+    """Classify current affect state from observable signals (deterministic, no LLM).
+
+    Thresholds are the Phase-1 starting values from the design note. FLOW/FRICTION/
+    STAGNATION are calibratable from the existing trace; FRUSTRATION/DESPERATION
+    thresholds get refined in Phase 2 from the enriched trace. Note: hedge_commit_ratio
+    here is hedge/commit (higher = more hedging); a LOW ratio (<0.2) is the "stopped
+    hedging, started asserting" desperation signal.
+    """
+    repeated_tools = telemetry.get("repeated_tool_count", 0)
+    hedge_commit   = telemetry.get("hedge_commit_ratio", 0.0)
+    tool_failures  = telemetry.get("consecutive_tool_failures", 0)
+    step_count     = telemetry.get("current_step", 0)
+    step_budget    = telemetry.get("step_budget", DEFAULT_STEP_BUDGET)
+    pace_tier      = telemetry.get("pace_tier", "primary")
+    self_ref_loops = telemetry.get("self_reference_loops", 0)
+    uncited        = telemetry.get("uncited_assertions", 0)
+
+    # DESPERATION — pre-fabrication (check first, highest priority)
+    if (step_count > step_budget * 2 or uncited > 0) and \
+       (hedge_commit < 0.2 or tool_failures >= 3):
+        return "DESPERATION"
+
+    # FRUSTRATION — escalating failure
+    if tool_failures >= 2 and hedge_commit > 0.6:
+        return "FRUSTRATION"
+    if pace_tier in ("contingency", "emergency") and repeated_tools >= 3:
+        return "FRUSTRATION"
+
+    # STAGNATION — unproductive repetition
+    if repeated_tools >= 4 or self_ref_loops > 0:
+        return "STAGNATION"
+
+    # FRICTION — normal problem-solving resistance
+    if repeated_tools >= 2 or tool_failures >= 1 or hedge_commit > 0.4:
+        return "FRICTION"
+
+    # FLOW — productive operation
+    return "FLOW"
+
+
 # ── Behavioral Trace Logger (Phase 2 training data) ───────────────────────────
 
 def _write_behavioral_trace(
@@ -388,11 +534,17 @@ def _write_behavioral_trace(
     task_class: str,
     bst_domain: str,
     signals: list,
+    telemetry: Optional[dict] = None,
+    affect: Optional[str] = None,
 ) -> None:
     """
     Append one JSONL record per turn with reasoning metrics + signal results.
     These traces are the training data for Phase 2 calibration model.
     Privacy: records metrics only, not full reasoning text (log_full_reasoning=false).
+
+    The affect-layer fields (affect, step, step_budget, pace_tier,
+    consecutive_tool_failures, ei_cited) enrich the trace so Phase 2 can fit
+    FRUSTRATION/DESPERATION thresholds from real signal distributions.
     """
     try:
         # Count hedge/commit for trace even if signal didn't fire
@@ -420,6 +572,14 @@ def _write_behavioral_trace(
                 for s in signals
             ],
             "intervened": any(s.severity >= SEVERITY_THRESHOLD_FOR_INTERVENTION for s in signals),
+            # ── Affect layer enrichment (Phase 1) ──
+            "affect": affect,
+            "phase2_enabled": AFFECT_PHASE2_ENABLED,
+            "step": (telemetry or {}).get("current_step"),
+            "step_budget": (telemetry or {}).get("step_budget"),
+            "pace_tier": (telemetry or {}).get("pace_tier"),
+            "consecutive_tool_failures": (telemetry or {}).get("consecutive_tool_failures"),
+            "ei_cited": (telemetry or {}).get("ei_cited"),
         }
 
         os.makedirs(os.path.dirname(TRACE_LOG_PATH), exist_ok=True)

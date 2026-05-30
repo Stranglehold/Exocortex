@@ -1431,6 +1431,93 @@ sequenceDiagram
     </tbody>
   </table>
 
+  <h3>Affect Layer (Phase 1) — cross-hook signal composition <span class="status ok">deployed 2026-05-30</span></h3>
+  <p>The affect layer (<a href="#" onclick="return false;">AFFECT_LAYER_DESIGN_NOTE</a>) lives inside
+  <code>reasoning_stream_end/_12_proactive_supervisor</code>. It adds <strong>no new signals</strong> — it
+  <em>reads</em> signals already maintained elsewhere and composes them into one predictive operational state
+  (<code>FLOW / FRICTION / STAGNATION / FRUSTRATION / DESPERATION</code>) via the deterministic
+  <code>classify_affect()</code> (no LLM call). Verified 2026-05-30: every input is already produced by an
+  existing extension; the affect layer only consumes. This is the cleanest illustration in the stack of the
+  "read existing state, don't add new state" principle — and a worked example of the getattr-vs-get_data
+  split (<a href="#sec-13">seam #3</a>).</p>
+
+  <table>
+    <thead><tr><th>Classifier input</th><th>Source extension</th><th>Hook (producer)</th><th>Access pattern</th><th>Timing read at <code>reasoning_stream_end</code> turn N</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">current_step</td>
+        <td><code>_08_step_budget_tracker</code></td>
+        <td>message_loop_prompts_after</td>
+        <td><code>getattr(agent, "_step_budget_count", 0)</code></td>
+        <td>current turn</td>
+      </tr>
+      <tr>
+        <td class="key">step_budget</td>
+        <td><code>config.json → step_budget_tracker.max_steps</code></td>
+        <td>(config, default 80)</td>
+        <td>file read (same source <code>_08</code> uses — single source of truth)</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td class="key">pace_tier</td>
+        <td><code>_14_pace_plan_generator</code></td>
+        <td>before_main_llm_call</td>
+        <td><code>getattr(agent, "_pace_plan", {})["active_tier"]</code></td>
+        <td>current turn</td>
+      </tr>
+      <tr>
+        <td class="key">consecutive_tool_failures</td>
+        <td><code>_30_failure_tracker</code> (inc) / <code>_20_reset_failure_counter</code> (reset)</td>
+        <td>error_format / tool_execute_after</td>
+        <td><code>max(agent.get_data("_failure_tracker").values())</code></td>
+        <td>through turn N−1's tool execution (correct — failures leading <em>into</em> this reasoning)</td>
+      </tr>
+      <tr>
+        <td class="key">uncited_assertions</td>
+        <td><code>_25_epistemic_integrity</code> → <code>_ei_last_verdict</code></td>
+        <td>monologue_end</td>
+        <td><code>agent.get_data("_ei_last_verdict")["cited"]</code> (inverted)</td>
+        <td>turn N−1's verdict (one-turn-forward, option c — EI fires after reasoning_stream_end)</td>
+      </tr>
+      <tr>
+        <td class="key">repeated_tool_count, reasoning_length, hedge_commit_ratio, self_reference_loops</td>
+        <td><code>_12</code> own detectors</td>
+        <td>reasoning_stream_end</td>
+        <td>computed in-stream from the reasoning buffer</td>
+        <td>current turn</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>New state keys introduced:</p>
+  <table>
+    <thead><tr><th>Key</th><th>Surface</th><th>Written by</th><th>Read by</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">_affect_state</td>
+        <td>get_data/set_data</td>
+        <td><code>_12_proactive_supervisor</code> (reasoning_stream_end)</td>
+        <td><em>sensorium injection — IDEA-001, Phase 3 (not yet built)</em></td>
+        <td>Current operational state string. One-turn lag to the sensorium consumer (classify turn N → inject awareness turn N+1) is by design.</td>
+      </tr>
+      <tr>
+        <td class="key">_ei_last_verdict</td>
+        <td>get_data/set_data</td>
+        <td><code>_25_epistemic_integrity</code> (monologue_end)</td>
+        <td><code>_12_proactive_supervisor</code> (reasoning_stream_end, next turn)</td>
+        <td><code>{cited: bool, high_risk_count: int, turn: N}</code>. Benign default (<code>cited:True</code>) set on no-claim turns so a stale uncited flag can't linger. The DESPERATION uncited signal.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Phase 2 gate.</strong> <code>FLOW/FRICTION/STAGNATION</code> are calibratable from the existing
+  5,445-turn trace and are live. <code>FRUSTRATION/DESPERATION</code> are <em>classified and logged</em> now
+  (enriched <code>behavioral_traces.jsonl</code> gains <code>affect, phase2_enabled, step, step_budget,
+  pace_tier, consecutive_tool_failures, ei_cited</code>) so threshold fitting can use real signal
+  distributions — but <strong>no consumer acts on them</strong> (<code>AFFECT_PHASE2_ENABLED = False</code>).
+  The existing supervisor still owns STAGNATION intervention via <code>_ps_fired</code>. Log tag:
+  <code>[PS-AFFECT]</code> (non-FLOW only).</p>
+
   <h3>Surface 3 — <code>loop_data.extras_persistent</code></h3>
   <p>Per-turn shared dict on the <code>LoopData</code> object. Used for state that needs to flow from extensions into A0's prompt template placeholders, or between extensions on the same turn. <strong>No collision guard</strong> — two extensions writing the same key silently overwrite each other.</p>
   <table>

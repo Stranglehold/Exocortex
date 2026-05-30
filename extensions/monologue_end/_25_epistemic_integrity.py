@@ -151,6 +151,15 @@ class EpistemicIntegrity(Extension):
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
             self.agent.set_data(EI_KEY, {})
+            # Benign default for the affect layer's DESPERATION signal (AFFECT_LAYER
+            # Gap 2, option c). If this turn produces no checkable claims, the forwarded
+            # verdict must not leave a stale "uncited" flag from a prior turn. Overwritten
+            # below with the real verdict when claims are actually checked.
+            self.agent.set_data("_ei_last_verdict", {
+                "cited": True,
+                "high_risk_count": 0,
+                "turn": getattr(self.agent, "_step_budget_count", 0),
+            })
 
             response_text = self._get_last_response()
             if not response_text or len(response_text.strip()) < 50:
@@ -203,6 +212,15 @@ class EpistemicIntegrity(Extension):
             }
 
             self.agent.set_data(EI_KEY, ei_result)
+
+            # Forward a compact verdict for the affect classifier (AFFECT_LAYER Gap 2,
+            # option c). cited == no high-risk ungrounded claims. Read one turn later at
+            # reasoning_stream_end as the DESPERATION uncited-assertion signal.
+            self.agent.set_data("_ei_last_verdict", {
+                "cited": len(high_risk) == 0,
+                "high_risk_count": len(high_risk),
+                "turn": getattr(self.agent, "_step_budget_count", 0),
+            })
 
             self.agent.context.log.log(
                 type="info",
