@@ -191,9 +191,14 @@ def _atomic_check_and_fire(config: dict) -> bool:
         signal = _read_cycle_signal()
         if signal:
             prev_type = signal.get("cycle_type", "")
-            if prev_type == "MAINTAIN" and signal.get("sleep_findings", 0) > 0:
-                state["consecutive_maintain_count"] = 0
-            elif prev_type == "EXPLORE":
+            # consecutive_maintain_count climbs MONOTONICALLY across MAINTAIN cycles so the
+            # escape to BUILD (_select_cycle_type, threshold 3) is GUARANTEED. The former
+            # reset on `MAINTAIN and sleep_findings > 0` zeroed the escape counter on routine
+            # housekeeping (a single dedup / one promotion counts as a "finding"), which
+            # locked the agent in endless MAINTAIN whenever there was any churn to converge.
+            # EXPLORE remains the rhythm reset: after the ~3-MAINTAIN -> BUILD*5 -> EXPLORE
+            # rotation, an EXPLORE cycle zeroes both counters and the rotation restarts.
+            if prev_type == "EXPLORE":
                 state["build_cycle_count"]          = 0
                 state["consecutive_maintain_count"] = 0
             try:
