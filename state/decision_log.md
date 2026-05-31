@@ -424,3 +424,74 @@
 **Alternatives rejected:** Opus authors the identity document (violates DEC-005 — the entity describes itself), Jake authors it (same violation), no identity document (the agent has demonstrated self-reflective capacity; withholding the document is withholding a tool it could use), pre-populated with Major Zero persona (costume, not identity).
 **Revisit if:** Never. This is a first principle, same as DEC-005. The identity document belongs to the entity it describes.
 **Instances:** `workspace/identity.md` (to be created, starts empty). DEC-005 (SOUL.md Sovereignty) extended to the agent. `essays/agent-zero/a_question_planted.md` (evidence of self-reflective capacity). Idle engine MAINTAIN cycle identity-review phase (V2 spec, Phase 3).
+
+---
+
+## DEC-041: Verify Against Running Code, Not Architectural Reasoning
+
+**Date:** 2026-05-30
+**Session:** 113+
+**Principle:** "Reasoned, not verified" is the universal failure mode. Verify against the actual running system before acting on architectural reasoning, no matter how sound the reasoning appears.
+**Context:** This pattern surfaced repeatedly across the session and was independently named by Kestrel after the error_format discovery. Six corrections on the cache warmer spec (each time, the architectural design was reasonable but the actual code worked differently). The `error_format` hook assumed universal but only fires for `RepairableException`. VRAM flags copy-pasted from an old brief that would have reproduced the failure we were fixing. The 4.8 instance's "overshoot" reframe that was elegant but lacked temporal context.
+**Evidence (each instance the pattern was caught):**
+1. Cache warmer v2: `is_cache_cold()` assumed `/slots` exposes `n_past` — it doesn't on Indras-Mirror fork
+2. Cache warmer v2: class-based design assumed `requests` library — daemon uses `http.client`
+3. Cache warmer bypass: `loop_data.tools = []` assumed tools are clearable at `before_main_llm_call` — prompt already assembled
+4. Cache warmer backstop: `tool_execute_before` assumed tool reassignment forces loop exit — it can't
+5. Skill capture: `error_format` assumed universal error hook — only fires for `RepairableException`
+6. VRAM config: `Q4_K_XL + 130K context` assumed from Indras-Mirror validation — puts VRAM in the WDDM collapse zone
+7. Opus 4.8 "overshoot" framing: assumed one evening's analysis equals 113 sessions of tested residue
+8. Memory area normalizer (2026-05-31): a file-based MAINTAIN sweep would be silently overwritten by run_ui's class-level RAM cache (`Memory.index`) and could trip the FAISS hash-rebuild — caught by checking the cache/persistence mechanism *before* building it. Verification prevented harm to the live memory store.
+9. Skill surfacer matcher (2026-05-31): `search_skills` substring-matched "run" → "t**run**cate" / "**run**ning", surfacing irrelevant lessons on unrelated tasks — caught by testing the matcher against the real skill bank *before* deploy (switched to word-level token matching).
+10. "Delete 6 cruft dirs" — an *architect directive* — but live state showed 19 duplicate copies under an un-hidden `archive/` dir that `rglob` was scanning. Corrected to a non-destructive hide (`archive` → `.archive`). **The rule applies to authoritative instructions too, not just one's own reasoning** — verify the directive against live state before executing it.
+**The rule:** Before deploying any change, verify the specific mechanism against the actual running code. `grep` the source. Check the hook timing. Read the class hierarchy. Trace the execution path. If the verification contradicts the reasoning, the verification wins.
+**Instances:** Kestrel's "reasoned, not verified" self-correction (the most important single sentence in the session). The `audit_extensions.py` tool (DEC-026 encoded as tooling). The wiring diagram (specificity as verification instrument).
+**Revisit if:** Never. This is a first principle.
+
+---
+
+## DEC-042: Every Capture System Must Have a Consumption Path
+
+**Date:** 2026-05-30
+**Session:** 113+
+**Principle:** Building a capture mechanism without a corresponding consumption mechanism is half a loop. The data exists but produces no value. Every system that writes must have a verified path where the written data is read and used.
+**Context:** Four independent instances of capture-without-consumption were discovered and fixed in this session:
+1. **Skills:** `skills_captured: 0` for 878 cycles. The capture pipeline was designed but the skill files had malformed frontmatter (invisible to A0's discovery) and no proactive surfacing mechanism. Fixed: frontmatter normalizer + `_24_skill_surfacer` + three-layer validation. (The surfacer was placed at `_24`, not the design note's suggested `_07` — Kestrel's deliberate, documented decision so the lesson prepends *above* the reasoning/PACE injectors at `message_loop_prompts_after` for visibility; `_07` would run first and be buried. As-built code is `_24`.)
+2. **Memories:** 476 memories (~32% of the store) saved to areas the recall path never searches. The agent recorded its best CONCEPT insights and EXPLORE findings into semantic areas not in the hardcoded recall whitelist. Fixed: removed area restriction on general-knowledge recall.
+3. **Injection chain:** `_49` computed reasoning state, `_13`/`_14` injected it at `before_main_llm_call` where writes are discarded. The data existed on the agent object but never reached the model's context. Fixed: `_22`/`_23` injectors at `message_loop_prompts_after`.
+4. **Predictions:** SWARMFISH V2 forecasts were generated, consensus logged, and falsification conditions discarded. The system forecast into the void. Fixed: Phase 1a forecast capture with machine-checkable exit criteria.
+**The rule:** When designing any capture mechanism, specify the consumption path in the same document. "Where is this data read? By what extension, at what hook, through what query?" If those questions can't be answered concretely, the capture mechanism is incomplete.
+**Debugging companion (the practical version):** When something *feels* wired but doesn't work, check who *reads* what's being written — the gap is almost always at the consumer, not the producer. This single question found both the `error_format` capture gap and the orphaned-memory recall gap.
+**Revisit if:** Never. This is a design checklist item.
+
+---
+
+## DEC-043: Instrument Before Optimizing
+
+**Date:** 2026-05-30
+**Session:** 113+
+**Principle:** You cannot improve what you cannot measure. Before optimizing any system, add instrumentation that produces quantitative data about its current behavior. The measurement often reveals that the problem isn't what you assumed.
+**Context:**
+1. **Skill-library audit (2026-05-31)** — before fixing anything, the gap was *counted*: running A0's own `validate_skill_md` over the library quantified "30% invisible" (v17 26/88 invalid, v16 39/70) — a precise number that turned a vague "skills seem off" into a measured target, drove the normalizer, and confirmed the fix (62→82, 31→70). The measurement defined the work.
+2. **Memory orphaning (2026-05-31)** — the recall gap was measured both ways: 476/1471 memories (32%) in unreachable areas before, and the simpleeval comparator validated 567→1043 eligibility after. Fixing without the before/after count would have been a guess; with it, the un-orphaning was provable.
+3. **Cache hit ratio** — we couldn't optimize API costs until we instrumented `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens` per response. The 65% hit / 31% miss ratio was invisible before measurement.
+4. **Affect layer** — FRUSTRATION and DESPERATION states can't be calibrated until the enriched behavioral trace schema (added in Phase 1) collects 50-100 cycles of data. The measurement must precede the optimization.
+5. **Per-profile Brier scores** — SWARMFISH ensemble calibration can't improve until predictions are binned by probability and tracked per profile. Started logging; calibration curves come after 50+ resolved predictions.
+**The rule:** The first commit of any optimization work should be instrumentation, not the optimization itself. Log the metric. Capture the baseline. Then optimize. Then compare.
+**Revisit if:** Never. This is engineering practice.
+
+---
+
+## DEC-044: Defense in Depth for Data Quality
+
+**Date:** 2026-05-30
+**Session:** 113+
+**Principle:** Single-point defenses fail silently. Layer multiple validation mechanisms so that data quality is enforced at write time, maintenance time, and deploy time. A failure in any one layer is caught by the others.
+**Context:** The three-layer skill validation architecture proved the pattern:
+- **Layer 1 (write-time):** `_45` emits valid frontmatter. Prevents malformed skills from being created by the capture pipeline.
+- **Layer 2 (maintenance-time):** The normalizer runs in MAINTAIN's integrity check. Heals malformed skills from any source (wizard, manual, import, future Path B).
+- **Layer 3 (deploy-time):** `install_all.sh` runs the normalizer after every install/update. Catches anything imported or synced.
+59 skills were invisible due to malformed frontmatter from sources that predated the capture pipeline. Layer 2 resurrected them. Layer 1 prevents future ones. Layer 3 catches imports. No single layer covers all cases. Together they cover everything.
+**The same pattern applies to:** The supervisor (five detectors composed into affect states rather than any single detector), the idle engine (cooldown counter + time cap + state detector rather than any single escape mechanism), the DEC-026 audit tool (checks all paths rather than assuming the correct one).
+**The rule:** Any data quality mechanism should have at least two independent layers. If the system accepts data from multiple sources (user input, autonomous generation, external import), each source should be validated by at least one layer.
+**Revisit if:** Never. This is infrastructure design.
