@@ -1348,15 +1348,15 @@ sequenceDiagram
         <td class="key">_reasoning_state</td>
         <td>dict</td>
         <td><code>_49_reasoning_state_update</code> (message_loop_end)</td>
-        <td><code>_13_reasoning_state</code> (before_main_llm_call — injects in WRONG hook); <strong>NO valid consumer in <code>message_loop_prompts_after</code></strong></td>
-        <td><strong>Inert chain (<a href="#sec-13">seam #19 CRIT</a>).</strong> Fields: <code>step</code>, <code>theory</code>, <code>tried[]</code>, <code>current</code>, <code>open</code>, <code>artifacts[]</code>. Fix: <code>_22_reasoning_state_injector</code> drafted, awaiting deployment.</td>
+        <td><code>_22_reasoning_state_injector</code> (message_loop_prompts_after) — <strong>valid consumer, deployed + firing</strong></td>
+        <td><strong>seam #19 RESOLVED (verified 2026-05-30).</strong> Fields: <code>step</code>, <code>theory</code>, <code>tried[]</code>, <code>current</code>, <code>open</code>, <code>artifacts[]</code>. <code>_22_reasoning_state_injector</code> is deployed on v16+v17 and fires live with real data (<code>[REASON-INJ-22] step=N tried=M artifacts=K current=yes</code>). The inert chain (and seam #7) is closed — state reaches the LLM.</td>
       </tr>
       <tr>
         <td class="key">_pace_plan</td>
         <td>dict</td>
         <td><code>_14_pace_plan_generator</code> (generates via LLM call, locks after creation)</td>
-        <td><code>_14_pace_plan_generator</code> itself (injects in WRONG hook); <strong>NO valid consumer in <code>message_loop_prompts_after</code></strong></td>
-        <td><strong>Inert chain (<a href="#sec-13">seam #19 CRIT</a>).</strong> Fields: <code>task_summary</code>, <code>domain</code>, <code>current_step</code>, <code>active_tier</code>, <code>steps[]</code> (each with primary/alternate/contingency/emergency), <code>tier_escalations</code>. Fix: <code>_23_pace_plan_injector</code> drafted, awaiting deployment.</td>
+        <td><code>_23_pace_plan_injector</code> (message_loop_prompts_after) — <strong>valid consumer, deployed + firing</strong>; also read by the affect layer (<code>_12_proactive_supervisor</code> reads <code>active_tier</code>)</td>
+        <td><strong>seam #19 RESOLVED (verified 2026-05-30).</strong> Fields: <code>task_summary</code>, <code>domain</code>, <code>current_step</code>, <code>active_tier</code>, <code>steps[]</code> (each with primary/alternate/contingency/emergency), <code>tier_escalations</code>. <code>_23_pace_plan_injector</code> deployed v16+v17, fires live (<code>[PACE-INJ-23] step=1/3 tier=primary</code>). Inert chain closed.</td>
       </tr>
       <tr>
         <td class="key">_pace_level</td>
@@ -3109,28 +3109,28 @@ class ReasoningStateInjector(Extension):
         <td><span class="status err">CRIT</span></td>
         <td><strong>Reasoning state &amp; PACE injection chain inert</strong></td>
         <td>Specific instance of seam #7 actively biting. <code>_13_reasoning_state</code> and <code>_14_pace_plan_generator</code> compute state correctly but inject in the discarded hook; no consumer in <code>message_loop_prompts_after</code> reads the attrs</td>
-        <td><span class="status err">ACTIVE — fix designed (see <a href="#sec-09">§09</a>), injectors drafted, deploy held until heartbeat fix is observed</span></td>
+        <td><span class="status ok">RESOLVED 2026-05-30 — _22/_23 injectors deployed v16+v17, firing live ([REASON-INJ-22], [PACE-INJ-23] with real field values). State reaches the LLM.</span></td>
       </tr>
       <tr>
         <td>13</td>
         <td><span class="status err">CRIT</span></td>
         <td><strong>Heartbeat freeze in idle cycles</strong></td>
         <td><code>_last_user_msg_is_real</code> returns True after the first tool call → heartbeat never updates → stale-detect fires at 20 min on every cycle</td>
-        <td><span class="status err">ACTIVE — fix at wrong path</span></td>
+        <td><span class="status ok">RESOLVED 2026-05-30 — heartbeat fix deployed v16+v17; 0 stale-clears across 5 cycles/3h</span></td>
       </tr>
       <tr>
         <td>14</td>
         <td><span class="status err">CRIT</span></td>
         <td><strong>Idle context lifecycle not owned</strong></td>
         <td>Daemon fires cycles but doesn't track <code>context_id</code>; stale-clear flips flag without killing the A0 context</td>
-        <td><span class="status err">ACTIVE — no fix designed yet</span></td>
+        <td><span class="status warn">LATENT 2026-05-30 — overlap was driven by #13's stale-clears; with #13 fixed, no overlap fires. Underlying no-context_id design remains a latent risk, not biting</span></td>
       </tr>
       <tr>
         <td>8</td>
         <td><span class="status err">CRIT</span></td>
         <td><strong>Wrong-path extension deploy</strong> (no <code>python/</code> segment)</td>
         <td><code>extensions/&lt;hook&gt;/</code> is invisible to <code>get_paths</code>; file lands, never loads, no error</td>
-        <td><span class="status err">ACTIVE — happened tonight; mitigation via shared lib pending</span></td>
+        <td><span class="status ok">MITIGATED 2026-05-30 — all installers redirected to python/&lt;hook&gt;/ (commit 6c9db45); StackStatus auto-flags orphan direct-path deploys</span></td>
       </tr>
       <tr>
         <td>17</td>
@@ -3144,7 +3144,7 @@ class ReasoningStateInjector(Extension):
         <td><span class="status err">HIGH</span></td>
         <td><strong>Orphan extension copies at legacy paths</strong></td>
         <td>Multiple copies of the same extension at non-canonical paths with different md5s mislead future debugging</td>
-        <td><span class="status warn">present right now on both containers for <code>_70_idle_trigger.py</code></span></td>
+        <td><span class="status ok">RESOLVED 2026-05-30 — direct-path orphans removed on both containers (v16: 11 orphan hook-dirs / ~46 .py; v17: 9 / ~47, incl. 11 divergent stale copies of critical extensions). Loader resolves <code>extensions/python/&lt;hook&gt;/</code> only (helpers/extension.py:293). Backups at <code>/a0/usr/seam18_backup_*.tgz</code>. Post-cleanup: <code>python/</code> .py count unchanged (v16 65, v17 64), live turn fires full stack, no load errors. The "which copy is active?" trap is gone.</span></td>
       </tr>
       <tr>
         <td>1</td>
@@ -3649,8 +3649,8 @@ flowchart LR
       </tr>
       <tr>
         <td>Does the reasoning state / PACE injection chain reach the LLM?</td>
-        <td>NO — <code>_13</code> and <code>_14</code> inject in <code>before_main_llm_call</code> which is silently discarded (seam #7). No consumer in <code>message_loop_prompts_after</code>. Chain terminates at a broken link. Fix designed in <a href="#sec-09">§09</a>; injectors drafted at <code>_22_reasoning_state_injector.py</code> and <code>_23_pace_plan_injector.py</code>; deployment held pending observation.</td>
-        <td>2026-05-16</td>
+        <td>YES (since 2026-05-30 verification) — <code>_22_reasoning_state_injector</code> and <code>_23_pace_plan_injector</code> are deployed at the canonical <code>message_loop_prompts_after</code> path on v16+v17 and fire live (<code>[REASON-INJ-22]</code>, <code>[PACE-INJ-23]</code> with real field values). The chain reaches the LLM. <code>_13</code>/<code>_14</code>'s wrong-hook injection is superseded by <code>_22</code>/<code>_23</code>.</td>
+        <td>2026-05-30</td>
       </tr>
       <tr>
         <td>Was the previous heartbeat-fix commit actually deployed?</td>
