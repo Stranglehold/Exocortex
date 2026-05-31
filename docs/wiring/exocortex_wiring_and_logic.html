@@ -374,6 +374,7 @@ hr {
     <li><a href="#sec-14"><span class="num">14</span>Deployment &amp; Install</a></li>
     <li><a href="#sec-15"><span class="num">15</span>Failure Modes</a></li>
     <li><a href="#sec-16"><span class="num">16</span>Component Index</a></li>
+    <li><a href="#sec-17"><span class="num">17</span>Cycle-to-Skill Pipeline &amp; Skill Quality</a></li>
     <li><a href="#sec-open-questions"><span class="num">??</span>Open Questions</a></li>
   </ol>
   <div class="meta">
@@ -3600,6 +3601,96 @@ flowchart LR
 <section id="sec-16">
   <h2><span class="num">16</span>Component Index <a class="anchor" href="#sec-16">#</a></h2>
   <p class="section-summary"><span class="status todo">todo</span> Alphabetical: each component → its files → state keys it touches → fragile seams that involve it. Designed for "I'm debugging X, what's adjacent" lookups.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     CYCLE-TO-SKILL PIPELINE & SKILL QUALITY (built 2026-05-31)
+     ════════════════════════════════════════════════════════════════ -->
+<section id="sec-17">
+  <h2><span class="num">17</span>Cycle-to-Skill Pipeline &amp; Skill Quality <a class="anchor" href="#sec-17">#</a></h2>
+  <p class="section-summary">
+    <span class="status ok">built 2026-05-31</span> The learning loop that lets the agent improve from its own failures — <strong>capture</strong> a lesson when something breaks, <strong>surface</strong> it the next time the agent is about to do the same thing, so the failure is <em>prevented</em> rather than repeated. Plus the skill-quality machinery that keeps the skill library actually usable. For 878 idle cycles the capture counter read <code>skills_captured: 0</code>; this section is why it no longer does, and why ~30% of the skill library that was silently invisible is now discoverable.
+  </p>
+
+  <h3>Wiring — the learning loop (capture → surface → consume)</h3>
+  <div class="mermaid">
+flowchart LR
+  fail["agent hits a failure"]
+  fail --> capA["_45 — handle_exception/end<br/>UNIVERSAL error surface<br/>(gate-raised ValueError,<br/>e.g. MetaGate-SIZE)"]
+  fail --> capB["_31 — tool_execute_after<br/>(_20-classified failures<br/>where the tool executed)"]
+  capA --> store["/a0/usr/skills/auto-generated/<br/>failure-lessons/&lt;slug&gt;/SKILL.md<br/>valid frontmatter = discoverable"]
+  capB --> store
+  store --> surf["_24 — skill_surfacer<br/>message_loop_prompts_after"]
+  plan["next cycle: PACE plans<br/>'deepen wiki page'"] --> surf
+  surf -->|word-level trigger match:<br/>task intent vs lesson triggers| inject["inject lesson + 'Do instead'<br/>into last user message<br/>BEFORE the LLM plans"]
+  inject --> prevent["agent reaches for code_execution<br/>from the start — failure prevented"]
+  </div>
+
+  <table>
+    <thead><tr><th>Stage</th><th>Component</th><th>Hook</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">capture (universal)</td>
+        <td><code>_45_failure_lesson_capture</code></td>
+        <td><code>_functions/agent/Agent/handle_exception/end</code></td>
+        <td>Reads <code>data["exception"]</code> on the handle_exception chain (every exception passes through <code>_40/_50/_90</code>). Catches gate-raised failures that never reach <code>tool_execute_after</code>. Deterministic marker map → valid SKILL.md. Log tag <code>[SKILL-CAPTURE]</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">capture (executed-tool)</td>
+        <td><code>_31_failure_lesson_capture</code></td>
+        <td><code>tool_execute_after</code></td>
+        <td>Fires when <code>_20_error_comprehension</code> classifies a failure from a tool that actually ran. Correct leg for execution-time errors; complements <code>_45</code>.</td>
+      </tr>
+      <tr>
+        <td class="key">store</td>
+        <td><code>/a0/usr/skills/auto-generated/failure-lessons/</code></td>
+        <td>(filesystem)</td>
+        <td>One dir per lesson, minimal-valid frontmatter (<code>name</code> + <code>description</code> + <code>triggers</code>). Discoverable via <code>discover_skill_md_files</code> only if frontmatter validates — see Skill Quality below. <code>cycle_close.py</code> reads <code>office/skills_captured_pending.json</code> → the real <code>skills_captured</code> count.</td>
+      </tr>
+      <tr>
+        <td class="key">surface (consume)</td>
+        <td><code>_24_skill_surfacer</code></td>
+        <td><code>message_loop_prompts_after</code></td>
+        <td>Word-level trigger match (≥4-char token overlap, not <code>search_skills</code> substring — avoids "run" matching "t<strong>run</strong>cate") of the PACE <code>task_summary</code> + BST domain against auto-generated lesson triggers. Injects up to 2 lessons (with their "Do instead" guidance) into the last user message <em>before</em> the LLM plans. Prevention at planning time, not redundant advice at failure time. Log tag <code>[SKILL-SURFACE]</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Why two capture legs.</strong> A tool that <em>executed</em> and failed is caught by <code>_31</code> at <code>tool_execute_after</code>. A failure <em>raised before execution</em> — the MetaGate-SIZE block raises a plain <code>ValueError</code> in <code>tool_execute_before</code> — short-circuits <code>tool_execute_after</code> entirely, and (the original bug) does <strong>not</strong> reach <code>error_format</code> either, because <code>error_format</code> only fires for <code>RepairableException</code>. The genuinely universal surface is <code>handle_exception/end</code> → <code>_45</code>. The retired <code>error_format/_35</code> was the wrong-hook version of this. See <a href="#sec-13">§13 seam #21</a>.
+  </div>
+
+  <p><strong>Proven 2026-05-31.</strong> A <code>gate_probe</code> tool drove a real <code>ValueError("[MetaGate-SIZE] …")</code> through the live message loop → <code>[SKILL-CAPTURE]</code> → a SKILL.md passing A0's own <code>validate_skill_md</code> → <code>skills_captured_pending = 1</code>. Then in production, <code>_45</code> caught a genuine 15,219-char MetaGate-SIZE block (the agent writing an oversized wiki page) and <code>_24</code> surfaced the lesson on the next investigation cycle. First non-zero <code>skills_captured</code> in the project's history.</p>
+
+  <h3>The 30%-invisible skill finding</h3>
+  <p>Skill discovery (<code>helpers/skills.py:discover_skill_md_files</code>) <strong>silently skips</strong> any SKILL.md whose YAML frontmatter fails <code>validate_skill_md</code> (needs a <code>---</code> fence at the top, parseable YAML, a valid <code>name</code> [lowercase/digits/hyphens], and a non-empty <code>description</code>). An audit found <strong>26 of 88 skills (v17) and 39 of 70 (v16) invalid → invisible</strong> — real exploration/research procedures (<code>autonomous-exploration</code>, <code>osint-investigator</code>, <code>research-analysis-against-thesis</code>…) the agent literally could not load. Three authoring root causes (none from the capture pipeline, which emits valid frontmatter):</p>
+  <ul>
+    <li>a generator bug: <code>description: '&lt;truncated mid-sentence&gt;</code> — unterminated quote + stub <code>tags: [TODO]</code></li>
+    <li>unquoted special chars — descriptions with colons / embedded quotes / run-on <code>version:</code> fields</li>
+    <li>missing top frontmatter fence (file starts with <code># Title</code>)</li>
+  </ul>
+  <p>The deterministic normalizer (<code>scripts/normalize_skills.py</code>) repairs <em>only</em> frontmatter (never the body), emits via <code>yaml.safe_dump</code> (guaranteed-valid), re-validates each fix before writing, and flags duplicate <code>divergent_*</code> dirs without deleting. Applied: <strong>v16 31→70, v17 62→82 valid — 59 skills resurrected.</strong> (Also: the un-hidden <code>archive/</code> dir was being scanned by <code>rglob</code> — renamed to <code>.archive</code> so its 19 duplicate copies stop polluting discovery.)</p>
+
+  <h3>Three-layer frontmatter defense</h3>
+  <p>The throughline of the 30%-invisible finding was that <em>nothing validated frontmatter at skill-write time</em>. The fix is defense-in-depth — a malformed skill from any path is caught by at least one layer before the next cycle tries to consume it:</p>
+  <table>
+    <thead><tr><th>Layer</th><th>Where</th><th>Catches</th></tr></thead>
+    <tbody>
+      <tr><td class="key">1 — write-time</td><td><code>_45</code> / <code>_31</code> capture</td><td>The capture pipeline emits valid frontmatter by construction (proven by the probe test).</td></tr>
+      <tr><td class="key">2 — maintenance-time</td><td><code>self-improvement/integrity_check.py</code> (MAINTAIN cycle)</td><td>The Phase-0 sweep that already checks wiki consistency now also runs <code>normalize_skills.normalize_root(apply=True)</code> and reports <code>[SKILLS] valid=N healed=M cruft=K</code>. Self-heals wizard/manual/import malformations. Tested e2e: broken skill → healed → valid, body preserved.</td></tr>
+      <tr><td class="key">3 — deploy-time</td><td><code>install_all.sh</code></td><td>Runs the normalizer after all layers install — catches anything imported or synced. Guarded, never fatal.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    The maintenance sweep is the same architecture as the wiki integrity check and (future) the memory-area normalizer: one MAINTAIN pass, multiple deterministic self-heal validations. The system maintains itself.
+  </div>
+
+  <h3>See also</h3>
+  <ul>
+    <li><a href="#sec-13">§13 Fragile Seams</a> — seam #21 (<code>error_format</code> is not a universal hook) and seam #7 (hook-timing trap), the class this whole loop's first bug belonged to</li>
+    <li><a href="#sec-03">§03 Hook Pipeline</a> — the hook inventory entries for <code>_31</code>, <code>_45</code>, <code>_24</code>, and the retired <code>_35</code></li>
+    <li><a href="#sec-08">§08 Memory Subsystem</a> — the parallel capture→consumption story (recall un-orphaning): same pattern, the memory layer</li>
+  </ul>
 </section>
 
 <!-- ════════════════════════════════════════════════════════════════
