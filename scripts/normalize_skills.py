@@ -148,9 +148,57 @@ def normalize_one(path: str):
     return new_text, "regenerated" if not parsed else "fixed-in-place"
 
 
+def _is_hidden_rel(path: str, root: str) -> bool:
+    rel = path[len(root):] if path.startswith(root) else path
+    return any(seg.startswith(".") for seg in rel.split("/") if seg)
+
+
+def normalize_root(root: str = "/a0/usr/skills", apply: bool = False) -> dict:
+    """Repair invalid skill frontmatter under `root`. Returns a structured report.
+    Importable by integrity_check.py for the MAINTAIN self-heal sweep. Skips hidden
+    dirs (.hardening_originals, .archive) — same as A0's discover_skill_md_files."""
+    md_files = [p for p in glob.glob(root + "/**/SKILL.md", recursive=True)
+                if not _is_hidden_rel(p, root)]
+    fixed, skipped, cruft, already = [], [], [], 0
+    for p in md_files:
+        name = os.path.basename(os.path.dirname(p))
+        errs = sk.validate_skill_md(Path(p))
+        if not errs:
+            already += 1
+            continue
+        if name.startswith("divergent_") or re.match(r"^(.+)_\1$", name):
+            cruft.append(name)
+            continue
+        try:
+            new_text, note = normalize_one(p)
+        except Exception as e:
+            skipped.append((name, f"exception: {e}"))
+            continue
+        if new_text is None:
+            skipped.append((name, note))
+            continue
+        tmp = p + ".norm"
+        Path(tmp).write_text(new_text, encoding="utf-8")
+        post = sk.validate_skill_md(Path(tmp))
+        os.remove(tmp)
+        if post:
+            skipped.append((name, f"still-invalid-after-fix: {post}"))
+            continue
+        if apply:
+            Path(p).write_text(new_text, encoding="utf-8")
+        fixed.append((name, note))
+    return {
+        "already_valid": already,
+        "fixed": [n for n, _ in fixed],
+        "cruft": cruft,
+        "skipped": [{"name": n, "why": w} for n, w in skipped],
+        "applied": apply,
+    }
+
+
 def main():
     md_files = [p for p in glob.glob(SKILLS_ROOT + "/**/SKILL.md", recursive=True)
-                if "/.hardening_originals/" not in p]
+                if not _is_hidden_rel(p, SKILLS_ROOT)]
     fixed, skipped, cruft, already = [], [], [], 0
     for p in md_files:
         name = os.path.basename(os.path.dirname(p))

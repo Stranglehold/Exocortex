@@ -27,6 +27,25 @@ from datetime import datetime, timezone
 _WIKI_DIR   = "/a0/usr/workdir/workspace/wiki"
 _INDEX_PATH = "/a0/usr/workdir/workspace/wiki/index.md"
 _STALE_DAYS_DEFAULT = 60
+_SKILLS_ROOT     = "/a0/usr/skills"
+_NORMALIZER_PATH = "/a0/usr/Exocortex/scripts/normalize_skills.py"
+
+
+def _heal_skills(apply: bool = True) -> dict:
+    """Check 4: skill-frontmatter integrity self-heal. Runs the deterministic normalizer
+    (scripts/normalize_skills.py) so authored/captured skills with malformed frontmatter
+    are repaired and stay discoverable — the same maintenance sweep that verifies wiki
+    consistency now also keeps the skill library valid. Graceful no-op if unavailable."""
+    try:
+        import importlib.util
+        sys.path.insert(0, "/a0/python")
+        sys.path.insert(0, "/a0")
+        spec = importlib.util.spec_from_file_location("_exo_skill_norm", _NORMALIZER_PATH)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.normalize_root(_SKILLS_ROOT, apply=apply)
+    except Exception as e:
+        return {"error": str(e), "fixed": [], "already_valid": 0, "cruft": [], "skipped": []}
 
 
 def _parse_index(index_path: str) -> list[dict]:
@@ -177,6 +196,9 @@ def run_checks(stale_days: int = _STALE_DAYS_DEFAULT) -> dict:
     total_pages  = len([e for e in index if not e["todo"] and e["path"]])
     total_issues = len(missing_files) + len(status_mismatches) + len(stale_sources)
 
+    # Check 4: skill-frontmatter integrity self-heal (deterministic; repairs invalid SKILL.md)
+    skills = _heal_skills(apply=True)
+
     return {
         "timestamp":          now.isoformat(),
         "total_pages":        total_pages,
@@ -186,6 +208,10 @@ def run_checks(stale_days: int = _STALE_DAYS_DEFAULT) -> dict:
         "status_mismatches":  status_mismatches,
         "stale_sources":      stale_sources,
         "integrity_ok":       total_issues == 0,
+        "skills_healed":      skills.get("fixed", []),
+        "skills_valid":       skills.get("already_valid", 0),
+        "skills_cruft":       skills.get("cruft", []),
+        "skills_skipped":     skills.get("skipped", []),
     }
 
 
@@ -223,6 +249,16 @@ def main():
         print(f"\n[STALE SOURCES] {len(results['stale_sources'])} page(s) with arXiv source > {args.stale_days} days old:")
         for item in results["stale_sources"]:
             print(f"  - {item['title']}: {item['age_days']} days old ({item['source'][:60]})")
+
+    healed = results.get("skills_healed", [])
+    cruft = results.get("skills_cruft", [])
+    if healed or cruft:
+        print(f"\n[SKILLS] valid={results.get('skills_valid', 0)} | "
+              f"healed={len(healed)} | cruft(dup dirs)={len(cruft)}")
+        if healed:
+            print(f"  repaired frontmatter -> discoverable: {', '.join(healed)}")
+    else:
+        print(f"\n[SKILLS] valid={results.get('skills_valid', 0)} | all frontmatter clean")
 
     if results["integrity_ok"]:
         print("\n[OK] No integrity issues found.")
