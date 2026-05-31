@@ -212,6 +212,14 @@ def _analyze_session(session: Dict) -> Optional[Dict]:
             except Exception:
                 content = {"raw": content}
 
+        # A content string can parse to a JSON array, or arrive already as a list
+        # (A0 structured / multi-part content). Everything below assumes a dict
+        # (.get / `in` / indexing), so normalize any non-dict to a dict. Without this,
+        # list content hits `content.get(...)` and raises
+        # "'list' object has no attribute 'get'" — the crash that broke sleep phase 3.
+        if not isinstance(content, dict):
+            content = {"raw": content}
+
         if not ai:
             # ── Operator / system message ────────────────────────────────────
             if "user_message" in content:

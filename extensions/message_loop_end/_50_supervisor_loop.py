@@ -2341,10 +2341,10 @@ def _log_phase4_decision(agent, compressed_context: str, recommendation: dict):
     filled in by sleep consolidation after the session.
     """
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         log = agent.get_data("_p4_decision_log") or []
         log.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "context_snapshot": compressed_context,
             "recommendation": recommendation,
             "agent_behavior_next_turn": None,

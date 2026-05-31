@@ -94,6 +94,14 @@ def chunk_session(session: Dict) -> List[Dict]:
             except Exception:
                 content = {"raw": content}
 
+        # A content string can parse to a JSON array, or arrive already as a list
+        # (A0 structured / multi-part content). Everything below assumes a dict
+        # (.get / `in` / indexing), so normalize any non-dict to a dict. Without this,
+        # list content hits `content.get(...)` and raises
+        # "'list' object has no attribute 'get'" — the crash that broke sleep phase 2.
+        if not isinstance(content, dict):
+            content = {"raw": content}
+
         # Operator message → start new episode
         if not ai and "user_message" in content:
             if current is not None:

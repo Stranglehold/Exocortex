@@ -113,7 +113,11 @@ class MemoryConsolidator:
             try:
                 db = await Memory.get(self.agent)
                 if "timestamp" not in metadata:
-                    metadata["timestamp"] = datetime.now(timezone.utc).isoformat()
+                    # Use Localization (already imported) — `datetime`/`timezone` are NOT
+                    # imported in this module, so the old datetime.now(...) raised
+                    # NameError here and silently lost the memory on the busy-model
+                    # fallback path. Matches the file's own pattern (see now_iso elsewhere).
+                    metadata["timestamp"] = Localization.get().now_iso(timespec="seconds")
                 memory_id = await db.insert_text(new_memory, metadata)
                 _log.info("Timeout fallback insert succeeded for area %s (id=%s)", area, memory_id)
                 return {"success": True, "memory_ids": [memory_id]}
