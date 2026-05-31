@@ -108,7 +108,9 @@ class MemoryRelevanceFilter(Extension):
                         query=query,
                         limit=50,
                         threshold=threshold,
-                        filter="area == 'main' or area == 'fragments'",
+                        # all knowledge areas (was a main/fragments whitelist that orphaned ~32%
+                        # of memory); similarity threshold + role/decay ranking gate quality
+                        filter="area != 'solutions'",
                     )
                     filtered = _filter_and_rank(raw, all_docs, role_domains, max_injected)
                     filtered = _apply_budget_gate(filtered, budget_tokens)

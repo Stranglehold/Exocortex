@@ -184,7 +184,12 @@ class MemoryEnhancement(Extension):
                 result = await _run_pipeline(
                     db, all_docs, query, bst_domain, role_domains,
                     sim_threshold, max_injected,
-                    "area == 'main' or area == 'fragments' or area == 'ontology'",
+                    # Search ALL knowledge areas, not a 4-area whitelist — the agent saves into
+                    # ~115 semantic areas (research, field-report, self-improvement, workshop,
+                    # [CONCEPT] insights...); the old whitelist orphaned ~32% of memory (write-only).
+                    # Similarity threshold + temporal decay are the real quality gates, not the area
+                    # bucket. 'solutions' keeps its own targeted path below.
+                    "area != 'solutions'",
                     qe_config, decay_config, related_config,
                 )
 
