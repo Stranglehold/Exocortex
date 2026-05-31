@@ -248,6 +248,16 @@ for entry in "${LAYERS[@]}"; do
   fi
 done
 
+# ── Deploy-time skill-frontmatter checkpoint (defense layer 3) ─────────────────
+# Validate + repair any malformed SKILL.md introduced by imports/syncs, so freshly
+# installed/updated skills are discoverable. Deterministic + idempotent; never fatal.
+if [ -z "$LAYER_ONLY" ] && [ -f "$SCRIPT_DIR/scripts/normalize_skills.py" ]; then
+  echo ""
+  log_header "Skill frontmatter checkpoint"
+  /opt/venv-a0/bin/python3 "$SCRIPT_DIR/scripts/normalize_skills.py" /a0/usr/skills --apply 2>/dev/null \
+    | grep -E "already valid|fixed" || echo "  (normalizer skipped — A0 env unavailable)"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 
 echo ""
