@@ -1018,11 +1018,12 @@ sequenceDiagram
   </details>
 
   <details>
-    <summary>message_loop_prompts_after <span class="status ok">4 ext — REAL INJECTION POINT</span></summary>
+    <summary>message_loop_prompts_after <span class="status ok">5 ext — REAL INJECTION POINT</span></summary>
     <p><strong>Fires:</strong> Inside <code>prepare_prompt()</code>, before <code>output_langchain</code> runs. Modifications to <code>history_output</code> here <strong>do</strong> reach the LLM. This is the canonical place to inject context.</p>
     <ul>
       <li><code>_08_step_budget_tracker.py</code> — tracks step budget for idle cycles</li>
       <li><code>_21_constraint_heartbeat.py</code> — constraint reminders</li>
+      <li><code>_24_skill_surfacer.py</code> — Cycle-to-Skill CONSUMPTION: word-level trigger-matches the agent's PACE task intent against auto-generated failure-lessons and injects up to 2 (with "Do instead" guidance) into the last user message BEFORE the LLM plans. Log tag <code>[SKILL-SURFACE]</code>. Closes capture→consumption. (new 2026-05-31)</li>
       <li><code>_55_memory_relevance_filter.py</code> — filters memory candidates (writes <code>extras_persistent[memories|solutions]</code>)</li>
       <li><code>_56_memory_enhancement.py</code> — query expansion, decay, dedup (overwrites <code>_55</code>'s writes — intentional)</li>
     </ul>
@@ -1042,7 +1043,7 @@ sequenceDiagram
   </details>
 
   <details>
-    <summary>tool_execute_after <span class="status ok">11 ext — HEARTBEAT &amp; LEDGER</span></summary>
+    <summary>tool_execute_after <span class="status ok">12 ext — HEARTBEAT &amp; LEDGER</span></summary>
     <p><strong>Fires:</strong> After each tool execution returns, <em>before</em> <code>hist_add_tool_result</code> writes the result to history. Important timing note: when this hook fires, the tool result is <strong>not yet in history</strong>.</p>
     <ul>
       <li><code>_20_error_comprehension.py</code> — parses tool output → <code>_error_diagnosis</code></li>
@@ -1054,6 +1055,7 @@ sequenceDiagram
       <li><code>_28_inline_truncation_detector.py</code> — detects truncated payloads (new since WIRING.md)</li>
       <li><code>_28_output_compressor.py</code> — output compression (new since WIRING.md)</li>
       <li><code>_30_tool_fallback_logger.py</code> — populates <code>_tool_output_tracker</code> for stagnation detection</li>
+      <li><code>_31_failure_lesson_capture.py</code> — Cycle-to-Skill capture: writes a discoverable failure-lesson SKILL.md when <code>_20_error_comprehension</code> classifies an EXECUTED-tool failure. Deterministic, zero LLM. (new since WIRING.md)</li>
       <li><code>_60_sleep_trigger.py</code> — sleep consolidation trigger</li>
       <li><code>_70_idle_trigger.py</code> — idle sensor (heartbeat + last_user_ts)</li>
     </ul>
@@ -1100,6 +1102,17 @@ sequenceDiagram
     <ul>
       <li><code>_20_structured_retry.py</code> — injects retry prompt with format correction</li>
       <li><code>_30_failure_tracker.py</code> — increments <code>_failure_tracker[tool_name]</code> (paired with <code>_20_reset</code> in tool_execute_after)</li>
+    </ul>
+    <div class="callout warn">
+      <strong>RETIRED 2026-05-31:</strong> <code>error_format/_35_failure_lesson_capture.py</code> was removed. It was wired on a wrong assumption that <code>error_format</code> is a universal error hook; <code>error_format</code> only fires for <code>RepairableException</code>, so it never caught the plain-<code>ValueError</code> gate raises (e.g. MetaGate-SIZE). Superseded by <code>handle_exception/end/_45_failure_lesson_capture.py</code> at the universal error surface (see below and <a href="#sec-13">seam #21</a>).
+    </div>
+  </details>
+
+  <details>
+    <summary>_functions/agent/Agent/handle_exception/end <span class="status ok">1 ext — UNIVERSAL ERROR SURFACE</span></summary>
+    <p><strong>Fires:</strong> In the <code>handle_exception</code> chain — every exception flows through <code>_40/_50/_90</code> with <code>data["exception"]</code> set. This is the genuinely universal error surface (unlike <code>error_format</code>, which only fires for <code>RepairableException</code>).</p>
+    <ul>
+      <li><code>_45_failure_lesson_capture.py</code> — Cycle-to-Skill capture at the UNIVERSAL error surface (<code>handle_exception</code> chain). Captures gate-raised failures (MetaGate-SIZE, a plain <code>ValueError</code>) that never reach <code>tool_execute_after</code> or <code>error_format</code>. Reads <code>data["exception"]</code>. Log tag <code>[SKILL-CAPTURE]</code>. Live-proven 2026-05-31.</li>
     </ul>
   </details>
 
@@ -1624,7 +1637,7 @@ sequenceDiagram
         <td class="path-col">/a0/usr/Exocortex/office/cycle_result.json</td>
         <td><code>cycle_close.py</code></td>
         <td>idle_watch daemon (consumed + deleted)</td>
-        <td>Completion signal between cycle and next-fire decision. Used to reset counters (e.g. <code>consecutive_maintain_count=0</code> when sleep_findings &gt; 0).</td>
+        <td>Completion signal between cycle and next-fire decision. <strong>Note:</strong> the old <code>consecutive_maintain_count=0</code> reset on <code>sleep_findings &gt; 0</code> was REMOVED in commit <code>be1cfb7</code> (2026-05-31) — it zeroed the MAINTAIN→BUILD escape counter on routine housekeeping (any single dedup/promotion), locking the agent in endless MAINTAIN. <code>consecutive_maintain_count</code> now climbs monotonically across MAINTAIN cycles; only EXPLORE resets it.</td>
       </tr>
       <tr>
         <td class="path-col">/a0/usr/Exocortex/office/.idle_engine.lock</td>
@@ -1824,7 +1837,8 @@ flowchart LR
 <section id="sec-05">
   <h2><span class="num">05</span>Idle Engine <a class="anchor" href="#sec-05">#</a></h2>
   <p class="section-summary">
-    The autonomous research and skill-building system. Fires cycles after a configurable idle threshold, runs MAINTAIN / BUILD / EXPLORE work, and reports to the right-canvas Office panel. Designed for unattended overnight operation. Has been the subject of three discrete bug-fix waves: <strong>burst</strong> (May 15, fixed by file lock), <strong>retry storm</strong> (May 15, fixed by no-decrement + cold-start grace), and <strong>overlap</strong> (current — daemon doesn't own the A0 context it spawned, so stale-clear leaves zombie contexts running on the GPU / API). Compounding the current gap: a <strong>heartbeat-freeze</strong> bug whose fix is committed but deployed to the wrong path (see <a href="#sec-02">§02</a>).
+    The autonomous research and skill-building system. Fires cycles after a configurable idle threshold, runs MAINTAIN / BUILD / EXPLORE work, and reports to the right-canvas Office panel. Designed for unattended overnight operation. Has been the subject of three discrete bug-fix waves: <strong>burst</strong> (May 15, fixed by file lock), <strong>retry storm</strong> (May 15, fixed by no-decrement + cold-start grace), and <strong>overlap</strong> (daemon doesn't own the A0 context it spawned, so stale-clear leaves zombie contexts running on the GPU / API). Compounding the gap: a <strong>heartbeat-freeze</strong> bug whose fix was committed but deployed to the wrong path (see <a href="#sec-02">§02</a>).
+    <strong>Current status (2026-05-31):</strong> heartbeat-freeze is RESOLVED (correctly deployed); the <strong>MAINTAIN-lock</strong> was root-caused and fixed (commit <code>be1cfb7</code> — the <code>sleep_findings</code>-based <code>consecutive_maintain_count</code> reset was removed; see the <code>cycle_result.json</code> note below). Live-verified on both containers: cycles now rotate MAINTAIN≤3 → BUILD×5 → EXPLORE. Overlap is latent (driven by the now-fixed heartbeat-freeze), not biting.
   </p>
 
   <h3>Wiring — Physical Architecture</h3>
@@ -2026,8 +2040,8 @@ flowchart LR
       <tr>
         <td class="key">consecutive_maintain_count</td>
         <td>int</td>
-        <td>Daemon (++ on MAINTAIN fire); reset by completion signal when sleep findings &gt; 0</td>
-        <td>Drives MAINTAIN cooldown threshold (default 3). After 3 consecutive empty MAINTAIN cycles, daemon switches to BUILD/EXPLORE.</td>
+        <td>Daemon (++ on MAINTAIN fire); reset only by EXPLORE (the <code>sleep_findings</code> reset was removed, commit <code>be1cfb7</code>)</td>
+        <td>Drives MAINTAIN cooldown threshold (default 3). After 3 consecutive empty MAINTAIN cycles, daemon switches to BUILD/EXPLORE. This escape is now GUARANTEED to fire — it was previously defeated by the <code>sleep_findings</code> reset that zeroed the counter on routine housekeeping (fixed <code>be1cfb7</code>, 2026-05-31).</td>
       </tr>
       <tr>
         <td class="key">build_cycle_count</td>
@@ -2093,7 +2107,7 @@ flowchart TD
   cap_check -- yes --> release4[release lock<br/>refuse — manual reset needed]
   cap_check -- no --> gap_check{now - last_cycle_start<br/>≥ min_gap?}
   gap_check -- no --> release5[release lock<br/>skip — gap not satisfied]
-  gap_check -- yes --> consume_signal["read cycle_result.json signal<br/>(if previous cycle had sleep findings,<br/>reset consecutive_maintain_count etc.)"]
+  gap_check -- yes --> consume_signal["read cycle_result.json signal<br/>(sleep_findings reset of<br/>consecutive_maintain_count REMOVED be1cfb7;<br/>only EXPLORE resets it now)"]
   consume_signal --> select_type["select cycle type:<br/>MAINTAIN | BUILD | EXPLORE"]
   select_type --> set_active["cycle_active=true<br/>cycle_heartbeat=now<br/>last_cycle_start=now<br/>cycle_count++<br/>++ type-specific counter"]
   set_active --> fire["_fire_fresh_cycle()<br/>POST /api/api_message<br/>(daemon thread, 3s join timeout)"]
@@ -2786,6 +2800,9 @@ flowchart LR
     <div class="caption">Two writers in sequence, by design. <code>_55</code> writes the relevance-filtered candidate set first. <code>_56</code> overwrites with the enhanced set (BST-domain-expanded queries, temporal decay, dedup, related linking). The overwrite is intentional — see <a href="#sec-04">§04 Surface 3</a>. <code>_56</code> is the authoritative version reaching the LLM.</div>
   </div>
 
+  <h3>Recall un-orphaning <span class="status ok">deployed 2026-05-31</span></h3>
+  <p>Commit <code>89fa049</code> (2026-05-31): the general-knowledge recall in <code>_56_memory_enhancement</code> and <code>_55_memory_relevance_filter</code> previously filtered to a 4-area whitelist (<code>area == 'main' or 'fragments' or 'ontology'</code>), but the agent saves into ~115 semantic areas (research, field-report, self-improvement, <code>[CONCEPT]</code> insights...). This orphaned <strong>476 of 1471 memories (32%)</strong> — they were write-only, never recalled. Fixed to <code>area != 'solutions'</code> (search ALL knowledge areas; the similarity threshold + temporal decay are the real quality gates; <code>solutions</code> keeps its own targeted injection path). Validated: general-recall eligibility 567→1043. A future in-process MAINTAIN-gated area normalizer (<code>scripts/normalize_memory_areas.py</code>, currently dry-run-only) will collapse the ~115 areas into a standard 8-area set — paused, prevention not remediation.</p>
+
   <h3>The 4-axis classifier</h3>
   <p>Layer 10 (<code>monologue_end</code> hook, <code>_55_memory_classifier</code>). Classifies each candidate memory along four axes before storage:</p>
   <table>
@@ -3112,6 +3129,13 @@ class ReasoningStateInjector(Extension):
         <td><span class="status ok">RESOLVED 2026-05-30 — _22/_23 injectors deployed v16+v17, firing live ([REASON-INJ-22], [PACE-INJ-23] with real field values). State reaches the LLM.</span></td>
       </tr>
       <tr>
+        <td>21</td>
+        <td><span class="status err">HIGH</span></td>
+        <td><strong><code>error_format</code> is NOT a universal error hook</strong></td>
+        <td>Cycle-to-skill capture <code>_35</code> assumed every error passes through <code>error_format</code>; it only fires for <code>RepairableException</code>, so MetaGate plain-<code>ValueError</code> gate-raises (644 on v16) yielded 0 captures. Same class as seam #7 — a wrong assumption about which hook actually fires.</td>
+        <td><span class="status ok">RESOLVED 2026-05-31 — capture relocated to <code>handle_exception/end</code> as <code>_45</code> (universal surface, <code>data["exception"]</code> set); <code>_35</code> retired.</span></td>
+      </tr>
+      <tr>
         <td>13</td>
         <td><span class="status err">CRIT</span></td>
         <td><strong>Heartbeat freeze in idle cycles</strong></td>
@@ -3313,6 +3337,14 @@ class ReasoningStateInjector(Extension):
       <li>Behavioral signal: cycle runs past expected duration without closing; supervisor's existing loop detection fires at the message level, blind to within-generation degeneration</li>
     </ul>
     <p><strong>Resolution path:</strong> Watch and wait. The upstream MTP build (consolidated brief Priority 1) brings in a new server (ggml-org main with <code>--spec-type draft-mtp</code>) on a different quantization (Q4_K_M). If the symptom never recurs under that backend, the cause was likely either Q4_K_S quirks or a transient stimulus tied to cycle 17 specifically. If it does recur on the new backend, attention shifts to context-length sensitivity. No code-level fix is currently planned; the existing supervisor loop-detection + web-UI Stop are sufficient handling for a single observed occurrence.</p>
+  </div>
+
+  <h4>Seam #21 — <code>error_format</code> is NOT a universal error hook <span class="status ok">RESOLVED</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> The cycle-to-skill capture <code>_35_failure_lesson_capture.py</code> was placed on the <code>error_format</code> hook assuming every error passes through it.</p>
+    <p><strong>What goes wrong:</strong> Tracing A0 v1.18 core proved otherwise. <code>error_format</code> is invoked ONLY from <code>_functions/agent/Agent/handle_exception/end/_50_handle_repairable_exception</code>, gated on <code>isinstance(exc, RepairableException)</code>. MetaGate raises a plain <code>ValueError</code> (<code>tool_execute_before/_20_meta_reasoning_gate</code>), which fails that check and routes to <code>_90</code> (critical) — so <code>error_format</code> never fires for it (644 gate-raises → 0 captures on v16). The genuinely universal error surface is the <code>handle_exception/end</code> chain (every exception flows through <code>_40/_50/_90</code> with <code>data["exception"]</code> set).</p>
+    <p><strong>Same class as seam #7</strong> (hook-timing trap): a wrong assumption about which hook actually fires.</p>
+    <p><strong>Resolution:</strong> RESOLVED 2026-05-31 by relocating capture to <code>handle_exception/end</code> as <code>_45_failure_lesson_capture.py</code>; <code>_35</code> retired. The new placement catches gate-raised failures (MetaGate-SIZE, plain <code>ValueError</code>) that never reach <code>tool_execute_after</code> or <code>error_format</code>. Live-proven 2026-05-31 (log tag <code>[SKILL-CAPTURE]</code>).</p>
   </div>
 
   <h4>Seam #8 — Wrong-path extension deploy <span class="status err">ACTIVE</span></h4>
