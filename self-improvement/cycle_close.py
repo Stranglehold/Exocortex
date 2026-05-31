@@ -85,6 +85,21 @@ def main():
     os.makedirs(_CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(_OFFICE_DIR, exist_ok=True)
 
+    # ── Ground-truth skills_captured (Cycle-to-Skill Pipeline, Path A) ─────────
+    # _31_failure_lesson_capture tallies auto-captured skills to this counter file.
+    # Use it as the authoritative count (the agent's --skills-captured is often 0
+    # because it doesn't know the deterministic capture extension fired). Then reset.
+    _PENDING_SKILLS = os.path.join(_OFFICE_DIR, "skills_captured_pending.json")
+    try:
+        if os.path.exists(_PENDING_SKILLS):
+            with open(_PENDING_SKILLS, encoding="utf-8") as _f:
+                _auto = int(json.load(_f).get("count", 0))
+            if _auto > 0:
+                args.skills_captured = max(int(args.skills_captured), _auto)
+            os.remove(_PENDING_SKILLS)  # reset for the next cycle
+    except Exception as _e:
+        print(f"[cycle_close] WARNING: skills_captured tally read failed: {_e}", file=sys.stderr)
+
     # ── 1. Journal entry ──────────────────────────────────────────────────────
     journal_entry = {
         "type":             "cycle_close",
