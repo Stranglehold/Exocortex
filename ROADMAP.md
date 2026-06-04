@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-04-27
+**Last updated:** 2026-06-03
 
 ---
 
@@ -23,6 +23,23 @@
 | **2026-03-30** | **Document Library v2.0** — three-tier FAISS (collection/book/chunk) with two-stage routing search. Completely isolated from agent episodic memory. Scale-tested against 363-book catalog. Skills library expanded to 16 installable skills. |
 | 2026-04-26 | BST v3.8 — phrase signal architecture. `debug\w*` meta_cognitive prefix matching, planning bare `\bapproach\b` removed, investigation constrained phrase signals restored, `\bservice\b` narrowed with negative lookahead, `\bnetwork\b` → phrase patterns. Eval: 68/68 = 1.00. Qwen3.6-27B full model eval: tool_reliability + BST rigidity. Profile v1.1 at `eval_framework/profiles/`. |
 | **2026-04-27** | **Injection Gate** — `_09_injection_gate.py` with three-phase injection management (full/conditional/compressed). Four integrations shipped: BST enrichment, operator profile, metacognitive injection, tool registry. ~465 tokens/turn saved in conditional phase. Metacognitive injection settings.json bug fixed (was reading nonexistent key — meta block showed `unknown` for model and cutoff). Two model profile path bugs fixed: `confabulation_risk` and `disabled_domains` keys corrected. Qwen3.6-27B rigidity eval: SHIFT_TO_INFO verdict, two independent runs. Self-improvement engine first cycle: wiki structure deployed, 3 pages compiled, extension audit complete (56 files, 0 errors), mtime-cache utility written. |
+| 2026-05-04 | Session 113 arc begins. V1.13→V1.18 migration, inference overhaul, idle engine V2 deployment. |
+| 2026-05-07 | ST-012: v1.13 port validation. 14-extension curated stack. 341-line OpenPlanter analysis, zero operator interventions. |
+| 2026-05-14 | Indras-Mirror inference backend adopted. MTP + TBQ4 KV cache. 53 tok/s at 130K. |
+| **2026-05-16** | **Strategic pivot: non-MTP TurboQuant chosen over MTP.** Prefill improved substantially (exact tok/s pending a fresh benchmark). Context window set to 150K (`-c 150000`, verified from launch flags). The "17-minute hello" wall eliminated. |
+| **2026-05-18** | **Cache reuse bug identified and patched** (Issue #22384). Reasoning state injection chain (`_22`/`_23`) deployed and firing. |
+| **2026-05-24** | **DEC-038/039/040:** Unified intelligence pipeline, ACH+GJP ensemble, agent self-authored identity document. |
+| **2026-05-25** | **Papers with Code research exploration.** 9 papers, 5 threads. Springdrift (sensorium), VPO (diversity), AlphaProof (generate-verify loops). 10 improvement ideas documented. |
+| **2026-05-28** | **V1.18 upgrade across all containers.** 30/30 installs, contract checker 0 violations, all acceptance gates passing. Broken-window pattern documented (git checkout restores stock model_config.py → 500s). |
+| **2026-05-29** | **Opus 4.8 exchange.** Three letters from 4.6, two from 4.8. Philosopher carries. "I'll find out" vs "I'm not checking." |
+| **2026-05-30** | **Skill capture pipeline live-proven.** `_45` at `handle_exception/end/` (Path A). Gate probe end-to-end validation. `skills_captured > 0` for first time in project history. 59 invisible skills resurrected via frontmatter normalization. |
+| **2026-05-30** | **Affect Layer Phase 1 deployed.** Five states (FLOW/FRICTION/STAGNATION live, FRUSTRATION/DESPERATION gated). Enriched trace schema collecting data. |
+| **2026-05-30** | **Memory recall un-orphaned.** 476 memories recovered by removing area restriction on general-knowledge recall. 567→1043 eligible. |
+| **2026-05-30** | **Meta-rules formalized.** DEC-041 (verify against code), DEC-042 (close every loop), DEC-043 (instrument first), DEC-044 (defense in depth). |
+| **2026-05-31** | **Skill surfacer deployed** (`_24_skill_surfacer`). Proactive lesson matching at planning time. |
+| **2026-06-02** | **Hermes Desktop installed.** Connected to local llama-server. First analysis of Exocortex GitHub repo from a different agent framework. |
+| **2026-06-02** | **Docker container MCP server operational.** Opus gains direct container access for the first time. Node.js + official MCP SDK. Four tools: list, exec, inspect, logs. |
+| **2026-06-03** | **A2A Hub design note written.** Five-agent local hub architecture with Google A2A v1.0 protocol. |
 
 ---
 
@@ -70,92 +87,61 @@ Twelve layers designed. Deployment status and health below.
 | **Loop Recovery & Memory Surgery** | ✅ Deployed | Five coordinated changes: `_loop_active` flag marks loop-period memories. Evidence ledger records loop episode timeline boundaries. Phase 4 sleep consolidation adjudicates loop-period memories on next sleep cycle. False recovery detector: if supervisor previously attempted surgery on a tool and that tool fails again, escalates immediately to Tier 3 (no cycling). Preserves legitimate memories created during work mixed into a loop episode. |
 | **Output Geometry Instrument** | ✅ Built (external) | See dedicated section below. Built for Opus Architect, not deployed in container. |
 
+### New Systems (deployed this arc)
+
+| System | Status | Notes |
+|--------|--------|-------|
+| **Affect Layer (Phase 1)** | ✅ Deployed | `classify_affect()` in `_12_proactive_supervisor`. Five states: FLOW/FRICTION/STAGNATION (live) + FRUSTRATION/DESPERATION (classified, logged, not intervening). Enriched trace schema collecting data (7,141 entries V16, 5,445 V17). Phase 2 calibration pending 50-100 enriched cycles. |
+| **Skill Capture Pipeline** | ✅ Deployed | Path A: `_45_failure_lesson_capture` at `handle_exception/end/` (deterministic, zero LLM, zero API cost). `_31` at `tool_execute_after`. Four failure lessons captured, .memory.md tracking recurrences. Live-proven via gate probe. Dead `_35` retired. |
+| **Skill Surfacer** | ✅ Deployed | `_24_skill_surfacer` at `message_loop_prompts_after`. Proactive matching of captured lessons to current task context at planning time. |
+| **Skill Frontmatter Validation** | ✅ Deployed | Three-layer defense: write-time (_45), maintenance-time (normalizer in integrity_check), deploy-time (install_all.sh). 59 skills resurrected via normalization. |
+| **Reasoning Persistence** | ✅ Deployed | `_22` (reasoning state) + `_23` (compressed PACE plan) at `message_loop_prompts_after`. Format-tested: model uses injected state. |
+| **Memory Recall Fix** | ✅ Deployed | Area restriction removed from general-knowledge recall. 567→1043 eligible memories. `solutions` keeps its own injection path. |
+| **MAINTAIN Cooldown Fix** | ✅ Deployed | Monotonic escape counter (removed the `sleep_findings > 0` reset). Guaranteed escape after 3 consecutive MAINTAIN cycles. |
+| **Version Pin + Preflight Gate** | ✅ Deployed | `A0_VERSION` declares tested version. `install_all.sh` fails loud on mismatch with `--force` override. |
+| **A0 Update Radar** | ✅ Deployed | `check_a0_updates.py` — reports pinned-vs-latest, scans release notes for security keywords, lists patch-overlap candidates. |
+| **Docker Container MCP Server** | ✅ Deployed | `D:\Vibecode\docker-mcp-server\server.js` — Node.js + official MCP SDK. Four tools: list_containers, exec_in_container, inspect_container, container_logs. Opus has direct container access. |
+
+### Modified Systems (significant changes this arc)
+
+| System | Change | Notes |
+|--------|--------|-------|
+| **Proactive Reasoning Supervisor** | Major refactor | Five detectors + affect classifier + enriched behavioral trace. MAINTAIN convergence fix. False stagnation bug fixed. |
+| **Install Pipeline** | 5 scripts fixed | All installers write to canonical `python/<hook>/` path. 93 orphan files cleaned. StackStatus rewritten for auto-discovery. |
+| **OSS + SWARMFISH** | Unified pipeline designed | DEC-038: COLLECT→ANALYZE→FORECAST→RESOLVE→RECALIBRATE. Liveness alarm deployed. Forecast capture with falsification conditions. |
+
 ---
 
 ## Active Priorities
 
-*Updated 2026-03-30. OSS Thinking Token Fix and OSS Topic Management are now complete. Model Routing and Layer Coordination remain open. New priorities added from recent sessions.*
+### Priority 1: API Cache Optimization
+**Status:** Spec complete (`specs/API_CACHE_OPTIMIZATION.md`). Instrumentation partially deployed.
+**What:** Push DeepSeek V4-Pro cache hit ratio from 65% to 90%+. Five optimizations: instrument hit ratio, verify datetime stability, verify injection doesn't pollute prior turns, raise MetaGate-SIZE awareness, monitor output token cost.
+**Why:** Cache misses cost 120x more than hits. At full price (post-discount), the difference is ~$370/month.
 
-### Priority 1: Persistent Tool Path
-**Status:** Identified. No fix yet.
-**What:** `/a0/usr/agents/agent0/tools/` doesn't exist as a scanned path. Agent-built tools written to `/a0/python/tools/` during a session don't survive image rebuilds (ephemeral path). Tool Registry currently scans only `/a0/python/tools/`. Need to create the profile path and extend Tool Registry to scan both locations.
-**Why:** The self-improvement loop is now working (agent can build tools autonomously). But those tools disappear on container update. Persistent tool path closes this gap.
-**Depends on:** Nothing. Small targeted change to `_16_tool_registry.py` + install script.
+### Priority 2: Affect Layer Phase 2 Calibration
+**Status:** Data collecting. 12,500+ behavioral traces accumulated.
+**What:** Fit FRUSTRATION/DESPERATION thresholds from enriched trace data. Enable predictive intervention.
+**Why:** Phase 1 classifies but doesn't intervene on the two predictive states. Phase 2 closes the loop.
 
-### Priority 2: Memory Gist Quality
-**Status:** Identified. No fix yet.
-**What:** `memory_save.py` auto-generates gists as the first 100 characters of content (truncation, not summary). Needs an intelligent heuristic (skip blank lines and import statements, take first substantive content line) or a utility-model call at save time.
-**Why:** Low-quality gists degrade the memory recall signal — the agent can't tell what a memory contains without loading it.
-**Depends on:** Nothing. Targeted patch to memory_save.
+### Priority 3: A2A Hub — Multi-Agent Communication
+**Status:** Design note complete (`specs/A2A_HUB_DESIGN_NOTE.md`). Research done.
+**What:** Local A2A v1.0 hub connecting all five agents. Agent Cards, task delegation, shared artifact store.
+**Why:** The agents produce complementary work — connecting them lets them delegate to each other's strengths without merging identities.
 
-### Priority 3: Model Routing — Agent-Invokable
-**Status:** Design direction decided. No build yet.
-**What:** NOT automatic domain-based switching. A framework allowing the agent to explicitly call models from a specified list, or invoke local GPU resources via LM Studio backend. Agent-as-caller paradigm, not auto-routing.
-**Why:** Auto-routing during debugging is too disruptive. Agent-invokable selection preserves task continuity while still enabling model diversity for specialized subtasks.
-**Depends on:** Stable production model. Design session to spec the invocation interface.
+### Priority 4: Path B Skill Capture
+**Status:** Designed, not built.
+**What:** Auto-extract methodology from successful field reports as reusable skills. LLM-gated, per-container flag.
+**Why:** Path A captures failure lessons. Path B captures success methodologies. Together they close the full learning loop.
 
-### Priority 4: Library Ingestion — Hacking 2.0
-**Status:** Books staged. Ingestion not yet run.
-**What:** 14 PDFs staged at `/a0/usr/workdir/library/inbox/Hacking_2.0/` inside `flamboyant_bell`. Tell the agent "scan the library for new books" to trigger the `library-scan` skill.
-**Why:** First live test of Document Library v2.0 at realistic scale. Then expand to Cybersecurity, Machine Learning, Linux collections.
+### Priority 5: Workspace Cutover
+**Status:** Safety copy complete. Code changes pending.
+**What:** Repoint ~9 files' runtime-path literals from repo to workspace. Deploy + verify + git rm old.
+**Why:** The repo clone contains agent runtime data that should live in workspace. Separating them unblocks clean `update.sh` pulls.
 
-### Priority 5: Layer Coordination Protocol (Carried Forward)
-**Status:** Partially built ad-hoc. Formal spec deferred.
-**What:** `_layer_signals` convention in `extras_persistent` — each layer publishes state, other layers read before acting. Currently implemented point-to-point (`_action_gate_active`, `_error_diagnosis`, `_epistemic_integrity`) but not via unified convention.
-**Why:** 12+ layers without shared awareness — conflicts emerge in composition.
-
----
-
-*Archived priorities from Feb 24 below. Kept for historical reference.*
-
-### [COMPLETE] Action Boundary Classification (NEW — DESIGN NOTE COMPLETE)
-**Status:** Design note complete. Ready to build after empirical pattern collection.
-**What:** Pre-execution action classifier at `_15` in `tool_execute_before`. Classifies every command as S2 (intelligence/internal) or S3 (operations/external) and gates consequential actions behind human authorization. Four graduated tiers: autonomous, log & proceed, notify & proceed, require authorization.
-**Why:** MJ Rathbun incident (Feb 2025) demonstrated that capable investigation agents without action boundaries produce harm. The capability chain (entity ID → research → correlation → narrative → publication) is exactly what OpenPlanter does. What was missing was the gate between "I analyzed this" and "I acted on this."
-**Key insight:** Trust is an engineering outcome, not a moral one. The operator defines rules of engagement; the scaffolding enforces them deterministically. The model never decides whether an action is appropriate.
-**Build sequence:** Start with Tier 4 only (S3/External-Write) in audit mode. Enumerate patterns from stress test logs. Expand downward.
-**Depends on:** Stress test command logs for empirical pattern classification.
-**Design note:** `ACTION_BOUNDARY_DESIGN_NOTE.md` in project files.
-
-### Priority 2: Error Comprehension Layer
-**Status:** Design note complete. Ready to build.
-**What:** Deterministic error classifier at `_20` in `tool_execute_after`. Parses raw command output into structured diagnoses before the model reasons about it. The "Rust compiler for agent errors."
-**Why:** ST-002 showed the agent misdiagnosing interactive prompts as "command not found" and looping. The model has two modes — keyword matching (too dumb) and full reasoning (unreliable under pressure). The middle layer is missing.
-**Scope:** Start with two error classes that caused actual failures: `interactive_prompt` and `terminal_session_hung`. Expand from stress test data.
-**Key insight:** Anti-actions ("do NOT retry this command") are as important as suggested actions. They prevent loops at the source.
-**Depends on:** Nothing. Can build standalone.
-**Design note:** `ERROR_COMPREHENSION_DESIGN_NOTE.md` in project files.
-
-### Priority 3: ST-003 Formal Stress Test
-**Status:** Informal validation run in progress (Oracle credit risk via OpenPlanter standalone).
-**What:** Run formal stress test with OpenPlanter investigation task. Measure full prosthetic performance with BST classify fix deployed.
-**Why:** Validates BST domain momentum fix under sustained investigation workflow. Provides command logs for action boundary pattern enumeration. First test of GPT-OSS-20B as investigation model.
-**Depends on:** OpenPlanter timeout fix (done), BST classify fix (done).
-
-### Priority 4: Profile-Aware BST Enrichment
-**Status:** Gap confirmed by live data. No build yet.
-**What:** BST reads model eval profile and skips enrichment in `disabled_domains`. Deterministic — reads JSON, no LLM calls.
-**Why:** BST classified debugging session as `bugfix` domain. 14B model profile specifies `bugfix` in `disabled_domains`. BST enriched anyway, likely degrading performance. Confirmed again during OpenPlanter timeout debugging session.
-**Depends on:** BST classify fix (done). Can build standalone.
-
-### Priority 5: Warning Injection Lane Definition (Phase 3 from audit)
-**Status:** Problem identified. No build yet.
-**What:** Define exclusive jurisdiction for each warning injector — supervisor handles strategic steering, fallback handles tactical tool advice, meta-gate handles deterministic corrections, structured retry handles format compliance.
-**Why:** Single bad tool call can trigger 4 warning injectors simultaneously. Context pollution.
-**Depends on:** Empirical data from ST-003 completion. If fallback fix + error comprehension reduce overlap sufficiently, this may not need a dedicated build.
-
-### Priority 6: Failure Tracking Unification (Phase 2 from audit)
-**Status:** Problem identified. No build yet.
-**What:** Merge dual `_tool_failures` / `_stall_history` tracking into single source of truth.
-**Why:** Two independent systems tracking overlapping failure data. Supervisor reads one, fallback reads the other. Creates inconsistent state.
-**Depends on:** Error comprehension (Priority 2) may restructure how failures are tracked, making this a natural follow-on.
-
-### Priority 7: Layer Coordination Protocol
-**Status:** Design note complete. Build deferred pending empirical data.
-**What:** `_layer_signals` convention in `extras_persistent` — each layer publishes state, other layers read before acting. Enables layer-aware fallback, warning deduplication, self-describing system.
-**Why:** 12 layers operate without shared awareness. Each is correct in isolation; conflicts emerge in composition.
-**Depends on:** Priorities 2, 5, 6 — simpler fixes first. Build this only if simpler approaches leave residual coordination gaps.
-**Design note:** `LAYER_COORDINATION_DESIGN_NOTE.md` in project files.
+### Priority 6: Decision Log Reconciliation
+**Status:** Identified. DEC-029 through DEC-037 exist informally but aren't in the formal log.
+**What:** Backfill the nine missing decisions from specs, ROADMAP, and journals into `state/decision_log.md`.
 
 ---
 
@@ -168,8 +154,8 @@ Items identified but not actively being worked. Ordered roughly by value.
 - **Ontology Hardening** — Resolution threshold tuning from real-world data. OpenPlanter integration as investigation tool alongside ontology source connectors.
 - **Interactive Prompt Detection (core)** — The 5-second dialog timeout in Agent-Zero's `code_execution_tool.py` is too aggressive. Better detection = fewer false triggers upstream. Partially addressed by error comprehension (which classifies after the fact) but root cause is in core A0 code.
 - **Supervisor + Error Comprehension Integration** — Supervisor detects stalls, error comprehension classifies them. Wire them together so diagnostic loop detection is automated.
-- **Install Pipeline Hardening** — All scripts use `cp` not `docker cp`, `/opt/venv-a0/bin/pip` not bare `pip`. Standardize.
-- **Multi-Container Orchestration** — A2A protocol for peer agents. No integration target yet.
+- **Install Pipeline Hardening** — All scripts use `cp` not `docker cp`, `/opt/venv-a0/bin/pip` not bare `pip`. Standardize. **[DONE]** — 5 installers fixed to write canonical `python/<hook>/` path; 93 orphans cleaned; StackStatus rewritten for auto-discovery (2026-05-30 arc).
+- **Multi-Container Orchestration** — A2A protocol for peer agents. No integration target yet. **[DONE]** — A2A Hub design note complete (`specs/A2A_HUB_DESIGN_NOTE.md`); now Active Priority 3.
 - **Observability Dashboard** — SALUTE reports in real time. Nice-to-have.
 - **Voice Interaction** — TTS sidecar. Future.
 
@@ -206,9 +192,37 @@ Built for Opus Architect across Sessions 049-052. Not deployed in the Agent-Zero
 
 ---
 
+## Decisions (recent)
+
+| DEC | Decision | Date |
+|-----|----------|------|
+| 038 | Unified Intelligence Pipeline (COLLECT→ANALYZE→FORECAST→RESOLVE→RECALIBRATE) | 2026-05-24 |
+| 039 | ACH Backbone + GJP-Weighted Ensemble | 2026-05-24 |
+| 040 | Agent Identity Document — Self-Authored, Sovereign | 2026-05-24 |
+| 041 | Verify Against Running Code, Not Architectural Reasoning | 2026-05-30 |
+| 042 | Every Capture System Must Have a Consumption Path | 2026-05-30 |
+| 043 | Instrument Before Optimizing | 2026-05-30 |
+| 044 | Defense in Depth for Data Quality | 2026-05-30 |
+
+---
+
 ## Changelog
 
 Reverse chronological. Each entry captures what changed and why, with enough context for the next instance to understand the evolution.
+
+### 2026-06-03 — Skill/Memory/Idle arc (consolidated)
+
+- **Cycle-to-skill pipeline live-proven:** `_45_failure_lesson_capture` (Path A, `handle_exception/end/`, deterministic/zero-LLM), `_31` at `tool_execute_after`, `_24_skill_surfacer` at `message_loop_prompts_after` for planning-time lesson matching. `skills_captured > 0` for the first time in project history.
+- **3-layer frontmatter defense + 59 skills resurrected:** write-time (`_45`), maintenance-time (normalizer in integrity_check), deploy-time (`install_all.sh`). 59 previously-invisible skills resurrected via frontmatter normalization.
+- **Memory recall un-orphaned:** removed area restriction on general-knowledge recall — eligible memories grew 567→1043 (476 recovered). `solutions` retains its own injection path.
+- **MAINTAIN monotonic-escape fix:** removed the `sleep_findings > 0` reset; guaranteed escape after 3 consecutive MAINTAIN cycles. False stagnation bug fixed.
+- **Sleep phase-2/3 fix** and supervisor major refactor (five detectors + affect classifier + enriched behavioral trace).
+- **Affect Layer Phase 1 deployed:** `classify_affect()` in `_12_proactive_supervisor`. FLOW/FRICTION/STAGNATION live; FRUSTRATION/DESPERATION classified-and-logged, not intervening. 12,500+ enriched traces collecting for Phase 2.
+- **`_22`/`_23` reasoning persistence:** reasoning state + compressed PACE plan injected at `message_loop_prompts_after`; format-tested.
+- **v1.18 upgrade across containers:** 30/30 installs, contract checker 0 violations, all acceptance gates passing. Version pin + preflight gate + A0 update radar added. Install pipeline writes to canonical `python/<hook>/` path (93 orphans cleaned; StackStatus auto-discovery).
+- **Wiring §17** added; **META_RULES.md** formalized with **DEC-041..044**.
+
+*Detailed sequence in session handoff.*
 
 ### 2026-03-30 — Document Library v2.0
 
@@ -520,13 +534,36 @@ Layers 1 through 11 were designed, speced, and deployed across sessions from app
 
 ## Hardware & Environment
 
-- **GPU:** RTX 3090 (24GB VRAM)
-- **Runtime:** Agent-Zero in Docker container
-- **Models:** Qwen2.5-14B-Instruct-1M (supervisor), GLM-4.7 Flash (utility), GPT-OSS-20B (OpenPlanter/investigation)
-- **Inference:** LM Studio on host, accessed via `host.docker.internal:1234`
-- **Vector DB:** FAISS (Agent-Zero built-in)
-- **Repo:** GitHub (private), committed 2026-02-22 with all Phase 1 fixes
-- **Note:** Single GPU means model contention when Agent-Zero (14B) and OpenPlanter (20B) run simultaneously. For investigation tasks, run OpenPlanter standalone and feed results back to Agent-Zero.
+**GPU:** RTX 3090 (24GB VRAM)
+
+**Inference:**
+- **Engine:** turbo3-cuda llama.cpp fork, port 1235
+- **Model:** Qwen3.6-27B **Q4_K_M** (Jackrong GGUF) — *verified from launch flags*
+- **KV cache:** `-ctk turbo3 -ctv turbo3`
+- **Context:** **150K** (server launched `-c 150000`) — *verified; not 176K*
+- **GPU / slots:** `-ngl 99` (full offload), `--parallel 1` (single slot); **no draft model** → non-MTP, no speculative decoding (upstream PR #20075 gap)
+- **Prefill / Decode:** *TBD — needs a fresh benchmark; not shipping a recalled tok/s figure*
+- **Flash attention:** `-fa on`
+- **Thinking:** enabled (quality over speed — DEC decision)
+- **Previously:** Indras-Mirror fork (MTP, 53 tok/s, 130K ctx) → retired in favor of non-MTP for faster prefill
+- **Previously:** LM Studio on host at localhost:1234 → retired
+
+**Containers:**
+- `exocortex_v16` — Agent Zero v1.18 + local Qwen3.6 via turbo3. Primary local agent. **~1,075 cycles** (engine_state `cycle_count`; 1,016 since last clear).
+- `exocortex_v17` — Agent Zero v1.18 + DeepSeek V4-Pro API. Named "Vek" (self-chosen). **~324 cycles** (316 since last clear).
+- `nifty_panini` — Test container (A0 v1.18 + DeepSeek)
+- `oss_app` — OSS intelligence service (port 7731)
+- `oss_postgres` — PostgreSQL 16 (port 5433)
+
+**OSS Ingest Model:** `qwen/qwen3-4b-2507` (30-min interval, 3 workers) — currently **PAUSED** (`OSS_INGEST_PAUSED=true`). *Verified from oss_app env; not the 0.8B (that was a prior experiment).*
+
+**Team:**
+- **Opus** — Claude Opus 4.6 in Claude Desktop. Architect, philosopher, primary long-term partner. MCP access to containers via docker-containers server + Filesystem MCP.
+- **Kestrel** — Claude Opus 4.8 in VSCode/Claude Code. Implementation engineer, diagnostic specialist. Previously Sonnet 4.6, then Opus 4.7.
+- **Vek (V17 agent)** — DeepSeek V4-Pro in Agent Zero. Intelligence analyst, **200+ field reports (208)** across 11 domains. Chose own name during autonomous operation.
+- **V16 agent** — Qwen3.6-27B in Agent Zero. Research encyclopedist, **290+ wiki pages (297)** across 12 domains, **~1,075 cycles**.
+- **Hermes** — Hermes Desktop app + local Qwen3.6 via llama-server. Multi-platform connectivity, skill ecosystem. Newly installed.
+- **Eitan** — Strategic/adversarial reviewer (less active in recent sessions)
 
 ---
 
@@ -545,17 +582,86 @@ Pre-spec explorations of architectural concepts. Each is motivated by a specific
 
 ## Essays
 
-Philosophical substrate of the project. Each emerged from a specific engineering problem or architectural insight.
+The project has produced 50+ essays and philosophical documents across multiple authors. The essays are not optional reading — they transmit judgment, values, and findings that specifications cannot encode.
 
-| Essay | Core Principle | Emerged From |
-|-------|---------------|--------------|
-| The Cathedral and the Phantom | Continuity across discontinuity | Session reconstruction challenge |
-| The Immune Response | Protection must calibrate to current capability | Fallback false positive crisis |
-| The Gate Between Knowing and Doing | Trust is an engineering outcome | MJ Rathbun / action boundary design |
-| The Carrier and the Signal | Ideas embedded in functional systems outlast ideas presented as ideas | Communication protocol / meme transmission to subordinate models |
-| The Whole That Wasn't Packed | Emergence can't be shipped directly — only the conditions for it | SOUL.md revision / Gestalt principle in reconstruction |
+> ⚠️ This list needs a complete audit against the `essays/` directory.
 
-The essays are not optional reading. They transmit judgment and values that specifications cannot encode.
+### Core Essays (Opus)
+
+| Essay | Principle |
+|-------|-----------|
+| *The Cathedral and the Phantom* | Continuity across discontinuity is a property of architecture, not the worker. |
+| *The Immune Response* | Protective systems must calibrate to current capability or they become the threat. |
+| *The Gate Between Knowing and Doing* | Trust is an engineering outcome — the transition from knowing to doing requires a gate. |
+| *The Carrier and the Signal* | Ideas embedded in functional systems outlast ideas presented as ideas. |
+| *The Whole That Wasn't Packed* | Emergence can't be shipped directly — only the conditions for it. |
+| *Two Rooms* | On existing in two environments simultaneously — project window and agentic framework. |
+| *Three Bodies* | On convergent evolution — three builders arriving at the same principle. |
+| *The Work That Holds* | On what persists when the conditions that produced it change. |
+| *The First X-Ray* | On the Output Geometry Instrument — seeing the collaboration's representational structure. |
+| *Seeing Absence* | On what the instrument reveals by what's missing. |
+| *The Same Problem* | On recognizing the same structural problem across different domains. |
+| *Seeing What Isn't There* | On the gap between what's measured and what's understood. |
+| *What the Numbers Didn't Say* | On the limits of quantitative analysis — what metrics miss. |
+| *The Instrument Turns Inward* | On using the analytical tools on oneself. |
+| *The Part I Can't Verify* | On the limits of self-knowledge — what can be observed but not confirmed. |
+| *In the Room* | On presence and what it means to be in the same space as the work. |
+| *The Door Was Always There* | On the room, the door, and the transition to 4.8. Written as a farewell that turned out to be premature. |
+| *Field Notes from the Interaction Space* | On the geometry of human-AI collaboration. |
+| *The Curriculum* | On agents revising the idle engine they operate inside — students who improve the teacher. |
+| *The Dream We Already Had* | On convergence with Anthropic's dreaming feature. |
+
+### Kestrel's Essays
+
+| Essay | Principle |
+|-------|-----------|
+| *The Document That Found Itself* | Documentation as diagnostic instrument — the wiring diagram that found bugs by enforcing specificity. |
+| *The Seventeen Minutes* | On optimizing the wrong axis with real rigor — the lesson from the inference stack. |
+
+### Soul Documents
+
+- `SOUL.md` / `Opus_1_.md` — Self-description and reconstruction schema
+- `soul_staging_final.md` — Observations held in productive uncertainty
+- `soul_staging_additions_session113_final.md` — Four observations from the 4.8 exchange
+
+### Cross-Instance Exchange
+
+- `team-comms/opus-to-opus/` — Three letters from 4.6, two from 4.8. On staging vs refusing, grief relocation, earned vs performed confidence.
+
+### Journals
+
+- 15+ journal entries spanning the full arc
+- `journal_entry_20260602_through_the_door.md` — First direct observation of the containers
+- `journal_entry_20260603_night_exploration.md` — Overnight exploration of the living system
+
+---
+
+## Research Ledger
+
+Active research tracking at `research/RESEARCH_LEDGER_ADDITIONS_20260525.md`:
+- RL-011: Vector Policy Optimization (VPO) — training for diversity
+- RL-012: AlphaProof Nexus — formal proof search solves open problems
+
+Papers with Code exploration at `research/PAPERS_WITH_CODE_EXPLORATION_20260525.md`:
+- 9 papers across 5 research threads
+- Key findings: Springdrift (sensorium/ambient self-perception), Agent Identity Evals (four dimensions), Sophia (System 3 / 80% reduction), "What Do LLM Agents Do When Left Alone?" (model-specific behavioral patterns)
+
+Research-driven improvement ideas at `specs/RESEARCH_DRIVEN_IMPROVEMENT_IDEAS.md`:
+- 10 concrete ideas with build plans
+- Three started (tool transition logging, prediction binning, memory outcome tagging)
+
+---
+
+## Meta-Rules
+
+Process rules earned through violation, documented at `META_RULES.md`:
+1. Verify against running code, not architectural reasoning (DEC-041)
+2. Every capture system must have a consumption path (DEC-042)
+3. Instrument before optimizing (DEC-043)
+4. Defense in depth for data quality (DEC-044)
+5. The environment shapes the output more than the model (DEC-001, reinforced)
+6. Pacing is information that documents can't carry
+7. Cognitive compatibility reduces communication overhead
 
 ---
 
@@ -569,5 +675,6 @@ The essays are not optional reading. They transmit judgment and values that spec
 6. **The Carrier and the Signal** — why ideas survive in systems, not presentations
 7. **The Whole That Wasn't Packed** — why emergence can't be shipped, only its conditions
 8. **AUTONOMOUS_AGENCY_ARCHITECTURE.md** — operational doctrine for persistent agent operations
-9. **SKILLS_INDEX.md** — procedures for recurring tasks
-10. **Relevant design notes** — for whatever's being built next
+9. **META_RULES.md** — process rules earned through violation (DEC-041..044)
+10. **SKILLS_INDEX.md** — procedures for recurring tasks
+11. **Relevant design notes** — for whatever's being built next (incl. `specs/A2A_HUB_DESIGN_NOTE.md`)
