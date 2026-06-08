@@ -34,6 +34,7 @@ Real-user contexts (no activation sentinel) are never touched.
 """
 
 import json
+import re
 
 from helpers.extension import Extension
 
@@ -59,17 +60,17 @@ def _detect_cycle_type(agent):
 
     ctype = None
     try:
+        # Concatenate all message text. Content is often a dict, so json.dumps it
+        # — which escapes newlines; a regex (not splitlines) handles that robustly.
+        parts = []
         for m in agent.history.output():
-            content = m.get("content") if isinstance(m, dict) else None
-            text = content if isinstance(content, str) else json.dumps(content)
-            if _SENTINEL in (text or ""):
-                for line in text.splitlines():
-                    if "cycle type" in line.lower():
-                        parts = line.split(":", 1)[-1].strip().upper().split()
-                        if parts:
-                            ctype = parts[0]
-                        break
-                break
+            c = m.get("content") if isinstance(m, dict) else None
+            parts.append(c if isinstance(c, str) else (json.dumps(c) if c is not None else ""))
+        text = " ".join(parts).upper()
+        if _SENTINEL.upper() in text:
+            mm = re.search(r"CYCLE TYPE\W{0,5}(MAINTAIN|BUILD|EXPLORE)", text)
+            if mm:
+                ctype = mm.group(1)
     except Exception:
         pass
 
