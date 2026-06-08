@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cost Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ds-font-body:"Inter","Segoe UI",system-ui,sans-serif;
+    --ds-font-mono:"IBM Plex Mono","SF Mono","Consolas",monospace;
+    --void:#060810; --base:#0a0f1a; --raised:#0f1629; --overlay:#151d35;
+    --scrim:#0a0f1aeb;
+    --t1:#f0f2f5; --t2:#b0b8c8; --t3:#6b7a8d; --tdim:#3d4a5c;
+    --b-subtle:rgba(148,163,184,.06); --b-def:rgba(148,163,184,.12);
+    --b-strong:rgba(148,163,184,.22); --b-accent:rgba(0,229,255,.25);
+    --cyan:#00e5ff; --cyan-muted:rgba(0,229,255,.15); --cyan-glow:rgba(0,229,255,.35);
+    --pos:#34d399; --neg:#f87171; --warn:#fbbf24; --info:#60a5fa; --purple:#a78bfa;
+    --pos-m:rgba(52,211,153,.15); --warn-m:rgba(251,191,36,.15); --neg-m:rgba(248,113,113,.15);
+    --r-sm:6px; --r-md:10px; --r-lg:14px; --r-pill:999px;
+    --eo:cubic-bezier(.16,1,.3,1); --espring:cubic-bezier(.34,1.56,.64,1);
+    --shadow:0 4px 12px rgba(0,0,0,.4); --glow:0 0 20px rgba(0,229,255,.06),0 0 40px rgba(0,229,255,.03);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--ds-font-body); color:var(--t1);
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(0,229,255,.05), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(139,92,246,.05), transparent 55%),
+      var(--void);
+    min-height:100vh; padding:32px 20px; display:flex; justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  .cockpit{width:100%; max-width:680px; display:flex; flex-direction:column; gap:16px;}
+
+  /* header */
+  .top{display:flex; align-items:center; gap:14px; padding:2px 4px;}
+  .top h1{
+    font-size:13px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--t2);
+  }
+  .live{
+    display:inline-flex; align-items:center; gap:6px; margin-left:auto;
+    font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--t3);
+  }
+  .live .dot{width:7px;height:7px;border-radius:50%;background:var(--pos);
+    box-shadow:0 0 8px var(--pos); animation:pulse 2s var(--eo) infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* card */
+  .card{
+    background:var(--scrim);
+    -webkit-backdrop-filter:blur(20px) saturate(140%); backdrop-filter:blur(20px) saturate(140%);
+    border:1px solid var(--b-def); border-radius:var(--r-lg);
+    box-shadow:var(--shadow); padding:18px 20px;
+  }
+  .card-title{
+    font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--t3); margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .card-title::after{content:"";flex:1;height:1px;background:var(--b-subtle);}
+
+  /* burn meter */
+  .burn{display:flex; align-items:flex-end; gap:10px; margin-bottom:4px;}
+  .burn .num{
+    font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums;
+    font-size:46px; font-weight:600; line-height:.95; color:var(--t1);
+    text-shadow:0 0 24px rgba(0,229,255,.12);
+  }
+  .burn .unit{font-size:13px; color:var(--t3); padding-bottom:7px; letter-spacing:.04em;}
+  .burn .sub{margin-left:auto; text-align:right; font-size:11px; color:var(--t3); line-height:1.5;}
+  .burn .sub b{color:var(--t2); font-family:var(--ds-font-mono); font-weight:500;}
+
+  .gauges{display:flex; flex-direction:column; gap:11px; margin-top:16px;}
+  .gauge .grow{display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px;}
+  .gauge .glabel{color:var(--t3); letter-spacing:.03em;}
+  .gauge .gval{font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums; color:var(--t2);}
+  .bar{height:7px; border-radius:var(--r-pill); background:var(--b-subtle); overflow:hidden;}
+  .bar > span{display:block; height:100%; border-radius:var(--r-pill);
+    transition:width .5s var(--eo);}
+  .bar.cache > span{background:linear-gradient(90deg,#0891b2,var(--cyan));}
+  .bar.reason > span{background:linear-gradient(90deg,#b45309,var(--warn));}
+
+  .calls{margin-top:14px; display:flex; gap:18px; font-size:11px; color:var(--t3);}
+  .calls b{color:var(--t2); font-family:var(--ds-font-mono);}
+
+  /* power + interval */
+  .row{display:flex; align-items:center; gap:12px;}
+  .row + .row{margin-top:14px;}
+  .row .rlabel{font-size:12px; color:var(--t2); min-width:78px; letter-spacing:.02em;}
+  .powerbtn{
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+    padding:7px 16px; border-radius:var(--r-pill); font-size:12px; font-weight:600;
+    letter-spacing:.05em; text-transform:uppercase; border:1px solid var(--b-def);
+    background:var(--raised); color:var(--t3); transition:all .2s var(--eo);
+  }
+  .powerbtn .pd{width:8px;height:8px;border-radius:50%;background:var(--tdim);transition:all .2s var(--eo);}
+  .powerbtn.on{color:var(--pos); border-color:rgba(52,211,153,.4); background:var(--pos-m);}
+  .powerbtn.on .pd{background:var(--pos); box-shadow:0 0 8px var(--pos);}
+  .powerbtn:hover{transform:translateY(-1px); box-shadow:var(--shadow);}
+  .next{margin-left:auto; font-size:11px; color:var(--t3); font-family:var(--ds-font-mono);}
+
+  /* segmented control */
+  .seg{display:inline-flex; background:var(--void); border:1px solid var(--b-def);
+    border-radius:var(--r-pill); padding:3px; gap:2px;}
+  .seg button{
+    border:0; background:transparent; cursor:pointer; color:var(--t3);
+    font-family:var(--ds-font-body); font-size:11px; font-weight:600; letter-spacing:.03em;
+    padding:5px 13px; border-radius:var(--r-pill); transition:all .18s var(--eo);
+  }
+  .seg button:hover:not(.active){color:var(--t2);}
+  .seg button.active{background:var(--cyan-muted); color:var(--cyan);
+    box-shadow:inset 0 0 0 1px var(--b-accent);}
+  .seg.warnsel button.active{background:var(--warn-m); color:var(--warn); box-shadow:inset 0 0 0 1px rgba(251,191,36,.35);}
+
+  /* matrix */
+  .matrix{display:flex; flex-direction:column; gap:10px;}
+  .mhead, .mrow{display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:14px;}
+  .mhead{font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--tdim); padding:0 2px;}
+  .mhead span:nth-child(2),.mhead span:nth-child(3){text-align:center; min-width:96px;}
+  .mrow .cyc{font-size:12px; font-weight:600; color:var(--t1); letter-spacing:.04em; display:flex; flex-direction:column; gap:2px;}
+  .mrow .cyc small{font-size:10px; font-weight:400; color:var(--t3); letter-spacing:0;}
+  .mrow.util{opacity:.85;}
+  .mrow.util .cyc small{color:var(--warn);}
+
+  /* projection */
+  .proj{
+    margin-top:4px; display:flex; align-items:center; gap:10px; padding:14px 18px;
+    border-radius:var(--r-md); border:1px solid var(--b-accent);
+    background:linear-gradient(135deg, rgba(0,229,255,.06), transparent 70%), var(--raised);
+    box-shadow:var(--glow);
+  }
+  .proj .plabel{font-size:11px; color:var(--t2); letter-spacing:.03em;}
+  .proj .pval{margin-left:auto; font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums;
+    font-size:22px; font-weight:600; color:var(--cyan); transition:color .25s var(--eo);}
+  .proj .pdelta{font-size:11px; font-family:var(--ds-font-mono); padding:2px 8px; border-radius:var(--r-pill);}
+  .pdelta.down{color:var(--pos); background:var(--pos-m);}
+  .pdelta.up{color:var(--neg); background:var(--neg-m);}
+  .pdelta.flat{color:var(--t3); background:var(--b-subtle);}
+  .flash-pop{animation:flashpop .4s var(--espring);}
+  @keyframes flashpop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+  .note{font-size:10.5px; color:var(--tdim); margin-top:10px; line-height:1.5;}
+  .err{color:var(--neg); font-size:12px; text-align:center; padding:20px;}
+  .foot{text-align:center; font-size:10px; color:var(--tdim); letter-spacing:.04em; margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="cockpit" id="cockpit">
+
+  <div class="top">
+    <h1>Cost Control</h1>
+    <span class="live"><span class="dot"></span> Live</span>
+  </div>
+
+  <!-- BURN METER -->
+  <div class="card">
+    <div class="card-title">Burn Rate</div>
+    <div class="burn">
+      <span class="num" id="rate">—</span>
+      <span class="unit">/ day</span>
+      <span class="sub">
+        today <b id="today">—</b><br>
+        <b id="ncalls">—</b> calls · <span id="span">—</span>
+      </span>
+    </div>
+    <div class="gauges">
+      <div class="gauge">
+        <div class="grow"><span class="glabel">Cache hit</span><span class="gval" id="cacheval">—</span></div>
+        <div class="bar cache"><span id="cachebar" style="width:0"></span></div>
+      </div>
+      <div class="gauge">
+        <div class="grow"><span class="glabel">Reasoning (of output)</span><span class="gval" id="reasonval">—</span></div>
+        <div class="bar reason"><span id="reasonbar" style="width:0"></span></div>
+      </div>
+    </div>
+    <div class="calls">
+      <span id="bymodel">—</span>
+    </div>
+  </div>
+
+  <!-- CYCLE ENGINE -->
+  <div class="card">
+    <div class="card-title">Cycle Engine</div>
+    <div class="row">
+      <span class="rlabel">Power</span>
+      <span class="powerbtn" id="power" onclick="togglePower()"><span class="pd"></span><span id="powertxt">—</span></span>
+      <span class="next" id="next"></span>
+    </div>
+    <div class="row">
+      <span class="rlabel">Interval</span>
+      <span class="seg" id="interval">
+        <button data-min="15">15m</button>
+        <button data-min="30">30m</button>
+        <button data-min="60">60m</button>
+        <button data-min="120">2h</button>
+      </span>
+    </div>
+  </div>
+
+  <!-- MODEL / THINKING MATRIX -->
+  <div class="card">
+    <div class="card-title">Model &amp; Thinking · per cycle</div>
+    <div class="matrix">
+      <div class="mhead"><span>Cycle</span><span>Model</span><span>Thinking</span></div>
+      <div class="mrow" data-cycle="MAINTAIN">
+        <span class="cyc">Maintain <small>housekeeping · 33%</small></span>
+        <span class="seg model"><button data-v="pro">Pro</button><button data-v="flash">Flash</button></span>
+        <span class="seg warnsel think"><button data-v="on">On</button><button data-v="off">Off</button></span>
+      </div>
+      <div class="mrow" data-cycle="BUILD">
+        <span class="cyc">Build <small>wiki deepening · 56%</small></span>
+        <span class="seg model"><button data-v="pro">Pro</button><button data-v="flash">Flash</button></span>
+        <span class="seg warnsel think"><button data-v="on">On</button><button data-v="off">Off</button></span>
+      </div>
+      <div class="mrow" data-cycle="EXPLORE">
+        <span class="cyc">Explore <small>novel synthesis · 11%</small></span>
+        <span class="seg model"><button data-v="pro">Pro</button><button data-v="flash">Flash</button></span>
+        <span class="seg warnsel think"><button data-v="on">On</button><button data-v="off">Off</button></span>
+      </div>
+      <div class="mrow util">
+        <span class="cyc">Utility <small>⚠ ~4×/turn · not yet routable here</small></span>
+        <span class="seg model" style="opacity:.4;pointer-events:none"><button class="active" data-v="pro">Pro</button></span>
+        <span class="seg think" style="opacity:.4;pointer-events:none"><button class="active" data-v="on">On</button></span>
+      </div>
+    </div>
+    <div class="proj">
+      <span class="plabel">Projected at these settings</span>
+      <span class="pval" id="proj">—</span>
+      <span class="pdelta flat" id="projdelta">—</span>
+    </div>
+    <div class="note" id="note">Dials write live config the backend already reads — no restart. Projection is an estimate from the measured token mix.</div>
+  </div>
+
+  <div class="foot">Exocortex · v17 · auto-refresh 30s</div>
+</div>
+
+<script>
+const API = '/api/cost_control';
+let STATE = null;          // last server state
+let DIALS = null;          // local working copy of cycle dials (for instant projection)
+
+const $ = id => document.getElementById(id);
+const money = v => '$' + (v >= 0 ? v : 0).toFixed(2);
+
+async function load(){
+  try{
+    const r = await fetch(API);
+    if(!r.ok) throw new Error(r.status);
+    STATE = await r.json();
+    DIALS = JSON.parse(JSON.stringify(STATE.config.cycles));
+    render();
+  }catch(e){
+    $('cockpit').insertAdjacentHTML('beforeend',
+      `<div class="card err">Could not reach /api/cost_control — is v17 up &amp; the handler deployed?<br>${e}</div>`);
+  }
+}
+
+async function post(body){
+  try{
+    const r = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)});
+    if(!r.ok) throw new Error(r.status);
+    STATE = await r.json();
+    DIALS = JSON.parse(JSON.stringify(STATE.config.cycles));
+    render();
+  }catch(e){ console.error('post failed', e); }
+}
+
+function render(){
+  const m = STATE.metrics, c = STATE.config;
+  $('rate').textContent = money(m.rate_per_day);
+  $('today').textContent = money(m.today_cost);
+  $('ncalls').textContent = m.calls.toLocaleString();
+  $('span').textContent = 'rate: ' + (m.rate_window || '—');
+  $('cacheval').textContent = m.cache_hit_pct + '%';
+  $('reasonval').textContent = m.reasoning_pct + '%';
+  $('cachebar').style.width = Math.min(m.cache_hit_pct,100) + '%';
+  $('reasonbar').style.width = Math.min(m.reasoning_pct,100) + '%';
+  $('bymodel').innerHTML = Object.entries(m.by_model||{})
+    .map(([k,v])=>`${k.replace('deepseek-','')} <b>${v.calls}</b> · ${money(v.cost)}`).join('&nbsp;&nbsp;|&nbsp;&nbsp;') || '—';
+
+  // power
+  const p = $('power');
+  p.classList.toggle('on', c.enabled);
+  $('powertxt').textContent = c.enabled ? 'Enabled' : 'Paused';
+  $('next').textContent = c.enabled ? `every ${c.interval_min} min` : 'idle cycles off';
+
+  // interval segmented
+  $('interval').querySelectorAll('button').forEach(b =>
+    b.classList.toggle('active', +b.dataset.min === c.interval_min));
+
+  // matrix
+  document.querySelectorAll('.mrow[data-cycle]').forEach(row=>{
+    const cyc = row.dataset.cycle;
+    const d = DIALS[cyc];
+    row.querySelector('.model').querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.v===d.model);
+      b.onclick = ()=>{ DIALS[cyc].model=b.dataset.v; render(); post({action:'set_cycle',cycle:cyc,model:d.model,thinking:DIALS[cyc].thinking}); };
+    });
+    row.querySelector('.think').querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.v===d.thinking);
+      b.onclick = ()=>{ DIALS[cyc].thinking=b.dataset.v; render(); post({action:'set_cycle',cycle:cyc,model:DIALS[cyc].model,thinking:b.dataset.v}); };
+    });
+  });
+
+  // interval clicks
+  $('interval').querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=> post({action:'set_interval', minutes:+b.dataset.min});
+  });
+
+  projection();
+}
+
+function projection(){
+  const m = STATE.metrics, sh = STATE.shares, fr = STATE.flash_ratio;
+  const d = m.decomp_per_day;
+  let total = 0;
+  for(const t of ['MAINTAIN','BUILD','EXPLORE']){
+    const s = sh[t] || 0;
+    const dial = DIALS[t];
+    const flash = dial.model === 'flash';
+    const think = dial.thinking === 'on';
+    let miss   = d.miss   * s * (flash ? fr.miss : 1);
+    let reason = think ? (d.reason * s * (flash ? fr.out : 1)) : 0;
+    let other  = d.other  * s * (flash ? fr.out : 1);
+    let hit    = d.hit    * s * (flash ? fr.hit : 1);
+    total += miss + reason + other + hit;
+  }
+  const base = m.rate_per_day || 0;
+  const el = $('proj'), de = $('projdelta');
+  el.textContent = money(total);
+  el.classList.remove('flash-pop'); void el.offsetWidth; el.classList.add('flash-pop');
+  const diff = total - base;
+  const pct = base > 0 ? Math.round(100*diff/base) : 0;
+  if(Math.abs(pct) < 1){ de.className='pdelta flat'; de.textContent='≈ current'; }
+  else if(diff < 0){ de.className='pdelta down'; de.textContent= pct+'% '; }
+  else { de.className='pdelta up'; de.textContent='+'+pct+'%'; }
+}
+
+async function togglePower(){
+  if(!STATE) return;
+  await post({action:'set_power', enabled: !STATE.config.enabled});
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

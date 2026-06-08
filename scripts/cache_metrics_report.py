@@ -14,9 +14,9 @@ import sys
 
 LEDGER = "/a0/usr/Exocortex/cache_metrics.jsonl"
 
-PRICES = {  # $/M tokens (spec estimates)
-    "deepseek-v4-pro":   {"hit": 0.0145, "miss": 1.74, "out": 3.48},
-    "deepseek-v4-flash": {"hit": 0.003,  "miss": 0.20, "out": 0.60},
+PRICES = {  # $/M tokens — DeepSeek V4 current schedule (permanent ~75% reduction)
+    "deepseek-v4-pro":   {"hit": 0.003625, "miss": 0.435, "out": 0.87},
+    "deepseek-v4-flash": {"hit": 0.0028,   "miss": 0.14,  "out": 0.28},
 }
 
 
