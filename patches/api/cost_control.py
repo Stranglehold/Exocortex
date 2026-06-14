@@ -28,6 +28,8 @@ from helpers.api import ApiHandler, Request, Response
 
 _CONFIG_PATH = "/a0/usr/Exocortex/config.json"
 _LEDGER_PATH = "/a0/usr/Exocortex/cache_metrics.jsonl"
+_BAL_LOG = "/a0/usr/Exocortex/balance_log.jsonl"
+_BAL_MIN_INTERVAL = 600  # snapshot DeepSeek balance at most once / 10 min
 
 # $/M tokens — DeepSeek V4 (permanent reduction schedule)
 PRICES = {
@@ -256,10 +258,96 @@ def _agg_ledger() -> dict:
     }
 
 
+# ── balance (authoritative burn from DeepSeek /user/balance deltas) ───────────
+
+def _get_balance_usd():
+    """GET DeepSeek /user/balance -> float USD. None on any failure. Key via A0."""
+    try:
+        import sys
+        if "/a0" not in sys.path:
+            sys.path.insert(0, "/a0")
+        from models import get_api_key
+        import urllib.request
+        key = get_api_key("deepseek")
+        if not key:
+            return None
+        req = urllib.request.Request(
+            "https://api.deepseek.com/user/balance",
+            headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read().decode())
+        infos = data.get("balance_infos") or []
+        for bi in infos:
+            if bi.get("currency") == "USD":
+                return float(bi.get("total_balance"))
+        if infos:
+            return float(infos[0].get("total_balance"))
+    except Exception:
+        pass
+    return None
+
+
+def _read_bal_log() -> list:
+    out = []
+    try:
+        with open(_BAL_LOG, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except Exception:
+                    pass
+    except FileNotFoundError:
+        pass
+    return out
+
+
+def _maybe_snapshot_balance() -> None:
+    log = _read_bal_log()
+    now = time.time()
+    if log and (now - (log[-1].get("ts") or 0)) < _BAL_MIN_INTERVAL:
+        return  # rate-limit
+    bal = _get_balance_usd()
+    if bal is None:
+        return
+    try:
+        with open(_BAL_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"ts": round(now, 1), "usd": bal}) + "\n")
+    except Exception:
+        pass
+
+
+def _balance_info() -> dict:
+    log = _read_bal_log()
+    current = log[-1]["usd"] if log else None
+    now = time.time()
+    win = [e for e in log if (now - (e.get("ts") or 0)) <= 86400]
+    spend = 0.0
+    secs = 0.0
+    if len(win) >= 2:
+        for a, b in zip(win, win[1:]):
+            drop = (a.get("usd") or 0) - (b.get("usd") or 0)
+            if drop > 0:  # ignore top-ups (balance increases)
+                spend += drop
+        secs = (win[-1].get("ts", 0) - win[0].get("ts", 0))
+    rate = (spend / secs * 86400) if secs > 60 else None
+    return {
+        "current_usd": current,
+        "rate_per_day": round(rate, 4) if rate is not None else None,
+        "window_h": round(secs / 3600.0, 1),
+        "snapshots": len(win),
+    }
+
+
 def _build_state() -> dict:
+    _maybe_snapshot_balance()
     cfg = _read_config()
     return {
         "metrics": _agg_ledger(),
+        "balance": _balance_info(),
         "config": _config_view(cfg),
         "shares": _SHARES,
         "flash_ratio": {

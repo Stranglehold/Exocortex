@@ -163,17 +163,17 @@
       <span class="num" id="rate">—</span>
       <span class="unit">/ day</span>
       <span class="sub">
-        today <b id="today">—</b><br>
-        <b id="ncalls">—</b> calls · <span id="span">—</span>
+        balance <b id="balance">—</b><br>
+        <span id="ratebasis">—</span>
       </span>
     </div>
     <div class="gauges">
       <div class="gauge">
-        <div class="grow"><span class="glabel">Cache hit</span><span class="gval" id="cacheval">—</span></div>
+        <div class="grow"><span class="glabel">Cache hit · sampled</span><span class="gval" id="cacheval">—</span></div>
         <div class="bar cache"><span id="cachebar" style="width:0"></span></div>
       </div>
       <div class="gauge">
-        <div class="grow"><span class="glabel">Reasoning (of output)</span><span class="gval" id="reasonval">—</span></div>
+        <div class="grow"><span class="glabel">Reasoning · sampled</span><span class="gval" id="reasonval">—</span></div>
         <div class="bar reason"><span id="reasonbar" style="width:0"></span></div>
       </div>
     </div>
@@ -272,10 +272,13 @@ async function post(body){
 
 function render(){
   const m = STATE.metrics, c = STATE.config;
-  $('rate').textContent = money(m.rate_per_day);
-  $('today').textContent = money(m.today_cost);
-  $('ncalls').textContent = m.calls.toLocaleString();
-  $('span').textContent = 'rate: ' + (m.rate_window || '—');
+  const bal = STATE.balance || {};
+  const realRate = bal.rate_per_day;
+  $('rate').textContent = money(realRate != null ? realRate : m.rate_per_day);
+  $('balance').textContent = bal.current_usd != null ? money(bal.current_usd) : '—';
+  $('ratebasis').textContent = realRate != null
+    ? '● real · balance ' + bal.window_h + 'h'
+    : '○ est (ledger) · real rate accruing · ' + (bal.snapshots || 0) + ' snaps';
   $('cacheval').textContent = m.cache_hit_pct + '%';
   $('reasonval').textContent = m.reasoning_pct + '%';
   $('cachebar').style.width = Math.min(m.cache_hit_pct,100) + '%';
@@ -330,14 +333,18 @@ function projection(){
     let hit    = d.hit    * s * (flash ? fr.hit : 1);
     total += miss + reason + other + hit;
   }
-  const base = m.rate_per_day || 0;
+  // Anchor the projection to the REAL (balance-derived) burn when available;
+  // scale it by the dial-induced ratio computed from the ledger decomposition.
+  const ledgerBase = m.rate_per_day || 0;
+  const realBase = (STATE.balance && STATE.balance.rate_per_day != null) ? STATE.balance.rate_per_day : ledgerBase;
+  const ratio = ledgerBase > 0 ? total / ledgerBase : 1;
+  const projected = realBase * ratio;
   const el = $('proj'), de = $('projdelta');
-  el.textContent = money(total);
+  el.textContent = money(projected);
   el.classList.remove('flash-pop'); void el.offsetWidth; el.classList.add('flash-pop');
-  const diff = total - base;
-  const pct = base > 0 ? Math.round(100*diff/base) : 0;
+  const pct = Math.round((ratio - 1) * 100);
   if(Math.abs(pct) < 1){ de.className='pdelta flat'; de.textContent='≈ current'; }
-  else if(diff < 0){ de.className='pdelta down'; de.textContent= pct+'% '; }
+  else if(ratio < 1){ de.className='pdelta down'; de.textContent= pct+'%'; }
   else { de.className='pdelta up'; de.textContent='+'+pct+'%'; }
 }
 
