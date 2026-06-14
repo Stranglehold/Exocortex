@@ -35,6 +35,124 @@ if _EXOCORTEX_PATH not in sys.path:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+def stage_journal_observations(
+    max_lookback: int = 50,
+    journal_path: str = "/a0/usr/workdir/workspace/self-improvement/journal.jsonl",
+    staging_path: str = "/a0/usr/Exocortex/staging.jsonl",
+) -> dict:
+    """Break A (DEC-042): mine recent cycle_close journal entries for real
+    findings and stage them as observations.
+
+    The idle self-improvement workload runs short cycles that almost never
+    trigger the context-compression event _49 needs to write reasoning-state
+    observations — so staging starved (~1 observation vs ~328 artifacts) and
+    the promotion loop had no fuel. The journal already holds the agent's
+    distilled per-cycle learning; this stages the cycles where the agent
+    noticed something about ITSELF (sleep-consolidation findings, captured
+    skills, integrity issues, non-clean status) as observations, deduped by
+    cycle_number.
+
+    Staged at reactivation_count=0; they become promotion-eligible once
+    session_init surfaces them (Break B increments the count). The journal
+    path is the LIVE one (/a0/usr/workdir/workspace/...), not the stale
+    /a0/usr/Exocortex copy. Deterministic, no LLM calls.
+    """
+    JOURNAL_PATH = journal_path
+    STAGING_PATH = staging_path
+    OBS_IMPORTANCE = 0.7
+    OK_STATUSES = ("completed", "complete", "ok", "success", "")
+
+    result = {"staged": 0, "skipped_existing": 0, "scanned": 0}
+    if not os.path.exists(JOURNAL_PATH):
+        return result
+
+    # Existing staging lines + already-staged cycle numbers (dedup)
+    existing_lines: List[str] = []
+    staged_cycles = set()
+    if os.path.exists(STAGING_PATH):
+        with open(STAGING_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                existing_lines.append(line)
+                try:
+                    e = json.loads(line)
+                    if e.get("_journal_cycle") is not None:
+                        staged_cycles.add(e["_journal_cycle"])
+                except json.JSONDecodeError:
+                    pass
+
+    # Recent journal entries
+    entries: List[dict] = []
+    try:
+        with open(JOURNAL_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+    except Exception:
+        return result
+    entries = entries[-max_lookback:]
+
+    new_lines: List[str] = []
+    for e in entries:
+        result["scanned"] += 1
+        if e.get("type") != "cycle_close":
+            continue
+        cyc = e.get("cycle_number")
+        if cyc is None:
+            continue
+        if cyc in staged_cycles:
+            result["skipped_existing"] += 1
+            continue
+
+        sleep_f = e.get("sleep_findings", 0) or 0
+        skills = e.get("skills_captured", 0) or 0
+        integ = e.get("integrity_issues", 0) or 0
+        status = str(e.get("status", "")).lower()
+        qualifies = (sleep_f > 0 or skills > 0 or integ > 0
+                     or status not in OK_STATUSES)
+        if not qualifies:
+            continue
+
+        # created = the cycle's own timestamp (unique per cycle) for stable
+        # keying by Break B's (created, text) match.
+        try:
+            created = datetime.fromisoformat(e["timestamp"]).timestamp()
+        except Exception:
+            created = datetime.now().timestamp()
+
+        obs = {
+            "id": f"journal_cycle_{cyc}",
+            "category": "observation",
+            "status": "active",
+            "text": str(e.get("activity", ""))[:500],
+            "why": (f"Cycle {cyc} ({e.get('cycle_type', '?')}) finding — "
+                    f"sleep_findings={sleep_f}, skills_captured={skills}, "
+                    f"integrity_issues={integ}, status={status or 'unknown'}"),
+            "importance": OBS_IMPORTANCE,
+            "reactivation_count": 0,
+            "created": created,
+            "_journal_cycle": cyc,
+        }
+        new_lines.append(json.dumps(obs))
+        staged_cycles.add(cyc)
+        result["staged"] += 1
+
+    if new_lines:
+        try:
+            with open(STAGING_PATH, "w", encoding="utf-8", newline="\n") as f:
+                f.write("\n".join(existing_lines + new_lines) + "\n")
+        except Exception:
+            result["staged"] = 0
+    return result
+
+
 def run_phase0_consolidation(session_id: str = "unknown") -> dict:
     """
     Phase 0 — Staging Tier Lifecycle Management.
@@ -70,7 +188,18 @@ def run_phase0_consolidation(session_id: str = "unknown") -> dict:
         "canaries_archived": 0,
         "total_active": 0,
         "errors": 0,
+        "journal_observations_staged": 0,
     }
+
+    # Break A (DEC-042): mine the cycle journal for findings and stage them as
+    # observations BEFORE reviewing staging for promotion. Feeds the promotion
+    # loop in the idle workload, where compression-triggered observations from
+    # _49 almost never fire.
+    try:
+        journal_staged = stage_journal_observations()
+        result["journal_observations_staged"] = journal_staged["staged"]
+    except Exception as e:
+        print(f"[SLEEP] Phase 0 journal-mining failed (passthrough): {e}", flush=True)
 
     if not os.path.exists(STAGING_PATH):
         _write_sleep_report(result)

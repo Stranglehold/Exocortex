@@ -63,6 +63,52 @@ def _reactivation_score(entry: dict) -> float:
     return base * (1.0 + 0.2 * min(r, 5))
 
 
+def _increment_reactivation(surfaced: list[dict]) -> int:
+    """Break B fix (DEC-042): mark surfaced observations as reactivated.
+
+    sleep_consolidation Phase 0 promotes an observation only when
+    reactivation_count >= 1, but nothing in the system ever incremented it —
+    so the staging -> procedural-memory promotion path was structurally
+    unreachable (0 promotions across ~780 cycles, both containers). Surfacing
+    an observation into context IS a reactivation: it was recalled and reused.
+    So we bump the count here and persist it, which makes the gate satisfiable.
+
+    Read-modify-write keyed on (created, text) — observations carry no stable
+    id. LF newlines (Windows default CRLF would corrupt downstream readers).
+    Best-effort: any failure is swallowed so session init never breaks.
+    """
+    if not surfaced or not os.path.exists(STAGING_PATH):
+        return 0
+    keys = {(e.get("created"), e.get("text")) for e in surfaced}
+    bumped = 0
+    lines_out: list[str] = []
+    try:
+        with open(STAGING_PATH, "r", encoding="utf-8") as f:
+            raw = f.readlines()
+        for line in raw:
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                e = json.loads(s)
+            except json.JSONDecodeError:
+                lines_out.append(s)
+                continue
+            if (e.get("category") == "observation"
+                    and (e.get("created"), e.get("text")) in keys):
+                e["reactivation_count"] = e.get("reactivation_count", 0) + 1
+                bumped += 1
+                lines_out.append(json.dumps(e))
+            else:
+                lines_out.append(s)
+        if bumped:
+            with open(STAGING_PATH, "w", encoding="utf-8", newline="\n") as f:
+                f.write("\n".join(lines_out) + "\n")
+    except Exception:
+        return 0
+    return bumped
+
+
 def _get_last_user_message(history: list) -> dict | None:
     for msg in reversed(history):
         if isinstance(msg, dict) and not msg.get("ai", True):
@@ -138,13 +184,18 @@ class SessionInit(Extension):
                 existing = user_msg.get("content", "")
                 user_msg["content"] = block + "\n\n" + str(existing)
 
+            # Break B (DEC-042): surfacing an observation IS a reactivation —
+            # bump reactivation_count so it can clear the Phase 0 promotion gate.
+            bumped = _increment_reactivation(observations)
+
             self.agent.context.log.log(
                 type="util",
                 content=(
                     f"[SESSION-INIT] Injected staging: "
                     f"{len(intentions)} intentions, "
                     f"{len(relationals)} relational, "
-                    f"{len(observations)} observations, "
+                    f"{len(observations)} observations "
+                    f"({bumped} reactivation-bumped), "
                     f"{len(canaries)} canaries"
                 ),
             )
