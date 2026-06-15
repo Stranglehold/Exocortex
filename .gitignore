@@ -32,3 +32,6 @@ inference/compile.bat
 
 # Attention Router runtime log (BP-01 cadence)
 monitor/attention_router.log
+
+# BP-02 harness runtime results
+harness/results/
