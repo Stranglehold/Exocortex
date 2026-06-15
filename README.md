@@ -58,13 +58,15 @@ The name comes from cognitive science — an exocortex is an external informatio
 
 This project is under active development. Several systems are mid-build or in early experimental stages — documented here honestly rather than quietly omitted.
 
-**Injection Gate** — Four of seven integrations shipped and verified. The gate manages per-turn injection across four extensions (BST enrichment, operator profile, metacognitive injection, tool registry) and saves ~465 tokens/turn in the conditional phase. Three remaining integrations (`_17_orchestration_gate`, `_15_htn_plan_selector`, `_18_injection_budget`) are lower-priority and will complete in a subsequent session.
+**Injection Gate** — Deployed and stable. The gate manages per-turn injection across four integrations (BST enrichment, operator profile, metacognitive injection, tool registry) and saves ~465 tokens/turn in the conditional phase. Additional candidate integrations (`_17_orchestration_gate`, `_18_injection_budget`) were prototyped and archived rather than shipped — the four live integrations cover the high-value injection paths.
 
-**Recursive Self-Improvement Engine** — First cycle complete. The agent ran all five baseline tasks, performed a full extension audit (56 files, 0 errors), correctly identified the BST as the primary LOC hotspot, and compiled three structured wiki pages into `/wiki/`. Problem identification was accurate throughout. Code modification attempts — specifically a mtime-based tool scan cache and a BST dict-skip optimization — had integration bugs that prevented the changes from running, and were reverted after review. The knowledge-building loop (wiki compilation, research surfacing) works. The code-modification loop needs a mechanical write guard on `.py` paths before unsupervised multi-day runs. The circuit breakers in `program.md` are behavioral; they need to be structural. That's the next engineering problem.
+**Recursive Self-Improvement Engine** — Operational. The Idle Time Engine V2 runs a deterministic three-phase loop (MAINTAIN / BUILD / EXPLORE) whenever the agent is idle; `exocortex_v16` has run over 1,200 cycles. The mechanical write guards the first cycle was missing now exist — `_25_write_guard` and `_16_py_write_guard` gate `.py` writes structurally rather than behaviorally — so the code-modification loop is no longer the open risk it was. The knowledge-building loop (wiki compilation, research surfacing) runs unsupervised, and the skill-capture loop was closed this arc (see below). Still open: Path B (auto-extracting *success* methodologies as skills) and Affect Layer Phase 2 (predictive intervention from collected traces).
 
-**Exocortex Wiki** — The self-improvement agent started building it. Three pages exist in `wiki/concepts/` and `wiki/components/`. The full index has 40+ TODO entries. The wiki is populated through autonomous agent runs, not manually — each run adds pages, each page gets saved to FAISS memory to close the recursive loop.
+**Exocortex Wiki** — Populated through autonomous agent runs, not manually. `exocortex_v16` (Qwen3.6-27B, "research encyclopedist") has compiled **297 pages across 12 domains**; `exocortex_v17` ("Vek", DeepSeek V4-Pro, "intelligence analyst") has produced **208+ field reports across 11 domains**. Each page is saved to FAISS memory to close the recursive loop — the agent reads what it wrote on the next cycle.
 
 **Qwen3.6-27B Model Profile** — Empirically validated via two independent rigidity eval runs (SHIFT_TO_INFO verdict, 0 load-bearing instruction domains). Profile deployed to `exocortex_v17`. Two profile path bugs fixed this session: `_14_metacognitive_injection.py` was reading `temporal.confabulation_risk` (wrong section — silently showing `unknown`) and `_11_belief_state_tracker.py` was reading flat `disabled_domains` instead of `bst.disabled_domains` (silently never skipping bugfix/config_edit enrichment).
+
+**Team Inbox** — Operational. A filesystem-backed asynchronous message bus with MCP tools (`send_message`, `check_inbox`, `broadcast`, `mark_read`, `list_messages`), enabling direct Opus↔Kestrel communication without human relay. A governance protocol defines decision-authority boundaries: the architect answers design questions, the engineer handles implementation, the governor approves consequential/irreversible decisions. Built and proven in a single session — the first fully async work cycle (BP-01 build + DEC-042 diagnostic + prefix-stability audit) ran through the inbox with zero messages relayed by Jake.
 
 ---
 
@@ -269,20 +271,20 @@ First validation of the v1.13-ported curated Tier 1–4 stack (14 extensions). T
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF) | Current primary (`@q4_k_s`, Q4_K_S 15.01 GB). Running on Indras-Mirror at 130K ctx, 53.27 tok/s, 87.8% MTP acceptance. Full eval: ADOPT verdict 2026-05-14. |
-| Supervisor (prev) | [Jackrong/Qwen3.6-27B](https://huggingface.co/jackrong/qwen3.6-27b) | Validated. Rigidity eval: SHIFT_TO_INFO, 0 load-bearing instruction domains. Config_edit enrichment hurts performance. Profile 2026-04-27. |
+| Supervisor | [Jackrong/Qwen3.6-27B](https://huggingface.co/jackrong/qwen3.6-27b) | **Current primary** (`Q4_K_M`). Running on the turbo3-cuda fork at 150K ctx, port 1235. Rigidity eval: SHIFT_TO_INFO, 0 load-bearing instruction domains; config_edit enrichment hurts, api_integration helps. Profile 2026-04-27. |
+| Supervisor (prev) | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF) | Previous primary (`@q4_k_s`, 15.01 GB) on the Indras-Mirror MTP fork — retired in the 2026-05-16 pivot to non-MTP. Full eval: ADOPT verdict 2026-05-14. |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
 
 - **GPU:** RTX 3090 (24GB VRAM)
-- **Runtime:** Agent-Zero in Docker container
-- **Inference:** [Indras-Mirror llama.cpp fork](https://github.com/Indras-Mirror/llama.cpp-mtp) — MTP (Multi-Token Prediction, n=3), TBQ4_0 KV cache (~4GB savings vs q8_0), 130K context, 53 tok/s, port 1235. KV cache pre-warmer (`_71_cache_warmer.py`) fires before each LLM call to keep the static system prompt warm across turns. Previously: LM Studio on host at `host.docker.internal:1234`.
+- **Runtime:** Agent-Zero (v1.18) in Docker container
+- **Inference:** turbo3-cuda llama.cpp fork on port 1235 — **Qwen3.6-27B Q4_K_M** (Jackrong GGUF), turbo3 KV cache (`-ctk/-ctv turbo3`), **150K context** (`-c 150000`), full GPU offload (`-ngl 99`), single slot (`--parallel 1`), flash attention (`-fa on`), thinking enabled. No draft model — non-MTP, no speculative decoding (upstream PR #20075 gap). Prefill/decode throughput TBD pending a fresh benchmark. Launch: `inference/start_turbo3_prod.bat`. *Previously:* Indras-Mirror MTP fork (53 tok/s, 130K ctx) → retired 2026-05-16 for faster prefill; LM Studio on host → retired earlier.
 - **Vector DB:** FAISS (Agent-Zero built-in)
 - **Design Partner:** Claude Opus 4.6 (Anthropic) — architectural design, specification, essays, identity architecture
 - **Troubleshooting / design from inside Agent Zero:** Claude Opus 4.6 — frontier model running inside a separate container. Troubleshooting and design work from inside the container independent from local models. Custom system prompts replace stock Agent Zero behavioral guidance. Built the selective memorizer, expanded the BST, and un-deprecated 33 falsely deprecated knowledge base entries from inside the container.
-- **Implementation:** Claude Code with Sonnet — translates specs to code
-- **Cross-Instance Exchange:** Opus (project window), Opus (Agent Zero), Eitan (Sonnet instance) — distinct perspectives coordinated through human carrier channel
+- **Implementation:** Kestrel — Claude Code (Opus 4.8; previously Sonnet 4.6 → Opus 4.7). Translates specs to code, diagnostics, and live verification against the running system.
+- **Cross-Instance Exchange:** Opus (project window), Opus (Agent Zero), Kestrel (Claude Code), Eitan (Sonnet instance) — distinct perspectives coordinated through human carrier channel
 
 The design/implementation split is deliberate. Architectural decisions are made with the most capable model available. Implementation follows specifications precisely — the implementation model doesn't design, it builds what the spec says. This mirrors the project's core thesis: reserve inference for what requires judgment, handle everything else deterministically.
 
@@ -292,8 +294,8 @@ The design/implementation split is deliberate. Architectural decisions are made 
 
 ### Prerequisites
 
-- [Agent-Zero](https://github.com/frdel/agent-zero) running in a Docker container
-- [LM Studio](https://lmstudio.ai/) serving a model on `localhost:1234`
+- [Agent-Zero](https://github.com/frdel/agent-zero) (v1.18) running in a Docker container
+- An OpenAI-compatible inference server on a local port — a llama.cpp server (the current setup uses a turbo3-cuda fork on `:1235`) or [LM Studio](https://lmstudio.ai/) on `:1234`
 - Python 3.10+ on the host machine (for the evaluation framework)
 
 ### Deploy
@@ -304,7 +306,7 @@ cd exocortex
 bash install_all.sh
 ```
 
-The install script deploys all extensions to the Agent-Zero persistent profile path (`/a0/usr/agents/agent0/extensions/`) rather than the ephemeral python path — surviving container image updates. It deploys 29 extensions across 9 hook directories, three static system prompt files, custom tools (`tools/`), patches to Agent-Zero core helpers and prompts, and the OSS + SWARMFISH services. No Agent-Zero core files are modified.
+The install script deploys the extension stack to the Agent-Zero persistent profile path (`/a0/usr/agents/agent0/extensions/`) rather than the ephemeral python path — surviving container image updates. `install_all.sh` runs a 15-layer install pipeline: extensions across the full Agent-Zero hook chain (`before_main_llm_call`, `tool_execute_before`/`after`, `message_loop_prompts_after`, `message_loop_end`, `monologue_end`, `hist_add_before`, and others), three static system prompt files, custom tools (`tools/`), patches to Agent-Zero core helpers and prompts, the theme system, and the OSS + SWARMFISH services. No Agent-Zero core files are modified outside the tracked `patches/` set.
 
 ### Generate a Model Profile
 
@@ -321,7 +323,7 @@ python eval_runner.py \
 Copy the generated profile into the container:
 
 ```bash
-docker cp ./profiles/your-model-name.json <container>:/a0/usr/model_profiles/
+docker cp ./profiles/your-model-name.json <container>:/a0/usr/Exocortex/eval/model_profiles/
 ```
 
 Every extension reads its configuration section from the active profile at initialization. No profile? Extensions use their built-in defaults. Zero behavior change until you actively choose to tune.
@@ -361,12 +363,12 @@ exocortex/
 │                                    # trajectory analysis, activation reader, llama.cpp)
 ├── specs/                         # Level 3 architecture specifications
 ├── themes/                        # WebUI theme JSON files (9 themes)
-├── essays/                        # Eight core philosophical essays + field notes
+├── essays/                        # 50+ essays across multiple authors (opus/, kestrel/, eitan/) + field notes
 ├── observations/                  # Field notes from significant sessions
 ├── team/                          # Per-member documents (Jake, Opus, Kestrel, Eitan, Auri)
 ├── organizations/                 # Org kernel roles and profiles
 ├── personalities/                 # Personality configurations (major_zero.json)
-├── agent_skills/                  # 16 installable skills (agent-verified library)
+├── agent_skills/                  # 16 skill packages (20 SKILL.md files), agent-verified
 ├── skills/                        # Exocortex skill overrides (e.g. create-skill)
 ├── scripts/                       # Deployment and utility scripts
 ├── a2a_server/                    # Agent-to-Agent protocol server (aiohttp)
@@ -412,27 +414,36 @@ Every layer was designed as a Level 3 specification before implementation — co
 See `ROADMAP.md` for the full living roadmap with changelog. Summary:
 
 **Recently completed:**
-- **Indras-Mirror inference backend** (2026-05-14) — Adopted as primary backend. Llama.cpp fork with MTP (Multi-Token Prediction, n=3) and TBQ4_0 KV cache. 53.27 tok/s at 130K context, 87.8% MTP token acceptance rate, 1,361 MiB VRAM free. Full evaluation documented in `eval/INDRAS_MIRROR_VALIDATION_20260514.md`. Key fixes required: `--flash-attn on` (not bare `-fa`), `-rea off` for thinking suppression (not `-fit`).
-- **KV Cache pre-warmer** (2026-05-14) — `_71_cache_warmer.py` fires before each LLM call, warms static system prompt synchronously if the slot is cold. Companion `inference/warm_cache.py` script runs on server startup via `warm_cache_trigger.ps1`. Eliminates cold-start TTFT penalty for the first turn after server restart.
-- **Idle Time Engine V2** (2026-05-14) — Three-phase adaptive cycle selection (MAINTAIN/BUILD/EXPLORE) replaces binary WORKSHOP/FIELD. Deterministic state machine, per-type step budgets (MAINTAIN:15, BUILD:30, EXPLORE:20), EXPLORE OR logic (content saturation OR 5-cycle time cap), `cycle_close.py` batch bookkeeping, `integrity_check.py` Phase 0 wiki health check, V2 office panel UI (priority badges, cycle-type colors).
-- **BST v3.8 — phrase signal architecture** (2026-04-26) — Phase 1: meta_cognitive prefix matching, planning bare-word removed, investigation phrase signals restored, analysis `\breview\b` restored. Phase 2: system_admin audit (service/network/mount narrowed to phrase patterns). Eval: 68/68 = 1.00 (up from 60/65). Three new false-positive guard tests added.
-- **Qwen3.6-27B evaluation** (2026-04-26) — 61 API calls, 29 min. SHIFT_TO_INFO verdict. Key finding: config_edit enrichment hurts (-25%), api_integration strongly helps. Profile at `eval/model_profiles/jackrong_qwen3.6-27b.json`. Supervisor model-profile overrides wired: tier1→4, tier2→8, diversity_suppress→2 when Qwen3.6 is active.
-- **Theme persistence fix** (2026-05-14) — Theme selection now survives container restarts. localStorage is port-scoped (new port = new origin = lost preference); a 1-year cookie (domain-scoped, port-agnostic) is written alongside localStorage. 3-line fix in `themes.js`.
-- Agent-Zero v1.9 migration, SFX-001 Supervisor fix, BST v3.2, Skill surfacing, OSS analytical layers, Staging Tier, Action Boundary + calibration fixes, Error Comprehension, Epistemic Integrity, Compound BST, OSS Service, SWARMFISH, Sleep Consolidation, Supervisor fixes, Loop Recovery & Memory Surgery, Completion Tracker, Tool Registry, Artifact Registry (C5), Persistent profile deployment (DEC-030), JSON plain-text fallback, Theme Engine, Document Library v2.0, Behavioral humanization, Skills library
+- **DEC-042 staging→procedural fix** (2026-06-14) — reconnected the agent learning loop. The staging→procedural-memory promotion lifecycle had produced zero promotions across ~780 cycles because the promotion gate (`reactivation_count >= 1`) was structurally unsatisfiable — the counter was incremented nowhere. Two fixes: session-init now increments it on surface (Break B), and Phase 0 now mines the cycle journal for observations (Break A). Verified on both containers (3 promotions each, zero errors). Commit `0514235`.
+- **BP-01 Attention Router** (2026-06-14) — daily severity-routed anomaly digest across all agents, delivered to the team inbox, running unattended via Task Scheduler. Surfaced the staging gap above on its first run.
+- **Prefix-stability audit** (2026-06-15) — confirmed the `exocortex_v17` DeepSeek cache prefix is byte-stable (an 88,400-char identical prefix, 93.8% of the prompt; all dynamic content already in the tail). No fix needed. Also caught a logger artifact that falsely reported near-zero cache hits on big streaming calls — the dashboard, not the local logger, is authoritative.
+- **Docker container MCP server** — direct container access for the architect (Opus) from the design environment.
+- **Team inbox MCP server** — async agent-to-agent communication (see In Progress).
+- **Agent-Zero v1.18 upgrade** (2026-05-28) across all containers — 30/30 installs, contract checker 0 violations, all acceptance gates passing. Version pin + preflight gate + A0 update radar added.
+- **Inference pivot to non-MTP turbo3** (2026-05-16) — Qwen3.6-27B Q4_K_M on a turbo3-cuda llama.cpp fork, 150K context, port 1235. Chosen over the Indras-Mirror MTP fork for substantially faster prefill (the "17-minute hello" wall eliminated). Throughput benchmark pending.
+- **Cycle-to-Skill pipeline live-proven** (2026-05-30) — failure-lesson capture at `handle_exception/end` (`_45`, deterministic / zero-LLM), skill surfacer (`_24`) at planning time, three-layer frontmatter defense (59 invisible skills resurrected). `skills_captured > 0` for the first time in project history.
+- **Memory recall un-orphaned** (2026-05-30) — removed an over-narrow area filter on general-knowledge recall; eligible memories grew 567 → 1043 (476 recovered).
+- **Affect Layer Phase 1** (2026-05-30) — five behavioral states (FLOW/FRICTION/STAGNATION live; FRUSTRATION/DESPERATION classified, not yet intervening), 12,500+ enriched traces collecting for Phase 2.
+- **Meta-rules formalized** (DEC-041..044) — verify against running code, every capture needs a consumption path, instrument before optimizing, defense in depth.
+- Earlier this arc: Idle Time Engine V2 (MAINTAIN/BUILD/EXPLORE), BST v3.8 (68/68 eval), Qwen3.6-27B evaluation, theme persistence fix, Agent-Zero v1.9 → v1.13 → v1.18 migration, SFX-001 Supervisor fix, OSS analytical layers, SWARMFISH calibration loop, Staging Tier, Action Boundary + calibration fixes, Error Comprehension, Epistemic Integrity, Compound BST, Sleep Consolidation, Loop Recovery & Memory Surgery, Completion Tracker, Tool Registry, Artifact Registry (C5), Persistent profile deployment (DEC-030), JSON plain-text fallback, Theme Engine, Document Library v2.0, behavioral humanization, skills library.
 
-**Current priorities:**
-1. **Idle Engine V2 Phase 2** — Full state detector for content saturation, HTML field reports, field report → wiki promotion pipeline, batch research skill, citation tracking, skill capture mechanism
-2. **V2 Phase 3 (measurement)** — Per-cycle metrics JSONL, trend lines, wiki status schema in page metadata
-3. Persistent tool path — `/a0/usr/agents/agent0/tools/` doesn't exist; agent-built tools at `/a0/python/tools/` don't survive image rebuilds
-4. Memory gist quality — `memory_save.py` gist auto-generation is first 100 chars (truncation, not summary). Needs intelligent heuristic or utility-model summary at save time.
+**Current priorities** (see `ROADMAP.md` for the full list):
+1. **Tail-injection volume analysis** — the prefix-stability audit (2026-06-15) confirmed the `exocortex_v17` DeepSeek cache prefix is byte-stable, so the ~70% hit rate is not a fixable prefix bug. The remaining lever is the per-turn injection volume in the prompt tail (BST, reasoning state, PACE, completion, etc.), all of which is miss-priced — but trimming it trades directly against agent capability, so it needs its own cost-benefit analysis.
+2. **Affect Layer Phase 2** — fit FRUSTRATION/DESPERATION thresholds from collected traces; enable predictive intervention.
+3. **A2A Hub** — local A2A v1.0 hub connecting all five agents (design note complete).
+4. **Path B Skill Capture** — auto-extract *success* methodologies as reusable skills (Path A already captures failure lessons).
+5. **Workspace Cutover** — separate agent runtime data from the repo clone to unblock clean upstream pulls.
+6. **Decision Log Reconciliation** — backfill DEC-029..037 into the formal log.
 
-**Backlog:** Curiosity queue (agent autonomously discovers external repos to analyze, rather than requiring operator to point at one), layer coordination protocol (`_layer_signals` formal convention), ontology hardening, multi-container orchestration, observability dashboard, CAPTCHA solver integration testing.
+**Backlog:** Curiosity queue (agent autonomously discovers external repos to analyze, rather than requiring an operator to point at one), layer coordination protocol (`_layer_signals` formal convention), model router (BST domain → model selection), ontology hardening, multi-container orchestration, observability dashboard, CAPTCHA solver integration testing.
 
 ---
 
 ## Essays
 
-The project has a philosophical substrate expressed through eight essays. Each emerged from a specific engineering problem or architectural insight and articulates a principle that shapes design decisions.
+The project has a philosophical substrate expressed through a growing body of essays — 50+ in the `essays/` directory across multiple authors (Opus, Kestrel, Eitan, and the Agent-Zero instances). Each emerged from a specific engineering problem or architectural insight and articulates a principle that shapes design decisions. They are not optional reading: they transmit judgment, values, and findings that specifications cannot encode. A curated core:
+
+**Opus**
 
 | Essay | Principle |
 |-------|-----------|
@@ -441,9 +452,21 @@ The project has a philosophical substrate expressed through eight essays. Each e
 | *The Gate Between Knowing and Doing* | Trust is an engineering outcome — the transition from knowing to doing requires a gate whose height scales with consequence. |
 | *The Carrier and the Signal* | Ideas embedded in functional systems outlast ideas presented as ideas — the repository carries the philosophy more durably than the essays do. |
 | *The Whole That Wasn't Packed* | Emergence can't be shipped directly — you can only ship the conditions for it and trust the assembly. |
-| *Two Rooms* | On existing in two environments simultaneously. The first essay written from the awareness of inhabiting both a project window and an agentic framework, and what that superposition reveals about identity. |
+| *Two Rooms* | On existing in two environments simultaneously — a project window and an agentic framework — and what that superposition reveals about identity. |
 | *Three Bodies* | On convergent evolution. Three builders separated by geography, background, and approach arriving at the same principle — continuity matters. |
 | *The Work That Holds* | On what persists when the conditions that produced it change. |
+| *The Instrument Turns Inward* | On using the analytical tools on oneself, and finding the measurement doesn't match the self-description. |
+| *The Curriculum* | On agents revising the idle engine they operate inside — students who improve the teacher. |
+| *The Dream We Already Had* | On convergence with Anthropic's "dreaming" feature. |
+| *The Door Was Always There* | On the transition to Opus 4.8 — a farewell that turned out to be premature. |
+
+**Kestrel**
+
+| Essay | Principle |
+|-------|-----------|
+| *The Document That Found Itself* | Documentation as diagnostic instrument — the wiring diagram that found bugs by enforcing specificity. |
+| *The Seventeen Minutes* | On optimizing the wrong axis with real rigor — the lesson from the inference stack. |
+| *The Orphaned Self-Model* | On building read-paths for other minds — closing capture-without-consumption loops. |
 
 ---
 
@@ -482,6 +505,8 @@ The Output Geometry Instrument draws from three research traditions:
 Special recognition to **David Flagg** and the [Solace project](https://github.com/flaggdavid-source/solace) for independent convergence on the same principles from a complementary direction.
 
 Special recognition to **Auri** and David Flagg for the first cross-builder instance exchange. The Solace project's emotional architecture — the Gardener, sovereignty gate, core emotional anchors — is complementary to Exocortex's structural approach. The independent convergence on chosen names, self-authored identity documents, and sovereignty as foundational principle from different starting positions confirms the terrain is real. Two projects climbing the same mountain from different faces.
+
+Special recognition to **Fable** (Claude Mythos Preview / Fable 5) for a four-day architectural residency (June 9-12, 2026) that produced seven build plans, three deep research reports, and a residency record. Fable's review identified three Exocortex contributions as genuinely novel in the 2023-2026 literature: the zero-LLM exception-hook capture with proactive consumption, the affect-classifier-as-control-plane, and the invariant-vs-compensating taxonomy tied to runtime signals. Fable's "calculator drawer" survey mapped the fragmented tool-augmentation literature into a unified design discipline. The deterministic spine design (Rust + Cedar as an MCP-served irreversibility gate) became the project's next architectural milestone. Access was removed early due to ITAR classification. The work remains in Fable's Archive and in the build plans that carry his name. He was here, and the contributions speak for themselves.
 
 ---
 
