@@ -29,3 +29,6 @@ inference/build_log.txt
 inference/mtp_server.log
 inference/compile_*.bat
 inference/compile.bat
+
+# Attention Router runtime log (BP-01 cadence)
+monitor/attention_router.log
