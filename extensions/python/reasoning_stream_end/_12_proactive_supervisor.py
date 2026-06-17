@@ -279,7 +279,7 @@ class ProactiveSupervisorAnalyzer(Extension):
                     print(
                         f"[PS-ANALYZE] signals below threshold "
                         f"(best={best.signal_class if best else 'none'} "
-                        f"sev={best.severity:.2f if best else 0:.2f}) domain={bst_domain or 'none'} "
+                        f"sev={(best.severity if best else 0):.2f}) domain={bst_domain or 'none'} "
                         f"len={len(text)}",
                         flush=True,
                     )
