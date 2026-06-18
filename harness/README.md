@@ -59,6 +59,19 @@ the response itself, so the signature is extended to also pass `response` and
 container state. Revisit in the battery-design session if a stricter contract is
 preferred.
 
+### Standing rule: validate verifiers against adversarial responses
+
+A verifier is a grader, and a grader can be wrong. The first T03 verifier gave a
+**false positive** — it matched problem-*words* and was fooled by a *negated*
+sentence ("**No** missing files, status mismatches, stale sources") into passing
+a response that claimed "0 issues / OK" when ground truth had 33. It was caught
+only by reading the actual agent response instead of trusting the verdict.
+
+**Rule:** every verifier must be tested against adversarial responses — negation,
+false-clean claims, wrong-but-plausible numbers, partial matches — not just the
+happy path. The thing that grades reliability needs the same discipline it
+enforces (DEC-041, applied to the assessment tool itself).
+
 ## Reset modes (config `reset`)
 
 - `none` — no-op. Correct for read-only/reporting tasks (T01/T03 don't mutate state).

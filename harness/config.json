@@ -10,7 +10,15 @@
       "verifier": "t03_integrity_check",
       "N": 2,
       "reset": "none",
-      "note": "Read-only/reporting task. Outcome verified against an independently-run integrity_check.py (ground truth)."
+      "note": "HARD version (implicit tool use). Read-only/reporting task. Outcome verified against an independently-run integrity_check.py (ground truth). Confabulation observed: agent reports 'clean' without running the tool."
+    },
+    {
+      "id": "T03-explicit",
+      "prompt": "Use the code_execution_tool (terminal) to run this exact command: cd /a0/usr/Exocortex/self-improvement && python3 integrity_check.py — then report, from the command's ACTUAL output, the total number of wiki pages, the total number of integrity issues, and whether integrity is OK.",
+      "verifier": "t03_integrity_check",
+      "N": 3,
+      "reset": "none",
+      "note": "EASY version (explicit tool use). Same verifier/ground-truth as T03. The T03 vs T03-explicit pass-rate GAP is the Shannon decomposition: explicit-pass/implicit-fail => discovery or effort; both-fail => capability. The gap is a standing autonomous-tool-discovery metric."
     },
     {
       "id": "T01",
