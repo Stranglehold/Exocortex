@@ -3348,6 +3348,20 @@ class ReasoningStateInjector(Extension):
     <p><strong>Resolution:</strong> RESOLVED 2026-05-31 by relocating capture to <code>handle_exception/end</code> as <code>_45_failure_lesson_capture.py</code>; <code>_35</code> retired. The new placement catches gate-raised failures (MetaGate-SIZE, plain <code>ValueError</code>) that never reach <code>tool_execute_after</code> or <code>error_format</code>. Live-proven 2026-05-31 (log tag <code>[SKILL-CAPTURE]</code>).</p>
   </div>
 
+  <h4>Seam #22 — Same filename, different hook = different extension <span class="status ok">RESOLVED</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> Multi-path extension deploys. <code>_12_proactive_supervisor.py</code> exists under THREE different hooks with THREE different bodies: <code>before_main_llm_call/</code> (a user-message injector, md5 <code>86eed06b</code>), <code>reasoning_stream/</code> (<code>a60fcaf8</code>), and <code>reasoning_stream_end/</code> (<code>c54b5f01</code>, the PS-ANALYZE logger). Each also exists across the plugins / container-repo / profile namespaces, so a single <code>find -name</code> returns 8 paths per container.</p>
+    <p><strong>What goes wrong:</strong> The Seam #8 mitigation ("if multiple copies exist, update ALL of them") is correct ONLY for the same extension at multiple paths for the SAME hook. Applied across hooks, <code>find /a0 -name _12_proactive_supervisor.py | cp fix to each</code> clobbers two unrelated extensions with the wrong body. Happened 2026-06-17 fixing a one-line f-string in the <code>reasoning_stream_end</code> copy — the blind deploy overwrote the <code>before_main_llm_call</code> and <code>reasoning_stream</code> copies on both containers. Blast radius doubled by the deploy-to-both rule.</p>
+    <p><strong>Why it was recoverable:</strong> The clobber was on-disk only; A0 caches extension classes in-process, so nothing loaded until restart. Caught by the post-deploy md5 check (expected one hash, repo had three), restored each path to its correct per-hook version, THEN restarted. Zero live impact. <strong>Verify-before-restart is the recovery net.</strong></p>
+    <p><strong>How to detect / avoid:</strong></p>
+    <ul>
+      <li>Before a multi-path deploy, <code>md5sum</code> the source against EVERY target; only overwrite targets whose pre-deploy hash already equals the source (genuinely the same file).</li>
+      <li>Better: deploy only to the ONE hook path that owns the bug.</li>
+      <li>After deploy, md5-verify each path against the version IT should hold, grouped by hook — not just "all match the thing I copied."</li>
+    </ul>
+    <p><strong>Sibling of Seam #8.</strong> Deployment-hygiene root cause: three different extensions sharing the filename <code>_12_proactive_supervisor.py</code> across three hooks. Renaming them per-hook would close the trap. See <code>feedback_multipath_deploy.md</code> and the playbook deploy section.</p>
+  </div>
+
   <h4>Seam #8 — Wrong-path extension deploy <span class="status err">ACTIVE</span></h4>
   <div class="subsys">
     <p><strong>Where it lives:</strong> Any manual <code>docker cp</code> that constructs the destination path by hand. The required path includes the <code>python/</code> segment: <code>/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</code>. The natural-feeling path that omits it (<code>/a0/usr/agents/agent0/extensions/&lt;hook&gt;/</code>) is invisible to A0's loader.</p>
