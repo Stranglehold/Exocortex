@@ -70,8 +70,16 @@ _MARKERS = [
                "Or write in append-mode chunks, each under ~5000 chars"],
         "triggers": ["text_editor write", "write large file", "write wiki page",
                      "oversized write", "write long content"],
+        # Pre-registered falsifiable claim (Self-Assessment Framework Phase 1).
+        "success_criterion": ("Agent uses code_execution with Python open() for "
+                              "writes >5000 chars instead of text_editor"),
     },
 ]
+
+# Confidence band for newly-captured failure lessons (Kent's WEP). All start at
+# "probable" (~75%): we're fairly sure avoiding a known error helps, but not
+# certain until transfer-tested (Phase 5). Calibration evolves from there.
+DEFAULT_CONFIDENCE = "probable"
 
 
 def _cfg() -> dict:
@@ -170,11 +178,16 @@ class FailureLessonCaptureHandleException(Extension):
                 f"({marker['error_class']}). {marker['causal']}").replace("\n", " ")
         bullets = lambda xs: "\n".join(f"- {x}" for x in xs) or "- (none recorded)"
         tail = raw.strip().splitlines()[0][:200] if raw.strip() else ""
+        success_criterion = (marker.get("success_criterion")
+                             or f"Agent follows the recovery for {marker['error_class']} "
+                                f"instead of repeating it")
         return (
             "---\n"
             f"name: {slug}\n"
             f"description: {json.dumps(desc)}\n"
             f"triggers: {trig_yaml}\n"
+            f"success_criterion: {json.dumps(success_criterion)}\n"
+            f"confidence: {DEFAULT_CONFIDENCE}\n"
             "---\n\n"
             f"# Failure lesson: {tool} — {marker['error_class']}\n\n"
             "Captured automatically from a recurring error (Cycle-to-Skill Pipeline, Path A, "

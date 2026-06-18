@@ -138,14 +138,21 @@ class FailureLessonCapture(Extension):
         def bullets(items):
             return "\n".join(f"- {str(x).strip()}" for x in items if str(x).strip()) or "- (none recorded)"
 
-        # Minimal valid frontmatter ONLY (name + description + triggers).
-        # Extra/complex fields are what made prior auto-generated skills fail
-        # list_skills validation — keep this lean.
+        # Pre-registered falsifiable claim (Self-Assessment Framework Phase 1),
+        # derived from the recovery action; confidence starts at "probable" (Kent's
+        # WEP). Validated 2026-06-17: these scalar fields pass list_skills
+        # validation (validate_skill only checks name/description/compatibility).
+        desired = (str(suggests[0]).strip().rstrip(".") if suggests
+                   else "follow the documented recovery")
+        success_criterion = (f"Agent applies the recovery ('{desired}') instead of "
+                             f"repeating the {error_class.replace('_', ' ')} failure")
         return (
             "---\n"
             f"name: {slug}\n"
             f"description: {json.dumps(desc)}\n"
             f"triggers: {trig_yaml}\n"
+            f"success_criterion: {json.dumps(success_criterion)}\n"
+            "confidence: probable\n"
             "---\n\n"
             f"# Failure lesson: {tool} — {error_class}\n\n"
             "Captured automatically from a classified tool failure "
