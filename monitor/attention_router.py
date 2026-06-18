@@ -185,6 +185,76 @@ def cycle_label(agent: str, e: dict) -> str:
     return f"{agent} · cycle {e.get('cycle_number','?')} · {e.get('cycle_type','?')} · {when}"
 
 
+def _extract_cause(text: str) -> str:
+    """Best-effort: pull a stated cause from the activity text, else flag it.
+
+    Deterministic string search (no inference). Q3 of the AAR is the hardest to
+    fill from the cycle journal alone; the richer 'why' signal arrives with
+    Layer B (supervisor/EI/integrity anomalies).
+    """
+    low = (text or "").lower()
+    for marker in ("root cause:", "root cause ", "because ", "due to ", "caused by "):
+        i = low.find(marker)
+        if i >= 0:
+            seg = text[i + len(marker):].lstrip(": ").strip()
+            for end in (". ", "; ", ".\n", "\n"):
+                j = seg.find(end)
+                if j > 0:
+                    seg = seg[:j]
+                    break
+            return seg.strip()[:200]
+    if any(w in low for w in ("persist", "still unfixed", "unfixed",
+                              "never populated", "recurr")):
+        return "Recurring — a prior cause remains unresolved across cycles."
+    return ("Not stated in the cycle journal; needs investigation "
+            "(richer 'why' signal arrives with Layer B).")
+
+
+def aar_block(agent: str, e: dict, amax: int) -> list[str]:
+    """Army After-Action Review — 4 questions per NOTABLE+ finding (Self-Assessment
+    Framework Phase 2). Q1-3 are filled from journal data; Q4 is a recommendation
+    or an [ESCALATE] marker when a design decision is needed. The AAR forces the
+    digest to be diagnostic, not just descriptive.
+    """
+    ct = str(e.get("cycle_type", "?")).upper()
+    activity = " ".join(str(e.get("activity", "")).split())
+    low = activity.lower()
+    integ = e.get("integrity_issues", 0) or 0
+    sleep_f = e.get("sleep_findings", 0) or 0
+    skills = e.get("skills_captured", 0) or 0
+    status = str(e.get("status", "")).lower()
+
+    # Q1 — what was supposed to happen
+    if integ > 0:
+        supposed = "The wiki integrity check should pass with zero issues."
+    elif status and status not in OK_STATUSES:
+        supposed = f"The {ct} cycle should complete cleanly within its step budget."
+    elif sleep_f > 0:
+        supposed = f"The {ct} cycle's sleep consolidation should surface no anti-patterns."
+    elif skills > 0:
+        supposed = "A captured skill should be valid and surface on the next matching trigger."
+    else:
+        supposed = f"The {ct} cycle should complete cleanly."
+
+    # Q4 — recommend or escalate
+    recurring = any(w in low for w in ("persist", "still unfixed", "unfixed",
+                                       "never populated", "recurr"))
+    if integ > 0 or recurring or (status and status not in OK_STATUSES):
+        action = "**[ESCALATE]** recurring/structural — design decision for Opus/Jake."
+    elif skills > 0:
+        action = "Verify the captured skill surfaces on its next matching trigger; else routine."
+    else:
+        action = "Monitor; flag for review if it recurs next cycle."
+
+    return [
+        f"- **{cycle_label(agent, e)}** — _{reason(e)}_",
+        f"    1. *Supposed to happen:* {supposed}",
+        f"    2. *Actually happened:* {trunc(activity, amax)}",
+        f"    3. *Why the difference:* {_extract_cause(activity)}",
+        f"    4. *Do differently:* {action}",
+    ]
+
+
 def build_digest(per_agent: dict, window_desc: str, amax: int):
     """per_agent: {agent_name: {'in_window': [entries], 'all': [entries]}}"""
     high, notable = [], []
@@ -253,16 +323,14 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
         lines.append(f"### 🔴 Needs attention ({len(high)})")
         if high:
             for agent, e in high:
-                lines.append(f"- **{cycle_label(agent, e)}** — _{reason(e)}_")
-                lines.append(f"  {trunc(e.get('activity',''), amax)}")
+                lines.extend(aar_block(agent, e, amax))
         else:
             lines.append("- none")
         lines.append("")
         lines.append(f"### 🟡 Notable ({len(notable)})")
         if notable:
             for agent, e in notable:
-                lines.append(f"- **{cycle_label(agent, e)}** — _{reason(e)}_")
-                lines.append(f"  {trunc(e.get('activity',''), amax)}")
+                lines.extend(aar_block(agent, e, amax))
         else:
             lines.append("- none")
         lines.append("")
@@ -280,8 +348,10 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
     lines.append("---")
     lines.append("_Attention Router (BP-01), Layer A. Reads the live cycle "
                  "journal across all agents and routes anomalies by severity. "
-                 "Supervisor-loop, wiki-integrity, and epistemic-integrity "
-                 "alarms are not yet persisted (Layer B) and so are not here._")
+                 "NOTABLE+ findings carry the Army AAR 4 questions (Self-Assessment "
+                 "Framework Phase 2): Q1/Q2/Q4 from journal data, Q3 best-effort "
+                 "(richer 'why' arrives with Layer B). Supervisor-loop, wiki-integrity, "
+                 "and epistemic-integrity alarms are not yet persisted (Layer B)._")
 
     body = "\n".join(lines)
 
