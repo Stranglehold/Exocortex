@@ -165,6 +165,7 @@ LAYERS=(
   "11|OSS V2 plugin (Intel tab + tools) |services/oss_plugin/install.sh"
   "11|SWARMFISH V2 plugin (committee)   |services/swarmfish_plugin/install.sh"
   "12|Idle engine + idle_watch daemon   |scripts/install_idle_engine.sh"
+  "12|SearXNG academic-engine config    |services/searxng/install.sh"
   "13|Theme system (presets + editor)   |scripts/install_theme_editor.sh"
   "14|Metacognitive injection           |scripts/install_metacognitive_injection.sh"
   "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
