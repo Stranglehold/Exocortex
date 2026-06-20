@@ -2890,11 +2890,11 @@ flowchart LR
 <section id="sec-09">
   <h2><span class="num">09</span>Reasoning Persistence &amp; PACE <a class="anchor" href="#sec-09">#</a></h2>
   <p class="section-summary">
-    The reasoning state and PACE plan subsystems are designed to give the model visible memory of its own reasoning across turns — what it already tried, what worked, what the current strategy is. They're implemented but <strong>silently inert</strong>: the generator side writes to <code>agent._reasoning_state</code> and <code>agent._pace_plan</code> correctly, but the injection side fires in <code>before_main_llm_call</code> where <code>loop_data.history_output</code> writes are discarded (seam #7), and <strong>no consumer in <code>message_loop_prompts_after</code> reads either attribute</strong>. The chain terminates at a broken link. This is plausibly the upstream cause of the regenerate-identical-preamble loop pattern we observed tonight: the model has no visible record of its prior reasoning trajectory and re-derives the same conclusions every turn.
+    The reasoning state and PACE plan subsystems are designed to give the model visible memory of its own reasoning across turns — what it already tried, what worked, what the current strategy is. They <em>were</em> silently inert until 2026-05-30 — this paragraph documents the historical broken state, now <strong>RESOLVED</strong> (see Status below): the generator side wrote to <code>agent._reasoning_state</code> and <code>agent._pace_plan</code> correctly, but the injection side fired in <code>before_main_llm_call</code> where <code>loop_data.history_output</code> writes are discarded (seam #7), and <strong>no consumer in <code>message_loop_prompts_after</code> read either attribute</strong>. The chain terminated at a broken link — since closed by the <code>_22</code>/<code>_23</code> consumer injectors. This is plausibly the upstream cause of the regenerate-identical-preamble loop pattern we observed tonight: the model has no visible record of its prior reasoning trajectory and re-derives the same conclusions every turn.
   </p>
 
-  <div class="callout err">
-    <strong>Status: ACTIVE INERT</strong> — extensions exist, fire on schedule, do the right computation, and their output never reaches the model. Verified 2026-05-16 via grep against both repo and live container code. Fix design is approved (Opus 2026-05-16 response). Implementation drafted but held for deployment after empirical observation of the heartbeat fix in isolation.
+  <div class="callout ok">
+    <strong>Status: RESOLVED (2026-05-30, re-verified 2026-06-20)</strong> — the inert chain is closed. Two consumer extensions, <code>_22_reasoning_state_injector</code> and <code>_23_pace_plan_injector</code>, are deployed in <code>message_loop_prompts_after</code> on v16 and fire live with real field values (<code>[REASON-INJ-22] step=N tried=M artifacts=K</code>, <code>[PACE-INJ-23] step=1/3 tier=primary</code>). Reasoning state and PACE plan now reach the model. The "Broken Chain" wiring below is retained as the design record of what was fixed — see §13 seam #19 for the resolution detail.
   </div>
 
   <div class="callout info">
@@ -2937,7 +2937,7 @@ flowchart TD
   <h3>Logic — What the Model Sees vs What it Should See</h3>
   <div class="two-up">
     <div>
-      <h4>🔴 Current — broken chain</h4>
+      <h4>🟢 Historical (RESOLVED 2026-05-30) — the chain that was broken, now closed by _22/_23</h4>
       <p>Model receives at turn N:</p>
       <pre><code>[system prompt]
 [history: turn 1 messages]

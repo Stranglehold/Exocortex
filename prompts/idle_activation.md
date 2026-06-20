@@ -17,7 +17,11 @@ stale arXiv sources), address them before proceeding to sleep consolidation.
 
 Phases 1-3 — Sleep Consolidation:
 Read the last 10 entries in /a0/usr/workdir/workspace/self-improvement/journal.jsonl for context.
-Run sleep consolidation via /a0/usr/Exocortex/sleep_consolidation.py or manually:
+Run sleep consolidation with this exact command (it executes all three phases in one pass):
+```
+python3 /a0/usr/Exocortex/sleep_consolidation.py
+```
+Read the output for the sleep_findings count. The three phases it runs:
   - Phase 1: Deduplication — find near-duplicate memories, merge or discard
   - Phase 2: Anti-pattern detection — scan recent tool calls for known failure patterns
   - Phase 3: Promotion — surface high-utility memories into active recall
@@ -41,7 +45,7 @@ Your priorities (wiki deepening):
    least recently explored (check journal for prior coverage), create a stub at
    /a0/usr/workdir/workspace/wiki/research/{topic-slug}.md with Status: DRAFT, then deepen it.
    Add the new page to wiki/index.md under "Research" before beginning.
-3. Deepen the page: read primary source material in /a0/usr/Exocortex/specs/ and /a0/usr/workdir/papers/,
+3. Deepen the page: read primary source material in /a0/usr/Exocortex/specs/ and /a0/usr/Exocortex/research/papers/,
    cross-reference team-comms/, verify claims against current implementation, use web_search for
    external sources (arXiv, GitHub, documentation)
 4. memory_save with the essential insight after deepening (Rule 13 — no exceptions)

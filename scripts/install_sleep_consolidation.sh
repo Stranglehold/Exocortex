@@ -138,6 +138,19 @@ _exec "${CONTAINER_NAME}" mkdir -p "${EXOCORTEX_DEST}/operator_profile_versions"
 echo "  OK    sleep_reports/ directory"
 echo "  OK    operator_profile_versions/ directory"
 
+# ── Cycle-path symlinks (idle_activation.md robustness) ───────────────────────
+# The idle prompt references sleep_consolidation.py and research/papers by their
+# real paths, but the agent has historically guessed self-improvement/ subpaths and
+# /a0/usr/workdir/papers. These symlinks make both findable wherever a cycle looks
+# (belt-and-suspenders against path-guessing). Survives restarts; this re-creates on rebuild.
+_link() { _exec "${CONTAINER_NAME}" ln -sfn "$1" "$2" 2>/dev/null || ln -sfn "$1" "$2" 2>/dev/null || true; }
+_exec "${CONTAINER_NAME}" mkdir -p /a0/usr/workdir/workspace/self-improvement /a0/usr/Exocortex/self-improvement 2>/dev/null \
+    || mkdir -p /a0/usr/workdir/workspace/self-improvement /a0/usr/Exocortex/self-improvement 2>/dev/null || true
+_link /a0/usr/Exocortex/sleep_consolidation.py /a0/usr/workdir/workspace/self-improvement/sleep_consolidation.py
+_link /a0/usr/Exocortex/sleep_consolidation.py /a0/usr/Exocortex/self-improvement/sleep_consolidation.py
+_link /a0/usr/Exocortex/research/papers /a0/usr/workdir/papers
+echo "  OK    cycle-path symlinks (sleep_consolidation + papers)"
+
 # ── Syntax check ─────────────────────────────────────────────────────────────
 
 py_check() {
