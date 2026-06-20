@@ -173,6 +173,22 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "idle_activation.md" \
         "${CONTAINER}"
 
+    # ── Cycle bookkeeping: cycle_close.py → BOTH source + workspace runtime ──
+    # The agent runs cycle_close.py from the workspace runtime path (idle_activation.md
+    # references it explicitly). Without the runtime copy, the verify-before-log gate
+    # inside cycle_close.py never reaches the agent. Principle: everything installs here.
+    _exec "${CONTAINER}" mkdir -p /a0/usr/workdir/workspace/self-improvement 2>/dev/null || true
+    install_file \
+        "${REPO_DIR}/self-improvement/cycle_close.py" \
+        "${EXOCORTEX_DEST}/self-improvement/cycle_close.py" \
+        "cycle_close.py (source)" \
+        "${CONTAINER}"
+    install_file \
+        "${REPO_DIR}/self-improvement/cycle_close.py" \
+        "/a0/usr/workdir/workspace/self-improvement/cycle_close.py" \
+        "cycle_close.py (runtime)" \
+        "${CONTAINER}"
+
     # ── interests.md (if not present — user edits should survive reinstall) ──
     install_file_if_missing \
         "${REPO_DIR}/interests.md" \
