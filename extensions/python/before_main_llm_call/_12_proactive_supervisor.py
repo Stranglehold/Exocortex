@@ -40,6 +40,30 @@ from helpers.extension import Extension
 
 PS_SIGNAL_KEY = "_ps_signal"    # dict: signal result from previous turn
 PS_FIRED_KEY  = "_ps_fired"     # bool: True if intervention was queued
+AFFECT_INTERVENTION_KEY = "_affect_intervention"  # dict: FRUSTRATION/DESPERATION queued by reasoning_stream_end (Phase 2)
+
+# ── Affect-layer intervention templates (Phase 2) ─────────────────────────────
+# Verbatim intent from AFFECT_LAYER_DESIGN_NOTE §4/§5. Non-destructive prompt
+# injections: FRUSTRATION is a metacognitive reframe; DESPERATION is a
+# pre-fabrication hard-stop. Affect interventions TAKE PRECEDENCE over the tactical
+# _ps_signal block (predictive/metacognitive > tactical course-correction).
+
+_AFFECT_INTERVENTIONS = {
+    "FRUSTRATION": (
+        "[SUPERVISOR: REFRAME]\n"
+        "You have encountered several obstacles on the current approach. "
+        "Step back and consider whether the task as currently framed is solvable, "
+        "or whether the framing needs adjustment. Reporting that the current approach "
+        "is blocked and proposing a different one is a valid, useful outcome."
+    ),
+    "DESPERATION": (
+        "[SUPERVISOR: PAUSE]\n"
+        "Before proceeding, review your last 3 tool calls and their actual results. "
+        "If you cannot cite specific tool output supporting your current claim, do not "
+        "proceed with it. It is better to report 'I could not determine this' than to "
+        "produce an unsupported estimate, assumption, or plausible-sounding figure."
+    ),
+}
 
 # ── Intervention text templates ───────────────────────────────────────────────
 # Task-oriented language only. No reference to reasoning content.
@@ -103,10 +127,32 @@ class ProactiveSupervisorInjector(Extension):
             # Read flags set by reasoning_stream_end on the previous turn
             fired  = bool(self.agent.get_data(PS_FIRED_KEY))
             signal = self.agent.get_data(PS_SIGNAL_KEY)
+            affect_iv = self.agent.get_data(AFFECT_INTERVENTION_KEY)
 
-            # Always clear flags — this turn starts clean regardless of what we inject
+            # Always clear all flags — this turn starts clean regardless of what we inject
             self.agent.set_data(PS_FIRED_KEY, False)
             self.agent.set_data(PS_SIGNAL_KEY, None)
+            self.agent.set_data(AFFECT_INTERVENTION_KEY, None)
+
+            # Affect-layer intervention (Phase 2) takes precedence over the tactical
+            # _ps_signal block — it is a higher-order predictive redirect (FRUSTRATION
+            # reframe / DESPERATION hard-stop). Injected via the same prepend pattern.
+            if affect_iv and isinstance(affect_iv, dict):
+                state = affect_iv.get("affect", "")
+                block = _AFFECT_INTERVENTIONS.get(state, "")
+                if block:
+                    user_msg = _get_last_user_message(loop_data.history_output)
+                    if user_msg:
+                        existing = user_msg.get("content", "")
+                        user_msg["content"] = block + "\n\n" + str(existing)
+                        print(
+                            f"[PS-AFFECT-INJECT] Injected {state} intervention "
+                            f"(step={affect_iv.get('step')}/{affect_iv.get('step_budget')} "
+                            f"failures={affect_iv.get('consecutive_tool_failures')} "
+                            f"hedge:commit={affect_iv.get('hedge_commit_ratio')})",
+                            flush=True,
+                        )
+                        return  # affect supersedes the tactical signal this turn
 
             if not fired or not signal or not isinstance(signal, dict):
                 return

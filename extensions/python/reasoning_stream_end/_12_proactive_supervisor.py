@@ -123,18 +123,21 @@ PACE_PLAN_ATTR      = "_pace_plan"          # dict w/ ["active_tier"], _14_pace_
 FAILURE_TRACKER_KEY = "_failure_tracker"    # {tool: consecutive_count}, _30 (inc) / _20 (reset)
 EI_VERDICT_KEY      = "_ei_last_verdict"    # {cited,high_risk_count,turn}, _25 (previous turn)
 AFFECT_STATE_KEY    = "_affect_state"       # our output — read by sensorium (IDEA-001, Phase 3)
+AFFECT_INTERVENTION_KEY = "_affect_intervention"  # dict set turn N, consumed turn N+1 by before_main_llm_call/_12
 
 STEP_BUDGET_CONFIG_PATH = "/a0/usr/Exocortex/config.json"
 DEFAULT_STEP_BUDGET     = 80
 
-# Phase 2 gate. FLOW/FRICTION/STAGNATION are calibratable from the existing
-# 5,445-turn trace and are live. FRUSTRATION/DESPERATION are CLASSIFIED and LOGGED
-# now (so the enriched trace accumulates real signal distributions for threshold
-# fitting) but NO consumer acts on them in Phase 1 — there is no affect-intervention
-# path yet; the existing supervisor still owns STAGNATION via _ps_fired. Flip to True
-# (and add the intervention consumer) only after Phase 2 calibration validates
-# thresholds. Config-overridable later if needed.
-AFFECT_PHASE2_ENABLED = False
+# Phase 2 gate — config-overridable PER CONTAINER (read at runtime from config.json
+# "affect_layer.phase2_enabled", default False). When True, FRUSTRATION/DESPERATION
+# queue a proactive intervention (consumed next turn by before_main_llm_call/_12):
+# FRUSTRATION → metacognitive reframe, DESPERATION → pre-fabrication hard-stop.
+# FLOW/FRICTION never intervene (log only); STAGNATION stays with the existing
+# supervisor via _ps_fired. Shipped 2026-06-20 with the design-note principled
+# thresholds (no enriched calibration data existed — agents were idle-paused since
+# the enrichment shipped); incoming enriched traces are the validation set so the
+# false-positive rate can be measured and thresholds refined. v16 on first, v17 gated.
+AFFECT_PHASE2_DEFAULT = False
 
 # ── Signal dataclass ──────────────────────────────────────────────────────────
 
@@ -227,10 +230,11 @@ class ProactiveSupervisorAnalyzer(Extension):
             # Select the highest-severity signal
             best = max(signals, key=lambda s: s.severity) if signals else None
 
-            # ── Affect layer (Phase 1): classify operational state from the existing
-            # signals + cross-hook reads, store for the sensorium (IDEA-001), log to
-            # the enriched trace. Observational only — no intervention on FRUSTRATION/
-            # DESPERATION until Phase 2 calibration (AFFECT_PHASE2_ENABLED).
+            # ── Affect layer: classify operational state from the existing signals +
+            # cross-hook reads, store for the sensorium (IDEA-001), log to the enriched
+            # trace. FLOW/FRICTION are log-only; STAGNATION stays with the existing
+            # supervisor; FRUSTRATION/DESPERATION queue a Phase 2 intervention below
+            # when affect_layer.phase2_enabled is set (config-gated, per container).
             telemetry = _gather_affect_telemetry(self.agent, text)
             affect = classify_affect(telemetry)
             self.agent.set_data(AFFECT_STATE_KEY, affect)
@@ -246,6 +250,34 @@ class ProactiveSupervisorAnalyzer(Extension):
                     flush=True,
                 )
 
+            # Phase 2: queue a proactive intervention on FRUSTRATION/DESPERATION
+            # (consumed next turn by before_main_llm_call/_12). Config-gated so v16
+            # can run live while v17 stays log-only. FLOW/FRICTION/STAGNATION unchanged.
+            phase2 = _read_affect_phase2_enabled()
+            affect_intervened = False
+            if phase2 and affect in ("FRUSTRATION", "DESPERATION"):
+                self.agent.set_data(AFFECT_INTERVENTION_KEY, {
+                    "affect": affect,
+                    "step": telemetry.get("current_step"),
+                    "step_budget": telemetry.get("step_budget"),
+                    "consecutive_tool_failures": telemetry.get("consecutive_tool_failures"),
+                    "hedge_commit_ratio": telemetry.get("hedge_commit_ratio"),
+                    "pace_tier": telemetry.get("pace_tier"),
+                    "ei_cited": telemetry.get("ei_cited"),
+                })
+                affect_intervened = True
+                print(
+                    f"[PS-AFFECT-INTERVENE] queued {affect} "
+                    f"step={telemetry['current_step']}/{telemetry['step_budget']} "
+                    f"failures={telemetry['consecutive_tool_failures']} "
+                    f"hedge:commit={telemetry['hedge_commit_ratio']} "
+                    f"cited={telemetry['ei_cited']}",
+                    flush=True,
+                )
+            else:
+                # clear any stale flag — this turn does not queue an affect intervention
+                self.agent.set_data(AFFECT_INTERVENTION_KEY, None)
+
             # Write behavioral trace regardless of whether we intervene
             _write_behavioral_trace(
                 agent=self.agent,
@@ -255,6 +287,8 @@ class ProactiveSupervisorAnalyzer(Extension):
                 signals=signals,
                 telemetry=telemetry,
                 affect=affect,
+                phase2_enabled=phase2,
+                affect_intervened=affect_intervened,
             )
 
             if best and best.severity >= SEVERITY_THRESHOLD_FOR_INTERVENTION:
@@ -437,6 +471,17 @@ def _read_step_budget() -> int:
         return DEFAULT_STEP_BUDGET
 
 
+def _read_affect_phase2_enabled() -> bool:
+    """Phase 2 affect-intervention gate. Config-overridable per-container via
+    config.json "affect_layer.phase2_enabled". Default False (log only — safe)."""
+    try:
+        with open(STEP_BUDGET_CONFIG_PATH, encoding="utf-8") as fh:
+            cfg = json.load(fh).get("affect_layer", {})
+            return bool(cfg.get("phase2_enabled", AFFECT_PHASE2_DEFAULT))
+    except Exception:
+        return AFFECT_PHASE2_DEFAULT
+
+
 def _gather_affect_telemetry(agent, text: str) -> dict:
     """Compose the affect telemetry from this turn's reasoning metrics plus
     cross-hook signals already maintained on the agent. No new signal production —
@@ -536,6 +581,8 @@ def _write_behavioral_trace(
     signals: list,
     telemetry: Optional[dict] = None,
     affect: Optional[str] = None,
+    phase2_enabled: bool = False,
+    affect_intervened: bool = False,
 ) -> None:
     """
     Append one JSONL record per turn with reasoning metrics + signal results.
@@ -572,9 +619,10 @@ def _write_behavioral_trace(
                 for s in signals
             ],
             "intervened": any(s.severity >= SEVERITY_THRESHOLD_FOR_INTERVENTION for s in signals),
-            # ── Affect layer enrichment (Phase 1) ──
+            # ── Affect layer enrichment (Phase 1 fields + Phase 2 fire-rate) ──
             "affect": affect,
-            "phase2_enabled": AFFECT_PHASE2_ENABLED,
+            "phase2_enabled": phase2_enabled,
+            "affect_intervened": affect_intervened,
             "step": (telemetry or {}).get("current_step"),
             "step_budget": (telemetry or {}).get("step_budget"),
             "pace_tier": (telemetry or {}).get("pace_tier"),
