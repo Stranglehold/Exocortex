@@ -67,8 +67,34 @@ _last_keepalive        = 0.0
 _warmup_inflight_until = 0.0    # real cycles defer until now passes this (belt; _llama_busy is the primary guard)
 
 
+def _disable_cycles_on_start() -> None:
+    """Cost-safety (2026-06-20): force idle cycles OFF on every daemon start so a
+    container restart can never silently resume paid cycles. The operator re-arms
+    explicitly (Office panel / idle_control) when ready. Default-disabled on start."""
+    try:
+        if not os.path.exists(_CONFIG_PATH):
+            return
+        with open(_CONFIG_PATH, "r", encoding="utf-8-sig") as f:
+            cfg = json.load(f)
+        ite = cfg.get("idle_time_engine", {})
+        if ite.get("enabled", False):
+            ite["enabled"] = False
+            cfg["idle_time_engine"] = ite
+            tmp = _CONFIG_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
+            os.replace(tmp, _CONFIG_PATH)
+            print("[IDLE-WATCH] Startup safety: idle cycles were ENABLED — forced OFF "
+                  "on start. Re-arm via the Office panel when ready.", flush=True)
+        else:
+            print("[IDLE-WATCH] Startup: idle cycles disabled (default-safe).", flush=True)
+    except Exception as e:
+        print(f"[IDLE-WATCH] disable-on-start error: {e}", flush=True)
+
+
 def main() -> None:
     print("[IDLE-WATCH] Daemon started.", flush=True)
+    _disable_cycles_on_start()   # cost-safety: never auto-resume paid cycles on restart
     time.sleep(_STARTUP_GRACE)
     print("[IDLE-WATCH] Starting poll loop.", flush=True)
     while True:
