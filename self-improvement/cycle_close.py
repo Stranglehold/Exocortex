@@ -36,6 +36,7 @@ _OFFICE_DIR     = "/a0/usr/workdir/workspace/office"
 _FEED_PATH      = "/a0/usr/workdir/workspace/office/feed.jsonl"
 _SIGNAL_PATH    = "/a0/usr/workdir/workspace/office/cycle_result.json"
 _STATE_PATH     = "/a0/usr/workdir/workspace/office/engine_state.json"
+_WIKI_DIR       = "/a0/usr/workdir/workspace/wiki"
 
 
 def _read_state() -> dict:
@@ -46,6 +47,27 @@ def _read_state() -> dict:
     except Exception:
         pass
     return {}
+
+
+def _count_wiki_writes_since(cycle_start: float) -> int:
+    """Deterministic ground truth for pages_deepened: count distinct wiki .md files
+    modified at/after the cycle start (excludes the index). Returns -1 if unknowable
+    (no valid cycle_start) so the caller degrades gracefully and trusts the claim."""
+    if not cycle_start or cycle_start <= 0:
+        return -1
+    count = 0
+    try:
+        for root, _dirs, files in os.walk(_WIKI_DIR):
+            for fn in files:
+                if fn.endswith(".md") and fn != "index.md":
+                    try:
+                        if os.path.getmtime(os.path.join(root, fn)) >= cycle_start:
+                            count += 1
+                    except OSError:
+                        pass
+    except Exception:
+        return -1
+    return count
 
 
 def main():
@@ -100,6 +122,21 @@ def main():
     except Exception as _e:
         print(f"[cycle_close] WARNING: skills_captured tally read failed: {_e}", file=sys.stderr)
 
+    # ── Verify-before-log gate: pages_deepened vs real file writes ─────────────
+    # Deterministic check (same spirit as the skills_captured ground-truth above):
+    # a cycle can only have deepened pages that were actually written this cycle.
+    # Count wiki .md files modified since the cycle started; if the agent's claim
+    # exceeds that, correct it down and record the discrepancy in the journal.
+    # Catches over-reporting / confabulation regardless of which model is loaded.
+    pages_verify = None
+    _real_writes = _count_wiki_writes_since(float(state.get("last_cycle_start", 0) or 0))
+    if _real_writes >= 0 and args.pages_deepened > _real_writes:
+        pages_verify = {"claimed": args.pages_deepened, "actual_writes": _real_writes}
+        print(f"[cycle_close] VERIFY-GATE: pages_deepened claimed={args.pages_deepened} "
+              f"but {_real_writes} wiki file(s) written this cycle — corrected to {_real_writes}",
+              file=sys.stderr)
+        args.pages_deepened = _real_writes
+
     # ── 1. Journal entry ──────────────────────────────────────────────────────
     journal_entry = {
         "type":             "cycle_close",
@@ -117,6 +154,8 @@ def main():
         "integrity_issues": args.integrity_issues,
         "steps_used":       args.steps_used,
     }
+    if pages_verify:
+        journal_entry["verify_flag"] = pages_verify
     try:
         with open(_JOURNAL_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(journal_entry) + "\n")
