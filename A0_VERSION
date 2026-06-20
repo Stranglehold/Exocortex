@@ -8,4 +8,7 @@
 #
 # version            tested_commit   date_pinned
 # v1.18 pinned 2026-05-27 — validated on nifty_panini + promoted to v16/v17.
-v1.18
+# v1.20 pinned 2026-06-20 — only solving.md + tips.md conflicted (A0 changed them);
+#   both re-based (merged our delta onto v1.20). All other overwrite-patches verified
+#   unchanged in v1.20 via check against the 221-file diff. Validated on v16.
+v1.20
