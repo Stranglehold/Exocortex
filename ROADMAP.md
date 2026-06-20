@@ -119,10 +119,11 @@ Twelve layers designed. Deployment status and health below.
 **What:** Push DeepSeek V4-Pro cache hit ratio from 65% to 90%+. Five optimizations: instrument hit ratio, verify datetime stability, verify injection doesn't pollute prior turns, raise MetaGate-SIZE awareness, monitor output token cost.
 **Why:** Cache misses cost 120x more than hits. At full price (post-discount), the difference is ~$370/month.
 
-### Priority 2: Affect Layer Phase 2 Calibration
-**Status:** Data collecting. 12,500+ behavioral traces accumulated.
-**What:** Fit FRUSTRATION/DESPERATION thresholds from enriched trace data. Enable predictive intervention.
-**Why:** Phase 1 classifies but doesn't intervene on the two predictive states. Phase 2 closes the loop.
+### Priority 2: Affect Layer Phase 2 — SHIPPED 2026-06-20 (v16 live, v17 gated)
+**Status:** Intervention path deployed. Validating empirically.
+**What:** FRUSTRATION → metacognitive reframe, DESPERATION → pre-fabrication hard-stop, queued at `reasoning_stream_end` and injected at `before_main_llm_call` (mirrors `_ps_signal`). Config-gated per container (`affect_layer.phase2_enabled`). Trace now logs `phase2_enabled`/`affect_intervened` for fire-rate measurement. Commit `f02e20f`.
+**Calibration reality:** The "12,500+ traces" were **pre-enrichment schema** (frozen 2026-05-24; affect fields added 2026-05-30) — no FRUSTRATION/DESPERATION samples (agents idle-paused since enrichment). Shipped with the design-note **principled** thresholds; incoming enriched traces are the validation set.
+**Remaining:** Monitor v16 fire rate (watch for FLOW false-positives); enable v17 once v16 is clean. Then refine thresholds from real FRUSTRATION/DESPERATION samples.
 
 ### Priority 3: A2A Hub — Multi-Agent Communication
 **Status:** Design note complete (`specs/A2A_HUB_DESIGN_NOTE.md`). Research done.
