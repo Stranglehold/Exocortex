@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Kit — M1 Showcase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./panel-kit.css">
+<style>
+  /* --- Theme palettes (mimics what theme-store.js sets on :root) --- */
+  body.theme-magi {
+    --color-accent:#e8a020; --color-background:#0a0c0a; --color-panel:#141712;
+    --color-text:#e8e4d9; --color-text-muted:#9a968b; --color-border:#3a4030;
+    --color-primary:#6fae4a; --color-secondary:#4a90c0;
+    --color-warning-text:#ff9933; --color-error-text:#cc3322;
+    --font-family-main:"Share Tech Mono","Courier New",monospace;
+  }
+  body.theme-yorha {
+    --color-accent:#c8b48a; --color-background:#3f3c35; --color-panel:#4b473e;
+    --color-text:#d9d3c2; --color-text-muted:#a49d8a; --color-border:#6f6858;
+    --color-primary:#9fae7a; --color-secondary:#8a9db0;
+    --color-warning-text:#d0a24a; --color-error-text:#b25a4a;
+    --font-family-main:"EB Garamond",Georgia,serif;
+  }
+  html,body{margin:0;min-height:100%;}
+  body{background:var(--color-background);padding:26px 30px 60px;
+       font-family:var(--font-family-main);color:var(--color-text);
+       background-image:radial-gradient(120% 90% at 50% -10%,
+         color-mix(in srgb,var(--color-accent) 8%,transparent),transparent 60%);}
+  h1{font-family:"Rajdhani",sans-serif;font-weight:600;letter-spacing:.14em;
+     font-size:15px;color:var(--color-accent);text-transform:uppercase;margin:0 0 2px;}
+  .sub{font-size:11px;color:var(--color-text-muted);margin:0 0 20px;letter-spacing:.1em;}
+  .sec{margin:26px 0 8px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+       color:color-mix(in srgb,var(--color-accent) 60%,transparent);
+       border-bottom:1px solid color-mix(in srgb,var(--color-accent) 22%,transparent);padding-bottom:5px;}
+  .toggle{position:fixed;top:16px;right:20px;z-index:9;font-family:"Share Tech Mono",monospace;
+          font-size:11px;letter-spacing:.12em;color:var(--color-accent);cursor:pointer;
+          border:1px solid color-mix(in srgb,var(--color-accent) 45%,transparent);
+          background:color-mix(in srgb,var(--color-panel) 85%,transparent);padding:6px 12px;}
+  .cols{display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start;}
+</style>
+</head>
+<body class="theme-magi panel-kit">
+  <div class="toggle" onclick="toggleTheme()">◑ THEME: <span id="tname">MAGI</span></div>
+
+  <h1>EXOCORTEX · PANEL KIT</h1>
+  <p class="sub">M1 COMPONENT LIBRARY — 内部診断 · SELF-DIAGNOSTIC · SAMPLE DATA</p>
+
+  <!-- Breadcrumb -->
+  <div class="pk-breadcrumb">
+    <span class="pk-crumb">OFFICE</span><span class="pk-sep">›</span>
+    <span class="pk-crumb">SYSTEM</span><span class="pk-sep">›</span>
+    <span class="pk-crumb current">MONITOR</span>
+  </div>
+
+  <div class="sec">DataCard · TelemetryGauge</div>
+  <div class="pk-row-flex">
+    <div class="pk-frame pk-card">
+      <div class="pk-card-head"><span class="pk-label">Throughput</span><span class="pk-jp">処理速度</span></div>
+      <div><span class="pk-card-value">107</span><span class="pk-card-unit">tok/s</span></div>
+      <div class="pk-card-foot"><span class="pk-trend up">▲ 4.2%</span><span class="pk-label">vs 5m</span></div>
+    </div>
+    <div class="pk-frame pk-card">
+      <div class="pk-card-head"><span class="pk-label">Model</span><span class="pk-jp">機関</span></div>
+      <div><span class="pk-card-value" style="font-size:18px">ORNITH</span><span class="pk-card-unit">35B</span></div>
+      <div class="pk-card-foot"><span class="pk-trend flat">■ loaded</span><span class="pk-label">:1235</span></div>
+    </div>
+    <div class="pk-frame pk-card">
+      <div class="pk-card-head"><span class="pk-label">Cycles</span><span class="pk-jp">周期</span></div>
+      <div><span class="pk-card-value">1344</span></div>
+      <div class="pk-card-foot"><span class="pk-trend up">▲ 12</span><span class="pk-label">today</span></div>
+    </div>
+    <div class="pk-frame pk-gauge" style="min-width:200px">
+      <div class="pk-gauge-head"><span class="pk-label">VRAM</span><span class="pk-gauge-read">17.4 / 24.0 GB</span></div>
+      <div class="pk-gauge-track"><div class="pk-gauge-fill" style="--pk-val:72%"></div></div>
+    </div>
+    <div class="pk-frame pk-gauge warn" style="min-width:200px">
+      <div class="pk-gauge-head"><span class="pk-label">GPU Temp</span><span class="pk-gauge-read">71°C</span></div>
+      <div class="pk-gauge-track"><div class="pk-gauge-fill" style="--pk-val:79%"></div></div>
+    </div>
+    <div class="pk-frame pk-gauge pk-ring-wrap" style="display:flex;gap:12px;align-items:center;min-width:190px">
+      <div class="pk-ring" style="--pk-val:.91">
+        <svg width="76" height="76" viewBox="0 0 76 76">
+          <circle class="pk-ring-bg" cx="38" cy="38" r="35"></circle>
+          <circle class="pk-ring-arc" cx="38" cy="38" r="35"></circle>
+        </svg>
+        <div class="pk-ring-text">91%</div>
+      </div>
+      <div><div class="pk-label">Draft Accept</div><div class="pk-jp">採択率</div></div>
+    </div>
+  </div>
+
+  <div class="sec">CycleTypeCard</div>
+  <div class="pk-row-flex">
+    <div class="pk-frame pk-cyclecard build active">
+      <div class="pk-ct-icon">⬢</div><div class="pk-ct-name">BUILD</div><div class="pk-ct-sub">deepen · 30 steps</div>
+    </div>
+    <div class="pk-frame pk-cyclecard explore">
+      <div class="pk-ct-icon">◇</div><div class="pk-ct-name">EXPLORE</div><div class="pk-ct-sub">discover · 20 steps</div>
+    </div>
+    <div class="pk-frame pk-cyclecard maintain">
+      <div class="pk-ct-icon">▤</div><div class="pk-ct-name">MAINTAIN</div><div class="pk-ct-sub">consolidate · 15 steps</div>
+    </div>
+  </div>
+
+  <div class="sec">TreeNav · DetailPanel</div>
+  <div class="cols">
+    <div class="pk-frame pk-tree" style="padding:6px 4px" id="tree">
+      <div class="pk-node open">
+        <div class="pk-row" onclick="tog(this)"><span class="pk-caret">▶</span>WIKI <span class="pk-meta">339</span></div>
+        <div class="pk-children">
+          <div class="pk-node leaf sel"><div class="pk-row"><span class="pk-caret">▶</span>semiconductors <span class="pk-meta">STABLE</span></div></div>
+          <div class="pk-node leaf"><div class="pk-row"><span class="pk-caret">▶</span>iran-hormuz <span class="pk-meta">DRAFT</span></div></div>
+          <div class="pk-node leaf"><div class="pk-row"><span class="pk-caret">▶</span>rare-earths <span class="pk-meta">STABLE</span></div></div>
+        </div>
+      </div>
+      <div class="pk-node">
+        <div class="pk-row" onclick="tog(this)"><span class="pk-caret">▶</span>FIELD REPORTS <span class="pk-meta">88</span></div>
+        <div class="pk-children">
+          <div class="pk-node leaf"><div class="pk-row"><span class="pk-caret">▶</span>2026-07-04 · grid</div></div>
+          <div class="pk-node leaf"><div class="pk-row"><span class="pk-caret">▶</span>2026-07-03 · markets</div></div>
+        </div>
+      </div>
+      <div class="pk-node leaf"><div class="pk-row"><span class="pk-caret">▶</span>SKILLS <span class="pk-meta">14</span></div></div>
+    </div>
+
+    <div class="pk-frame pk-detail">
+      <div class="pk-detail-head"><span class="pk-detail-title">SEMICONDUCTORS</span><span class="pk-label">WIKI · STABLE · rev 7</span></div>
+      <div class="pk-detail-body">
+        <div class="pk-detail-stage">◈ HOLOGRAPHIC PROJECTION ◈</div>
+        <div class="pk-detail-text">
+          Cross-referenced field record. Rare-earth supply chains constrain advanced-node
+          fabrication; <span class="pk-em">export-control regimes</span> are the dominant
+          near-term variable. Linked cycles: BUILD #1344, #1331. Sources verified against
+          the promoted claim ledger.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">StatusBar</div>
+  <div class="pk-statusbar">
+    <div class="pk-stat"><span class="pk-dot"></span> <span class="pk-label">v16</span> <b>ONLINE</b></div>
+    <div class="pk-stat"><span class="pk-label">MODEL</span> <b>ornith-1.0-35b</b></div>
+    <div class="pk-stat"><span class="pk-label">VRAM</span> <b>17.4G</b></div>
+    <div class="pk-stat"><span class="pk-label">CYCLE</span> <b>#1344 BUILD</b></div>
+    <div class="pk-stat"><span class="pk-label">TIME</span> <b id="clk">21:52:04</b></div>
+  </div>
+
+<script>
+  function toggleTheme(){
+    const b=document.body, magi=b.classList.contains('theme-magi');
+    b.classList.toggle('theme-magi',!magi); b.classList.toggle('theme-yorha',magi);
+    document.getElementById('tname').textContent = magi ? 'YoRHa' : 'MAGI';
+  }
+  function tog(row){ row.parentElement.classList.toggle('open'); }
+  // tiny live clock so TIME reads real (integrity even in the demo)
+  setInterval(()=>{const d=new Date();document.getElementById('clk').textContent=
+    d.toTimeString().slice(0,8);},1000);
+</script>
+</body>
+</html>

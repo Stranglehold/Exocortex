@@ -1,0 +1,201 @@
+/* ============================================================================
+   PANEL KIT — Exocortex diegetic command-console component library (M1)
+   ----------------------------------------------------------------------------
+   Native Alpine + vanilla CSS. Every component reads the existing theme CSS
+   custom properties (set by theme-store.js), so switching theme re-skins the
+   whole kit with zero code change. Defaults are the MAGI aesthetic: amber
+   monochrome on near-black, angular bordered sections, monospace telemetry.
+
+   No hard-coded colors — everything derives from --color-* / --font-family-*,
+   with a MAGI fallback so the kit still looks right before a theme loads.
+
+   Components:  .pk-card  .pk-gauge  .pk-statusbar  .pk-breadcrumb
+                .pk-tree  .pk-detail  .pk-cyclecard
+   ========================================================================== */
+
+.panel-kit {
+  /* Local tokens derived from the theme (with MAGI-amber fallbacks) */
+  --pk-accent: var(--color-accent, #e8a020);
+  --pk-bg:     var(--color-background, #0a0c0a);
+  --pk-panel:  var(--color-panel, #12150f);
+  --pk-text:   var(--color-text, #e8e4d9);
+  --pk-muted:  var(--color-text-muted, #9a968b);
+  --pk-border: var(--color-border, #4a5740);
+  --pk-ok:     var(--color-primary, #6fae4a);
+  --pk-warn:   var(--color-warning-text, #ff9933);
+  --pk-err:    var(--color-error-text, #cc3322);
+  --pk-mono:   var(--font-family-main, "Share Tech Mono", "Courier New", monospace);
+
+  /* Derived atmosphere */
+  --pk-accent-dim:  color-mix(in srgb, var(--pk-accent) 55%, transparent);
+  --pk-accent-faint: color-mix(in srgb, var(--pk-accent) 14%, transparent);
+  --pk-hairline:    color-mix(in srgb, var(--pk-accent) 40%, var(--pk-border));
+  --pk-glow:        0 0 6px color-mix(in srgb, var(--pk-accent) 45%, transparent);
+  --pk-clip: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+
+  color: var(--pk-text);
+  font-family: var(--pk-mono);
+  letter-spacing: 0.02em;
+}
+
+.panel-kit *,
+.panel-kit *::before,
+.panel-kit *::after { box-sizing: border-box; }
+
+/* Shared bits ------------------------------------------------------------- */
+.pk-label {
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--pk-muted);
+}
+.pk-jp { /* bilingual sub-label */
+  font-size: 9px; letter-spacing: 0.1em; color: var(--pk-accent-dim);
+  opacity: 0.75;
+}
+.pk-frame {
+  position: relative;
+  background:
+    linear-gradient(color-mix(in srgb, var(--pk-panel) 82%, transparent),
+                    color-mix(in srgb, var(--pk-panel) 82%, transparent));
+  border: 1px solid var(--pk-hairline);
+  clip-path: var(--pk-clip);
+}
+.pk-frame::after { /* inner amber corner ticks */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--pk-accent), var(--pk-accent)) 0 0/10px 1px no-repeat,
+    linear-gradient(var(--pk-accent), var(--pk-accent)) 0 0/1px 10px no-repeat,
+    linear-gradient(var(--pk-accent), var(--pk-accent)) 100% 100%/10px 1px no-repeat,
+    linear-gradient(var(--pk-accent), var(--pk-accent)) 100% 100%/1px 10px no-repeat;
+  opacity: 0.85;
+}
+
+/* 1. DataCard ------------------------------------------------------------- */
+.pk-card { padding: 10px 12px 11px; min-width: 130px; }
+.pk-card .pk-card-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin-bottom: 6px;
+}
+.pk-card .pk-card-value {
+  font-size: 26px; line-height: 1; color: var(--pk-accent);
+  text-shadow: var(--pk-glow); font-variant-numeric: tabular-nums;
+}
+.pk-card .pk-card-unit { font-size: 12px; color: var(--pk-muted); margin-left: 3px; }
+.pk-card .pk-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.pk-trend { font-size: 11px; display: inline-flex; align-items: center; gap: 3px; }
+.pk-trend.up   { color: var(--pk-ok); }
+.pk-trend.down { color: var(--pk-err); }
+.pk-trend.flat { color: var(--pk-muted); }
+
+/* 2. TelemetryGauge — linear + radial --------------------------------------- */
+.pk-gauge { padding: 9px 12px 11px; }
+.pk-gauge .pk-gauge-head {
+  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 7px;
+}
+.pk-gauge .pk-gauge-read { font-size: 13px; color: var(--pk-accent); font-variant-numeric: tabular-nums; }
+.pk-gauge-track {
+  height: 8px; background: var(--pk-accent-faint);
+  border: 1px solid var(--pk-hairline); position: relative; overflow: hidden;
+}
+.pk-gauge-fill {
+  position: absolute; inset: 0 auto 0 0; width: var(--pk-val, 0%);
+  background: repeating-linear-gradient(90deg,
+    var(--pk-accent) 0 3px, color-mix(in srgb, var(--pk-accent) 60%, transparent) 3px 5px);
+  box-shadow: var(--pk-glow); transition: width .5s cubic-bezier(.2,.7,.2,1);
+}
+.pk-gauge.warn .pk-gauge-fill { --pk-accent: var(--pk-warn); }
+.pk-gauge.crit .pk-gauge-fill { --pk-accent: var(--pk-err); }
+
+.pk-ring { --pk-val: 0; width: 76px; height: 76px; position: relative; }
+.pk-ring svg { transform: rotate(-90deg); display: block; }
+.pk-ring .pk-ring-bg   { fill: none; stroke: var(--pk-accent-faint); stroke-width: 6; }
+.pk-ring .pk-ring-arc  {
+  fill: none; stroke: var(--pk-accent); stroke-width: 6; stroke-linecap: butt;
+  filter: drop-shadow(var(--pk-glow));
+  stroke-dasharray: 220; stroke-dashoffset: calc(220 - 220 * var(--pk-val));
+  transition: stroke-dashoffset .6s cubic-bezier(.2,.7,.2,1);
+}
+.pk-ring .pk-ring-text {
+  position: absolute; inset: 0; display: grid; place-content: center;
+  font-size: 15px; color: var(--pk-accent); text-shadow: var(--pk-glow);
+}
+
+/* 3. StatusBar ------------------------------------------------------------ */
+.pk-statusbar {
+  display: flex; align-items: stretch; gap: 0;
+  border: 1px solid var(--pk-hairline);
+  background: color-mix(in srgb, var(--pk-panel) 88%, transparent);
+  font-size: 11px;
+}
+.pk-statusbar .pk-stat {
+  display: flex; align-items: center; gap: 7px; padding: 6px 14px;
+  border-right: 1px solid var(--pk-accent-faint); white-space: nowrap;
+}
+.pk-statusbar .pk-stat:last-child { border-right: 0; margin-left: auto; }
+.pk-statusbar .pk-stat b {
+  color: var(--pk-accent); font-weight: 400; font-variant-numeric: tabular-nums;
+  text-shadow: var(--pk-glow);
+}
+.pk-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pk-ok); box-shadow: 0 0 5px var(--pk-ok); }
+.pk-dot.down { background: var(--pk-err); box-shadow: 0 0 5px var(--pk-err); }
+
+/* 4. BreadcrumbNav -------------------------------------------------------- */
+.pk-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 2px; }
+.pk-breadcrumb .pk-crumb { color: var(--pk-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.pk-breadcrumb .pk-crumb.current { color: var(--pk-accent); text-shadow: var(--pk-glow); }
+.pk-breadcrumb .pk-sep { color: var(--pk-accent-dim); }
+
+/* 5. TreeNav -------------------------------------------------------------- */
+.pk-tree { font-size: 12.5px; }
+.pk-tree .pk-node > .pk-row {
+  display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.pk-tree .pk-node > .pk-row:hover { background: var(--pk-accent-faint); }
+.pk-tree .pk-node.sel > .pk-row {
+  background: var(--pk-accent-faint); border-left-color: var(--pk-accent);
+  color: var(--pk-accent);
+}
+.pk-tree .pk-caret {
+  width: 10px; color: var(--pk-accent-dim); font-size: 9px; transition: transform .15s;
+}
+.pk-tree .pk-node.open > .pk-row .pk-caret { transform: rotate(90deg); }
+.pk-tree .pk-node.leaf > .pk-row .pk-caret { visibility: hidden; }
+.pk-tree .pk-children { display: none; margin-left: 14px; border-left: 1px solid var(--pk-accent-faint); }
+.pk-tree .pk-node.open > .pk-children { display: block; }
+.pk-tree .pk-meta { margin-left: auto; font-size: 10px; color: var(--pk-muted); }
+
+/* 6. DetailPanel ---------------------------------------------------------- */
+.pk-detail { padding: 0; overflow: hidden; }
+.pk-detail .pk-detail-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid var(--pk-accent-faint);
+}
+.pk-detail .pk-detail-title { color: var(--pk-accent); font-size: 14px; letter-spacing: 0.08em; text-shadow: var(--pk-glow); }
+.pk-detail .pk-detail-body { padding: 12px; display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
+.pk-detail .pk-detail-stage {
+  min-height: 120px; border: 1px solid var(--pk-hairline);
+  background:
+    radial-gradient(120% 100% at 50% 0%, var(--pk-accent-faint), transparent 70%),
+    color-mix(in srgb, var(--pk-bg) 70%, transparent);
+  display: grid; place-content: center; color: var(--pk-accent-dim); font-size: 11px;
+}
+.pk-detail .pk-detail-text { font-size: 12.5px; line-height: 1.55; color: var(--pk-text); }
+.pk-detail .pk-detail-text .pk-em { color: var(--pk-accent); }
+
+/* 7. CycleTypeCard -------------------------------------------------------- */
+.pk-cyclecard {
+  --pk-ct: var(--pk-accent);
+  padding: 10px 12px; min-width: 108px;
+  border-color: color-mix(in srgb, var(--pk-ct) 55%, var(--pk-border));
+}
+.pk-cyclecard.build   { --pk-ct: var(--color-primary, #6fae4a); }
+.pk-cyclecard.explore { --pk-ct: var(--color-accent, #e8a020); }
+.pk-cyclecard.maintain{ --pk-ct: var(--color-secondary, #4a90c0); }
+.pk-cyclecard .pk-ct-icon { font-size: 18px; color: var(--pk-ct); text-shadow: 0 0 6px color-mix(in srgb, var(--pk-ct) 45%, transparent); }
+.pk-cyclecard .pk-ct-name { font-size: 12px; letter-spacing: 0.14em; color: var(--pk-ct); margin-top: 4px; }
+.pk-cyclecard .pk-ct-sub  { font-size: 10px; color: var(--pk-muted); margin-top: 2px; }
+.pk-cyclecard.active { box-shadow: inset 0 0 0 1px var(--pk-ct), 0 0 10px color-mix(in srgb, var(--pk-ct) 30%, transparent); }
+
+/* Utility layout for the showcase / panels -------------------------------- */
+.pk-grid { display: grid; gap: 12px; }
+.pk-row-flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
