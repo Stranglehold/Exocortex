@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="idroid">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // OFFICE</title>
+<style>
+/* ============================================================================
+   EXOCORTEX OFFICE PANEL — diegetic operations console (iDroid material)
+   Same component DNA as the System panel (shell/header/sec/statusbar) — the
+   STRUCTURE is the component, the THEME is the material. This file proves the
+   skeleton survives a TRANSLUCENT material: holographic projection over a dark
+   environment, where readability comes from edge+tint, not opaque fills.
+   Stress test for "solid surfaces over texture" in a glass context.
+   ========================================================================= */
+
+/* ---- THEME: iDROID (MGSV holographic command interface) ---- */
+[data-theme="idroid"] {
+  --bg-0:#03070c; --bg-1:#061018; --bg-2:#0a1a26;
+  --ink:#bdeaff; --ink-dim:#5f9fc4; --ink-faint:#356a86;
+  --accent:#27b6ff; --accent-2:#6fe0ff; --good:#46e8b0; --warn:#ffd25a; --crit:#ff6a5a;
+  --line:rgba(80,180,235,.30); --line-bright:rgba(120,215,255,.62);
+  /* TRANSLUCENT surfaces — the material is projected light, not a panel */
+  --surface:rgba(18,58,86,.34); --surface-2:rgba(26,78,112,.46);
+  --edge-hi:rgba(150,230,255,.40);
+  --glow: 0 0 10px rgba(40,180,255,.55), 0 0 26px rgba(40,150,255,.28);
+  --holo-glow: 0 0 12px rgba(60,200,255,.7);
+  --grid-color: rgba(60,170,230,.10);
+  --vignette: rgba(0,4,10,.82);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.05; --grain-op:.025; --sweep-op:.5;
+}
+/* ---- THEME: AMBER-OPS (warm variant — proves the same skeleton re-skins) ---- */
+[data-theme="amberops"] {
+  --bg-0:#0a0703; --bg-1:#140d05; --bg-2:#22160a;
+  --ink:#ffd9a8; --ink-dim:#c08a4e; --ink-faint:#7a5630;
+  --accent:#ff9d2b; --accent-2:#ffc46f; --good:#9ed46a; --warn:#ffcf3a; --crit:#ff5a45;
+  --line:rgba(230,160,70,.30); --line-bright:rgba(255,190,110,.60);
+  --surface:rgba(70,44,16,.40); --surface-2:rgba(96,60,22,.52);
+  --edge-hi:rgba(255,210,150,.36);
+  --glow: 0 0 10px rgba(255,150,40,.5), 0 0 24px rgba(255,120,20,.24);
+  --holo-glow: 0 0 12px rgba(255,170,70,.65);
+  --grid-color: rgba(230,160,60,.10);
+  --vignette: rgba(8,4,0,.82);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.04; --grain-op:.04; --sweep-op:.35;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  /* a darkened "environment" the hologram is projected over — gives the
+     translucent surfaces something to read against (contrast comes from the
+     backdrop, not from making the panels opaque) */
+  background:
+    radial-gradient(140% 120% at 78% -10%, var(--bg-2), transparent 55%),
+    radial-gradient(120% 100% at 8% 110%, var(--bg-1), transparent 60%),
+    var(--bg-0);
+  color:var(--ink);
+  font-family:var(--font-mono);
+  min-height:100vh; overflow-x:hidden;
+  letter-spacing:.04em; -webkit-font-smoothing:antialiased;
+}
+
+/* ---- ambient effect layers ---- */
+.fx { position:fixed; inset:0; pointer-events:none; }
+.fx-grid { z-index:0;
+  background-image:linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size:40px 40px;
+  mask-image:radial-gradient(120% 100% at 50% 30%, #000 40%, transparent 80%);
+}
+.fx-scan { z-index:60; background:repeating-linear-gradient(0deg, rgba(0,0,0,.5) 0 1px, transparent 1px 3px); opacity:var(--scan-op); mix-blend-mode:multiply; }
+.fx-grain { z-index:60; opacity:var(--grain-op);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/></svg>");
+}
+.fx-vignette { z-index:55; background:radial-gradient(135% 105% at 50% 42%, transparent 52%, var(--vignette)); }
+/* the slow holographic projector sweep — felt, not watched */
+.fx-sweep { z-index:58; opacity:var(--sweep-op); mix-blend-mode:screen;
+  background:linear-gradient(180deg, transparent 0%, rgba(90,200,255,.16) 48%, rgba(150,230,255,.30) 50%, rgba(90,200,255,.16) 52%, transparent 100%);
+  height:60vh; animation:sweep 7.5s linear infinite;
+}
+@keyframes sweep { 0%{transform:translateY(-70vh)} 100%{transform:translateY(170vh)} }
+
+/* ---- shell ---- */
+.shell { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:20px 26px 18px; }
+
+/* ---- header ---- */
+header { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--line-bright); padding-bottom:11px; }
+.brand { display:flex; align-items:baseline; gap:14px; }
+.brand .mark { font-family:var(--font-read); font-weight:700; font-size:1.5rem; letter-spacing:.30em; color:var(--ink); text-shadow:var(--glow); }
+.brand .sub { font-size:.62rem; letter-spacing:.40em; color:var(--ink-dim); }
+.brand .jp { font-size:.58rem; letter-spacing:.18em; color:var(--ink-faint); }
+.hgroup-r { text-align:right; display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+.clock { font-size:1.3rem; color:var(--ink); text-shadow:var(--glow); letter-spacing:.12em; }
+.live { display:inline-flex; align-items:center; gap:6px; font-size:.56rem; letter-spacing:.3em; color:var(--good); }
+.live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good); animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+.switch { display:flex; border:1px solid var(--line-bright); }
+.switch button { background:transparent; color:var(--ink-dim); border:none; font-family:var(--font-mono); font-size:.58rem; letter-spacing:.2em; padding:6px 11px; cursor:pointer; transition:.18s; }
+.switch button[aria-selected="true"] { background:var(--accent); color:var(--bg-0); text-shadow:none; }
+.switch button:hover:not([aria-selected="true"]) { color:var(--ink); }
+
+/* ---- breadcrumb (iDroid signature) ---- */
+.crumb { display:flex; align-items:center; gap:9px; margin:14px 0 4px; font-size:.6rem; letter-spacing:.24em; color:var(--ink-dim); }
+.crumb b { color:var(--ink); font-weight:400; text-shadow:var(--glow); }
+.crumb .sep { color:var(--ink-faint); }
+
+/* ---- section title ---- */
+.sec { margin:16px 0 10px; display:flex; align-items:center; gap:12px; }
+.sec h2 { font-family:var(--font-read); font-weight:600; font-size:.72rem; letter-spacing:.32em; color:var(--ink-dim); text-transform:uppercase; white-space:nowrap; }
+.sec .rule { flex:1; height:1px; background:linear-gradient(90deg, var(--line-bright), transparent); }
+.sec .tag { font-size:.55rem; letter-spacing:.2em; color:var(--ink-faint); }
+
+/* ---- main split: operations list + holographic detail ---- */
+.split { display:grid; grid-template-columns:1.05fr .95fr; gap:18px; }
+
+/* translucent panel — readability via bright EDGE + inner tint + corner ticks,
+   NOT via an opaque fill. backdrop-filter frosts whatever's behind it. */
+.panel { position:relative; border:1px solid var(--line-bright); background:var(--surface);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  box-shadow:inset 0 1px 0 var(--edge-hi), inset 0 0 22px rgba(40,150,220,.10), 0 6px 24px rgba(0,0,0,.5);
+  clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.panel > .ph { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); }
+.panel .ph .t { font-size:.6rem; letter-spacing:.26em; color:var(--ink-dim); }
+.panel .ph .t b { color:var(--ink); font-weight:400; }
+.panel .ph .jp { font-size:.54rem; letter-spacing:.12em; color:var(--ink-faint); }
+
+/* operations list */
+.oplist { padding:6px; max-height:404px; overflow:auto; }
+.oprow { display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center; padding:10px 12px; border:1px solid transparent; cursor:pointer; transition:.14s; }
+.oprow + .oprow { margin-top:3px; }
+.oprow .ico { width:26px; height:26px; display:grid; place-items:center; border:1px solid var(--line); color:var(--accent-2); font-size:.7rem; }
+.oprow .meta .nm { font-size:.78rem; color:var(--ink); letter-spacing:.04em; }
+.oprow .meta .dt { font-size:.56rem; color:var(--ink-dim); letter-spacing:.14em; margin-top:2px; }
+.oprow .st { font-size:.55rem; letter-spacing:.16em; padding:3px 7px; border:1px solid var(--line); color:var(--ink-dim); }
+.oprow .st.ok { color:var(--good); border-color:rgba(70,232,176,.4); }
+.oprow .st.run { color:var(--warn); border-color:rgba(255,210,90,.4); }
+.oprow:hover { border-color:var(--line); background:rgba(120,210,255,.06); }
+.oprow.sel { border-color:var(--line-bright); background:rgba(60,180,255,.14); box-shadow:inset 0 0 16px rgba(50,170,240,.18), inset 3px 0 0 var(--accent); }
+
+/* detail side — holographic core + stat readout */
+.detail { padding:16px 16px 14px; }
+.holo { position:relative; height:178px; display:grid; place-items:center; margin-bottom:6px; }
+.holo .base { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:150px; height:22px; border-radius:50%;
+  background:radial-gradient(50% 80% at 50% 50%, rgba(70,200,255,.34), transparent 70%); filter:blur(2px); }
+.holo .ring { position:absolute; border:1px solid var(--accent); border-radius:50%; box-shadow:var(--holo-glow); opacity:.85; }
+.holo .r1 { width:128px; height:128px; animation:spin 9s linear infinite; border-style:dashed; }
+.holo .r2 { width:96px; height:96px; animation:spin 6s linear infinite reverse; border-color:var(--accent-2); opacity:.6; }
+.holo .r3 { width:160px; height:60px; animation:spin 12s linear infinite; border-color:var(--ink-dim); opacity:.4; }
+.holo .core { width:46px; height:46px; transform:rotate(45deg); border:1px solid var(--accent-2); background:rgba(60,200,255,.12); box-shadow:var(--holo-glow), inset 0 0 18px rgba(80,210,255,.4); }
+.holo .core::after { content:''; position:absolute; inset:0; margin:auto; width:7px; height:7px; background:var(--accent-2); box-shadow:0 0 12px var(--accent-2); }
+@keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+.holo .r3 { animation-name:spinflat; }
+@keyframes spinflat { 0%{transform:rotateX(74deg) rotate(0)} 100%{transform:rotateX(74deg) rotate(360deg)} }
+
+.dtitle { text-align:center; font-family:var(--font-read); font-size:.96rem; letter-spacing:.2em; color:var(--ink); text-shadow:var(--glow); }
+.dtag { text-align:center; font-size:.56rem; letter-spacing:.26em; color:var(--ink-dim); margin-top:3px; margin-bottom:12px; }
+.kv { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.kv .k { border:1px solid var(--line); background:var(--surface-2); padding:9px 11px; position:relative; }
+.kv .k::before { content:''; position:absolute; left:0; top:0; width:2px; height:100%; background:var(--accent); opacity:.55; }
+.kv .k .lbl { font-size:.54rem; letter-spacing:.2em; color:var(--ink-dim); }
+.kv .k .val { font-size:1.02rem; color:var(--ink); margin-top:3px; text-shadow:var(--glow); }
+.kv .k .val small { font-size:.6rem; color:var(--ink-dim); letter-spacing:.04em; }
+
+/* progress meter for the selected op */
+.prog { margin-top:12px; }
+.prog .pl { display:flex; justify-content:space-between; font-size:.55rem; letter-spacing:.18em; color:var(--ink-dim); margin-bottom:5px; }
+.prog .track { height:8px; border:1px solid var(--line); background:rgba(0,0,0,.25); display:flex; gap:2px; padding:1px; }
+.prog .track i { flex:1; background:var(--line); }
+.prog .track i.on { background:var(--accent); box-shadow:0 0 6px var(--accent); }
+
+/* ---- status bar (shared component) ---- */
+.statusbar { margin-top:18px; border:1px solid var(--line-bright); background:var(--surface);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  box-shadow:inset 0 1px 0 var(--edge-hi); display:flex; flex-wrap:wrap; }
+.statusbar .seg { padding:9px 16px; border-right:1px solid var(--line); display:flex; gap:9px; align-items:baseline; }
+.statusbar .seg:last-child { border-right:none; margin-left:auto; }
+.statusbar .k { font-size:.55rem; letter-spacing:.22em; color:var(--ink-dim); }
+.statusbar .v { font-size:.74rem; color:var(--ink); }
+.note { margin-top:12px; text-align:center; font-size:.55rem; letter-spacing:.18em; color:var(--ink-faint); }
+
+@media (max-width:820px){ .split{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="fx fx-grid"></div>
+<div class="fx fx-sweep"></div>
+<div class="fx fx-scan"></div>
+<div class="fx fx-grain"></div>
+<div class="fx fx-vignette"></div>
+
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="mark">EXOCORTEX</span>
+      <div>
+        <div class="sub">OFFICE&nbsp;/&nbsp;OPERATIONS</div>
+        <div class="jp">作戦管制 — iDROID OS</div>
+      </div>
+    </div>
+    <div class="hgroup-r">
+      <div class="clock" id="clock">--:--:--</div>
+      <div><span class="live"><span class="dot"></span>AGENT ACTIVE</span></div>
+      <div class="switch" role="tablist">
+        <button role="tab" data-set="idroid" aria-selected="true">iDROID</button>
+        <button role="tab" data-set="amberops" aria-selected="false">AMBER·OPS</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="crumb"><span>iDROID</span><span class="sep">›</span><span>OPS</span><span class="sep">›</span><b>CYCLE&nbsp;LOG</b></div>
+
+  <div class="sec"><h2>Operations</h2><span class="rule"></span><span class="tag">v16 · 1345 CYCLES · MAINTAIN→BUILD→EXPLORE</span></div>
+
+  <div class="split">
+    <!-- LEFT: operations list -->
+    <div class="panel">
+      <div class="ph"><span class="t">CYCLE&nbsp;LOG&nbsp;<b>// RECENT</b></span><span class="jp">活動記録</span></div>
+      <div class="oplist">
+        <div class="oprow sel" data-op="0">
+          <div class="ico">◳</div>
+          <div class="meta"><div class="nm">BUILD · deepen "Speculative Decoding"</div><div class="dt">CYCLE 1345 · 00:04 AGO</div></div>
+          <div class="st run">RUN</div>
+        </div>
+        <div class="oprow" data-op="1">
+          <div class="ico">⌖</div>
+          <div class="meta"><div class="nm">EXPLORE · agentic self-learning survey</div><div class="dt">CYCLE 1344 · 31:00 AGO</div></div>
+          <div class="st ok">DONE</div>
+        </div>
+        <div class="oprow" data-op="2">
+          <div class="ico">✎</div>
+          <div class="meta"><div class="nm">MAINTAIN · integrity sweep + dedup</div><div class="dt">CYCLE 1343 · 01:02 AGO</div></div>
+          <div class="st ok">DONE</div>
+        </div>
+        <div class="oprow" data-op="3">
+          <div class="ico">★</div>
+          <div class="meta"><div class="nm">SKILL captured · source-verification</div><div class="dt">CYCLE 1341 · 02:08 AGO</div></div>
+          <div class="st ok">DONE</div>
+        </div>
+        <div class="oprow" data-op="4">
+          <div class="ico">⚘</div>
+          <div class="meta"><div class="nm">MEMORY promoted · 3 → procedural</div><div class="dt">CYCLE 1340 · 02:39 AGO</div></div>
+          <div class="st ok">DONE</div>
+        </div>
+        <div class="oprow" data-op="5">
+          <div class="ico">◳</div>
+          <div class="meta"><div class="nm">BUILD · deepen "DeltaNet Attention"</div><div class="dt">CYCLE 1339 · 03:10 AGO</div></div>
+          <div class="st ok">DONE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: holographic detail of the selected op -->
+    <div class="panel">
+      <div class="ph"><span class="t">DETAIL&nbsp;<b>// SELECTED</b></span><span class="jp">詳細</span></div>
+      <div class="detail">
+        <div class="holo">
+          <div class="ring r3"></div>
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="core"></div>
+          <div class="base"></div>
+        </div>
+        <div class="dtitle" id="d-title">DEEPEN · SPECULATIVE DECODING</div>
+        <div class="dtag" id="d-tag">BUILD CYCLE · WIKI KNOWLEDGE GRAPH</div>
+        <div class="kv">
+          <div class="k"><div class="lbl">TARGET PAGE</div><div class="val" id="d-a" style="font-size:.82rem">spec-decoding.md</div></div>
+          <div class="k"><div class="lbl">WIKI TOPICS</div><div class="val">337</div></div>
+          <div class="k"><div class="lbl">MODEL</div><div class="val" style="font-size:.78rem">Qwen3.6-27B<small> MTP</small></div></div>
+          <div class="k"><div class="lbl">STAGE</div><div class="val" id="d-b" style="font-size:.82rem">SYNTHESIS</div></div>
+        </div>
+        <div class="prog">
+          <div class="pl"><span>CYCLE PROGRESS</span><span id="d-pct">68%</span></div>
+          <div class="track" id="d-track"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="seg"><span class="k">WORKSPACE</span><span class="v">/usr/workdir/workspace</span></div>
+    <div class="seg"><span class="k">SKILLS</span><span class="v">70 valid</span></div>
+    <div class="seg"><span class="k">WIKI</span><span class="v">337 topics</span></div>
+    <div class="seg"><span class="k">CADENCE</span><span class="v">30 min</span></div>
+    <div class="seg"><span class="k">TIME</span><span class="v" id="sbtime">--:--</span></div>
+  </div>
+
+  <div class="note">SNAPSHOT — diegetic mockup, real operational shape. LIVE data wires in on deploy to the A0 right-canvas Office panel.</div>
+</div>
+
+<script>
+// live clock
+function tick(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  document.getElementById('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  document.getElementById('sbtime').textContent=`${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+setInterval(tick,1000); tick();
+
+// progress meter (16 segments)
+function setProg(pct){
+  const t=document.getElementById('d-track'); t.innerHTML='';
+  const on=Math.round(pct/100*16);
+  for(let i=0;i<16;i++){ const s=document.createElement('i'); if(i<on) s.className='on'; t.appendChild(s); }
+  document.getElementById('d-pct').textContent=pct+'%';
+}
+
+// op detail data (drives the right-hand holographic readout)
+const OPS=[
+  {title:'DEEPEN · SPECULATIVE DECODING', tag:'BUILD CYCLE · WIKI KNOWLEDGE GRAPH', a:'spec-decoding.md', b:'SYNTHESIS', pct:68},
+  {title:'AGENTIC SELF-LEARNING SURVEY', tag:'EXPLORE CYCLE · OUTBOUND RESEARCH', a:'12 sources', b:'COMPLETE', pct:100},
+  {title:'INTEGRITY SWEEP + DEDUP', tag:'MAINTAIN CYCLE · HOUSEKEEPING', a:'0 issues', b:'COMPLETE', pct:100},
+  {title:'SKILL · SOURCE-VERIFICATION', tag:'CAPTURE · PROCEDURAL MEMORY', a:'SKILL.md', b:'VALIDATED', pct:100},
+  {title:'MEMORY PROMOTION', tag:'CONSOLIDATION · 3 OBSERVATIONS', a:'3 → procedural', b:'COMPLETE', pct:100},
+  {title:'DEEPEN · DELTANET ATTENTION', tag:'BUILD CYCLE · WIKI KNOWLEDGE GRAPH', a:'deltanet.md', b:'STABLE', pct:100},
+];
+function selOp(i){
+  const o=OPS[i];
+  document.getElementById('d-title').textContent=o.title;
+  document.getElementById('d-tag').textContent=o.tag;
+  document.getElementById('d-a').textContent=o.a;
+  document.getElementById('d-b').textContent=o.b;
+  setProg(o.pct);
+}
+document.querySelectorAll('.oprow').forEach(r=>{
+  r.addEventListener('click',()=>{
+    document.querySelectorAll('.oprow').forEach(x=>x.classList.remove('sel'));
+    r.classList.add('sel'); selOp(+r.dataset.op);
+  });
+});
+setProg(68);
+
+// theme switch — same skeleton, swap the material
+document.querySelectorAll('.switch button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.documentElement.dataset.theme=b.dataset.set;
+    document.querySelectorAll('.switch button').forEach(x=>x.setAttribute('aria-selected', x===b));
+  });
+});
+</script>
+</body>
+</html>

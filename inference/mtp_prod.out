@@ -1,0 +1,1 @@
+Starting MTP prod: model=Qwen3.6-27B-MTP-UD-Q4_K_XL  ctx=80000  kv=q8_0  port=1235

@@ -1,0 +1,34 @@
+{
+  "name": "Cyberpunk",
+  "author": "Agent Zero",
+  "description": "Neon-soaked futuristic interface with hot pink and cyan accents",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#0d0221",
+    "text": "#fcee0a",
+    "text-muted": "#fcee0ae4",
+    "primary": "#ff003c",
+    "secondary": "#1a0534",
+    "accent": "#00f0ff",
+    "message-bg": "#12012d",
+    "highlight": "#ff003c",
+    "message-text": "#fffbeb",
+    "panel": "#0a0118",
+    "border": "#ff003c80",
+    "input": "#0f0226",
+    "input-focus": "#14032e",
+    "chat-background": "#0d0221",
+    "error-text": "#ff2a2a",
+    "warning-text": "#ffb800",
+    "table-row": "#150430"
+  },
+  "fonts": {
+    "main": "'Orbitron', 'Rubik', Arial, sans-serif",
+    "code": "'Fira Code', 'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#0d0221",
+    "text": "#fcee0a",
+    "accent": "#ff003c"
+  }
+}

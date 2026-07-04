@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="yorha">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // INTEL</title>
+<style>
+/* ============================================================================
+   EXOCORTEX INTEL PANEL v3 — diegetic intelligence codex (NieR/YoRHa material)
+   v3 adds: EVIDENCE-TRAIL DRILL-DOWN. Every codex entry expands (accordion,
+   spring, staggered) into its case file — the source list, dedup history, a
+   corroboration timeline, and related claims. Investigating a claim feels like
+   pulling a dossier. v2 kept: tree-section tabs, live ingest, theme toggle.
+   ========================================================================= */
+
+[data-theme="yorha"] {
+  --bg-0:#c7c1a6; --bg-1:#cdc8af; --bg-2:#d4cfb8;
+  --ink:#454033; --ink-dim:#6c6450; --ink-faint:#938b70;
+  --accent:#454033; --alert:#8a3b2f; --good:#5d6b3a; --warn:#9a7430;
+  --line:#8e876b; --line-bright:#615a44;
+  --surface:rgba(243,239,224,.50); --surface-2:rgba(232,227,206,.66);
+  --edge-hi:rgba(255,253,244,.6);
+  --invert-bg:#454033; --invert-ink:#d4cfb8;
+  --vignette:rgba(120,110,80,.20);
+  --font-read:Georgia,'Times New Roman',serif; --font-body:Georgia,'Times New Roman',serif;
+  --font-mono:'Courier New',ui-monospace,monospace;
+  --scan-op:.012; --grain-op:.06; --paper:multiply;
+}
+[data-theme="archive"] {
+  --bg-0:#b9bdb6; --bg-1:#c1c5be; --bg-2:#c9cdc6;
+  --ink:#333a36; --ink-dim:#586059; --ink-faint:#7d857d;
+  --accent:#333a36; --alert:#7a4030; --good:#46613f; --warn:#8a6a30;
+  --line:#7f867f; --line-bright:#4c534c;
+  --surface:rgba(236,239,235,.52); --surface-2:rgba(222,226,221,.66);
+  --edge-hi:rgba(252,254,251,.6);
+  --invert-bg:#333a36; --invert-ink:#c9cdc6;
+  --vignette:rgba(90,100,90,.20);
+  --font-read:Georgia,'Times New Roman',serif; --font-body:Georgia,'Times New Roman',serif;
+  --font-mono:'Courier New',ui-monospace,monospace;
+  --scan-op:.01; --grain-op:.05; --paper:multiply;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  background: radial-gradient(130% 110% at 50% -10%, var(--bg-2), var(--bg-0) 75%), var(--bg-1);
+  color:var(--ink); font-family:var(--font-body);
+  min-height:100vh; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+}
+
+.fx { position:fixed; inset:0; pointer-events:none; }
+.fx-scan { z-index:60; background:repeating-linear-gradient(0deg, rgba(0,0,0,.5) 0 1px, transparent 1px 3px); opacity:var(--scan-op); mix-blend-mode:multiply; }
+.fx-grain { z-index:1; opacity:var(--grain-op); mix-blend-mode:var(--paper);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/></svg>"); }
+.fx-vignette { z-index:55; background:radial-gradient(135% 110% at 50% 45%, transparent 60%, var(--vignette)); }
+
+.shell { position:relative; z-index:2; max-width:1180px; margin:0 auto; padding:22px 28px 18px; }
+
+header { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1.5px solid var(--line-bright); padding-bottom:12px; }
+.brand { display:flex; align-items:baseline; gap:14px; }
+.brand .mark { font-family:var(--font-read); font-weight:700; font-size:1.5rem; letter-spacing:.16em; color:var(--ink); }
+.brand .sub { font-size:.64rem; letter-spacing:.34em; color:var(--ink-dim); text-transform:uppercase; }
+.brand .jp { font-size:.6rem; letter-spacing:.16em; color:var(--ink-faint); }
+.hgroup-r { text-align:right; display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+.clock { font-family:var(--font-mono); font-size:1.2rem; color:var(--ink); letter-spacing:.1em; }
+.live { display:inline-flex; align-items:center; gap:6px; font-size:.58rem; letter-spacing:.28em; color:var(--ink-dim); text-transform:uppercase; }
+.live .dot { width:7px; height:7px; background:var(--alert); animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.switch { display:flex; border:1.5px solid var(--line-bright); }
+.switch button { background:transparent; color:var(--ink-dim); border:none; font-family:var(--font-mono); font-size:.58rem; letter-spacing:.18em; padding:6px 11px; cursor:pointer; transition:.15s; }
+.switch button[aria-selected="true"] { background:var(--invert-bg); color:var(--invert-ink); }
+.switch button:hover:not([aria-selected="true"]) { color:var(--ink); }
+
+.sec { margin:18px 0 12px; display:flex; align-items:center; gap:14px; }
+.sec h2 { font-family:var(--font-read); font-weight:700; font-style:italic; font-size:.92rem; letter-spacing:.1em; color:var(--ink); }
+.sec .rule { flex:1; height:1.5px; background:var(--line-bright); }
+.sec .tag { font-family:var(--font-mono); font-size:.56rem; letter-spacing:.16em; color:var(--ink-faint); }
+
+.split { display:grid; grid-template-columns:236px 1fr; gap:22px; }
+.tree { border:1.5px solid var(--line); background:var(--surface); padding:6px; align-self:start; }
+.tree .grp { font-family:var(--font-mono); font-size:.56rem; letter-spacing:.2em; color:var(--ink-faint); padding:10px 10px 5px; text-transform:uppercase; }
+.tnode { display:flex; align-items:center; gap:9px; padding:8px 11px; cursor:pointer; font-size:.82rem; color:var(--ink-dim); transition:.13s; }
+.tnode .b { font-family:var(--font-mono); font-size:.7rem; color:var(--ink-faint); }
+.tnode.sub { padding-left:26px; font-size:.78rem; }
+.tnode:hover { color:var(--ink); background:var(--surface-2); }
+.tnode.sel { background:var(--invert-bg); color:var(--invert-ink); }
+.tnode.sel .b { color:var(--invert-ink); }
+.tnode .ct { margin-left:auto; font-family:var(--font-mono); font-size:.62rem; color:var(--ink-faint); }
+.tnode.sel .ct { color:var(--invert-ink); opacity:.85; }
+.tnode .ct.flash { animation:ctflash .6s ease; }
+@keyframes ctflash { 0%{ color:var(--alert); font-weight:700 } 100%{} }
+
+.codex { display:flex; flex-direction:column; gap:11px; min-height:300px; }
+.codex.swap { animation:codexIn .32s ease both; }
+@keyframes codexIn { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+
+.entry { border:1.5px solid var(--line); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); position:relative; transition:border-color .16s, box-shadow .16s; }
+.entry.fresh { animation:entryIn .55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes entryIn { from{opacity:0; transform:translateY(-14px); box-shadow:inset 0 0 0 2px var(--alert)} to{opacity:1; transform:translateY(0)} }
+.entry::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); opacity:.32; }
+.entry.open { border-color:var(--line-bright); box-shadow:inset 0 1px 0 var(--edge-hi), 0 3px 12px rgba(60,50,30,.18); }
+.entry .ehead { padding:14px 16px; cursor:pointer; }
+.entry .top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:6px; }
+.entry .ttl { font-family:var(--font-read); font-weight:700; font-size:.96rem; letter-spacing:.01em; color:var(--ink); display:flex; align-items:baseline; gap:9px; }
+.entry .ttl .chev { font-family:var(--font-mono); font-size:.66rem; color:var(--ink-faint); transition:transform .3s cubic-bezier(.2,.8,.2,1), color .2s; }
+.entry.open .ttl .chev { transform:rotate(90deg); color:var(--alert); }
+.entry .badge { font-family:var(--font-mono); font-size:.54rem; letter-spacing:.14em; padding:3px 8px; border:1px solid var(--line); color:var(--ink-dim); white-space:nowrap; text-transform:uppercase; }
+.entry .badge.alert { color:var(--alert); border-color:var(--alert); }
+.entry .badge.ok { color:var(--good); border-color:var(--good); }
+.entry .badge.warn { color:var(--warn); border-color:var(--warn); }
+.entry .body { font-size:.84rem; line-height:1.5; color:var(--ink-dim); }
+.entry .body i { color:var(--ink); }
+.entry .meta { display:flex; gap:18px; flex-wrap:wrap; margin-top:9px; padding-top:9px; border-top:1px solid var(--line); }
+.entry .meta .m { font-family:var(--font-mono); font-size:.56rem; letter-spacing:.1em; color:var(--ink-faint); }
+.entry .meta .m b { color:var(--ink-dim); font-weight:400; }
+.conf { display:inline-flex; gap:3px; margin-left:6px; vertical-align:middle; }
+.conf i { width:9px; height:9px; border:1px solid var(--line-bright); }
+.conf i.on { background:var(--accent); }
+
+/* ---- evidence-trail drill-down (v3) ---- */
+.edetail { max-height:0; overflow:hidden; opacity:0; transition:max-height .44s cubic-bezier(.2,.85,.25,1), opacity .3s ease; }
+.entry.open .edetail { max-height:640px; opacity:1; }
+.ed { padding:2px 18px 18px; }
+.ed .rh { font-family:var(--font-mono); font-size:.54rem; letter-spacing:.22em; color:var(--ink-faint); margin:14px 0 8px; text-transform:uppercase; display:flex; align-items:center; gap:10px; }
+.ed .rh::after { content:''; flex:1; height:1px; background:var(--line); }
+/* sources — bibliography style */
+.srclist { display:flex; flex-direction:column; gap:7px; }
+.src { display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:baseline; padding:7px 11px; border:1px solid var(--line); background:var(--surface-2); }
+.src .sn { font-family:var(--font-mono); font-size:.6rem; color:var(--ink); letter-spacing:.08em; }
+.src .sx { font-size:.78rem; color:var(--ink-dim); font-style:italic; }
+.src .stime { font-family:var(--font-mono); font-size:.56rem; color:var(--ink-faint); white-space:nowrap; }
+/* corroboration timeline (vertical) */
+.timeline { border-left:1.5px solid var(--line); margin-left:5px; }
+.tl { position:relative; padding:5px 0 10px 16px; }
+.tl::before { content:''; position:absolute; left:-5px; top:9px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+.tl.alert::before { background:var(--alert); }
+.tl .tt { font-family:var(--font-mono); font-size:.56rem; color:var(--ink-faint); letter-spacing:.06em; }
+.tl .tx { font-size:.78rem; color:var(--ink-dim); margin-top:1px; }
+.tl .tx b { color:var(--ink); font-weight:700; }
+/* related claims */
+.related { display:flex; flex-wrap:wrap; gap:7px; }
+.rel { font-size:.74rem; color:var(--ink); border:1px solid var(--line); border-bottom:2px solid var(--accent); padding:5px 10px; background:var(--surface-2); cursor:pointer; transition:.13s; }
+.rel:hover { background:var(--invert-bg); color:var(--invert-ink); }
+.rel::before { content:'§ '; color:var(--ink-faint); }
+.rel:hover::before { color:var(--invert-ink); }
+/* staggered reveal */
+.entry.open .ed > * { animation:repIn .4s ease both; }
+.entry.open .ed > *:nth-child(2){animation-delay:.05s}
+.entry.open .ed > *:nth-child(3){animation-delay:.10s}
+.entry.open .ed > *:nth-child(4){animation-delay:.15s}
+.entry.open .ed > *:nth-child(5){animation-delay:.20s}
+.entry.open .ed > *:nth-child(6){animation-delay:.25s}
+@keyframes repIn { from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:translateY(0)} }
+
+.statusbar { margin-top:18px; border:1.5px solid var(--line-bright); background:var(--surface); display:flex; flex-wrap:wrap; }
+.statusbar .seg { padding:9px 16px; border-right:1px solid var(--line); display:flex; gap:9px; align-items:baseline; }
+.statusbar .seg:last-child { border-right:none; margin-left:auto; }
+.statusbar .k { font-family:var(--font-mono); font-size:.55rem; letter-spacing:.2em; color:var(--ink-dim); text-transform:uppercase; }
+.statusbar .v { font-size:.8rem; color:var(--ink); }
+.statusbar .v.flash { animation:vflash .6s ease; }
+@keyframes vflash { 0%{ color:var(--alert); font-weight:700 } 100%{} }
+.note { margin-top:12px; text-align:center; font-family:var(--font-mono); font-size:.55rem; letter-spacing:.14em; color:var(--ink-faint); }
+
+@media (max-width:820px){ .split{grid-template-columns:1fr} }
+</style>
+<script>
+/* inherit console customization (global theme + background) */
+(function(){ try{
+  var MAP={amber:'yorha',holo:'archive',parchment:'yorha',tactical:'archive'};
+  var th=localStorage.getItem('exo-theme'); if(th&&MAP[th]) document.documentElement.dataset.theme=MAP[th];
+  function bg(){ var d=document.getElementById('bg-custom'); if(!d){ d=document.createElement('div'); d.id='bg-custom';
+      d.style.cssText='position:fixed;inset:0;z-index:-1;background:center/cover no-repeat;opacity:0;pointer-events:none'; document.body.appendChild(d); }
+    var url=localStorage.getItem('exo-bg'), op=localStorage.getItem('exo-bg-op');
+    if(url){ d.style.backgroundImage='url('+url+')'; d.style.opacity=(op==null?50:op)/100; }
+    var t=document.documentElement.dataset.theme;
+    document.querySelectorAll('.switch button[data-set]').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.set===t); });
+  }
+  if(document.readyState!=='loading') bg(); else document.addEventListener('DOMContentLoaded',bg);
+}catch(e){} })();
+</script>
+</head>
+<body>
+<div class="fx fx-grain"></div>
+<div class="fx fx-scan"></div>
+<div class="fx fx-vignette"></div>
+
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="mark">EXOCORTEX</span>
+      <div>
+        <div class="sub">Intelligence&nbsp;Codex</div>
+        <div class="jp">諜報記録 — OSINT LEDGER</div>
+      </div>
+    </div>
+    <div class="hgroup-r">
+      <div class="clock" id="clock">--:--:--</div>
+      <div><span class="live"><span class="dot"></span>Ingest Live</span></div>
+      <div class="switch" role="tablist">
+        <button role="tab" data-set="yorha" aria-selected="true">YoRHa</button>
+        <button role="tab" data-set="archive" aria-selected="false">ARCHIVE</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="sec"><h2 id="sec-title">Theatre — Iran / Hormuz</h2><span class="rule"></span><span class="tag" id="sec-tag">OSS · 1129 CLAIMS · CLICK TO OPEN CASE FILE</span></div>
+
+  <div class="split">
+    <nav class="tree">
+      <div class="grp">Topics</div>
+      <div class="tnode topic sel"><span class="b">▸</span> Iran · Hormuz <span class="ct" id="t-claims-top">1129</span></div>
+      <div class="tnode topic"><span class="b">▹</span> Iran (broad) <span class="ct">402</span></div>
+      <div class="grp">Iran / Hormuz</div>
+      <div class="tnode sub sec-tab sel" data-section="claims"><span class="b">§</span> Claims <span class="ct" id="t-claims">1129</span></div>
+      <div class="tnode sub sec-tab" data-section="hypotheses"><span class="b">§</span> Hypotheses <span class="ct">14</span></div>
+      <div class="tnode sub sec-tab" data-section="forecasts"><span class="b">§</span> Forecasts <span class="ct">8</span></div>
+      <div class="tnode sub sec-tab" data-section="contradictions"><span class="b">§</span> Contradictions <span class="ct">3</span></div>
+      <div class="grp">Instruments</div>
+      <div class="tnode sub sec-tab" data-section="swarmfish"><span class="b">◇</span> SWARMFISH <span class="ct">8</span></div>
+      <div class="tnode"><span class="b">◇</span> Calibration</div>
+    </nav>
+
+    <section class="codex" id="codex"></section>
+  </div>
+
+  <div class="statusbar">
+    <div class="seg"><span class="k">Topic</span><span class="v">iran-hormuz</span></div>
+    <div class="seg"><span class="k">Claims</span><span class="v" id="sb-claims">1129</span></div>
+    <div class="seg"><span class="k">Hypotheses</span><span class="v">14 · 3 falsifiable</span></div>
+    <div class="seg"><span class="k">Ingest</span><span class="v" id="sb-ingest">live</span></div>
+    <div class="seg"><span class="k">Time</span><span class="v" id="sbtime">--:--</span></div>
+  </div>
+
+  <div class="note">LIVE — ingest streams new claims; click any entry to open its evidence case file. On port, EXO → OSS API (/topic, /hypotheses, /claim/{id}).</div>
+</div>
+
+<script>
+const EXO = {
+  base:{ claims:1129, hyp:14, forecasts:8, contra:3 },
+  section:'claims', openId:null, _id:0,
+  wire:[
+    {t:'Tanker AIS gap reported near strait', src:'Reuters', area:'shipping'},
+    {t:'Increased patrol-boat sightings logged', src:'BBC', area:'naval'},
+    {t:'Insurance war-risk premium uptick', src:'Lloyd\'s List', area:'economic'},
+    {t:'Statement from naval command — routine drill', src:'IRNA', area:'official'},
+    {t:'Satellite imagery: vessels massing at port', src:'Planet', area:'imagery'},
+    {t:'Bunker fuel rerouting via longer track', src:'TradeWinds', area:'shipping'},
+    {t:'Diplomatic cable references de-escalation', src:'AP', area:'diplomatic'}
+  ],
+  rnd(a,b){ return a+Math.random()*(b-a); },
+  sections:{}, // built in init (entries get ids + evidence)
+  init(){
+    const ev=(sources,timeline,related)=>({sources,timeline,related});
+    this.sections={
+      claims:{ title:'Claims — Iran / Hormuz', entries:[
+        this._e({ttl:'Sustained naval pressure at the strait', badge:'alert', badgeTxt:'Falsifiable',
+          body:'Multiple corroborated reports of escalated patrol tempo. Resolution question: <i>does measurable closure or interdiction occur before 2026-07-15?</i> — now carries a dated, web-verified resolution gate. The April variant rode at 80–0 without ever checking the deadline; the reality-feedback loop caught it.',
+          meta:[['SOURCES','7'],['FIRST SEEN','2026-06-09'],['CONF',3]],
+          evidence:ev(
+            [['Reuters','Patrol tempo elevated vs 30-day baseline','06-09 14:22'],
+             ['BBC','Multiple fast-boat sightings confirmed','06-10 08:05'],
+             ['Planet','Satellite: vessels massing at port','06-11 02:40'],
+             ['Lloyd\'s List','War-risk premiums rising on transit','06-12 11:18']],
+            [['06-09','First claim ingested from <b>Reuters</b>, staged'],
+             ['06-10','Corroborated by <b>BBC</b> — promoted to active'],
+             ['06-13','Reframed with dated resolution gate (2026-07-15)'],
+             ['06-14','SWARMFISH committee assigned · P=0.34', 'alert']],
+            ['Closure/interdiction before 2026-07-15','War-risk insurance climbing','Patrol tempo — source disagreement'])
+        }),
+        this._e({ttl:'Analyst manual entry — tanker rerouting', badge:'', badgeTxt:'Staged',
+          body:'Dictated into the ledger via <span style="font-family:var(--font-mono);font-size:.78rem">oss_submit</span>. Embedded and de-duplicated against the FAISS index — no duplicate of the existing feed-sourced claim was created. The analyst stands as a source alongside Reuters and BBC.',
+          meta:[['PROVENANCE','Analyst'],['DEDUP','matched · merged'],['AREA','shipping']],
+          evidence:ev(
+            [['Analyst','Manual observation via oss_submit','06-13 22:10'],
+             ['TradeWinds','Bunker fuel rerouting via longer track','06-13 19:55']],
+            [['06-13','Analyst dictation embedded into FAISS'],
+             ['06-13','Dedup check — matched existing TradeWinds claim'],
+             ['06-13','Merged · single claim, dual provenance']],
+            ['Sustained naval pressure at the strait','War-risk insurance climbing'])
+        }),
+        this._e({ttl:'War-risk insurance premiums climbing', badge:'ok', badgeTxt:'Corroborated',
+          body:'Three independent market sources report rising war-risk premiums on Hormuz transits. Volatility: economic indicators lag events but corroborate the pressure narrative.',
+          meta:[['SOURCES','3'],['AREA','economic'],['CONF',4]],
+          evidence:ev(
+            [['Lloyd\'s List','War-risk premiums +18% on transit','06-12 11:18'],
+             ['TradeWinds','Underwriters repricing Hormuz risk','06-12 16:40'],
+             ['Reuters','Shipping costs rising on rerouting','06-13 09:02']],
+            [['06-12','First economic indicator ingested'],
+             ['06-12','Two-source corroboration → confidence 4/5'],
+             ['06-13','Cross-linked to pressure narrative']],
+            ['Sustained naval pressure at the strait'])
+        })
+      ]},
+      hypotheses:{ title:'Hypotheses — Iran / Hormuz', entries:[
+        this._e({ttl:'Closure/interdiction before 2026-07-15', badge:'alert', badgeTxt:'Open · Falsifiable',
+          body:'Dated, web-verifiable resolution gate. Prior P=0.34. SWARMFISH committee assigned. This is the corrected form of the April hypothesis — falsifiable, not vibes.',
+          meta:[['RESOLVES','2026-07-15'],['PRIOR','0.34'],['CONF',2]],
+          evidence:ev(
+            [['SWARMFISH','8-agent committee consensus P=0.34','06-14 03:11'],
+             ['OSS','Backing claims: 4 corroborated','06-14 03:11']],
+            [['04-xx','April variant rode at 80–0, no deadline check', 'alert'],
+             ['06-13','Reality-feedback loop flagged the failure'],
+             ['06-13','Reframed with dated resolution gate'],
+             ['07-15','Resolution gate — web-verify scheduled']],
+            ['Sustained naval pressure at the strait','De-escalation via diplomatic channel'])
+        }),
+        this._e({ttl:'De-escalation via diplomatic channel', badge:'', badgeTxt:'Open',
+          body:'Competing hypothesis. Diplomatic cables reference back-channel talks. Held as the null against the pressure narrative.',
+          meta:[['RESOLVES','2026-07-15'],['PRIOR','0.41'],['CONF',2]],
+          evidence:ev(
+            [['AP','Diplomatic cable references de-escalation','06-13 15:30'],
+             ['IRNA','Naval command statement — routine drill','06-11 07:44']],
+            [['06-11','Official "routine drill" framing ingested'],
+             ['06-13','Diplomatic back-channel reference added'],
+             ['07-15','Resolution gate — same deadline as competing H']],
+            ['Closure/interdiction before 2026-07-15','Localized incident, no strategic shift'])
+        })
+      ]},
+      forecasts:{ title:'Forecasts — SWARMFISH Committee', entries:[
+        this._e({ttl:'Prior interdiction question — RESOLVED', badge:'ok', badgeTxt:'Resolved · Hit',
+          body:'8-agent committee returned consensus; resolved against web-verified ground truth at the deadline. Outcome fed back to calibration. Brier contribution logged.',
+          meta:[['COMMITTEE','8 agents'],['BRIER','0.14'],['CONF',4]],
+          evidence:ev(
+            [['SWARMFISH','Committee consensus P=0.22','prior'],
+             ['Web-verify','Ground truth confirmed at deadline','resolved'],
+             ['Calibration','Brier 0.14 logged','resolved']],
+            [['prior','8 agents scored, dispersion low'],
+             ['deadline','Web-verified resolution — outcome=hit'],
+             ['post','Outcome → /acp/outcome → calibration']],
+            ['Active — closure before 2026-07-15'])
+        }),
+        this._e({ttl:'Active — closure before 2026-07-15', badge:'warn', badgeTxt:'Open · P=0.34',
+          body:'Committee consensus P=0.34, dispersion moderate. Two agents dissent high, six cluster low. Resolution gate dated and armed.',
+          meta:[['COMMITTEE','8 agents'],['DISPERSION','mod'],['CONF',2]],
+          evidence:ev(
+            [['SWARMFISH','6 agents low, 2 agents high','06-14 03:11'],
+             ['OSS','Hypothesis backing: 4 claims','06-14 03:11']],
+            [['06-14','Committee scored open hypothesis'],
+             ['06-14','Consensus P=0.34, dispersion moderate'],
+             ['07-15','Resolution gate armed', 'alert']],
+            ['Closure/interdiction before 2026-07-15'])
+        })
+      ]},
+      contradictions:{ title:'Contradictions — held for review', entries:[
+        this._e({ttl:'Casualty figures — incompatible', badge:'warn', badgeTxt:'Review',
+          body:'Two sources report incompatible figures for the same incident. Volatility: high. Held for analyst adjudication rather than auto-promoted — the epistemic-integrity gate declines to synthesize across an open contradiction.',
+          meta:[['SOURCES','2 · conflict'],['VOLATILITY','high'],['STATUS','held']],
+          evidence:ev(
+            [['Source A','Figure X reported','06-12 10:00'],
+             ['Source B','Figure Y reported — incompatible','06-12 13:20']],
+            [['06-12','Both figures ingested for same incident'],
+             ['06-12','EI gate detected incompatibility', 'alert'],
+             ['06-12','Held — declined auto-synthesis']],
+            ['Patrol tempo — source disagreement'])
+        }),
+        this._e({ttl:'Patrol tempo — source disagreement', badge:'warn', badgeTxt:'Review',
+          body:'Official source claims routine drill; three OSINT sources report elevated tempo. The gate flags the provenance asymmetry rather than averaging it away.',
+          meta:[['SOURCES','4 · split'],['VOLATILITY','med'],['STATUS','held']],
+          evidence:ev(
+            [['IRNA','Routine drill (official)','06-11 07:44'],
+             ['Reuters','Elevated tempo','06-09 14:22'],
+             ['BBC','Multiple sightings','06-10 08:05'],
+             ['Planet','Vessels massing','06-11 02:40']],
+            [['06-11','Official framing conflicts with 3 OSINT sources'],
+             ['06-11','Gate flags provenance asymmetry, no averaging', 'alert']],
+            ['Casualty figures — incompatible','Sustained naval pressure at the strait'])
+        })
+      ]},
+      swarmfish:{ title:'SWARMFISH — committee instrument', entries:[
+        this._e({ttl:'8-agent forecasting committee', badge:'ok', badgeTxt:'Online',
+          body:'Direct src/ import (V2, no HTTP). 8 profiles, SQLite-backed. Each open hypothesis is scored by the committee; consensus + dispersion feed the calibration loop. Brier tracked per resolved question.',
+          meta:[['PROFILES','8'],['DB','swarmfish.db'],['MODE','V2 direct']],
+          evidence:ev(
+            [['swarmfish.db','8 agent profiles loaded','boot'],
+             ['src/ import','V2 direct, no HTTP container','boot']],
+            [['V1','HTTP containers (stopped)'],
+             ['V2','Direct src/ import — current'],
+             ['live','Scores every open hypothesis']],
+            ['Calibration loop — OSS ↔ SWARMFISH'])
+        }),
+        this._e({ttl:'Calibration loop — OSS ↔ SWARMFISH', badge:'ok', badgeTxt:'Wired',
+          body:'promote/falsify on the OSS side fire <span style="font-family:var(--font-mono);font-size:.78rem">/acp/outcome</span> to SWARMFISH after DB update (best-effort, non-blocking). The forecast record and the claim ledger stay in lockstep.',
+          meta:[['HOOK','/acp/outcome'],['COUPLING','non-blocking'],['STATUS','live']],
+          evidence:ev(
+            [['OSS','promote_hypothesis() → session_id','live'],
+             ['SWARMFISH','/acp/outcome receives outcome','live']],
+            [['promote','OSS updates DB, returns session_id'],
+             ['fire','POST /acp/outcome (best-effort)'],
+             ['lockstep','Forecast + ledger stay consistent']],
+            ['8-agent forecasting committee'])
+        })
+      ]}
+    };
+  },
+  _e(o){ o.id=++this._id; return o; }
+};
+EXO.init();
+
+const $=id=>document.getElementById(id);
+function confBar(n){ let s='<span class="conf">'; for(let i=0;i<5;i++) s+=`<i class="${i<n?'on':''}"></i>`; return s+'</span>'; }
+
+function evidenceHTML(e){
+  if(!e.evidence) return '';
+  const ev=e.evidence;
+  const src=ev.sources.map(s=>`<div class="src"><span class="sn">${s[0]}</span><span class="sx">${s[1]}</span><span class="stime">${s[2]}</span></div>`).join('');
+  const tl=ev.timeline.map(t=>`<div class="tl ${t[2]||''}"><div class="tt">${t[0]}</div><div class="tx">${t[1]}</div></div>`).join('');
+  const rel=ev.related.map(r=>`<span class="rel" data-rel="${r.replace(/"/g,'&quot;')}">${r}</span>`).join('');
+  return `<div class="edetail"><div class="ed">
+    <div class="rh">Sources · ${ev.sources.length}</div>
+    <div class="srclist">${src}</div>
+    <div class="rh">Corroboration Timeline</div>
+    <div class="timeline">${tl}</div>
+    <div class="rh">Related</div>
+    <div class="related">${rel}</div>
+  </div></div>`;
+}
+function entryHTML(e,fresh){
+  const badge=e.badge?`badge ${e.badge}`:'badge';
+  const meta=e.meta.map(m=>{ const val=(m[0]==='CONF'||m[0]==='CONFIDENCE')?confBar(m[1]):`<b>${m[1]}</b>`; return `<span class="m">${m[0]} ${val}</span>`; }).join('');
+  return `<article class="entry${fresh?' fresh':''}${e.id===EXO.openId?' open':''}" data-id="${e.id}">
+    <div class="ehead">
+      <div class="top"><div class="ttl"><span class="chev">▶</span>${e.ttl}</div><span class="${badge}">${e.badgeTxt}</span></div>
+      <div class="body">${e.body}</div>
+      <div class="meta">${meta}</div>
+    </div>${evidenceHTML(e)}</article>`;
+}
+function bindEntries(){
+  document.querySelectorAll('#codex .entry').forEach(el=>{
+    const id=+el.dataset.id;
+    el.querySelector('.ehead').addEventListener('click',()=>{
+      EXO.openId = (EXO.openId===id) ? null : id;
+      renderSection(false);
+    });
+    el.querySelectorAll('.rel').forEach(r=> r.addEventListener('click',ev=>{ ev.stopPropagation();
+      // jump to a related entry by title within the current section, open it
+      const title=r.dataset.rel; const found=EXO.sections[EXO.section].entries.find(x=>x.ttl===title);
+      if(found){ EXO.openId=found.id; renderSection(true); const node=document.querySelector(`.entry[data-id="${found.id}"]`); if(node) node.scrollIntoView({behavior:'smooth',block:'center'}); }
+    }));
+  });
+}
+function renderSection(animate){
+  const sec=EXO.sections[EXO.section]; const codex=$('codex');
+  codex.innerHTML=sec.entries.map(e=>entryHTML(e,false)).join('');
+  if(animate){ codex.classList.remove('swap'); void codex.offsetWidth; codex.classList.add('swap'); }
+  $('sec-title').textContent=sec.title;
+  $('sec-tag').textContent = EXO.section==='claims'
+    ? `OSS · ${EXO.base.claims} CLAIMS · CLICK TO OPEN CASE FILE`
+    : `OSS · ${sec.entries.length} ENTRIES · CLICK TO OPEN CASE FILE`;
+  bindEntries();
+}
+
+/* ingest sim */
+let ingestAcc=0;
+function ingestTick(dt){
+  ingestAcc += dt; if(ingestAcc < EXO.rnd(4200,7000)) return; ingestAcc=0;
+  EXO.base.claims++;
+  const w=EXO.wire[Math.floor(Math.random()*EXO.wire.length)];
+  const conf=Math.round(EXO.rnd(2,4));
+  const newEntry=EXO._e({ ttl:w.t, badge:'', badgeTxt:'New · Staged',
+    body:`Ingested from <i>${w.src}</i>. Embedded and checked against the FAISS index for duplicates before staging. Awaiting corroboration and volatility assessment.`,
+    meta:[['SOURCE',w.src],['AREA',w.area],['CONF',conf]],
+    evidence:{ sources:[[w.src,w.t,'just now']],
+      timeline:[['now',`Ingested from <b>${w.src}</b>, embedded`],['now','Dedup check vs FAISS — no match'],['now','Staged · awaiting corroboration']],
+      related:['Sustained naval pressure at the strait'] } });
+  EXO.sections.claims.entries.unshift(newEntry);
+  if(EXO.sections.claims.entries.length>6) EXO.sections.claims.entries.pop();
+  flashSet('t-claims', EXO.base.claims); flashSet('t-claims-top', EXO.base.claims); flashSet('sb-claims', EXO.base.claims);
+  if(EXO.section==='claims'){
+    const codex=$('codex');
+    codex.insertAdjacentHTML('afterbegin', entryHTML(newEntry,true));
+    while(codex.children.length>6) codex.lastElementChild.remove();
+    $('sec-tag').textContent=`OSS · ${EXO.base.claims} CLAIMS · CLICK TO OPEN CASE FILE`;
+    bindEntries();
+  }
+}
+function flashSet(id,val){ const el=$(id); if(!el) return; el.textContent=String(val); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+
+function tick(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  $('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  $('sbtime').textContent=`${p(d.getHours())}:${p(d.getMinutes())}`; }
+setInterval(tick,1000); tick();
+
+renderSection(false);
+let last=performance.now();
+function loop(now){ const dt=now-last; last=now; ingestTick(dt); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+document.querySelectorAll('.sec-tab').forEach(n=>{
+  n.addEventListener('click',()=>{
+    document.querySelectorAll('.tnode.sub').forEach(x=>x.classList.remove('sel'));
+    n.classList.add('sel'); EXO.section=n.dataset.section; EXO.openId=null; renderSection(true);
+  });
+});
+document.querySelectorAll('.tnode.topic').forEach(n=>{
+  n.addEventListener('click',()=>{ document.querySelectorAll('.tnode.topic').forEach(x=>x.classList.remove('sel')); n.classList.add('sel'); });
+});
+document.querySelectorAll('.switch button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.documentElement.dataset.theme=b.dataset.set;
+    document.querySelectorAll('.switch button').forEach(x=>x.setAttribute('aria-selected', x===b));
+  });
+});
+</script>
+</body>
+</html>

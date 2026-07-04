@@ -1,0 +1,464 @@
+<div
+  class="right-canvas-surface-panel wp"
+  data-surface-id="workshop"
+  :class="{
+    'is-active':  $store.rightCanvas?.isSurfaceVisible('workshop'),
+    'is-mounted': $store.rightCanvas?.isSurfaceRendered('workshop')
+  }"
+  :aria-hidden="(!$store.rightCanvas?.isSurfaceVisible('workshop')).toString()"
+  x-data
+  @workshop-panel-open.window="$el.dispatchEvent(new CustomEvent('wp-refresh'))"
+>
+
+<style>
+/* ── Design tokens (mirrors Intelligence panel) ────────────────── */
+.wp {
+  --void:    #060810;
+  --base:    #0a0f1a;
+  --raised:  #0f1629;
+  --overlay: #151d35;
+  --border:  rgba(255,255,255,.07);
+
+  --cyan:     #00e5ff;
+  --ok:       #00e676;
+  --ok-dim:   rgba(0,230,118,.10);
+  --warn:     #ffb300;
+  --danger:   #ff1744;
+  --danger-dim: rgba(255,23,68,.10);
+
+  --txt-1:   #f0f2f5;
+  --txt-2:   #b0b8c8;
+  --txt-3:   #6b7a8d;
+  --txt-dim: #3d4a5c;
+
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", "Consolas", monospace;
+  --r-sm: 6px;
+  --r-md: 10px;
+}
+
+.wp {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--base);
+  color: var(--txt-1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.wp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--void);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.wp-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  flex: 1;
+}
+.wp-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--txt-dim);
+  transition: background .3s;
+}
+.wp-status-dot.on  { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.wp-status-dot.off { background: var(--danger); }
+
+/* ── Scroll body ─────────────────────────────────────────────────── */
+.wp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Power card ──────────────────────────────────────────────────── */
+.wp-power-card {
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--border);
+  background: var(--raised);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color .2s, background .2s;
+}
+.wp-power-card.is-on  { border-color: rgba(0,230,118,.35); background: rgba(0,230,118,.04); }
+.wp-power-card.is-off { border-color: rgba(255,23,68,.25);  background: rgba(255,23,68,.04);  }
+
+.wp-power-icon { font-size: 28px; line-height: 1; }
+
+.wp-power-text { flex: 1; min-width: 0; }
+.wp-power-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.wp-power-card.is-on  .wp-power-label { color: var(--ok); }
+.wp-power-card.is-off .wp-power-label { color: var(--danger); }
+.wp-power-desc {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--txt-3);
+  line-height: 1.4;
+}
+
+.wp-power-btn {
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1.5px solid;
+  background: transparent;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.wp-btn-enable  { border-color: rgba(0,230,118,.5); color: var(--ok); }
+.wp-btn-enable:hover  { background: var(--ok-dim); }
+.wp-btn-disable { border-color: rgba(255,23,68,.5);  color: var(--danger); }
+.wp-btn-disable:hover { background: var(--danger-dim); }
+
+/* ── Status row ──────────────────────────────────────────────────── */
+.wp-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--txt-3);
+}
+.wp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  border: 1px solid;
+}
+.wp-badge-idle     { border-color: rgba(0,230,118,.3);  color: var(--ok);   background: rgba(0,230,118,.07); }
+.wp-badge-working  { border-color: rgba(0,229,255,.3);  color: var(--cyan); background: rgba(0,229,255,.07); }
+.wp-badge-paused   { border-color: rgba(255,179,0,.3);  color: var(--warn); background: rgba(255,179,0,.07); }
+.wp-badge-cooldown { border-color: rgba(255,179,0,.3);  color: var(--warn); background: rgba(255,179,0,.07); }
+.wp-badge-disabled { border-color: rgba(255,255,255,.1); color: var(--txt-3); background: transparent; }
+.wp-status-aux { margin-left: auto; font-size: 11px; color: var(--txt-dim); font-family: var(--font-mono); }
+
+/* ── Pause controls ──────────────────────────────────────────────── */
+.wp-pause-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--txt-3);
+}
+.wp-select {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  color: var(--txt-2);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.wp-btn-sm {
+  padding: 4px 12px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--txt-2);
+  transition: border-color .1s, color .1s;
+}
+.wp-btn-sm:hover { border-color: rgba(255,255,255,.2); color: var(--txt-1); }
+.wp-btn-resume   { border-color: rgba(0,230,118,.3); color: var(--ok); }
+.wp-btn-resume:hover { border-color: rgba(0,230,118,.6); }
+.wp-pause-until  { font-family: var(--font-mono); font-size: 11px; color: var(--warn); }
+
+/* ── Stats ───────────────────────────────────────────────────────── */
+.wp-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.wp-stat {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  text-align: center;
+}
+.wp-stat-value { font-family: var(--font-mono); font-size: 18px; color: var(--txt-1); }
+.wp-stat-label { font-size: 10px; color: var(--txt-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── Feed ────────────────────────────────────────────────────────── */
+.wp-feed-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+}
+.wp-feed { display: flex; flex-direction: column; gap: 8px; }
+.wp-entry {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--txt-dim);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+}
+.wp-entry.workshop { border-left-color: rgba(0,229,255,.5); }
+.wp-entry.field    { border-left-color: rgba(0,230,118,.5); }
+.wp-entry.interrupted   { opacity: .65; }
+.wp-entry.circuit_breaker { border-left-color: rgba(255,23,68,.5); opacity: .65; }
+
+.wp-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.wp-entry-type {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.type-workshop { background: rgba(0,229,255,.1);  color: var(--cyan); }
+.type-field    { background: rgba(0,230,118,.1); color: var(--ok); }
+.wp-entry-time { font-size: 11px; color: var(--txt-dim); font-family: var(--font-mono); flex: 1; }
+.wp-entry-result { font-size: 11px; }
+.result-ok  { color: var(--ok); }
+.result-int { color: var(--warn); }
+.result-err { color: var(--danger); }
+
+.wp-entry-activity { font-size: 12px; color: var(--txt-2); margin-bottom: 5px; line-height: 1.4; }
+.wp-entry-meta { display: flex; gap: 12px; font-size: 11px; color: var(--txt-dim); font-family: var(--font-mono); }
+.wp-entry-meta span { color: var(--txt-3); }
+
+.wp-empty { text-align: center; padding: 40px 0; color: var(--txt-dim); font-size: 12px; }
+.wp-error { text-align: center; padding: 20px 0; color: rgba(255,23,68,.6); font-size: 12px; }
+</style>
+
+<div class="wp-header">
+  <span class="wp-title">Workshop</span>
+  <span class="wp-status-dot off" id="wp-dot"></span>
+</div>
+
+<div class="wp-body" id="wp-body">
+  <div class="wp-empty">Loading…</div>
+</div>
+
+<script>
+(function() {
+  const FEED_API    = '/api/plugins/_exocortex/office_feed';
+  const CONTROL_API = '/api/plugins/_exocortex/idle_control';
+  // Defer until the outer panel div is appended to the DOM
+  // (components.js appends script/style before deferred DOM nodes)
+  setTimeout(function init() {
+  const root = document.querySelector('[data-surface-id="workshop"]');
+  if (!root) { setTimeout(init, 50); return; }
+  const body = root.querySelector('#wp-body');
+  const dot  = root.querySelector('#wp-dot');
+  let _enabled = false;
+  let _timer   = null;
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString([], {month:'short',day:'numeric'}) + ' '
+           + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    } catch { return iso; }
+  }
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+    catch { return iso; }
+  }
+
+  async function control(action, extra={}) {
+    try {
+      const resp = await fetch(CONTROL_API, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({action, ...extra}),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      await render();
+    } catch(err) {
+      body.innerHTML += `<div class="wp-error" style="margin-top:8px">Control failed: ${err}</div>`;
+      console.error('[Workshop] control error:', err);
+    }
+  }
+
+  function renderEntry(e) {
+    const ct = (e.cycle_type||'workshop').toLowerCase();
+    const st = (e.status||'completed').toLowerCase();
+    const rc = st==='completed'?'result-ok': st==='interrupted'?'result-int':'result-err';
+    const ri = st==='completed'?'✓': st==='interrupted'?'↩':'⚡';
+    return `<div class="wp-entry ${ct} ${st!=='completed'?st:''}">
+      <div class="wp-entry-head">
+        <span class="wp-entry-type type-${ct}">${ct==='field'?'Field':'Workshop'}</span>
+        <span class="wp-entry-time">${fmt(e.timestamp)}</span>
+        <span class="wp-entry-result ${rc}">${ri} ${st}</span>
+      </div>
+      <div class="wp-entry-activity">${e.activity||'—'}</div>
+      <div class="wp-entry-meta">
+        <div>Steps <span>${e.steps_used||0}/${e.max_steps||20}</span></div>
+        <div>${e.duration_minutes||0} min</div>
+        <div>Mem <span>${e.memories_saved||0}</span></div>
+        ${e.cycle_number!=null?`<div>Cycle <span>#${e.cycle_number}</span></div>`:''}
+      </div>
+    </div>`;
+  }
+
+  async function render() {
+    try {
+      const resp = await fetch(FEED_API);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+
+      _enabled = data.enabled !== undefined ? data.enabled : false;
+      const status  = data.status || {};
+      const entries = data.entries || [];
+      const state   = _enabled ? (status.state||'idle').toLowerCase() : 'disabled';
+
+      // Dot
+      dot.className = 'wp-status-dot ' + (_enabled && state!=='disabled' ? 'on' : 'off');
+
+      // Badge
+      const badgeClass = {
+        idle:'wp-badge-idle', working:'wp-badge-working',
+        paused:'wp-badge-paused', cooldown:'wp-badge-cooldown',
+        disabled:'wp-badge-disabled'
+      }[state] || 'wp-badge-disabled';
+      const badgeLabel = {
+        idle:'Available', working:'Working',
+        paused:'Paused', cooldown:'Cooldown', disabled:'Disabled'
+      }[state] || state;
+
+      // Aux text
+      let aux = '';
+      if (state==='paused' && status.paused_until) aux = 'until '+fmtTime(status.paused_until);
+      if (state==='working' && status.started)     aux = 'since '+fmtTime(status.started);
+
+      // Stats
+      const total = entries.length;
+      const wshop = entries.filter(e=>(e.cycle_type||'').toLowerCase()==='workshop').length;
+      const field = entries.filter(e=>(e.cycle_type||'').toLowerCase()==='field').length;
+      const mems  = entries.reduce((s,e)=>s+(e.memories_saved||0),0);
+
+      // Pause section
+      const isPaused = state==='paused';
+      const pauseSection = _enabled ? `
+        <div class="wp-pause-row">
+          ${isPaused
+            ? `<span class="wp-pause-until">Paused ${aux}</span>
+               <button class="wp-btn-sm wp-btn-resume" onclick="wpControl('resume')">Resume</button>`
+            : `<span style="color:var(--txt-dim)">Pause:</span>
+               <select class="wp-select" id="wp-pause-dur">
+                 <option value="1800">30 min</option>
+                 <option value="3600" selected>1 hr</option>
+                 <option value="7200">2 hr</option>
+                 <option value="14400">4 hr</option>
+                 <option value="28800">8 hr</option>
+               </select>
+               <button class="wp-btn-sm" onclick="wpControl('pause',{duration_seconds:+document.getElementById('wp-pause-dur').value})">Pause</button>`
+          }
+        </div>` : '';
+
+      body.innerHTML = `
+        <div class="wp-power-card ${_enabled?'is-on':'is-off'}">
+          <div class="wp-power-icon">${_enabled?'🟢':'⬛'}</div>
+          <div class="wp-power-text">
+            <div class="wp-power-label">WORKSHOP ${_enabled?'ON':'OFF'}</div>
+            <div class="wp-power-desc">${_enabled
+              ? 'Autonomous cycles active. Agent works when idle.'
+              : 'Disabled. No autonomous LLM calls will be made.'}</div>
+          </div>
+          <button class="wp-power-btn ${_enabled?'wp-btn-disable':'wp-btn-enable'}"
+                  onclick="wpControl('${_enabled?'disable':'enable'}')">
+            ${_enabled?'DISABLE':'ENABLE'}
+          </button>
+        </div>
+
+        <div class="wp-status-row">
+          <span class="wp-status-badge ${badgeClass}">⬤ ${badgeLabel}</span>
+          ${aux&&!isPaused?`<span class="wp-status-aux">${aux}</span>`:''}
+        </div>
+
+        ${pauseSection}
+
+        <div class="wp-stats">
+          <div class="wp-stat"><div class="wp-stat-value">${total}</div><div class="wp-stat-label">Total</div></div>
+          <div class="wp-stat"><div class="wp-stat-value">${wshop}</div><div class="wp-stat-label">Workshop</div></div>
+          <div class="wp-stat"><div class="wp-stat-value">${field}</div><div class="wp-stat-label">Field</div></div>
+          <div class="wp-stat"><div class="wp-stat-value">${mems}</div><div class="wp-stat-label">Memories</div></div>
+        </div>
+
+        <div class="wp-feed-label">Recent Activity</div>
+        <div class="wp-feed">
+          ${entries.length===0
+            ? '<div class="wp-empty">No cycles yet. Enable the workshop and step away.</div>'
+            : entries.map(renderEntry).join('')}
+        </div>`;
+
+      // Expose control fn on window so onclick= works across shadow boundaries
+      window.wpControl = (action, extra={}) => control(action, extra);
+
+    } catch(err) {
+      body.innerHTML = `<div class="wp-error">Could not reach /api/plugins/_exocortex/office_feed<br>${err}</div>`;
+    }
+  }
+
+  // Refresh when panel becomes visible
+  root.addEventListener('wp-refresh', render);
+
+  // Auto-refresh every 60 s only while panel is mounted
+  function startTimer() { _timer = setInterval(render, 60000); }
+  function stopTimer()  { clearInterval(_timer); _timer = null; }
+
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { render(); startTimer(); }
+    else stopTimer();
+  });
+  obs.observe(root);
+
+  // Initial load
+  render();
+  }, 0); // end setTimeout — allows deferred DOM nodes to be appended first
+})();
+</script>
+
+</div>

@@ -231,6 +231,27 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "workshop-panel.html" \
         "${CONTAINER}"
 
+    # ── Right-canvas tab: EXO·OPS diegetic ops console ──
+    # v1.20 canvas contract: thin .right-canvas-surface-panel wrapper (NO x-data)
+    # delegates to a nested <x-component> holding the real UI. The wrapper goes to
+    # right-canvas-panels/; the inner content goes to the PLUGIN webui root (served
+    # at /plugins/exocortex/webui/). Mirrors the working Intelligence panel.
+    install_file \
+        "${REPO_DIR}/patches/webui/right_canvas_register_surfaces/register-exo-ops.js" \
+        "${PLUGIN_WEBUI}/right_canvas_register_surfaces/register-exo-ops.js" \
+        "register-exo-ops.js" \
+        "${CONTAINER}"
+    install_file \
+        "${REPO_DIR}/patches/webui/right-canvas-panels/exo-ops-panel.html" \
+        "${PLUGIN_WEBUI}/right-canvas-panels/exo-ops-panel.html" \
+        "exo-ops-panel.html" \
+        "${CONTAINER}"
+    install_file \
+        "${REPO_DIR}/patches/webui/exo-ops-content.html" \
+        "/a0/usr/plugins/exocortex/webui/exo-ops-content.html" \
+        "exo-ops-content.html" \
+        "${CONTAINER}"
+
     # ── Idle-watch daemon (the supervisord-managed firing engine) ──
     # Repo source of truth: services/idle_watch.py. Deployed to the persistent
     # Exocortex dir. This is the daemon that actually runs the idle cycles.

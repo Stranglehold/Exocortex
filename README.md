@@ -14,6 +14,16 @@ That framing is still accurate for the technical core. But the project has grown
 
 ---
 
+## Now: A Self-Contained Agent Zero v2 Plugin
+
+As of **2026-07-03**, Exocortex ships as a discrete, self-contained **Agent Zero v2 plugin** — [`plugins/_exocortex/`](plugins/_exocortex/). Clone it into an A0 v2 `usr/plugins/` folder and the full stack runs: **65 extensions across all 12 layers**, the sleep-consolidation / procedural-memory / ontology code, the panel APIs, the default configs, and the right-canvas UI (artifact panel + 18 themes + injection layer) — all internalized, with **zero external dependencies** beyond Agent Zero itself and auto-created runtime data.
+
+This was validated by a clone test: the full stack fires — BST classification, PACE planning, reasoning-state tracking, memory enhancement, methodology tracking, sleep, ontology maintenance — with every external config and code file removed. The affect / proactive-supervisor layer is live on v2 too: the model's reasoning stream is read and its cognitive state classified (`affect=FLOW`).
+
+The historical stack ran as loose extensions bound to a specific deployment path. The v2 plugin is the same architecture, packaged as a drop-in product on the latest Agent Zero — same 12 layers, now clone-and-go.
+
+---
+
 ## The Problem It Solves
 
 Stock Agent Zero running a local model fails in predictable ways. These are documented failure modes — observed across dozens of sessions and twelve formal stress tests with full reproducible records.

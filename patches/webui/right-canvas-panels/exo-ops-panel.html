@@ -1,0 +1,18 @@
+<!--
+  EXO·OPS right-canvas surface — THIN WRAPPER (v1.20 canvas contract).
+  The .right-canvas-surface-panel root must NOT carry x-data or inline content:
+  in A0 v1.20 that collapses the panel box to 0x0 and lets content escape, so two
+  custom panels render at once. The real UI lives in a nested <x-component> (this
+  mirrors the working Intelligence panel). x-data belongs inside that component.
+-->
+<div
+  class="right-canvas-surface-panel"
+  data-surface-id="exo-ops"
+  :class="{
+    'is-active': $store.rightCanvas?.isSurfaceVisible('exo-ops'),
+    'is-mounted': $store.rightCanvas?.isSurfaceRendered('exo-ops')
+  }"
+  :aria-hidden="(!$store.rightCanvas?.isSurfaceVisible('exo-ops')).toString()"
+>
+  <x-component path="/plugins/exocortex/webui/exo-ops-content.html"></x-component>
+</div>

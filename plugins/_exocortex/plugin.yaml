@@ -1,0 +1,12 @@
+name: _exocortex
+title: Exocortex Cognitive Scaffolding
+description: >
+  Sovereignty-first deterministic cognitive scaffolding for Agent Zero —
+  belief-state tracking, working memory, supervisor loop, methodology
+  tracking, memory enhancement, ontology, and epistemic integrity.
+  No LLM calls in deterministic layers. Graceful degradation on failure.
+version: 1.0.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false
+always_enabled: true

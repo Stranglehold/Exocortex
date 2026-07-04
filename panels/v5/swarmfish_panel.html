@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="highfleet">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // SWARMFISH</title>
+<style>
+/* ============================================================================
+   EXOCORTEX SWARMFISH PANEL v4 — diegetic tactical forecast console (HighFleet)
+   The 4th material. Same component DNA (shell/header/sec/statusbar/tabs/switch)
+   as system/office/intel — proves structure-is-component across a 4th, very
+   different aesthetic: a military radar/tactical console, phosphor-green CRT,
+   industrial framing, range-ring scope. Hero = the tactical SCOPE plotting the
+   8-agent forecasting committee's probability estimates as contacts; radius =
+   probability, consensus as a dashed ring, dissenters pulse strike-red, a sweep
+   rotates. Live: re-scoring jitter, consensus/dispersion recompute, scoring
+   rounds. Drill-down: roster rows + forecasts open to detail. ~ sim-time.
+   ========================================================================= */
+
+/* ---- THEME: HIGHFLEET (phosphor-green tactical CRT) ---- */
+[data-theme="highfleet"] {
+  --bg-0:#05080a; --bg-1:#08100d; --bg-2:#0b1813;
+  --ink:#86ffb0; --ink-dim:#3f9e69; --ink-faint:#27623f;
+  --accent:#2fff86; --accent-2:#b6ffd0; --good:#5cff9a; --warn:#ffce46; --strike:#ff5638;
+  --line:#1f5a3a; --line-bright:#34915c;
+  --surface:#0a160f; --surface-2:#0f2017; --edge-hi:rgba(120,255,170,.16);
+  --glow: 0 0 9px rgba(40,255,130,.5), 0 0 20px rgba(20,220,110,.22);
+  --scope-line: rgba(50,220,120,.55); --scope-faint: rgba(50,220,120,.16);
+  --grid-color: rgba(60,220,130,.06);
+  --vignette: rgba(0,0,0,.66);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.05; --grain-op:.04;
+}
+/* ---- THEME: AMBER-TAC (amber phosphor radar) ---- */
+[data-theme="ambertac"] {
+  --bg-0:#0a0703; --bg-1:#130d04; --bg-2:#1d1408;
+  --ink:#ffc878; --ink-dim:#b07d38; --ink-faint:#6e4c22;
+  --accent:#ffae3a; --accent-2:#ffe0a8; --good:#ffce46; --warn:#ffe07a; --strike:#ff6038;
+  --line:#5a3f18; --line-bright:#946828;
+  --surface:#160f06; --surface-2:#20160a; --edge-hi:rgba(255,200,120,.16);
+  --glow: 0 0 9px rgba(255,160,40,.5), 0 0 20px rgba(230,130,20,.22);
+  --scope-line: rgba(230,170,60,.55); --scope-faint: rgba(230,170,60,.16);
+  --grid-color: rgba(230,170,60,.06);
+  --vignette: rgba(0,0,0,.7);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.04; --grain-op:.05;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg-2), var(--bg-0) 70%) fixed, var(--bg-0);
+  color:var(--ink); font-family:var(--font-mono);
+  min-height:100vh; overflow-x:hidden; letter-spacing:.04em; -webkit-font-smoothing:antialiased;
+}
+
+.fx { position:fixed; inset:0; pointer-events:none; z-index:50; }
+.fx-scan { background:repeating-linear-gradient(0deg, rgba(0,0,0,.6) 0 1px, transparent 1px 3px); opacity:var(--scan-op); mix-blend-mode:multiply; }
+.fx-grain { opacity:var(--grain-op);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/></svg>"); }
+.fx-grid { z-index:0; opacity:.5;
+  background-image:linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size:32px 32px; mask-image:radial-gradient(120% 100% at 50% 30%, #000 50%, transparent 85%); }
+.fx-vignette { background:radial-gradient(130% 100% at 50% 45%, transparent 52%, var(--vignette)); }
+
+.shell { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 26px 18px; }
+
+header { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--line-bright); padding-bottom:12px; }
+.brand { display:flex; align-items:baseline; gap:14px; }
+.brand .mark { font-family:var(--font-read); font-weight:700; font-size:1.5rem; letter-spacing:.32em; color:var(--ink); text-shadow:var(--glow); }
+.brand .sub { font-size:.62rem; letter-spacing:.42em; color:var(--ink-dim); }
+.brand .jp { font-size:.6rem; letter-spacing:.2em; color:var(--ink-faint); }
+.hgroup-r { text-align:right; display:flex; flex-direction:column; gap:3px; align-items:flex-end; }
+.clock { font-size:1.35rem; color:var(--ink); text-shadow:var(--glow); letter-spacing:.12em; }
+.live { display:inline-flex; align-items:center; gap:6px; font-size:.58rem; letter-spacing:.3em; color:var(--good); }
+.live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good); animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+.switch { display:flex; border:1px solid var(--line-bright); }
+.switch button { background:transparent; color:var(--ink-dim); border:none; font-family:var(--font-mono); font-size:.58rem; letter-spacing:.2em; padding:6px 11px; cursor:pointer; transition:.18s; }
+.switch button[aria-selected="true"] { background:var(--ink); color:var(--bg-0); text-shadow:none; }
+.switch button:hover:not([aria-selected="true"]) { color:var(--ink); }
+
+.tabs { display:flex; margin:18px 0 6px; border-bottom:1px solid var(--line); }
+.tabs button { position:relative; background:transparent; border:none; color:var(--ink-dim); font-family:var(--font-mono); font-size:.66rem; letter-spacing:.24em; padding:10px 20px 11px; cursor:pointer; transition:.16s; text-transform:uppercase; }
+.tabs button:hover { color:var(--ink); }
+.tabs button[aria-selected="true"] { color:var(--ink); text-shadow:var(--glow); }
+.tabs button[aria-selected="true"]::after { content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--accent); box-shadow:0 0 8px var(--accent); animation:tabU .3s ease; }
+@keyframes tabU { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+.view { display:none; }
+.view.active { display:block; animation:viewIn .34s ease both; }
+@keyframes viewIn { from{opacity:0; transform:translateY(9px)} to{opacity:1; transform:translateY(0)} }
+
+.sec { margin:14px 0 10px; display:flex; align-items:center; gap:12px; }
+.sec h2 { font-family:var(--font-read); font-weight:600; font-size:.72rem; letter-spacing:.34em; color:var(--ink-dim); text-transform:uppercase; white-space:nowrap; }
+.sec .rule { flex:1; height:1px; background:linear-gradient(90deg, var(--line-bright), transparent); }
+.sec .tag { font-size:.56rem; letter-spacing:.2em; color:var(--ink-faint); }
+
+.flash { animation:numflash .65s ease; }
+@keyframes numflash { 0%{ color:var(--accent-2); text-shadow:0 0 16px var(--accent) } 100%{} }
+
+/* ---- committee layout: scope + readout/roster ---- */
+.cgrid { display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:start; }
+.scopebox { border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi), 0 4px 16px rgba(0,0,0,.6); padding:14px; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
+.scopebox .sh { display:flex; justify-content:space-between; font-size:.56rem; letter-spacing:.2em; color:var(--ink-dim); margin-bottom:8px; }
+.scope { position:relative; width:330px; height:330px; }
+.scope svg { display:block; }
+.ring-c { fill:none; stroke:var(--scope-faint); stroke-width:1; }
+.ring-axis { stroke:var(--scope-faint); stroke-width:1; }
+.consensus-ring { fill:none; stroke:var(--accent); stroke-width:1.5; stroke-dasharray:4 4; filter:drop-shadow(0 0 5px var(--accent)); transition:r .8s cubic-bezier(.4,0,.2,1); }
+.sweep { transform-origin:165px 165px; animation:sweepspin 4s linear infinite; }
+@keyframes sweepspin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.blip { transition:cx .8s cubic-bezier(.4,0,.2,1), cy .8s cubic-bezier(.4,0,.2,1); }
+.blip-core { fill:var(--accent); filter:drop-shadow(0 0 5px var(--accent)); }
+.blip-core.dissent { fill:var(--strike); filter:drop-shadow(0 0 6px var(--strike)); animation:blink 1.4s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.blip-lbl { fill:var(--ink-dim); font-family:var(--font-mono); font-size:8px; letter-spacing:.5px; }
+.scope-scale { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); font-size:.5rem; letter-spacing:.14em; color:var(--ink-faint); }
+
+/* readout + roster */
+.rcol { display:flex; flex-direction:column; gap:12px; }
+.readout { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.rk { border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); padding:13px 14px; position:relative; }
+.rk::before { content:''; position:absolute; left:0; top:0; width:3px; height:100%; background:var(--accent); opacity:.55; }
+.rk .l { font-size:.54rem; letter-spacing:.2em; color:var(--ink-dim); }
+.rk .v { font-size:1.9rem; line-height:1.1; color:var(--ink); text-shadow:var(--glow); margin-top:3px; transition:color .3s; }
+.rk .v small { font-size:.6rem; color:var(--ink-dim); letter-spacing:.04em; }
+.rk .s { font-size:.55rem; color:var(--ink-dim); letter-spacing:.1em; margin-top:2px; }
+
+.qbar { border:1px solid var(--line); background:var(--surface-2); padding:11px 13px; }
+.qbar .ql { font-size:.55rem; letter-spacing:.18em; color:var(--ink-dim); margin-bottom:6px; }
+.qbar .qt { font-size:.82rem; color:var(--ink); letter-spacing:.02em; }
+.qbar .qm { display:flex; gap:16px; margin-top:7px; font-size:.56rem; color:var(--ink-faint); letter-spacing:.08em; }
+.qbar .qm b { color:var(--ink-dim); font-weight:400; }
+
+/* roster (drill-down) */
+.roster { border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); }
+.roster .rh { display:flex; justify-content:space-between; padding:9px 13px; border-bottom:1px solid var(--line); font-size:.56rem; letter-spacing:.2em; color:var(--ink-dim); }
+.acard { border-bottom:1px solid rgba(40,120,70,.18); transition:background .15s; }
+.acard:last-child { border-bottom:none; }
+.acard:hover { background:var(--surface-2); }
+.acard.open { background:var(--surface-2); }
+.arow { display:grid; grid-template-columns:14px 1fr auto auto; gap:11px; align-items:center; padding:9px 13px; cursor:pointer; }
+.arow .chev { color:var(--ink-faint); font-size:.66rem; transition:transform .3s cubic-bezier(.2,.8,.2,1), color .2s; }
+.acard.open .arow .chev { transform:rotate(90deg); color:var(--accent-2); }
+.arow .cs { font-size:.78rem; color:var(--ink); letter-spacing:.1em; }
+.arow .cs .role { color:var(--ink-faint); font-size:.56rem; letter-spacing:.12em; margin-left:8px; }
+.arow .pe { font-family:var(--font-mono); font-size:.86rem; color:var(--accent-2); }
+.arow .flag { font-size:.52rem; letter-spacing:.14em; padding:2px 7px; border:1px solid var(--line); color:var(--ink-dim); }
+.arow .flag.dis { color:var(--strike); border-color:var(--strike); }
+.arow .flag.cl { color:var(--good); border-color:rgba(92,255,154,.4); }
+.adetail { max-height:0; overflow:hidden; opacity:0; transition:max-height .4s cubic-bezier(.2,.85,.25,1), opacity .3s; }
+.acard.open .adetail { max-height:200px; opacity:1; }
+.ad { padding:2px 14px 13px 38px; }
+.ad .rsn { font-size:.74rem; line-height:1.5; color:var(--ink-dim); font-style:italic; }
+.ad .est { display:flex; align-items:flex-end; gap:2px; height:26px; margin-top:9px; }
+.ad .est i { width:7px; background:var(--accent); opacity:.6; box-shadow:0 0 3px var(--accent); }
+.ad .stats { display:flex; gap:16px; margin-top:9px; font-size:.55rem; color:var(--ink-faint); letter-spacing:.08em; }
+.ad .stats b { color:var(--ink-dim); font-weight:400; }
+.acard.open .ad > * { animation:repIn .38s ease both; }
+.acard.open .ad > *:nth-child(2){animation-delay:.06s}
+.acard.open .ad > *:nth-child(3){animation-delay:.11s}
+@keyframes repIn { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+
+/* forecasts + calibration */
+.flist { display:flex; flex-direction:column; gap:8px; }
+.fcard { border:1px solid var(--line); background:var(--surface); transition:border-color .16s, background .16s; }
+.fcard:hover { border-color:var(--line-bright); }
+.fcard.open { border-color:var(--accent); box-shadow:inset 0 0 16px rgba(40,220,120,.1); }
+.frow { display:grid; grid-template-columns:14px 1fr auto auto; gap:12px; align-items:center; padding:12px 14px; cursor:pointer; }
+.frow .chev { color:var(--ink-faint); font-size:.66rem; transition:transform .3s cubic-bezier(.2,.8,.2,1), color .2s; }
+.fcard.open .frow .chev { transform:rotate(90deg); color:var(--accent-2); }
+.frow .ft { font-size:.82rem; color:var(--ink); }
+.frow .fp { font-family:var(--font-mono); font-size:.8rem; color:var(--accent-2); }
+.frow .fb { font-size:.54rem; letter-spacing:.14em; padding:3px 8px; border:1px solid var(--line); color:var(--ink-dim); }
+.frow .fb.hit { color:var(--good); border-color:rgba(92,255,154,.4); }
+.frow .fb.open { color:var(--warn); border-color:rgba(255,206,70,.4); }
+.fdetail { max-height:0; overflow:hidden; opacity:0; transition:max-height .42s cubic-bezier(.2,.85,.25,1), opacity .3s; }
+.fcard.open .fdetail { max-height:280px; opacity:1; }
+.fd { padding:4px 14px 15px 38px; }
+.fd .rh { font-size:.52rem; letter-spacing:.22em; color:var(--ink-faint); margin:10px 0 7px; text-transform:uppercase; }
+.fd .line { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(40,120,70,.16); font-size:.72rem; }
+.fd .line .k { color:var(--ink-dim); letter-spacing:.1em; }
+.fd .line .v { color:var(--ink); }
+
+/* calibration reliability diagram */
+.reliab { border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); padding:16px; }
+.reliab .rt { font-size:.56rem; letter-spacing:.2em; color:var(--ink-dim); margin-bottom:12px; }
+.calbars { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; align-items:end; height:160px; }
+.calcol { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px; }
+.calcol .bars { position:relative; width:100%; height:100%; display:flex; align-items:flex-end; justify-content:center; gap:4px; }
+.calcol .pred { width:34%; background:var(--scope-faint); border:1px solid var(--line); }
+.calcol .obs { width:34%; background:var(--accent); box-shadow:0 0 6px var(--accent); opacity:.85; }
+.calcol .xl { font-size:.5rem; color:var(--ink-faint); letter-spacing:.08em; }
+.callegend { display:flex; gap:18px; margin-top:12px; font-size:.55rem; color:var(--ink-dim); letter-spacing:.1em; }
+.callegend i { display:inline-block; width:11px; height:11px; margin-right:6px; vertical-align:middle; }
+.callegend .lp { background:var(--scope-faint); border:1px solid var(--line); }
+.callegend .lo { background:var(--accent); }
+.brierhist { margin-top:14px; }
+.brierhist .bl { font-size:.55rem; letter-spacing:.18em; color:var(--ink-dim); margin-bottom:6px; display:flex; justify-content:space-between; }
+.brierhist .spark { display:flex; align-items:flex-end; gap:3px; height:40px; border-bottom:1px solid var(--line); }
+.brierhist .spark i { flex:1; background:var(--good); opacity:.7; box-shadow:0 0 4px var(--good); }
+
+.statusbar { margin-top:20px; border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); display:flex; flex-wrap:wrap; }
+.statusbar .seg { padding:9px 16px; border-right:1px solid var(--line); display:flex; gap:9px; align-items:baseline; }
+.statusbar .seg:last-child { border-right:none; margin-left:auto; }
+.statusbar .k { font-size:.56rem; letter-spacing:.22em; color:var(--ink-dim); }
+.statusbar .v { font-size:.74rem; color:var(--ink); }
+.note { margin-top:12px; text-align:center; font-size:.56rem; letter-spacing:.18em; color:var(--ink-faint); }
+
+@media (max-width:880px){ .cgrid{grid-template-columns:1fr} .scope{margin:0 auto} .readout{grid-template-columns:1fr} }
+</style>
+<script>
+/* inherit console customization (global theme + background) */
+(function(){ try{
+  var MAP={amber:'ambertac',holo:'highfleet',parchment:'ambertac',tactical:'highfleet'};
+  var th=localStorage.getItem('exo-theme'); if(th&&MAP[th]) document.documentElement.dataset.theme=MAP[th];
+  function bg(){ var d=document.getElementById('bg-custom'); if(!d){ d=document.createElement('div'); d.id='bg-custom';
+      d.style.cssText='position:fixed;inset:0;z-index:-1;background:center/cover no-repeat;opacity:0;pointer-events:none'; document.body.appendChild(d); }
+    var url=localStorage.getItem('exo-bg'), op=localStorage.getItem('exo-bg-op');
+    if(url){ d.style.backgroundImage='url('+url+')'; d.style.opacity=(op==null?50:op)/100; }
+    var t=document.documentElement.dataset.theme;
+    document.querySelectorAll('.switch button[data-set]').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.set===t); });
+  }
+  if(document.readyState!=='loading') bg(); else document.addEventListener('DOMContentLoaded',bg);
+}catch(e){} })();
+</script>
+</head>
+<body>
+<div class="fx fx-grid"></div>
+<div class="fx fx-scan"></div>
+<div class="fx fx-grain"></div>
+<div class="fx fx-vignette"></div>
+
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="mark">SWARMFISH</span>
+      <div>
+        <div class="sub">TACTICAL&nbsp;FORECAST</div>
+        <div class="jp">予測委員会 — COMMITTEE SCOPE</div>
+      </div>
+    </div>
+    <div class="hgroup-r">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="live"><span class="dot"></span>SCORING ROUND <span id="round">214</span></div>
+      <div class="switch" role="tablist">
+        <button role="tab" data-set="highfleet" aria-selected="true">HIGHFLEET</button>
+        <button role="tab" data-set="ambertac" aria-selected="false">AMBER·TAC</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button data-view="committee" aria-selected="true">Committee</button>
+    <button data-view="forecasts" aria-selected="false">Forecasts</button>
+    <button data-view="calibration" aria-selected="false">Calibration</button>
+  </div>
+
+  <!-- VIEW: COMMITTEE -->
+  <div class="view active" data-view="committee">
+    <div class="sec"><h2>Committee Scope</h2><span class="rule"></span><span class="tag">8 AGENTS · RADIUS = P(EVENT) · CLICK A CONTACT</span></div>
+    <div class="cgrid">
+      <div class="scopebox">
+        <div class="sh"><span>HYPOTHESIS SCOPE</span><span id="scope-q">CLOSURE ≤ 07-15</span></div>
+        <div class="scope">
+          <svg width="330" height="330" viewBox="0 0 330 330">
+            <circle class="ring-c" cx="165" cy="165" r="130"/>
+            <circle class="ring-c" cx="165" cy="165" r="97.5"/>
+            <circle class="ring-c" cx="165" cy="165" r="65"/>
+            <circle class="ring-c" cx="165" cy="165" r="32.5"/>
+            <line class="ring-axis" x1="165" y1="35" x2="165" y2="295"/>
+            <line class="ring-axis" x1="35" y1="165" x2="295" y2="165"/>
+            <circle class="consensus-ring" id="cring" cx="165" cy="165" r="60"/>
+            <g class="sweep"><line x1="165" y1="165" x2="165" y2="35" stroke="var(--scope-line)" stroke-width="1.5"/>
+              <path d="M165 165 L165 35 A130 130 0 0 1 230 53 Z" fill="var(--scope-line)" opacity="0.10"/></g>
+            <g id="blips"></g>
+          </svg>
+          <div class="scope-scale">CENTER P=0 · OUTER RING P=1.0 · DASHED = CONSENSUS</div>
+        </div>
+      </div>
+
+      <div class="rcol">
+        <div class="readout">
+          <div class="rk"><div class="l">CONSENSUS</div><div class="v" id="r-consensus">0.34</div><div class="s">P(event)</div></div>
+          <div class="rk"><div class="l">DISPERSION</div><div class="v" id="r-disp" style="font-size:1.3rem">MOD</div><div class="s" id="r-disp-n">σ 0.19</div></div>
+          <div class="rk"><div class="l">AGREEMENT</div><div class="v" id="r-agree">6<small>/8</small></div><div class="s">within band</div></div>
+        </div>
+        <div class="qbar">
+          <div class="ql">ACTIVE HYPOTHESIS</div>
+          <div class="qt">Closure / interdiction at Hormuz before 2026-07-15</div>
+          <div class="qm"><span>RESOLVES <b>2026-07-15</b></span><span>PRIOR <b>0.34</b></span><span>BACKING <b>4 claims</b></span><span>GATE <b>armed</b></span></div>
+        </div>
+        <div class="roster">
+          <div class="rh"><span>COMMITTEE ROSTER <b>— 8 AGENTS</b></span><span>P · STATUS</span></div>
+          <div id="roster"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: FORECASTS -->
+  <div class="view" data-view="forecasts">
+    <div class="sec"><h2>Forecast Ledger</h2><span class="rule"></span><span class="tag">CLICK TO OPEN RESOLUTION DETAIL</span></div>
+    <div class="flist" id="flist"></div>
+  </div>
+
+  <!-- VIEW: CALIBRATION -->
+  <div class="view" data-view="calibration">
+    <div class="sec"><h2>Calibration</h2><span class="rule"></span><span class="tag">RELIABILITY · BRIER HISTORY</span></div>
+    <div class="reliab">
+      <div class="rt">RELIABILITY DIAGRAM — PREDICTED vs OBSERVED FREQUENCY (5 buckets)</div>
+      <div class="calbars" id="calbars"></div>
+      <div class="callegend"><span><i class="lp"></i>PREDICTED</span><span><i class="lo"></i>OBSERVED</span></div>
+      <div class="brierhist">
+        <div class="bl"><span>BRIER SCORE — LAST 16 RESOLVED (lower = better)</span><span id="brier-now">0.14</span></div>
+        <div class="spark" id="brier-spark"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="seg"><span class="k">INSTRUMENT</span><span class="v">SWARMFISH V2 · direct src/</span></div>
+    <div class="seg"><span class="k">PROFILES</span><span class="v">8</span></div>
+    <div class="seg"><span class="k">DB</span><span class="v">swarmfish.db</span></div>
+    <div class="seg"><span class="k">COUPLING</span><span class="v">OSS /acp/outcome</span></div>
+    <div class="seg"><span class="k">TIME</span><span class="v" id="sbtime">--:--</span></div>
+  </div>
+
+  <div class="note">LIVE — committee re-scores on each round; contacts move, consensus + dispersion recompute. On port, EXO → SWARMFISH API (/session, /predict, /calibration).</div>
+</div>
+
+<script>
+/* ============================================================================
+   EXO — SWARMFISH committee simulation. On port: replace re-scoring sim with a
+   poll of the SWARMFISH committee session (per-agent P, consensus, dispersion).
+   ========================================================================= */
+const EXO = {
+  round:214,
+  agents:[
+    {cs:'HELM',   role:'base-rate',   p:0.28, conf:4, rsn:'Base rate dominates — strait closures historically rare and short-lived.'},
+    {cs:'SONAR',  role:'signals',     p:0.31, conf:3, rsn:'Patrol tempo elevated, but no interdiction capability has been signaled.'},
+    {cs:'ABYSS',  role:'risk-fwd',    p:0.66, conf:3, rsn:'Massing at port plus premium spike reads as pre-positioning. Higher risk.'},
+    {cs:'CURRENT',role:'diplomatic',  p:0.20, conf:4, rsn:'Diplomatic back-channel active; de-escalation the more likely path.'},
+    {cs:'TRENCH', role:'synthesis',   p:0.35, conf:3, rsn:'Mixed signals; weight toward status quo with a real tail risk.'},
+    {cs:'REEF',   role:'economic',    p:0.27, conf:3, rsn:'Economic indicators lag events — discount the premium signal somewhat.'},
+    {cs:'TIDE',   role:'imagery',     p:0.62, conf:4, rsn:'Satellite imagery is the strongest leading indicator. Elevated.'},
+    {cs:'DEPTH',  role:'official',    p:0.23, conf:3, rsn:'Official "routine drill" framing is credible; low probability.'}
+  ],
+  openAgent:null, openForecast:null,
+  forecasts:[
+    {t:'Closure / interdiction before 2026-07-15', p:0.34, status:'open', detail:[
+      ['Committee','8 agents'],['Consensus','P=0.34'],['Dispersion','moderate (σ 0.19)'],['Resolves','2026-07-15'],['Gate','web-verify armed'],['Backing','4 corroborated claims']]},
+    {t:'Prior interdiction question', p:0.22, status:'hit', detail:[
+      ['Committee','8 agents'],['Consensus','P=0.22'],['Outcome','HIT (web-verified)'],['Brier','0.14'],['Resolved','at deadline'],['Fed back','→ /acp/outcome → calibration']]},
+    {t:'Tanker rerouting persists 14d', p:0.58, status:'hit', detail:[
+      ['Committee','8 agents'],['Consensus','P=0.58'],['Outcome','HIT'],['Brier','0.18'],['Resolved','at deadline'],['Note','shipping-area hypothesis']]},
+    {t:'Premium spike reverses in 7d', p:0.41, status:'open', detail:[
+      ['Committee','8 agents'],['Consensus','P=0.41'],['Dispersion','low'],['Resolves','2026-06-28'],['Gate','armed'],['Backing','3 claims']]}
+  ],
+  // per-agent recent estimate history (for the drill-down sparkline)
+  hist:{}, brier:[0.21,0.19,0.24,0.17,0.20,0.15,0.18,0.16,0.19,0.14,0.17,0.15,0.16,0.13,0.15,0.14],
+  rnd(a,b){ return a+Math.random()*(b-a); },
+  init(){ this.agents.forEach(a=>{ this.hist[a.cs]=Array.from({length:10},()=>a.p+this.rnd(-0.05,0.05)); }); },
+  mean(){ return this.agents.reduce((s,a)=>s+a.p,0)/this.agents.length; },
+  stddev(){ const m=this.mean(); return Math.sqrt(this.agents.reduce((s,a)=>s+(a.p-m)**2,0)/this.agents.length); },
+  rescore(){
+    this.round++;
+    this.agents.forEach(a=>{ a.p=Math.max(0.05,Math.min(0.95, a.p + this.rnd(-0.04,0.04))); this.hist[a.cs].push(a.p); if(this.hist[a.cs].length>10) this.hist[a.cs].shift(); });
+  }
+};
+EXO.init();
+
+const $=id=>document.getElementById(id);
+const CX=165, CY=165, R=130;
+function flash(el){ if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+function setNum(id,val){ const el=$(id); if(!el) return; const t=String(val); if(el.textContent!==t){ el.textContent=t; flash(el); } }
+
+function renderScope(){
+  const m=EXO.mean(), sd=EXO.stddev();
+  // consensus ring
+  $('cring').setAttribute('r', (m*R).toFixed(1));
+  // blips
+  const g=$('blips');
+  const exist = g.childElementCount===EXO.agents.length;
+  EXO.agents.forEach((a,i)=>{
+    const ang=(i/EXO.agents.length)*Math.PI*2 - Math.PI/2 + 0.18; // even bearings, slight offset
+    const rad=a.p*R;
+    const x=CX+rad*Math.cos(ang), y=CY+rad*Math.sin(ang);
+    const dissent=Math.abs(a.p-m)>0.20;
+    let core, lbl;
+    if(!exist){
+      const grp=document.createElementNS('http://www.w3.org/2000/svg','g');
+      core=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      core.setAttribute('r','5'); core.setAttribute('class','blip blip-core');
+      lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','blip-lbl');
+      grp.appendChild(core); grp.appendChild(lbl); g.appendChild(grp);
+    } else {
+      const grp=g.children[i]; core=grp.children[0]; lbl=grp.children[1];
+    }
+    core.setAttribute('cx',x.toFixed(1)); core.setAttribute('cy',y.toFixed(1));
+    core.setAttribute('class','blip blip-core'+(dissent?' dissent':''));
+    lbl.setAttribute('x',(x+8).toFixed(1)); lbl.setAttribute('y',(y+3).toFixed(1)); lbl.textContent=a.cs;
+  });
+  // readout
+  setNum('r-consensus', m.toFixed(2));
+  const dispWord = sd<0.12?'LOW':sd<0.22?'MOD':'HIGH';
+  setNum('r-disp', dispWord); $('r-disp-n').textContent='σ '+sd.toFixed(2);
+  const within=EXO.agents.filter(a=>Math.abs(a.p-m)<=0.20).length;
+  setNum('r-agree', within);
+}
+
+function sparkBars(arr,min,max){ return arr.map(v=>{ const h=Math.max(6,Math.min(100,(v-min)/(max-min)*100)); return `<i style="height:${h}%"></i>`; }).join(''); }
+
+function renderRoster(){
+  const m=EXO.mean(); const wrap=$('roster');
+  // preserve open state; rebuild
+  wrap.innerHTML='';
+  EXO.agents.forEach(a=>{
+    const dissent=Math.abs(a.p-m)>0.20;
+    const card=document.createElement('div');
+    card.className='acard'+(EXO.openAgent===a.cs?' open':'');
+    const flag = dissent?'<span class="flag dis">DISSENT</span>':'<span class="flag cl">CLUSTER</span>';
+    const spark=sparkBars(EXO.hist[a.cs],0,1);
+    card.innerHTML=`<div class="arow">
+        <span class="chev">▶</span>
+        <span class="cs">${a.cs}<span class="role">${a.role}</span></span>
+        <span class="pe">${a.p.toFixed(2)}</span>
+        ${flag}
+      </div>
+      <div class="adetail"><div class="ad">
+        <div class="rsn">"${a.rsn}"</div>
+        <div class="est">${spark}</div>
+        <div class="stats"><span>CONF <b>${a.conf}/5</b></span><span>Δ CONSENSUS <b>${(a.p-m>=0?'+':'')}${(a.p-m).toFixed(2)}</b></span><span>ROLE <b>${a.role}</b></span></div>
+      </div></div>`;
+    card.querySelector('.arow').addEventListener('click',()=>{ EXO.openAgent = EXO.openAgent===a.cs?null:a.cs; renderRoster(); });
+    wrap.appendChild(card);
+  });
+}
+
+function renderForecasts(){
+  const wrap=$('flist'); wrap.innerHTML='';
+  EXO.forecasts.forEach((f,i)=>{
+    const card=document.createElement('div');
+    card.className='fcard'+(EXO.openForecast===i?' open':'');
+    const badge = f.status==='hit'?'<span class="fb hit">RESOLVED · HIT</span>':'<span class="fb open">OPEN</span>';
+    const detail=f.detail.map(d=>`<div class="line"><span class="k">${d[0]}</span><span class="v">${d[1]}</span></div>`).join('');
+    card.innerHTML=`<div class="frow">
+        <span class="chev">▶</span>
+        <span class="ft">${f.t}</span>
+        <span class="fp">P=${f.p.toFixed(2)}</span>
+        ${badge}
+      </div>
+      <div class="fdetail"><div class="fd"><div class="rh">Resolution Detail</div>${detail}</div></div>`;
+    card.querySelector('.frow').addEventListener('click',()=>{ EXO.openForecast = EXO.openForecast===i?null:i; renderForecasts(); });
+    wrap.appendChild(card);
+  });
+}
+
+function renderCalibration(){
+  // 5 buckets: predicted mid vs observed frequency (plausible, slightly under-confident)
+  const buckets=[ ['0–.2',0.10,0.12], ['.2–.4',0.30,0.27], ['.4–.6',0.50,0.52], ['.6–.8',0.70,0.66], ['.8–1',0.90,0.88] ];
+  $('calbars').innerHTML=buckets.map(b=>`<div class="calcol"><div class="bars">
+      <div class="pred" style="height:${b[1]*100}%"></div>
+      <div class="obs" style="height:${b[2]*100}%"></div>
+    </div><div class="xl">${b[0]}</div></div>`).join('');
+  const min=Math.min(...EXO.brier), max=Math.max(...EXO.brier);
+  $('brier-spark').innerHTML=EXO.brier.map(v=>{ const h=Math.max(8,100-(v-min)/(max-min)*100); return `<i style="height:${h}%"></i>`; }).join('');
+  $('brier-now').textContent=EXO.brier[EXO.brier.length-1].toFixed(2);
+}
+
+function tick(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  $('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  $('sbtime').textContent=`${p(d.getHours())}:${p(d.getMinutes())}`; }
+setInterval(tick,1000); tick();
+
+renderScope(); renderRoster(); renderForecasts(); renderCalibration();
+
+/* re-scoring rounds (~5.5s) */
+let acc=0, last=performance.now();
+function loop(now){ const dt=now-last; last=now; acc+=dt;
+  if(acc>5500){ acc=0; EXO.rescore(); setNum('round', EXO.round); renderScope();
+    // refresh roster sparklines/deltas without closing an open card
+    renderRoster(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected', x===b));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.dataset.view===b.dataset.view));
+  });
+});
+document.querySelectorAll('.switch button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.documentElement.dataset.theme=b.dataset.set;
+    document.querySelectorAll('.switch button').forEach(x=>x.setAttribute('aria-selected', x===b));
+  });
+});
+</script>
+</body>
+</html>

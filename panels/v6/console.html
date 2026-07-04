@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tactical">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // CONSOLE</title>
+<style>
+/* ============================================================================
+   EXOCORTEX CONSOLE v5 — the hub. At-a-glance overview with live mini-cards for
+   every panel, each linking OPEN FULL ▶ to its standalone screen (the canvas-
+   glance → full-page model). Carries the GLOBAL THEME SELECTOR (4 canonical
+   themes as SHARED tokens — the whole console re-skins) and the CUSTOMIZATION
+   SUITE (background image upload + opacity + theme). All settings persist to
+   localStorage; every standalone panel inherits them on open.
+   ========================================================================= */
+
+/* ---- canonical themes (SHARED token names — the global mode switch) ---- */
+[data-theme="amber"] { /* MAGI — opaque amber CRT */
+  --bg-0:#08070a; --bg-1:#0d0b10; --bg-2:#131019;
+  --ink:#ffb338; --ink-dim:#9a6a1f; --ink-faint:#5a3f17;
+  --accent:#ff7a18; --accent-2:#ffd27a; --good:#7fd14b; --warn:#ffcf3a; --crit:#ff4d3d;
+  --line:#5a3f1a; --line-bright:#9a6a24; --surface:#1b140c; --surface-2:#241a0f; --edge-hi:rgba(255,190,95,.18);
+  --glow:0 0 10px rgba(255,150,40,.5),0 0 22px rgba(255,120,20,.2); --vignette:rgba(0,0,0,.55);
+  --grid:rgba(255,160,50,.05);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif; --font-mono:'Share Tech Mono',ui-monospace,'Consolas',monospace;
+  --paper:0;
+}
+[data-theme="holo"] { /* iDroid — translucent holographic blue */
+  --bg-0:#03070c; --bg-1:#061018; --bg-2:#0a1a26;
+  --ink:#bdeaff; --ink-dim:#5f9fc4; --ink-faint:#356a86;
+  --accent:#27b6ff; --accent-2:#6fe0ff; --good:#46e8b0; --warn:#ffd25a; --crit:#ff6a5a;
+  --line:rgba(80,180,235,.30); --line-bright:rgba(120,215,255,.62); --surface:rgba(18,58,86,.40); --surface-2:rgba(26,78,112,.5); --edge-hi:rgba(150,230,255,.40);
+  --glow:0 0 10px rgba(40,180,255,.5),0 0 26px rgba(40,150,255,.26); --vignette:rgba(0,4,10,.82);
+  --grid:rgba(60,170,230,.08);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif; --font-mono:'Share Tech Mono',ui-monospace,'Consolas',monospace;
+  --paper:0;
+}
+[data-theme="parchment"] { /* YoRHa — light parchment serif */
+  --bg-0:#c7c1a6; --bg-1:#cdc8af; --bg-2:#d4cfb8;
+  --ink:#454033; --ink-dim:#6c6450; --ink-faint:#938b70;
+  --accent:#454033; --accent-2:#8a3b2f; --good:#5d6b3a; --warn:#9a7430; --crit:#8a3b2f;
+  --line:#8e876b; --line-bright:#615a44; --surface:rgba(243,239,224,.55); --surface-2:rgba(232,227,206,.7); --edge-hi:rgba(255,253,244,.6);
+  --glow:none; --vignette:rgba(120,110,80,.18);
+  --grid:rgba(120,110,70,.05);
+  --font-read:Georgia,'Times New Roman',serif; --font-mono:'Courier New',ui-monospace,monospace;
+  --paper:1;
+}
+[data-theme="tactical"] { /* HighFleet — tactical phosphor green */
+  --bg-0:#05080a; --bg-1:#08100d; --bg-2:#0b1813;
+  --ink:#86ffb0; --ink-dim:#3f9e69; --ink-faint:#27623f;
+  --accent:#2fff86; --accent-2:#b6ffd0; --good:#5cff9a; --warn:#ffce46; --crit:#ff5638;
+  --line:#1f5a3a; --line-bright:#34915c; --surface:#0a160f; --surface-2:#0f2017; --edge-hi:rgba(120,255,170,.16);
+  --glow:0 0 9px rgba(40,255,130,.45),0 0 20px rgba(20,220,110,.2); --vignette:rgba(0,0,0,.66);
+  --grid:rgba(60,220,130,.05);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif; --font-mono:'Share Tech Mono',ui-monospace,'Consolas',monospace;
+  --paper:0;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg-2), var(--bg-0) 72%) fixed, var(--bg-0);
+  color:var(--ink); font-family:var(--font-mono);
+  min-height:100vh; overflow-x:hidden; letter-spacing:.04em; -webkit-font-smoothing:antialiased; transition:color .3s;
+}
+/* user background-image layer (customization suite) */
+#bg-custom { position:fixed; inset:0; z-index:-1; background-position:center; background-size:cover; background-repeat:no-repeat; opacity:0; pointer-events:none; transition:opacity .3s; }
+.fx { position:fixed; inset:0; pointer-events:none; z-index:60; }
+.fx-grid { z-index:0; background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:34px 34px; mask-image:radial-gradient(130% 100% at 50% 20%,#000 45%,transparent 85%); }
+.fx-scan { background:repeating-linear-gradient(0deg, rgba(0,0,0,.5) 0 1px, transparent 1px 3px); opacity:.035; mix-blend-mode:multiply; }
+.fx-vignette { background:radial-gradient(135% 105% at 50% 42%, transparent 55%, var(--vignette)); }
+
+.shell { position:relative; z-index:1; max-width:1240px; margin:0 auto; padding:24px 28px 20px; }
+
+header { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--line-bright); padding-bottom:13px; flex-wrap:wrap; gap:14px; }
+.brand { display:flex; align-items:baseline; gap:14px; }
+.brand .mark { font-family:var(--font-read); font-weight:700; font-size:1.6rem; letter-spacing:.30em; color:var(--ink); text-shadow:var(--glow); }
+.brand .sub { font-size:.62rem; letter-spacing:.4em; color:var(--ink-dim); text-transform:uppercase; }
+.brand .jp { font-size:.58rem; letter-spacing:.18em; color:var(--ink-faint); }
+.hgroup-r { display:flex; align-items:center; gap:16px; }
+.clock { font-size:1.3rem; color:var(--ink); text-shadow:var(--glow); letter-spacing:.12em; }
+
+/* global theme selector */
+.themesel { display:flex; gap:7px; align-items:center; }
+.themesel .tl { font-size:.54rem; letter-spacing:.2em; color:var(--ink-faint); margin-right:2px; }
+.swatch { width:26px; height:26px; border:1px solid var(--line-bright); cursor:pointer; position:relative; transition:transform .14s; }
+.swatch:hover { transform:scale(1.12); }
+.swatch[aria-selected="true"]::after { content:''; position:absolute; inset:-4px; border:1px solid var(--accent); box-shadow:0 0 8px var(--accent); }
+.swatch.amber { background:linear-gradient(135deg,#ff7a18,#1b140c); }
+.swatch.holo { background:linear-gradient(135deg,#27b6ff,#06121c); }
+.swatch.parchment { background:linear-gradient(135deg,#d4cfb8,#8a3b2f); }
+.swatch.tactical { background:linear-gradient(135deg,#2fff86,#0a160f); }
+.gear { font-size:.62rem; letter-spacing:.18em; padding:7px 13px; border:1px solid var(--line-bright); background:var(--surface); color:var(--accent); cursor:pointer; transition:.15s; }
+.gear:hover { background:var(--accent); color:var(--bg-0); }
+
+.lead { margin:18px 0 6px; display:flex; align-items:baseline; gap:13px; }
+.lead h2 { font-family:var(--font-read); font-weight:600; font-size:.74rem; letter-spacing:.32em; color:var(--ink-dim); text-transform:uppercase; }
+.lead .rule { flex:1; height:1px; background:linear-gradient(90deg,var(--line-bright),transparent); }
+.lead .tag { font-size:.56rem; letter-spacing:.18em; color:var(--ink-faint); }
+
+/* card grid */
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.card { position:relative; border:1px solid var(--line-bright); background:var(--surface); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); box-shadow:inset 0 1px 0 var(--edge-hi), 0 5px 18px rgba(0,0,0,.45); display:flex; flex-direction:column; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); transition:border-color .16s, box-shadow .16s, transform .16s; animation:cardIn .4s ease both; }
+.card:hover { border-color:var(--accent); box-shadow:inset 0 1px 0 var(--edge-hi), 0 8px 26px rgba(0,0,0,.55); transform:translateY(-2px); }
+@keyframes cardIn { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)} }
+.card .ch { display:flex; justify-content:space-between; align-items:center; padding:13px 15px; border-bottom:1px solid var(--line); }
+.card .ch .nm { font-family:var(--font-read); font-size:1.04rem; letter-spacing:.18em; color:var(--ink); text-shadow:var(--glow); }
+.card .ch .nm small { display:block; font-family:var(--font-mono); font-size:.5rem; letter-spacing:.22em; color:var(--ink-faint); margin-top:2px; }
+.card .ch .stt { display:inline-flex; align-items:center; gap:6px; font-size:.52rem; letter-spacing:.18em; color:var(--good); }
+.card .ch .stt .d { width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 7px var(--good); animation:pulse 1.8s infinite; }
+.card .ch .stt.warn { color:var(--warn); } .card .ch .stt.warn .d { background:var(--warn); box-shadow:0 0 7px var(--warn); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.card .body { padding:13px 15px; flex:1; }
+.mini { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.mini .m { border:1px solid var(--line); background:var(--surface-2); padding:8px 10px; position:relative; }
+.mini .m::before { content:''; position:absolute; left:0; top:0; width:2px; height:100%; background:var(--accent); opacity:.5; }
+.mini .m .k { font-size:.5rem; letter-spacing:.16em; color:var(--ink-dim); }
+.mini .m .v { font-size:1.05rem; color:var(--ink); margin-top:2px; text-shadow:var(--glow); transition:color .3s; }
+.mini .m .v small { font-size:.56rem; color:var(--ink-dim); }
+.miniwide { grid-column:1 / -1; }
+.flash { animation:nf .6s ease; } @keyframes nf { 0%{ color:var(--accent-2); text-shadow:0 0 14px var(--accent) } 100%{} }
+/* mini progress + viz */
+.mbar { margin-top:4px; height:6px; border:1px solid var(--line); background:rgba(0,0,0,.2); display:flex; gap:2px; padding:1px; }
+.mbar i { flex:1; background:var(--line); } .mbar i.on { background:var(--accent); box-shadow:0 0 4px var(--accent); }
+.committee { display:flex; align-items:flex-end; gap:4px; height:34px; margin-top:4px; }
+.committee i { flex:1; background:var(--accent); opacity:.8; box-shadow:0 0 4px var(--accent); transition:height .6s cubic-bezier(.4,0,.2,1); }
+.committee i.dis { background:var(--crit); box-shadow:0 0 5px var(--crit); }
+.minimap { height:62px; border:1px solid var(--line); background:var(--surface-2); position:relative; overflow:hidden; margin-top:2px; }
+.minimap .blip { position:absolute; width:5px; height:5px; border-radius:50%; transform:translate(-50%,-50%); }
+.minimap .sweep { position:absolute; left:50%; top:50%; width:50%; height:1px; background:linear-gradient(90deg,var(--accent),transparent); transform-origin:left center; animation:msw 5s linear infinite; opacity:.6; }
+@keyframes msw { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.card .cf { display:flex; justify-content:space-between; align-items:center; padding:11px 15px; border-top:1px solid var(--line); }
+.card .cf .meta { font-size:.54rem; letter-spacing:.14em; color:var(--ink-faint); }
+.openfull { font-family:var(--font-mono); font-size:.58rem; letter-spacing:.18em; color:var(--accent); text-decoration:none; padding:5px 11px; border:1px solid var(--line-bright); transition:.15s; }
+.openfull:hover { background:var(--accent); color:var(--bg-0); }
+
+/* customization drawer */
+.scrim { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:90; opacity:0; pointer-events:none; transition:opacity .3s; }
+.scrim.open { opacity:1; pointer-events:auto; }
+.drawer { position:fixed; top:0; right:0; bottom:0; width:360px; max-width:92vw; z-index:100; background:var(--bg-1); border-left:1px solid var(--line-bright); box-shadow:-10px 0 40px rgba(0,0,0,.6); transform:translateX(100%); transition:transform .34s cubic-bezier(.2,.85,.25,1); padding:22px 22px 30px; overflow-y:auto; }
+.drawer.open { transform:translateX(0); }
+.drawer .dh { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line-bright); padding-bottom:12px; margin-bottom:16px; }
+.drawer .dh .t { font-family:var(--font-read); font-size:1rem; letter-spacing:.2em; color:var(--ink); text-shadow:var(--glow); }
+.drawer .dh .x { cursor:pointer; color:var(--ink-dim); font-size:1.1rem; padding:2px 8px; }
+.drawer .dh .x:hover { color:var(--accent); }
+.fld { margin-bottom:22px; }
+.fld .fl { font-size:.56rem; letter-spacing:.22em; color:var(--ink-dim); text-transform:uppercase; margin-bottom:9px; }
+.themerow { display:flex; gap:9px; }
+.themerow .swatch { width:46px; height:38px; }
+.themerow .lab { font-size:.5rem; letter-spacing:.1em; color:var(--ink-faint); text-align:center; margin-top:4px; }
+.themecol { display:flex; flex-direction:column; align-items:center; }
+.uploadbtn { display:block; border:1px dashed var(--line-bright); background:var(--surface); color:var(--ink-dim); padding:18px 12px; text-align:center; font-size:.62rem; letter-spacing:.14em; cursor:pointer; transition:.15s; }
+.uploadbtn:hover { border-color:var(--accent); color:var(--ink); }
+.uploadbtn small { display:block; color:var(--ink-faint); font-size:.52rem; margin-top:5px; }
+input[type=file] { display:none; }
+.thumb { margin-top:10px; height:90px; border:1px solid var(--line); background-size:cover; background-position:center; display:none; }
+.opwrap { display:flex; align-items:center; gap:12px; }
+input[type=range] { flex:1; -webkit-appearance:none; height:4px; background:var(--line); outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:15px; height:15px; background:var(--accent); box-shadow:0 0 8px var(--accent); cursor:pointer; border:none; }
+.opval { font-family:var(--font-mono); font-size:.74rem; color:var(--accent-2); width:44px; text-align:right; }
+.drawer .actions { display:flex; gap:9px; }
+.dbtn { flex:1; font-family:var(--font-mono); font-size:.58rem; letter-spacing:.16em; padding:9px; border:1px solid var(--line-bright); background:var(--surface); color:var(--ink-dim); cursor:pointer; transition:.15s; }
+.dbtn:hover { color:var(--ink); border-color:var(--accent); }
+.dbtn.danger:hover { color:var(--crit); border-color:var(--crit); }
+.drawer .hint { font-size:.55rem; line-height:1.5; color:var(--ink-faint); letter-spacing:.06em; margin-top:6px; }
+
+.statusbar { margin-top:20px; border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); display:flex; flex-wrap:wrap; }
+.statusbar .seg { padding:9px 16px; border-right:1px solid var(--line); display:flex; gap:9px; align-items:baseline; }
+.statusbar .seg:last-child { border-right:none; margin-left:auto; }
+.statusbar .k { font-size:.56rem; letter-spacing:.22em; color:var(--ink-dim); }
+.statusbar .v { font-size:.74rem; color:var(--ink); }
+.note { margin-top:12px; text-align:center; font-size:.56rem; letter-spacing:.18em; color:var(--ink-faint); }
+
+@media (max-width:980px){ .grid{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:660px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div id="bg-custom"></div>
+<div class="fx fx-grid"></div>
+<div class="fx fx-scan"></div>
+<div class="fx fx-vignette"></div>
+
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="mark">EXOCORTEX</span>
+      <div>
+        <div class="sub">Console&nbsp;/&nbsp;Mission&nbsp;Control</div>
+        <div class="jp">統合管制 — SOVEREIGN OPS HUB</div>
+      </div>
+    </div>
+    <div class="hgroup-r">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="themesel" id="themesel">
+        <span class="tl">THEME</span>
+        <div class="swatch amber" data-theme="amber" title="MAGI · amber CRT"></div>
+        <div class="swatch holo" data-theme="holo" title="iDroid · holographic"></div>
+        <div class="swatch parchment" data-theme="parchment" title="YoRHa · parchment"></div>
+        <div class="swatch tactical" data-theme="tactical" title="HighFleet · tactical"></div>
+      </div>
+      <div class="gear" id="gear">⚙ CUSTOMIZE</div>
+    </div>
+  </header>
+
+  <div class="lead"><h2>At a Glance</h2><span class="rule"></span><span class="tag">5 SCREENS · LIVE · CLICK OPEN FULL ▶</span></div>
+
+  <div class="grid">
+    <!-- SYSTEM -->
+    <div class="card">
+      <div class="ch"><span class="nm">SYSTEM<small>統制制御系</small></span><span class="stt"><span class="d"></span>CYCLING</span></div>
+      <div class="body"><div class="mini">
+        <div class="m"><div class="k">VRAM</div><div class="v"><span id="s-vram">96.9</span><small>%</small></div></div>
+        <div class="m"><div class="k">CORE TEMP</div><div class="v"><span id="s-temp">61</span><small>°C</small></div></div>
+        <div class="m"><div class="k">DECODE</div><div class="v"><span id="s-dec">46.9</span><small> t/s</small></div></div>
+        <div class="m"><div class="k">CYCLE</div><div class="v" id="s-cyc" style="font-size:.92rem">1345</div></div>
+      </div></div>
+      <div class="cf"><span class="meta">Qwen3.6-27B-MTP · 80K</span><a class="openfull" href="system_panel.html">OPEN FULL ▶</a></div>
+    </div>
+
+    <!-- OFFICE -->
+    <div class="card">
+      <div class="ch"><span class="nm">OFFICE<small>作戦管制</small></span><span class="stt"><span class="d"></span>ACTIVE</span></div>
+      <div class="body"><div class="mini">
+        <div class="m"><div class="k">CYCLE</div><div class="v" id="o-cyc" style="font-size:.92rem">1345</div></div>
+        <div class="m"><div class="k">MODE</div><div class="v" id="o-mode" style="font-size:.82rem">MAINTAIN</div></div>
+        <div class="m miniwide"><div class="k">RUNNING CYCLE</div><div class="mbar" id="o-bar"></div></div>
+        <div class="m"><div class="k">WIKI</div><div class="v"><span id="o-wiki">337</span><small> top</small></div></div>
+        <div class="m"><div class="k">SKILLS</div><div class="v">70</div></div>
+      </div></div>
+      <div class="cf"><span class="meta">idle-cycle engine</span><a class="openfull" href="office_panel.html">OPEN FULL ▶</a></div>
+    </div>
+
+    <!-- INTEL -->
+    <div class="card">
+      <div class="ch"><span class="nm">INTEL<small>諜報記録</small></span><span class="stt"><span class="d"></span>INGEST</span></div>
+      <div class="body"><div class="mini">
+        <div class="m"><div class="k">CLAIMS</div><div class="v" id="i-claims" style="font-size:.95rem">1129</div></div>
+        <div class="m"><div class="k">HYPOTHESES</div><div class="v">14<small> · 3 fals</small></div></div>
+        <div class="m"><div class="k">FORECASTS</div><div class="v">8</div></div>
+        <div class="m"><div class="k">CONTRA</div><div class="v">3<small> held</small></div></div>
+      </div></div>
+      <div class="cf"><span class="meta">OSS · iran-hormuz</span><a class="openfull" href="intel_panel.html">OPEN FULL ▶</a></div>
+    </div>
+
+    <!-- SWARMFISH -->
+    <div class="card">
+      <div class="ch"><span class="nm">SWARMFISH<small>予測委員会</small></span><span class="stt warn"><span class="d"></span>SCORING</span></div>
+      <div class="body"><div class="mini">
+        <div class="m"><div class="k">CONSENSUS</div><div class="v" id="sf-cons" style="font-size:1.1rem">0.34</div></div>
+        <div class="m"><div class="k">DISPERSION</div><div class="v" id="sf-disp" style="font-size:.82rem">MOD</div></div>
+        <div class="m miniwide"><div class="k">8-AGENT COMMITTEE · P(EVENT)</div><div class="committee" id="sf-comm"></div></div>
+      </div></div>
+      <div class="cf"><span class="meta">closure ≤ 07-15</span><a class="openfull" href="swarmfish_panel.html">OPEN FULL ▶</a></div>
+    </div>
+
+    <!-- MAP -->
+    <div class="card">
+      <div class="ch"><span class="nm">MAP<small>地理空間</small></span><span class="stt"><span class="d"></span>FEED</span></div>
+      <div class="body"><div class="mini">
+        <div class="m"><div class="k">CONTACTS</div><div class="v" id="m-count" style="font-size:1.05rem">8</div></div>
+        <div class="m"><div class="k">FORMAT</div><div class="v" style="font-size:.78rem">KML · TAK</div></div>
+        <div class="m miniwide"><div class="k">STRAIT OF HORMUZ</div><div class="minimap" id="m-mini"><div class="sweep"></div></div></div>
+      </div></div>
+      <div class="cf"><span class="meta">ATAK / WINTAK ready</span><a class="openfull" href="map_panel.html">OPEN FULL ▶</a></div>
+    </div>
+
+    <!-- CUSTOMIZE shortcut card -->
+    <div class="card" style="cursor:pointer;" id="cust-card">
+      <div class="ch"><span class="nm">CUSTOMIZE<small>外観設定</small></span><span class="stt"><span class="d"></span>READY</span></div>
+      <div class="body" style="display:flex; align-items:center; justify-content:center; text-align:center; color:var(--ink-dim); font-size:.72rem; line-height:1.6; letter-spacing:.06em;">
+        Set the global theme,<br>load a background image,<br>tune its opacity.<br><span style="color:var(--accent); margin-top:8px; display:inline-block;">⚙ OPEN SUITE</span>
+      </div>
+      <div class="cf"><span class="meta">applies to all screens</span><span class="openfull">CUSTOMIZE ▶</span></div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="seg"><span class="k">SCREENS</span><span class="v">5 live</span></div>
+    <div class="seg"><span class="k">THEME</span><span class="v" id="sb-theme">tactical</span></div>
+    <div class="seg"><span class="k">v16</span><span class="v" style="color:var(--good)">cycling</span></div>
+    <div class="seg"><span class="k">v17</span><span class="v" style="color:var(--warn)">idle</span></div>
+    <div class="seg"><span class="k">TIME</span><span class="v" id="sbtime">--:--</span></div>
+  </div>
+  <div class="note">CONSOLE — at-a-glance hub. Each card is a live summary; OPEN FULL ▶ goes to the standalone screen, which inherits your theme + background. Settings persist locally.</div>
+</div>
+
+<!-- customization drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="dh"><span class="t">CUSTOMIZE</span><span class="x" id="drawer-x">✕</span></div>
+
+  <div class="fld">
+    <div class="fl">Global Theme</div>
+    <div class="themerow" id="drawer-themes">
+      <div class="themecol"><div class="swatch amber" data-theme="amber"></div><div class="lab">MAGI</div></div>
+      <div class="themecol"><div class="swatch holo" data-theme="holo"></div><div class="lab">iDROID</div></div>
+      <div class="themecol"><div class="swatch parchment" data-theme="parchment"></div><div class="lab">YoRHa</div></div>
+      <div class="themecol"><div class="swatch tactical" data-theme="tactical"></div><div class="lab">TAC</div></div>
+    </div>
+  </div>
+
+  <div class="fld">
+    <div class="fl">Background Image</div>
+    <label class="uploadbtn" for="bg-file">⬆ LOAD IMAGE<small>JPG / PNG · stored locally</small></label>
+    <input type="file" id="bg-file" accept="image/*">
+    <div class="thumb" id="bg-thumb"></div>
+  </div>
+
+  <div class="fld">
+    <div class="fl">Background Opacity</div>
+    <div class="opwrap"><input type="range" id="bg-op" min="0" max="100" value="50"><span class="opval" id="bg-op-val">50%</span></div>
+    <div class="hint">Opacity blends your image behind the panels. 0% hides it; higher brings it forward beneath the UI.</div>
+  </div>
+
+  <div class="fld actions">
+    <button class="dbtn danger" id="bg-clear">CLEAR IMAGE</button>
+    <button class="dbtn" id="reset-all">RESET ALL</button>
+  </div>
+  <div class="hint">Theme + background are saved to this browser and inherited by every screen you open from the console.</div>
+</aside>
+
+<script>
+/* ============================================================================
+   Customization + global theme — persisted to localStorage, read by every panel
+   ============================================================================ */
+const LS={ theme:'exo-theme', bg:'exo-bg', op:'exo-bg-op' };
+const $=id=>document.getElementById(id);
+
+function applyTheme(t){ document.documentElement.dataset.theme=t; $('sb-theme').textContent=t;
+  document.querySelectorAll('#themesel .swatch').forEach(s=>s.setAttribute('aria-selected', s.dataset.theme===t));
+  document.querySelectorAll('#drawer-themes .swatch').forEach(s=>s.setAttribute('aria-selected', s.dataset.theme===t));
+}
+function setTheme(t){ applyTheme(t); try{ localStorage.setItem(LS.theme,t); }catch(e){} }
+
+function applyBg(url,op){
+  const layer=$('bg-custom');
+  if(url){ layer.style.backgroundImage=`url(${url})`; layer.style.opacity=(op==null?50:op)/100; $('bg-thumb').style.display='block'; $('bg-thumb').style.backgroundImage=`url(${url})`; }
+  else { layer.style.backgroundImage='none'; layer.style.opacity=0; $('bg-thumb').style.display='none'; }
+}
+function saveBg(url){ try{ if(url) localStorage.setItem(LS.bg,url); else localStorage.removeItem(LS.bg); }catch(e){ alert('Image too large for local storage — try a smaller file.'); } }
+
+/* init from saved */
+(function(){
+  let t='tactical'; try{ t=localStorage.getItem(LS.theme)||'tactical'; }catch(e){}
+  applyTheme(t);
+  let url=null, op=50; try{ url=localStorage.getItem(LS.bg); op=+(localStorage.getItem(LS.op)||50); }catch(e){}
+  $('bg-op').value=op; $('bg-op-val').textContent=op+'%';
+  applyBg(url,op);
+})();
+
+/* theme swatches (header + drawer) */
+document.querySelectorAll('.swatch[data-theme]').forEach(s=> s.addEventListener('click',()=>setTheme(s.dataset.theme)) );
+
+/* drawer open/close */
+function openDrawer(){ $('drawer').classList.add('open'); $('scrim').classList.add('open'); }
+function closeDrawer(){ $('drawer').classList.remove('open'); $('scrim').classList.remove('open'); }
+$('gear').addEventListener('click',openDrawer);
+$('cust-card').addEventListener('click',openDrawer);
+$('drawer-x').addEventListener('click',closeDrawer);
+$('scrim').addEventListener('click',closeDrawer);
+
+/* background upload */
+$('bg-file').addEventListener('change',ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ const url=r.result; const op=+$('bg-op').value; applyBg(url,op); saveBg(url); };
+  r.readAsDataURL(f);
+});
+$('bg-op').addEventListener('input',ev=>{ const op=+ev.target.value; $('bg-op-val').textContent=op+'%';
+  $('bg-custom').style.opacity=op/100; try{ localStorage.setItem(LS.op,op); }catch(e){} });
+$('bg-clear').addEventListener('click',()=>{ applyBg(null); saveBg(null); $('bg-file').value=''; });
+$('reset-all').addEventListener('click',()=>{ try{ localStorage.removeItem(LS.bg); localStorage.removeItem(LS.op); localStorage.removeItem(LS.theme); }catch(e){}
+  $('bg-op').value=50; $('bg-op-val').textContent='50%'; applyBg(null); setTheme('tactical'); });
+
+/* ============================================================================
+   Live at-a-glance sims (lightweight; mirror each panel's baseline)
+   ============================================================================ */
+const SIM={ vram:23825, temp:61, dec:46.9, cyc:1345, mode:'MAINTAIN', oprog:0, maint:1, mrun:1,
+  claims:1129, cons:0.34, agents:[0.28,0.31,0.66,0.20,0.35,0.27,0.62,0.23], contacts:8,
+  rnd(a,b){return a+Math.random()*(b-a);} };
+function flash(el){ if(!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+function setN(id,v){ const el=$(id); if(el&&el.textContent!==String(v)){ el.textContent=v; flash(el); } }
+function setBar(id,on,total){ const b=$(id); if(!b) return; if(b.childElementCount!==total){ b.innerHTML=''; for(let i=0;i<total;i++) b.appendChild(document.createElement('i')); } [...b.children].forEach((c,i)=>c.className=i<on?'on':''); }
+
+function nextMode(){ if(SIM.mode==='MAINTAIN'){ SIM.maint++; if(SIM.maint>=3){SIM.mode='BUILD';SIM.mrun=0;SIM.maint=0;} } else if(SIM.mode==='BUILD'){ SIM.mrun++; if(SIM.mrun>=5) SIM.mode='EXPLORE'; } else { SIM.mode='MAINTAIN'; SIM.mrun=0; } }
+
+/* committee mini-viz */
+function renderCommittee(){
+  const wrap=$('sf-comm'); const mean=SIM.agents.reduce((a,b)=>a+b,0)/SIM.agents.length;
+  if(wrap.childElementCount!==SIM.agents.length){ wrap.innerHTML=''; SIM.agents.forEach(()=>wrap.appendChild(document.createElement('i'))); }
+  [...wrap.children].forEach((c,i)=>{ const p=SIM.agents[i]; c.style.height=(10+p*90)+'%'; c.className=Math.abs(p-mean)>0.20?'dis':''; });
+}
+/* minimap blips */
+function renderMinimap(){
+  const mm=$('m-mini'); mm.querySelectorAll('.blip').forEach(b=>b.remove());
+  const cols=['#ff5638','#2f9bff','#c98bff','#ffce46','#5cff9a','#86ffb0'];
+  for(let i=0;i<SIM.contacts;i++){ const b=document.createElement('div'); b.className='blip';
+    b.style.left=(15+EXOrand(i*7)*70)+'%'; b.style.top=(20+EXOrand(i*13)*60)+'%';
+    const c=cols[i%cols.length]; b.style.background=c; b.style.boxShadow='0 0 6px '+c; mm.appendChild(b); }
+}
+function EXOrand(seed){ const x=Math.sin(seed*99.7)*10000; return x-Math.floor(x); }
+
+let last=performance.now(), acc=0, sfacc=0;
+function loop(now){ const dt=now-last; last=now; acc+=dt; sfacc+=dt;
+  // fast telemetry
+  SIM.vram=Math.min(24536,Math.max(23600,SIM.vram+SIM.rnd(-30,30)));
+  SIM.temp=Math.max(57,Math.min(64,SIM.temp+SIM.rnd(-.6,.6)));
+  SIM.dec=Math.max(40,Math.min(53,SIM.dec+SIM.rnd(-1.2,1.2)));
+  setN('s-vram',(SIM.vram/24576*100).toFixed(1)); setN('s-temp',Math.round(SIM.temp)); setN('s-dec',SIM.dec.toFixed(1));
+  // office running-cycle bar
+  SIM.oprog+=dt/22000*100;
+  if(SIM.oprog>=100){ SIM.oprog=0; SIM.cyc++; nextMode(); if(SIM.mode==='BUILD'&&Math.random()<.5){} }
+  setN('s-cyc',SIM.cyc); setN('o-cyc',SIM.cyc); setN('o-mode',SIM.mode);
+  setBar('o-bar', Math.round(SIM.oprog/100*10), 10);
+  // intel ingest
+  if(acc>5000){ acc=0; SIM.claims++; setN('i-claims',SIM.claims); }
+  // swarmfish rescore
+  if(sfacc>5500){ sfacc=0; SIM.agents=SIM.agents.map(p=>Math.max(.05,Math.min(.95,p+SIM.rnd(-.04,.04))));
+    const m=SIM.agents.reduce((a,b)=>a+b,0)/SIM.agents.length; SIM.cons=m;
+    const sd=Math.sqrt(SIM.agents.reduce((s,p)=>s+(p-m)**2,0)/SIM.agents.length);
+    setN('sf-cons',m.toFixed(2)); setN('sf-disp', sd<.12?'LOW':sd<.22?'MOD':'HIGH'); renderCommittee(); }
+  requestAnimationFrame(loop);
+}
+function tick(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  $('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  $('sbtime').textContent=`${p(d.getHours())}:${p(d.getMinutes())}`; }
+setInterval(tick,1000); tick();
+renderCommittee(); renderMinimap();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

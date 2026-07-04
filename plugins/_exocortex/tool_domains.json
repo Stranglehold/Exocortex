@@ -1,0 +1,31 @@
+{
+  "_comment": "Maps snake_case tool names to the BST domains where they should be injected. '*' means always inject regardless of domain. Add entries here when deploying new tools. Multi-tool files: include each tool name individually — a file is injected if ANY of its tools match the current domain.",
+  "_domains": ["coding", "bugfix", "system_admin", "file_ops", "git_ops", "planning", "investigation", "analysis", "financial", "orientation", "meta_cognitive", "philosophical", "conversation"],
+  "tools": {
+    "stack_status":          ["*"],
+    "staging_note":          ["*"],
+    "write_file":            ["coding", "bugfix", "file_ops", "system_admin", "planning"],
+    "emit_artifact":         ["coding", "planning", "analysis", "investigation"],
+    "investigation_report":  ["investigation", "analysis"],
+    "source_ingest":         ["investigation", "analysis"],
+    "entity_resolve":        ["investigation", "analysis"],
+    "relationship_query":    ["investigation", "analysis"],
+    "ontology_search":       ["investigation", "analysis"],
+    "oss_topic":             ["investigation", "analysis", "financial"],
+    "oss_drift":             ["investigation", "analysis", "financial"],
+    "oss_health":            ["investigation", "analysis"],
+    "oss_submit":            ["investigation", "analysis"],
+    "oss_ingest_pause":      ["investigation", "system_admin"],
+    "oss_ingest_resume":     ["investigation", "system_admin"],
+    "oss_list_topics":       ["investigation", "analysis"],
+    "oss_add_topic":         ["investigation", "analysis"],
+    "swarmfish_predict":     ["investigation", "analysis", "financial"],
+    "swarmfish_session":     ["investigation", "analysis", "financial"],
+    "swarmfish_sessions":    ["investigation", "analysis", "financial"],
+    "swarmfish_calibration": ["investigation", "analysis", "financial"],
+    "swarmfish_outcome":     ["investigation", "analysis", "financial"],
+    "tla_check":             ["coding", "planning"],
+    "theme_author":          ["coding"],
+    "agentevolver":          ["planning", "meta_cognitive"]
+  }
+}

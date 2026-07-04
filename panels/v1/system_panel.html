@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="magi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXOCORTEX // SYSTEM</title>
+<style>
+/* ============================================================================
+   EXOCORTEX SYSTEM PANEL — diegetic system monitor
+   Themes via CSS custom properties. Two materials: MAGI (amber CRT) and
+   MGS-DELTA (olive codec). Switching [data-theme] swaps the entire language.
+   Effects live at "felt-not-seen" opacity — scanlines 4%, grain 3%, grid 6%.
+   ========================================================================= */
+
+/* ---- THEME: MAGI (Evangelion amber CRT) ---- */
+[data-theme="magi"] {
+  --bg-0:#08070a; --bg-1:#0d0b10; --bg-2:#131019;
+  --ink:#ffb338; --ink-dim:#9a6a1f; --ink-faint:#5a3f17;
+  --accent:#ff7a18; --good:#7fd14b; --warn:#ffcf3a; --crit:#ff4d3d;
+  --line:#5a3f1a; --line-bright:#9a6a24;
+  --surface:#1b140c; --surface-2:#241a0f; --edge-hi:rgba(255,190,95,.18);
+  --glow: 0 0 10px rgba(255,150,40,.55), 0 0 22px rgba(255,120,20,.22);
+  --grid-color: rgba(255,160,50,.06);
+  --hex-opacity:.62; --graph-opacity:0;
+  --vignette: rgba(0,0,0,.55);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.045; --grain-op:.035;
+}
+/* ---- THEME: MGS DELTA (codec / radio, olive drab) ---- */
+[data-theme="delta"] {
+  --bg-0:#0c0d08; --bg-1:#13140d; --bg-2:#1b1c12;
+  --ink:#d8d8b0; --ink-dim:#9a9a6e; --ink-faint:#62623f;
+  --accent:#c9c98a; --good:#b8c87a; --warn:#d6c879; --crit:#cc7a55;
+  --line:#45452c; --line-bright:#76764a;
+  --surface:#1d1e12; --surface-2:#262717; --edge-hi:rgba(214,214,150,.14);
+  --glow: 0 0 8px rgba(200,200,150,.32);
+  --grid-color: rgba(190,190,140,.07);
+  --hex-opacity:0; --graph-opacity:.6;
+  --vignette: rgba(0,0,0,.72);
+  --font-read:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --font-mono:ui-monospace,'Consolas','Courier New',monospace;
+  --scan-op:.03; --grain-op:.05;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--bg-2), var(--bg-0) 70%) fixed,
+    var(--bg-0);
+  color:var(--ink);
+  font-family:var(--font-mono);
+  min-height:100vh; overflow-x:hidden;
+  letter-spacing:.04em;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---- ambient effect layers (fixed, pointer-events:none) ---- */
+.fx { position:fixed; inset:0; pointer-events:none; z-index:50; }
+.fx-scan { background:repeating-linear-gradient(0deg, rgba(0,0,0,.6) 0 1px, transparent 1px 3px); opacity:var(--scan-op); mix-blend-mode:multiply; }
+.fx-grain { opacity:var(--grain-op);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/></svg>");
+}
+.fx-vignette { background:radial-gradient(130% 100% at 50% 45%, transparent 55%, var(--vignette)); }
+/* grids sit BEHIND content (z-index 0) so blocks read as solid surfaces over the lacing */
+.fx-grid-hex { z-index:0; opacity:var(--hex-opacity);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='48'><path d='M28 0l28 16v16L28 48 0 32V16z' fill='none' stroke='rgba(255,170,60,.7)' stroke-width='1'/></svg>");
+  background-size:56px 48px;
+}
+.fx-grid-graph { z-index:0; opacity:var(--graph-opacity);
+  background-image:linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size:34px 34px;
+}
+
+/* ---- shell ---- */
+.shell { position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 26px 18px; }
+
+/* ---- header ---- */
+header { display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid var(--line-bright); padding-bottom:12px; }
+.brand { display:flex; align-items:baseline; gap:14px; }
+.brand .mark { font-family:var(--font-read); font-weight:700; font-size:1.5rem; letter-spacing:.32em; color:var(--ink); text-shadow:var(--glow); }
+.brand .sub { font-size:.62rem; letter-spacing:.42em; color:var(--ink-dim); }
+.brand .jp { font-size:.6rem; letter-spacing:.2em; color:var(--ink-faint); }
+.hgroup-r { text-align:right; display:flex; flex-direction:column; gap:3px; align-items:flex-end; }
+.clock { font-size:1.35rem; color:var(--ink); text-shadow:var(--glow); letter-spacing:.12em; }
+.uptime { font-size:.6rem; color:var(--ink-dim); letter-spacing:.28em; }
+.live { display:inline-flex; align-items:center; gap:6px; font-size:.58rem; letter-spacing:.3em; color:var(--good); }
+.live .dot { width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 8px var(--good); animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* theme switch */
+.switch { display:flex; gap:0; border:1px solid var(--line-bright); }
+.switch button { background:transparent; color:var(--ink-dim); border:none; font-family:var(--font-mono); font-size:.6rem; letter-spacing:.22em; padding:6px 12px; cursor:pointer; transition:.18s; }
+.switch button[aria-selected="true"] { background:var(--ink); color:var(--bg-0); text-shadow:none; }
+.switch button:hover:not([aria-selected="true"]) { color:var(--ink); }
+
+/* ---- section title ---- */
+.sec { margin:20px 0 10px; display:flex; align-items:center; gap:12px; }
+.sec h2 { font-family:var(--font-read); font-weight:600; font-size:.72rem; letter-spacing:.34em; color:var(--ink-dim); text-transform:uppercase; white-space:nowrap; }
+.sec .rule { flex:1; height:1px; background:linear-gradient(90deg, var(--line-bright), transparent); }
+.sec .tag { font-size:.56rem; letter-spacing:.2em; color:var(--ink-faint); }
+
+/* ---- primary gauge cluster ---- */
+.cluster { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.gauge { position:relative; border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi), 0 4px 14px rgba(0,0,0,.6); padding:18px 16px 14px; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
+.gauge .glabel { font-size:.6rem; letter-spacing:.26em; color:var(--ink-dim); }
+.gauge .gjp { font-size:.54rem; letter-spacing:.14em; color:var(--ink-faint); float:right; }
+.gauge .ring { display:block; margin:6px auto 2px; }
+.gauge .gval { position:absolute; left:0; right:0; top:50%; transform:translateY(-18%); text-align:center; }
+.gauge .gval .n { font-size:2.1rem; line-height:1; color:var(--ink); text-shadow:var(--glow); }
+.gauge .gval .u { font-size:.66rem; color:var(--ink-dim); letter-spacing:.1em; }
+.gauge .gsub { text-align:center; font-size:.58rem; color:var(--ink-dim); letter-spacing:.12em; margin-top:2px; }
+.ring-track { stroke:var(--line); }
+.ring-fill { stroke:var(--accent); filter:drop-shadow(0 0 4px var(--accent)); transition:stroke-dashoffset .6s ease; }
+
+/* ---- telemetry tiles ---- */
+.tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.tile { border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi), 0 3px 10px rgba(0,0,0,.5); padding:11px 13px; position:relative; }
+.tile::before { content:''; position:absolute; left:0; top:0; width:3px; height:100%; background:var(--accent); opacity:.5; }
+.tile .tl { font-size:.56rem; letter-spacing:.22em; color:var(--ink-dim); display:flex; justify-content:space-between; }
+.tile .tl .jp { color:var(--ink-faint); }
+.tile .tv { font-size:1.25rem; color:var(--ink); margin-top:5px; text-shadow:var(--glow); }
+.tile .tv small { font-size:.62rem; color:var(--ink-dim); letter-spacing:.06em; }
+/* segmented bar (codec MEM/SEND/TUNE flavour) */
+.bar { margin-top:8px; display:flex; gap:2px; height:7px; }
+.bar i { flex:1; background:var(--line); }
+.bar i.on { background:var(--accent); box-shadow:0 0 5px var(--accent); }
+
+/* ---- status bar ---- */
+.statusbar { margin-top:20px; border:1px solid var(--line-bright); background:var(--surface); box-shadow:inset 0 1px 0 var(--edge-hi); display:flex; flex-wrap:wrap; }
+.statusbar .seg { padding:9px 16px; border-right:1px solid var(--line); display:flex; gap:9px; align-items:baseline; }
+.statusbar .seg:last-child { border-right:none; margin-left:auto; }
+.statusbar .k { font-size:.56rem; letter-spacing:.22em; color:var(--ink-dim); }
+.statusbar .v { font-size:.74rem; color:var(--ink); }
+
+.note { margin-top:12px; text-align:center; font-size:.56rem; letter-spacing:.18em; color:var(--ink-faint); }
+
+@media (max-width:760px){ .cluster{grid-template-columns:1fr} .tiles{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<div class="fx fx-grid-hex"></div>
+<div class="fx fx-grid-graph"></div>
+<div class="fx fx-scan"></div>
+<div class="fx fx-grain"></div>
+<div class="fx fx-vignette"></div>
+
+<div class="shell">
+  <header>
+    <div class="brand">
+      <span class="mark">EXOCORTEX</span>
+      <div>
+        <div class="sub">SYSTEM&nbsp;MONITOR</div>
+        <div class="jp">統制制御系 — SOVEREIGN OPS</div>
+      </div>
+    </div>
+    <div class="hgroup-r">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="uptime"><span class="live"><span class="dot"></span>LIVE</span> &nbsp;·&nbsp; CONTAINERS UP 10:0?</div>
+      <div class="switch" role="tablist">
+        <button role="tab" data-set="magi" aria-selected="true">MAGI</button>
+        <button role="tab" data-set="delta" aria-selected="false">MGS·DELTA</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="sec"><h2>Inference Core</h2><span class="rule"></span><span class="tag">RTX 3090 · QWEN3.6-27B-MTP · 80K</span></div>
+  <div class="cluster">
+    <div class="gauge">
+      <div class="glabel">VRAM <span class="gjp">記憶</span></div>
+      <svg class="ring" width="150" height="150" viewBox="0 0 150 150">
+        <circle class="ring-track" cx="75" cy="75" r="62" fill="none" stroke-width="6"/>
+        <circle class="ring-fill" data-pct="96.9" cx="75" cy="75" r="62" fill="none" stroke-width="6" stroke-linecap="butt" transform="rotate(-90 75 75)"/>
+      </svg>
+      <div class="gval"><span class="n">96.9</span><span class="u">%</span></div>
+      <div class="gsub">23825 / 24576 MiB</div>
+    </div>
+    <div class="gauge">
+      <div class="glabel">CORE TEMP <span class="gjp">温度</span></div>
+      <svg class="ring" width="150" height="150" viewBox="0 0 150 150">
+        <circle class="ring-track" cx="75" cy="75" r="62" fill="none" stroke-width="6"/>
+        <circle class="ring-fill" data-pct="61" cx="75" cy="75" r="62" fill="none" stroke-width="6" transform="rotate(-90 75 75)"/>
+      </svg>
+      <div class="gval"><span class="n">61</span><span class="u">°C</span></div>
+      <div class="gsub">UTIL 4% · 1800 MHz</div>
+    </div>
+    <div class="gauge">
+      <div class="glabel">DECODE <span class="gjp">推論</span></div>
+      <svg class="ring" width="150" height="150" viewBox="0 0 150 150">
+        <circle class="ring-track" cx="75" cy="75" r="62" fill="none" stroke-width="6"/>
+        <circle class="ring-fill" data-pct="78" cx="75" cy="75" r="62" fill="none" stroke-width="6" transform="rotate(-90 75 75)"/>
+      </svg>
+      <div class="gval"><span class="n">46.9</span><span class="u">tok/s</span></div>
+      <div class="gsub">PREFILL 797 tok/s</div>
+    </div>
+  </div>
+
+  <div class="sec"><h2>Telemetry</h2><span class="rule"></span><span class="tag">REAL-TIME</span></div>
+  <div class="tiles">
+    <div class="tile"><div class="tl"><span>POWER</span><span class="jp">電力</span></div><div class="tv">136<small> / 420 W</small></div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>DRAFT ACCEPT</span><span class="jp">採択</span></div><div class="tv">91.1<small>%</small></div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>MTP SPEEDUP</span><span class="jp">加速</span></div><div class="tv">1.8<small>× vs base</small></div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>TOKENS</span><span class="jp">生成</span></div><div class="tv">411<small>,467 total</small></div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>CYCLES</span><span class="jp">周期</span></div><div class="tv">1345</div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>CYCLE MODE</span><span class="jp">様式</span></div><div class="tv" style="font-size:1rem">MAINTAIN</div><div class="bar"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="tile"><div class="tl"><span>V16 AGENT</span><span class="jp">局所</span></div><div class="tv" style="color:var(--good);font-size:1rem">ONLINE</div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+    <div class="tile"><div class="tl"><span>V17 AGENT</span><span class="jp">遠隔</span></div><div class="tv" style="color:var(--good);font-size:1rem">ONLINE</div><div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div></div>
+  </div>
+
+  <div class="statusbar">
+    <div class="seg"><span class="k">MODEL</span><span class="v">Qwen3.6-27B-MTP · Q4_K_XL</span></div>
+    <div class="seg"><span class="k">CTX</span><span class="v">80K</span></div>
+    <div class="seg"><span class="k">BACKEND</span><span class="v">turbo3-mtp :1235</span></div>
+    <div class="seg"><span class="k">UPTIME</span><span class="v">10:0?</span></div>
+    <div class="seg"><span class="k">TIME</span><span class="v" id="sbtime">--:--</span></div>
+  </div>
+
+  <div class="note">SNAPSHOT — real telemetry captured 2026-06-21. LIVE auto-refresh wires in on deploy to the A0 web stack.</div>
+</div>
+
+<script>
+// live clock (the one genuinely-live element in the snapshot artifact)
+function tick(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  document.getElementById('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  document.getElementById('sbtime').textContent=`${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+setInterval(tick,1000); tick();
+
+// SVG ring gauges from data-pct
+const C=2*Math.PI*62;
+document.querySelectorAll('.ring-fill').forEach(el=>{
+  const pct=Math.max(0,Math.min(100,parseFloat(el.dataset.pct)));
+  el.style.strokeDasharray=C;
+  el.style.strokeDashoffset=C*(1-pct/100);
+});
+
+// theme switch — swaps the entire visual language
+document.querySelectorAll('.switch button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.documentElement.dataset.theme=b.dataset.set;
+    document.querySelectorAll('.switch button').forEach(x=>x.setAttribute('aria-selected', x===b));
+  });
+});
+</script>
+</body>
+</html>

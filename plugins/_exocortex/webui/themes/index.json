@@ -1,0 +1,82 @@
+{
+  "themes": [
+    {
+      "id": "dark",
+      "name": "Dark",
+      "description": "Default dark theme",
+      "preview": { "background": "#131313", "text": "#ffffff", "accent": "#cf6679" }
+    },
+    {
+      "id": "light",
+      "name": "Light",
+      "description": "Default light theme",
+      "preview": { "background": "#fafafa", "text": "#333333", "accent": "#b00020" }
+    },
+    {
+      "id": "shadow-moses",
+      "name": "Shadow Moses",
+      "description": "MGS1 — Cold industrial steel, fluorescent blue-white",
+      "preview": { "background": "#0a0c0e", "text": "#c8d0d8", "accent": "#6ab4d4" }
+    },
+    {
+      "id": "mgs3",
+      "name": "Metal Gear Solid 3",
+      "description": "Jungle camouflage tactical interface",
+      "preview": { "background": "#1a1f16", "text": "#e8e4d9", "accent": "#c97d2e" }
+    },
+    {
+      "id": "codec",
+      "name": "Codec",
+      "description": "Retro green-phosphor terminal",
+      "preview": { "background": "#0a0f0a", "text": "#80ff80", "accent": "#00cc00" }
+    },
+    {
+      "id": "diamond-dogs",
+      "name": "Diamond Dogs",
+      "description": "MGS5 — Amber desert heat, resource extraction",
+      "preview": { "background": "#0f0d0a", "text": "#e8d5b0", "accent": "#cc8833" }
+    },
+    {
+      "id": "big-shell",
+      "name": "Big Shell",
+      "description": "MGS2 — Deep sea installation, blue-grey offshore",
+      "preview": { "background": "#0a0d10", "text": "#c8d4dc", "accent": "#4488aa" }
+    },
+    {
+      "id": "yorha",
+      "name": "YoRHa",
+      "description": "NieR: Automata — Monochromatic machine war aesthetic",
+      "preview": { "background": "#f0ebe0", "text": "#1a1610", "accent": "#8b7355" }
+    },
+    {
+      "id": "kaer-morhen",
+      "name": "Kaer Morhen",
+      "description": "Witcher — Stone fortress in winter, muted earth tones",
+      "preview": { "background": "#0e0d0b", "text": "#d8cfc0", "accent": "#8b6f3e" }
+    },
+    {
+      "id": "idroid",
+      "name": "iDroid",
+      "description": "MGS5 tactical holographic display",
+      "preview": { "background": "#020d0d", "text": "#80e8e0", "accent": "#00cccc" }
+    },
+    {
+      "id": "ocean",
+      "name": "Ocean",
+      "description": "Deep water blues and teals",
+      "preview": { "background": "#06090f", "text": "#c8d8e8", "accent": "#2288cc" }
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "description": "Dark woodland greens",
+      "preview": { "background": "#080e08", "text": "#c8d8c0", "accent": "#4a8844" }
+    },
+    {
+      "id": "cyberpunk",
+      "name": "Cyberpunk",
+      "description": "Neon-drenched night city",
+      "preview": { "background": "#050510", "text": "#e0d0f0", "accent": "#cc44cc" }
+    }
+  ]
+}

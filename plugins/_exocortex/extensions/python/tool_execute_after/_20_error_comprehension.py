@@ -1,0 +1,347 @@
+"""
+Error Comprehension — Agent-Zero Hardening Layer
+=================================================
+Hook: tool_execute_after
+Priority: _20 (runs BEFORE _30_tool_fallback_logger)
+
+Deterministic error classifier. Parses command output into a structured
+diagnosis dict and injects it into agent context before model reasoning.
+
+Addresses two failure modes observed in stress tests:
+  - ST-001: Keyword matching cannot distinguish pip warnings from failures
+  - ST-002: Model misread interactive prompt as "command not found" under context pressure
+
+Anti-action principle: every error class specifies what NOT to do.
+Loop prevention is the primary goal.
+
+Reads:
+  - response.message (from hook kwargs)
+  - /a0/usr/memory/classification_config.json (error_comprehension section, optional)
+Writes:
+  - agent._error_diagnosis (via set_data) — cleared at start of each call
+  - agent context (via hist_add_warning, if inject_into_context enabled)
+"""
+
+import json
+import os
+import re
+from typing import Any
+
+from helpers.extension import Extension
+from helpers.tool import Response
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+CONFIG_PATH = "/a0/usr/memory/classification_config.json"
+DIAGNOSIS_KEY = "_error_diagnosis"
+
+DEFAULT_CONFIG = {
+    "enabled": True,
+    "inject_into_context": True,
+    "log_prefix": "[ERROR-DX]",
+    "max_output_tail_chars": 500,
+}
+
+# ── Signal / Indicator Lists ──────────────────────────────────────────────────
+
+SUCCESS_INDICATORS = [
+    r"(?i)successfully installed",
+    r"(?i)successfully built",
+    r"(?i)requirement already satisfied",
+    r"(?i)already installed",
+    r"(?i)is up to date",
+    r"(?i)install complete",
+    r"(?i)done\.\s*$",
+    r"(?i)^ok\b",
+    r"(?i)setting up \S+",
+    r"(?i)unpacking \S+",
+    r"(?i)processing triggers",
+    r"(?i)created wheel for",
+    r"(?i)stored in directory:",
+]
+
+# ── High-priority patterns checked BEFORE the success fast-path ───────────────
+# These are structural execution failures that must fire even when the output
+# also contains success indicators (e.g. a pip install succeeds but the heredoc
+# that follows it never runs).
+
+PRIORITY_ERROR_CLASSES = [
+    {
+        "class": "terminal_early_exit_heredoc",
+        "description": "Terminal returned early on shell prompt; heredoc or subsequent commands did not execute",
+        "signals": [
+            r"Detected shell prompt, returning output early",
+        ],
+        "anti_signals": [],
+        "causal_chain": (
+            "The terminal tool detected a shell prompt mid-output and returned early. "
+            "Any python3 heredoc (python3 << 'EOF') or commands after the prompt were "
+            "NEVER executed. Only the commands before the shell prompt ran."
+        ),
+        "suggested_actions": [
+            "Use runtime: 'python' with pure Python code — no bash commands mixed in",
+            "Split the task: one terminal call for bash commands, one python call for Python code",
+            "Never use python3 << 'EOF' heredoc syntax in terminal runtime — it will not run",
+        ],
+        "anti_actions": [
+            "Do NOT repeat the same terminal call — the heredoc will not run again",
+            "Do NOT assume the Python code executed — it did not",
+            "Do NOT use python3 << 'EOF' heredoc syntax in terminal runtime",
+        ],
+        "confidence": 0.99,
+    },
+]
+
+ERROR_CLASSES = [
+    {
+        "class": "interactive_prompt",
+        "description": "Command waiting for stdin input that cannot be provided",
+        "signals": [
+            r"(?i)(enter|input|password|key|token|confirm|y/n|press)\s*[:>]\s*$",
+            r"(?i)\?\s*$",
+            "Potential dialog detected",
+        ],
+        "anti_signals": [
+            r"(?i)successfully",
+            r"(?i)complete",
+        ],
+        "causal_chain": (
+            "Command entered interactive mode requiring keyboard input. "
+            "This execution environment cannot provide stdin input to running commands."
+        ),
+        "suggested_actions": [
+            "Kill the current terminal session",
+            "Use environment variables instead of interactive configuration",
+            "Write configuration directly to the config file",
+            "Use CLI flags to pass values non-interactively",
+        ],
+        "anti_actions": [
+            "Do NOT retry the same command — it will hang again for the same reason",
+            "Do NOT try to 'type' into the prompt — stdin is not connected",
+            "Do NOT wait for more output — the command is blocked on input",
+        ],
+        "confidence": 0.95,
+    },
+    {
+        "class": "import_error",
+        "description": "Python module not found — missing package or wrong import path",
+        "signals": [
+            r"ModuleNotFoundError: No module named",
+            r"ImportError: cannot import name",
+            r"ImportError: No module named",
+        ],
+        "anti_signals": [
+            r"(?i)successfully installed",
+        ],
+        "causal_chain": (
+            "A required Python package is not installed in the active virtual environment. "
+            "The correct pip binary is /opt/venv-a0/bin/pip — bare 'pip' may install into "
+            "a different environment and have no effect. "
+            "CRITICAL: even after a successful pip install, the module will NOT be available "
+            "in the current Python process. Agent Zero must be restarted for new packages "
+            "to load. Do not loop attempting imports after installing."
+        ),
+        "suggested_actions": [
+            "Install the missing package: /opt/venv-a0/bin/pip install <package-name>",
+            "Verify installation: /opt/venv-a0/bin/pip show <package-name>",
+            "After installing, report to the operator that a container restart is required",
+            "Do NOT attempt to use the new package in the same session without restarting",
+        ],
+        "anti_actions": [
+            "Do NOT use bare 'pip install' — always use /opt/venv-a0/bin/pip",
+            "Do NOT loop trying the import again after installing — it will fail until restart",
+            "Do NOT attempt more than one install per missing package",
+            "Do NOT try to importlib.reload() or sys.modules tricks — restart is the only fix",
+        ],
+        "confidence": 0.97,
+    },
+    {
+        "class": "terminal_session_hung",
+        "description": "Previous command still occupying the terminal session",
+        "signals": [
+            r"Terminal session \d+ might be still running",
+        ],
+        "anti_signals": [],
+        "causal_chain": (
+            "A previous command is still running or hung in this terminal session. "
+            "New commands cannot execute until the session is reset."
+        ),
+        "suggested_actions": [
+            "Reset the terminal session (kill the hung process)",
+            "Open a new terminal session with a different session ID",
+        ],
+        "anti_actions": [
+            "Do NOT keep checking the session — it will not resolve itself",
+            "Do NOT replan the same command — execute the reset first",
+        ],
+        "confidence": 0.92,
+    },
+]
+
+# ── Pre-compile all regexes at module level ───────────────────────────────────
+
+_SUCCESS_RX = [re.compile(p) for p in SUCCESS_INDICATORS]
+
+_COMPILED_PRIORITY = []
+for _cls in PRIORITY_ERROR_CLASSES:
+    _COMPILED_PRIORITY.append({
+        **_cls,
+        "_sig_rx": [re.compile(s) for s in _cls["signals"]],
+        "_anti_rx": [re.compile(a) for a in _cls["anti_signals"]],
+    })
+
+_COMPILED_CLASSES = []
+for _cls in ERROR_CLASSES:
+    _COMPILED_CLASSES.append({
+        **_cls,
+        "_sig_rx": [re.compile(s) for s in _cls["signals"]],
+        "_anti_rx": [re.compile(a) for a in _cls["anti_signals"]],
+    })
+
+
+# ── Extension ─────────────────────────────────────────────────────────────────
+
+class ErrorComprehension(Extension):
+    """Deterministic error classifier for tool output.
+
+    Runs before the fallback logger (_30). Writes structured diagnosis to
+    shared agent state so downstream extensions can read it without re-running
+    regex classification.
+    """
+
+    async def execute(self, response: Response | None = None, **kwargs) -> Any:
+        try:
+            # Step 1: Always clear previous diagnosis — prevent stale state leaking
+            self.agent.set_data(DIAGNOSIS_KEY, None)
+
+            # Step 2: Early exit on no response or empty message
+            if not response or not response.message:
+                return
+
+            # Step 2a: Skip response tool — its output is agent speech, not command output.
+            # Signal patterns like r"(?i)\?\s*$" would false-positive on any greeting.
+            if kwargs.get("tool_name") == "response":
+                return
+
+            config = _load_config()
+            if not config.get("enabled", True):
+                return
+
+            msg = response.message
+            max_tail = config.get("max_output_tail_chars", 500)
+
+            # Step 3: Priority classifiers run BEFORE success fast-path.
+            # These are structural failures that must fire even when output also
+            # contains success indicators (e.g. pip install ok but heredoc never ran).
+            diagnosis = _run_classifiers(_COMPILED_PRIORITY, msg, max_tail)
+            if diagnosis is None:
+                # Step 3b: Success fast path — any SUCCESS_INDICATOR match → no diagnosis
+                for rx in _SUCCESS_RX:
+                    if rx.search(msg):
+                        return
+
+            # Step 4: Run remaining classifiers if no priority match
+            if diagnosis is None:
+                diagnosis = _run_classifiers(_COMPILED_CLASSES, msg, max_tail)
+
+            if diagnosis is None:
+                return
+
+            # Step 5: Write diagnosis to shared state
+            self.agent.set_data(DIAGNOSIS_KEY, diagnosis)
+
+            # Step 6: Log the classification
+            try:
+                self.agent.context.log.log(
+                    type="warning",
+                    content=f"[ERROR-DX] {diagnosis['error_class']}",
+                )
+            except Exception:
+                pass
+
+            # Step 7: Inject compact structured summary into context
+            if config.get("inject_into_context", True):
+                summary = _format_summary(diagnosis)
+                try:
+                    self.agent.hist_add_warning(summary)
+                except Exception:
+                    pass
+
+        except Exception:
+            pass
+
+
+# ── Classifier Runner ─────────────────────────────────────────────────────────
+
+def _run_classifiers(compiled_classes: list, msg: str, max_tail: int) -> dict | None:
+    """Run a list of compiled error classes against msg. Returns first match or None."""
+    for cls in compiled_classes:
+        skip = False
+        for anti_rx in cls["_anti_rx"]:
+            if anti_rx.search(msg):
+                skip = True
+                break
+        if skip:
+            continue
+
+        matched_pattern = None
+        for sig_rx in cls["_sig_rx"]:
+            if sig_rx.search(msg):
+                matched_pattern = sig_rx.pattern
+                break
+
+        if matched_pattern is not None:
+            tail = msg[-max_tail:] if len(msg) > max_tail else msg
+            return {
+                "error_class": cls["class"],
+                "confidence": cls["confidence"],
+                "evidence": [matched_pattern],
+                "causal_chain": cls["causal_chain"],
+                "suggested_actions": cls["suggested_actions"],
+                "anti_actions": cls["anti_actions"],
+                "raw_output_tail": tail,
+            }
+    return None
+
+
+# ── Context Formatting ────────────────────────────────────────────────────────
+
+def _format_summary(diagnosis: dict) -> str:
+    """Format diagnosis as compact structured summary for context injection."""
+    lines = [
+        f"[ERROR-DX] {diagnosis['error_class']} (confidence: {diagnosis['confidence']})",
+        f"  What happened: {diagnosis['causal_chain']}",
+    ]
+
+    suggested = diagnosis.get("suggested_actions", [])
+    if suggested:
+        lines.append("")
+        lines.append("  Do this:")
+        for i, action in enumerate(suggested, 1):
+            lines.append(f"  {i}. {action}")
+
+    anti = diagnosis.get("anti_actions", [])
+    if anti:
+        lines.append("")
+        lines.append("  Do NOT:")
+        for action in anti:
+            lines.append(f"  - {action}")
+
+    return "\n".join(lines)
+
+
+# ── Config Loading ────────────────────────────────────────────────────────────
+
+def _load_config() -> dict:
+    """Load error_comprehension config section with defaults."""
+    try:
+        if os.path.isfile(CONFIG_PATH):
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                full = json.load(f)
+            section = full.get("error_comprehension", {})
+            merged = dict(DEFAULT_CONFIG)
+            merged.update(section)
+            return merged
+    except Exception:
+        pass
+    return dict(DEFAULT_CONFIG)

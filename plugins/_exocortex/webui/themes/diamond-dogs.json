@@ -1,0 +1,102 @@
+{
+  "name": "Diamond Dogs",
+  "author": "Exocortex",
+  "description": "MGS V mission debrief. The emblem endures. Amber-gold on near-black.",
+  "version": "1.0.0",
+  "tier": "atmospheric",
+  "colors": {
+    "background": "#0d0d0d",
+    "text": "#e8e4d9",
+    "text-muted": "#9a9690c7",
+    "primary": "#8a8680",
+    "secondary": "#3a3830",
+    "accent": "#c9922e",
+    "message-bg": "#141414",
+    "highlight": "#7a5c1e",
+    "message-text": "#e0dcd4",
+    "panel": "#111111",
+    "border": "#2a2820a8",
+    "input": "#0d0d0d",
+    "input-focus": "#141414",
+    "chat-background": "#0d0d0d",
+    "error-text": "#cc3333",
+    "warning-text": "#e09c3e",
+    "table-row": "#181815"
+  },
+  "fonts": {
+    "main": "'Helvetica Neue', Arial, sans-serif",
+    "code": "'Courier New', monospace"
+  },
+  "preview": {
+    "background": "#0d0d0d",
+    "text": "#e8e4d9",
+    "accent": "#c9922e"
+  },
+  "background": {
+    "type": "image",
+    "src": "/themes/assets/metal-gear-solid-v-the-phantom-pain-map.jpg",
+    "opacity": 0.68,
+    "blur": 0,
+    "blend_mode": "normal",
+    "position": "center",
+    "size": "cover"
+  },
+  "panel": {
+    "opacity": 0.17,
+    "backdrop_blur": 2
+  },
+  "overlay": {
+    "scanlines": {
+      "enabled": false,
+      "opacity": 0.04,
+      "spacing": 2
+    },
+    "noise": {
+      "enabled": false,
+      "opacity": 0.02
+    },
+    "vignette": {
+      "enabled": true,
+      "opacity": 0.25
+    },
+    "watermark": {
+      "enabled": true,
+      "src": "/themes/assets/metal-gear-solid-v-the-phantom-pain-development.jpg",
+      "opacity": 0,
+      "position": "center",
+      "size": "45%"
+    }
+  },
+  "animation": {
+    "type": "none",
+    "intensity": 0.5,
+    "color": null
+  },
+  "parallax": {
+    "enabled": true,
+    "strength": 0.8
+  },
+  "idle_escalation": {
+    "enabled": false,
+    "threshold_minutes": 6,
+    "message": "PHANTOM PAIN",
+    "position": "bottom-right",
+    "color": "#c9922e"
+  },
+  "widgets": [
+    {
+      "type": "cassette",
+      "position": "bottom-right",
+      "color": "#c8a86e",
+      "size": 52,
+      "spin_when": "thinking"
+    },
+    {
+      "type": "corner-label",
+      "position": "bottom-left",
+      "text": "MOTHER BASE â€” 84Â°N 141Â°W",
+      "color": "#a09070",
+      "font_size": "10px"
+    }
+  ]
+}

@@ -1,0 +1,2355 @@
+"""
+Supervisor Loop — Agent-Zero Cognitive Architecture
+====================================================
+Hook: message_loop_end (_50_)
+
+XO supervisory function: monitors operational state, detects anomalies
+(stalls, loops, context exhaustion, cascading failures), and injects
+corrective steering via hist_add_warning().
+
+Runs in the finally block of every message loop iteration, after history
+organization (_10_). Read-only on all state except history injection.
+
+Loop/cascade/context detection runs always. PACE and stall detection require
+an active organization (they depend on HTN state and PACE level).
+"""
+
+from typing import Any
+
+import sys as _sys
+_PM_PATH = "/a0/usr/plugins/_exocortex/helpers"
+if _PM_PATH not in _sys.path:
+    _sys.path.insert(0, _PM_PATH)
+
+from agent import Agent, LoopData
+from helpers.extension import Extension
+
+# ── Constants ────────────────────────────────────────────────────
+
+# Agent attribute keys (verified from _12_org_dispatcher.py)
+ACTIVE_ROLE_KEY = "_org_active_role"
+PACE_LEVEL_KEY = "_org_pace_level"
+HTN_STATE_KEY = "_htn_state"
+TOOL_FAILURES_KEY = "_tool_failures"
+BST_STORE_KEY = "_bst_store"
+BST_BELIEF_KEY = "__bst_belief_state__"
+
+# Supervisor's own state key
+SUPERVISOR_STATE_KEY = "_supervisor_state"
+
+# Default check interval (every N iterations)
+DEFAULT_CHECK_INTERVAL = 3
+
+# Cooldown: minimum turns between same-type steering injections
+DEFAULT_COOLDOWN = 3
+
+# Context exhaustion threshold (90% only — watchdog already warns at 70%/85%)
+CONTEXT_CRITICAL_THRESHOLD = 0.90
+
+# Loop detection: minimum repetitions of same pattern
+LOOP_DETECTION_THRESHOLD = 3
+
+# Graduated tier thresholds — defaults, used by DOMAIN_THRESHOLDS["default"]
+WARN_THRESHOLD      = 3   # Tier 1: warn (existing behavior)
+SUMMARIZE_THRESHOLD = 6   # Tier 2: context surgery
+RESET_THRESHOLD     = 9   # Tier 3: circuit breaker — forced response
+
+# Direction A: Domain-aware threshold profiles.
+# Structural domains (codegen, debugging, system_admin) involve repeated failures
+# by design — that's the mechanism of the work, not evidence of being stuck.
+# Exploratory domains (research, analysis, investigation) should escalate faster.
+# Compound domains (e.g. "codegen+debugging") use the most permissive profile.
+DOMAIN_THRESHOLDS = {
+    "codegen":        {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "debugging":      {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "system_admin":   {"tier1": 6,  "tier2": 12, "tier3": 18},
+    "research":       {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: multi-step research is legitimate iteration
+    "analysis":       {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: complex analysis requires sustained tool use
+    "investigation":  {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: OSS/OSINT tasks routinely need 15+ iterations
+    "agentic":        {"tier1": 6,  "tier2": 12, "tier3": 18},  # raised: matches structural domains
+    "meta_cognitive": {"tier1": 4,  "tier2": 8,  "tier3": 15},
+    "default":        {"tier1": 3,  "tier2": 6,  "tier3": 9},
+}
+
+# Direction B: Minimum unique error types required to suppress Tier 2+ escalation.
+# If the agent is hitting 3+ distinct error types across consecutive failures,
+# it is iterating (learning from each failure), not stuck in a loop.
+# Genuine loops produce the same error repeatedly (1-2 unique types).
+DIVERSITY_SUPPRESS_THRESHOLD = 3
+
+# ── Model profile override loading ────────────────────────────────────────────
+# supervisor_overrides in the active model profile can tighten thresholds for
+# models with poor self-correction rates (e.g. Qwen3.6-27B recovery=33.3%).
+# Applied as ceilings — never raises thresholds, only lowers them.
+_SUPERVISOR_PROFILE_ROOT  = "/a0/usr/plugins/_exocortex/config/model_profiles"
+
+def _load_supervisor_overrides(agent=None) -> dict:
+    """Load supervisor_overrides from active model profile. Returns {} on any error."""
+    import json as _json, os as _os
+    try:
+        # Prefer agent.config (live UI state) for model name; fall back to plugin config file.
+        raw_name = ""
+        try:
+            if agent is not None:
+                raw_name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
+        except Exception:
+            pass
+        if not raw_name:
+            with open(_MODEL_CONFIG_PATH, encoding="utf-8") as f:
+                cfg = _json.load(f)
+            raw_name = cfg.get("chat_model", {}).get("name", "")
+        if not raw_name:
+            return {}
+        # Model name may include quantization suffix (e.g. "jackrong/qwen3.6-27b@q4_k_m")
+        raw_name = raw_name.split("@")[0].strip()
+        # Flatten "/" to "_" so "jackrong/qwen3.6-27b" → "jackrong_qwen3.6-27b.json"
+        model_id = raw_name.replace("/", "_")
+        path = _os.path.join(_SUPERVISOR_PROFILE_ROOT, f"{model_id}.json")
+        if not _os.path.exists(path):
+            return {}
+        with open(path, encoding="utf-8") as f:
+            profile = _json.load(f)
+        overrides = profile.get("supervisor_overrides", {})
+        if overrides:
+            print(f"[SUPERVISOR] Model profile overrides loaded for {model_id}: {overrides}", flush=True)
+        return overrides
+    except Exception:
+        return {}
+
+# Loop episode state keys (stored in supervisor state dict)
+LOOP_TIER_KEY         = "loop_tier"           # "none"|"warn"|"summarize"|"reset"
+LOOP_TOOL_KEY         = "loop_failing_tool"   # str | None
+LOOP_START_IDX_KEY    = "loop_start_msg_idx"  # int: topic.messages index at episode start
+LOOP_SURGERY_DONE_KEY = "loop_surgery_done"   # bool: Tier 2 fired for this episode
+LOOP_RESET_DONE_KEY   = "loop_reset_done"     # bool: Tier 3 fired for this episode
+
+# Cascade detection: N different tools failing in last M history entries
+CASCADE_TOOL_COUNT = 3
+CASCADE_WINDOW = 5
+
+# Anomaly types for cooldown tracking
+ANOMALY_STALL = "stall"
+ANOMALY_LOOP = "loop"
+ANOMALY_CONTEXT = "context"
+ANOMALY_CASCADE = "cascade"
+ANOMALY_PACE = "pace"
+ANOMALY_STAGNATION = "stagnation"
+ANOMALY_COMPLETION_STALL = "completion_stall"
+
+# Completion boundary loop detection (Item 3, KESTREL_OBSERVATIONS_2026-04-12.md)
+# Fires when the agent's text output contains completion signals but the last
+# tool called was not `response` for N consecutive turns.
+COMPLETION_STALL_THRESHOLD = 3
+COMPLETION_STALL_KEY = "_completion_stall_count"
+
+COMPLETION_SIGNALS = frozenset([
+    "task complete", "task is done", "task is complete", "task done",
+    "all done", "work is done", "successfully completed", "implementation complete",
+    "build complete", "all tests pass", "all tests passing", "tests passing",
+    "all passing", "all checks pass", "tests pass", "builds successfully",
+    "everything works", "all green",
+])
+
+# ── Canary CUSUM buffer ───────────────────────────────────────────────────────
+# Sub-threshold signal accumulation (Ansoff 1975; Page 1954 CUSUM).
+# The monitoring system and the decision system have different evidentiary
+# standards — the canary notices at a lower threshold than the supervisor acts.
+ANOMALY_CANARY = "canary"
+CANARY_K = 0.25    # reference value: sensitivity to shift size (lower = more sensitive)
+CANARY_H = 1.5     # decision threshold: cumulative sum to trigger soft flag
+CANARY_DECAY = 0.1 # decay per turn when no new signals (avoids stale accumulation)
+
+CANARY_SIGNAL_TYPES = frozenset([
+    "bst_misclassification",
+    "tool_selection_drift",
+    "capability_boundary",
+    "relational_friction",
+    "confidence_drift",
+])
+
+# Stagnation detection: successful-execution-no-progress (Finding 2, Session 055).
+# Fires when N+ successful tool calls in a window produce identical output hashes.
+STAGNATION_WINDOW = 4          # Rolling window of recent tool outputs to examine
+STAGNATION_MIN_SUCCESSES = 3   # Minimum successful calls needed to evaluate
+STAGNATION_MAX_UNIQUE = 2      # Max unique output hashes before stagnation is declared
+
+# ── Phase 4: Parallel LLM supervisor — strategic pattern detection ────────────
+# A separate LLM call with compressed context only. No agent history, no Einstellung.
+# The LLM advises. The deterministic tier system enforces.
+
+# PHASE4_MODEL and PHASE4_LM_ENDPOINT are NOT hardcoded — both are read from
+# Agent Zero's live model config at call time so Phase 4 automatically follows
+# whatever backend (model + endpoint) the user has selected.
+_MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
+_MODEL_CONFIG_FALLBACK = ""  # no fallback — Phase 4 skips if model cannot be resolved
+
+# Default endpoint used only when the model config provides no api_base.
+# Update this if the primary backend changes and the config path is unavailable.
+_PHASE4_LM_ENDPOINT_DEFAULT = "http://host.docker.internal:1235/v1/chat/completions"
+
+
+def _get_phase4_model(agent=None) -> str:
+    """Read the current chat model name — agent.config (live UI state) takes priority."""
+    import json as _json
+    # Agent config reflects whatever the user has set in the UI / settings.json.
+    # Try it first so model changes take effect immediately without editing plugin files.
+    try:
+        if agent is not None:
+            name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
+            if name:
+                return name
+    except Exception:
+        pass
+    # Fallback: plugin config file (stale if UI was used, but better than hardcoded)
+    try:
+        with open(_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = _json.load(f)
+        name = cfg.get("chat_model", {}).get("name", "")
+        if name:
+            return name
+    except Exception:
+        pass
+    return _MODEL_CONFIG_FALLBACK
+
+
+def _get_phase4_endpoint(agent=None) -> str:
+    """
+    Read the active inference endpoint for Phase 4 from the same source as
+    the primary LLM — so Phase 4 follows backend changes automatically.
+
+    Resolution order (mirrors _get_phase4_model):
+      1. get_chat_model_config(agent): the model config plugin's live view,
+         which reflects UI changes immediately.
+      2. Plugin config file (_MODEL_CONFIG_PATH): stale if UI was used,
+         but more reliable than a hardcoded constant.
+      3. _PHASE4_LM_ENDPOINT_DEFAULT: last-resort fallback.
+
+    Appends /chat/completions to api_base if not already present.
+    BST uses setattr, so we read via getattr — confirmed correct.
+    """
+    import json as _json
+
+    def _base_to_endpoint(api_base: str) -> str:
+        base = api_base.rstrip("/")
+        if not base.endswith("/chat/completions"):
+            base += "/chat/completions"
+        return base
+
+    # Layer 1: model config plugin (live UI state)
+    try:
+        from plugins._model_config.helpers.model_config import get_chat_model_config
+        cfg = get_chat_model_config(agent) if agent else {}
+        api_base = cfg.get("api_base", "") or ""
+        if api_base:
+            return _base_to_endpoint(api_base)
+    except Exception:
+        pass
+
+    # Layer 2: plugin config file
+    try:
+        with open(_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = _json.load(f)
+        api_base = cfg.get("chat_model", {}).get("api_base", "") or ""
+        if api_base:
+            return _base_to_endpoint(api_base)
+    except Exception:
+        pass
+
+    return _PHASE4_LM_ENDPOINT_DEFAULT
+
+PHASE4_MAX_TOKENS = 200
+PHASE4_TEMPERATURE = 0.0
+PHASE4_TIMEOUT = 10.0                  # hard timeout — never block the agent
+PHASE4_ESCALATION_CONFIDENCE = 0.7
+PHASE4_DEESCALATION_CONFIDENCE = 0.7
+PHASE4_MIN_TURN = 3                    # don't fire in first 3 turns
+ANOMALY_PHASE4 = "phase4"
+
+# Trigger thresholds
+PHASE4_MIN_FAILURES_TRIGGER = 2        # failure count before Phase 4 considers firing
+PHASE4_CONFIRMATION_TRIGGER = 2        # operator confirmations without output → trigger
+PHASE4_BST_MOMENTUM_TRIGGER = 5        # extended momentum in one domain → trigger
+
+# Operator confirmation signal keywords (lightweight history scan)
+_CONFIRMATION_SIGNALS = frozenset([
+    "proceed", "go ahead", "start", "create", "build", "make", "write",
+    "yes", "ok", "continue", "please", "sounds good", "lets", "let's",
+    "implement", "generate", "sure", "great", "do it",
+])
+
+# Phase 4 system prompt — the only context the parallel supervisor sees
+PHASE4_SYSTEM_PROMPT = (
+    "You are a supervisor monitoring an AI agent's execution. "
+    "You receive a compressed status report and must decide whether to intervene.\n\n"
+    "Your options:\n"
+    "- HOLD: Agent is working normally. No intervention needed.\n"
+    "- ESCALATE: Agent is stuck in a strategic pattern it cannot break itself. "
+    "Provide a specific intervention message.\n"
+    "- DEESCALATE: Agent has recovered from a previous issue. "
+    "Restore normal thresholds.\n\n"
+    "Known failure patterns to watch for:\n\n"
+    "1. RESEARCH_AFTER_CONFIRMATION: Agent re-enters information-gathering mode after "
+    "operator has confirmed the task. Signal: operator_confirmations > 0 AND "
+    "productive_output = 0 AND agent is reading/researching.\n\n"
+    "2. STRATEGY_REPETITION: Multiple attempts fail for the same root cause despite "
+    "surface-level variation. Signal: blocking_factors show the same root cause "
+    "across 3+ attempts, even if error types differ.\n\n"
+    "3. MACRO_CYCLE: Agent repeats a multi-step behavioral cycle (research -> propose -> "
+    "ask -> research) after the cycle was already completed and confirmed. Signal: "
+    "same strategy_hash appears twice with operator confirmation between them.\n\n"
+    "4. SELF_DIAGNOSIS_WITHOUT_CHANGE: Agent correctly identifies it is stuck but then "
+    "re-enters the same pattern. Signal: agent_self_diagnosis = present AND "
+    "followed_by_change = no.\n\n"
+    "Respond ONLY with a JSON object: "
+    "{\"action\": \"HOLD\"|\"ESCALATE\"|\"DEESCALATE\", "
+    "\"confidence\": 0.0-1.0, \"reason\": \"one line\", "
+    "\"intervention\": \"message if escalating\", "
+    "\"pattern_matched\": \"pattern name or null\"}.\n\n"
+    "If uncertain, choose HOLD. False negatives are better than false positives."
+)
+
+# Lenz's law: opposing approaches indexed by tool name.
+# When a loop is detected, the injection names the closed strategy
+# and provides the orthogonal alternative — not generic "try something else"
+# but the specific complement to what failed.
+LOOP_ALTERNATIVES = {
+    "document_query": [
+        "Use code_execution_tool to read the file directly (cat, head, less)",
+        "Use search_engine with different query terms or broader scope",
+        "Delegate the research task to a subagent via call_subordinate",
+        "Ask the user for the correct file path or location",
+    ],
+    "search_engine": [
+        "Use document_query to search specific files by path",
+        "Navigate directly to the file via code_execution_tool",
+        "Delegate the search to a subagent via call_subordinate with a focused query",
+        "Reduce query scope or try different terminology",
+    ],
+    "code_execution_tool": [
+        "Verify the path exists before executing",
+        "Break the command into smaller steps and test each",
+        "Check syntax and imports in isolation before running full code",
+        "Test with a minimal example to isolate the failure",
+        # NOTE: call_subordinate deliberately excluded — subagents face the same
+        # tool constraints and delegation spirals produce depth-34 dead ends.
+        # Write failures specifically need file-writing strategy changes, not delegation.
+        "Write files using text_editor:write with a direct content literal (NOT Python string construction)",
+        "Write in sections: ≤40 lines per text_editor:write call, use append mode for subsequent sections",
+        "Use shell heredoc to write: cat > file.py << 'EOF' ... EOF (no Python string assembly needed)",
+        "Verify dependencies are installed (pip list, import check)",
+        "Check permissions or environment state first",
+    ],
+    "text_editor": [
+        # text_editor:write loops almost always mean content is too large for JSON payload.
+        # The file content gets truncated mid-string, A0 sees malformed JSON, model retries.
+        "The content is too large for text_editor:write — it exceeds the JSON payload limit and truncates.",
+        "Switch to code_execution_tool with Python open() — content goes in a Python string, not JSON:",
+        "  with open(path, 'w') as f: f.write(content)   # new file",
+        "  with open(path, 'a') as f: f.write(section)   # append to existing file",
+        "Check what already exists before writing: text_editor:read or cat — append the missing sections only.",
+        "Split large content at natural section boundaries — write each section separately in append mode.",
+    ],
+    "call_subordinate": [
+        "Handle the subtask directly rather than delegating",
+        "Decompose the task differently before re-delegating",
+        "Report current state to the user and ask for guidance",
+    ],
+    "response": [
+        "Use a different tool to complete the underlying task first",
+        "Report partial progress and ask the user how to proceed",
+    ],
+}
+
+DEFAULT_ALTERNATIVES = [
+    "try a fundamentally different tool for this task",
+    "simplify the task into smaller verifiable steps",
+    "delegate to a subagent via call_subordinate with a fresh context and clear objective",
+    "report current progress and ask the user for guidance",
+]
+
+LOOP_ALTERNATIVES["response_format"] = [
+    "Output ONLY a valid JSON object with thoughts, tool_name, and tool_args fields",
+    "Use the response tool to report current progress if unsure what to do next",
+    "Simplify the response — no markdown, no <analysis> tags, just the JSON object",
+]
+
+
+class SupervisorLoop(Extension):
+    """XO supervisory loop — anomaly detection and steering injection."""
+
+    async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
+        try:
+            if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return  # subordinate context — parent monitors; skip supervisor (DEC-028)
+            # Org state — may be None. Loop/cascade/context run regardless.
+            # PACE and stall require org context.
+            role = getattr(self.agent, ACTIVE_ROLE_KEY, None)
+            org_active = bool(role)
+
+            # Get or initialize supervisor state
+            state = _get_state(self.agent)
+            state["turn"] = state.get("turn", 0) + 1
+
+            # ── Canary CUSUM check (runs every turn, before interval guard) ──────
+            # Sub-threshold signal accumulation via CUSUM (Page 1954).
+            # Fires a soft pre-tier-1 flag when accumulated signals cross CANARY_H.
+            # Monitoring system has different evidentiary standard than decision system
+            # (Ansoff 1975) — canary notices before any tier fires.
+            if _cooldown_ok(state, ANOMALY_CANARY):
+                canary_msg = _check_canary_staging(self.agent, state)
+                if canary_msg:
+                    try:
+                        self.agent.context.log.log(
+                            type="info",
+                            content=f"[SUPERVISOR-CANARY] {canary_msg}",
+                            flush=True,
+                        )
+                        loop_data.system.append({"role": "user", "content": canary_msg})
+                        _mark_cooldown(state, ANOMALY_CANARY)
+                    except Exception:
+                        pass
+
+            # Check interval — run checks every N turns
+            interval = DEFAULT_CHECK_INTERVAL
+            if state["turn"] % interval != 0:
+                _set_state(self.agent, state)
+                return
+
+            # Phase 3: load profile store (cached per session) and drain episode buffer.
+            # Must run before threshold selection — buffer may contain new observations
+            # that improve the learned thresholds for this very turn.
+            profile_store = _get_profile_store(self.agent)
+            _process_episode_buffer(self.agent, profile_store)
+
+            # Read operational context
+            ctx = _gather_context(self.agent, role or {})
+
+            # Direction A: select domain-aware thresholds from BST classification.
+            # Direction A+: effective domain override from behavioral signals (Finding 1).
+            # The supervisor maintains its own observation loop — when BST intent-label
+            # diverges from actual execution pattern, trust the behavioral signal.
+            bst_domain = ctx.get("bst_domain", "")
+            effective_domain = _get_effective_domain(bst_domain, ctx.get("failure_history", []))
+            if effective_domain != bst_domain and effective_domain:
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content=f"[SUPERVISOR] Effective domain override: BST={bst_domain or 'none'} → {effective_domain}",
+                        flush=True,
+                    )
+                except Exception:
+                    pass
+
+            # Phase 3: identify the candidate failing tool before threshold selection.
+            # The learned profile lookup is keyed on (tool_name, domain), so we need to
+            # know which tool is accumulating failures to pick the right profile.
+            # We read from ctx.tool_failures.consecutive — same source as _get_loop_metrics.
+            failures_raw = ctx.get("tool_failures") or {}
+            consecutive_raw = failures_raw.get("consecutive") or {}
+            candidate_tool = max(consecutive_raw, key=consecutive_raw.get) if consecutive_raw else ""
+
+            # Load model profile overrides once per context, cache on agent.
+            model_overrides = getattr(self.agent, "_supervisor_model_overrides", None)
+            if model_overrides is None:
+                model_overrides = _load_supervisor_overrides(agent=self.agent)
+                self.agent._supervisor_model_overrides = model_overrides
+                # Wire ctx_length from Agent Zero's live model config so the context
+                # watchdog, org dispatcher, and supervisor context-fill detection all
+                # use the real limit rather than a hardcoded fallback.
+                try:
+                    from plugins._model_config.helpers.model_config import get_chat_model_config, get_config
+                    _ctx = int(get_chat_model_config(self.agent).get("ctx_length", 0))
+                    if not _ctx:
+                        # Per-agent config had no ctx_length — read from global plugin config
+                        # (what the user set in the model config UI for the chat model).
+                        _ctx = int(get_config().get("chat_model", {}).get("ctx_length", 0))
+                    if _ctx > 0:
+                        self.agent.set_data("context_window_size", _ctx)
+                except Exception:
+                    pass
+            diversity_thresh = model_overrides.get("diversity_suppress", DIVERSITY_SUPPRESS_THRESHOLD)
+
+            # Three-layer threshold selection: learned → static → default.
+            # model_overrides applied as ceilings inside _get_learned_thresholds.
+            thresholds = _get_learned_thresholds(candidate_tool, effective_domain, profile_store,
+                                                  model_overrides=model_overrides)
+
+            # Run anomaly detectors (order: most severe first)
+            # ── Graduated loop tier detection ─────────────────────────────────────
+            consecutive, failing_tool = _get_loop_metrics(ctx, thresholds)
+
+            # SFX-001 (2026-04-15): Decouple native repeat detection from tier clock.
+            # Previously, A0's native repeat detector (fw.msg_repeat.md) was allowed to
+            # accelerate the tier escalation count — one byte-for-byte identical JSON
+            # response would advance the supervisor's consecutive count and trigger Tier 1.
+            # This produced false positives on reasoning models (qwen3.5-27b outputs
+            # structured JSON; identical tool calls are common and correct, not loops).
+            # Fix: native repeat signals are logged for observability but do NOT
+            # substitute into `consecutive`. Tool failures drive the tier clock.
+            fmt_consecutive = _get_format_failure_count(self.agent)
+            if fmt_consecutive > 0:
+                print(
+                    f"[SUPERVISOR] Native repeat signal detected (fmt_consecutive={fmt_consecutive})"
+                    f" — monitored but NOT accelerating tier clock.",
+                    flush=True,
+                )
+
+            new_loop_tier, old_loop_tier = _update_loop_state(
+                self.agent, state, consecutive, failing_tool, thresholds, ctx,
+                diversity_threshold=diversity_thresh
+            )
+            _write_loop_signals(self.agent, state, consecutive, failing_tool)
+
+            # Phase 4 trigger tracking: record that the loop detector fired this session
+            if new_loop_tier != "none":
+                state["_p4_loop_fired"] = True
+
+            # Tier 4: capture anti-pattern on loop recovery
+            if old_loop_tier != "none" and new_loop_tier == "none":
+                try:
+                    bst_store = getattr(self.agent, "_bst_store", {}) or {}
+                    compound_sig = bst_store.get("_compound_sig", "unknown")
+                    domain = compound_sig.split("+")[0]  # primary domain only
+                    _capture_anti_pattern(self.agent, state, domain)
+                except Exception:
+                    pass
+
+            injected = False
+
+            # Tier 3 — circuit breaker (highest priority, no cooldown)
+            # Repeats up to T3_MAX_FIRES times with T3_REPEAT_COOLDOWN turns between
+            # fires, so a generation-locked model receives repeated forced-response
+            # instructions rather than the supervisor going silent after the first fire.
+            T3_MAX_FIRES = 4
+            T3_REPEAT_COOLDOWN = 5  # supervisor turns (not agent iterations)
+            t3_count = state.get("_t3_count", 0)
+            t3_last = state.get("_t3_last_turn", -999)
+            t3_ready = (
+                t3_count == 0
+                or (t3_count < T3_MAX_FIRES and state["turn"] - t3_last >= T3_REPEAT_COOLDOWN)
+            )
+            if new_loop_tier == "reset" and t3_ready:
+                _execute_tier3(self.agent, failing_tool, consecutive, state)
+                state[LOOP_RESET_DONE_KEY] = True
+                state[LOOP_SURGERY_DONE_KEY] = True  # Tier 3 subsumes Tier 2
+                state["_t3_count"] = t3_count + 1
+                state["_t3_last_turn"] = state["turn"]
+                injected = True
+
+            # Tier 2 — context surgery (second priority, no cooldown)
+            # _29_stuck_delivery.py sets _suppress_surgery_this_turn when the agent is
+            # in a delivery loop — surgery removes completion evidence and makes it worse.
+            elif new_loop_tier == "summarize" and not state.get(LOOP_SURGERY_DONE_KEY):
+                suppress = getattr(self.agent, "_suppress_surgery_this_turn", False)
+                setattr(self.agent, "_suppress_surgery_this_turn", False)  # clear always
+                if suppress:
+                    print(
+                        "[SUPERVISOR] Tier 2 surgery suppressed by stuck-delivery extension.",
+                        flush=True,
+                    )
+                else:
+                    _execute_tier2(self.agent, failing_tool, consecutive, state)
+                    state[LOOP_SURGERY_DONE_KEY] = True
+                    injected = True
+
+            # 1. PACE escalation response (org-dependent, emergency exempt from cooldown)
+            if org_active:
+                if ctx["pace_level"] == "emergency":
+                    _inject_pace_emergency(self.agent, role, ctx, state)
+                    injected = True
+                elif ctx["pace_level"] == "contingent":
+                    if _cooldown_ok(state, ANOMALY_PACE):
+                        _inject_pace_contingent(self.agent, role, ctx, state)
+                        injected = True
+
+            # 2. Cascade failure detection (always runs)
+            if not injected and _cooldown_ok(state, ANOMALY_CASCADE):
+                if _detect_cascade(ctx):
+                    _inject_cascade(self.agent, state)
+                    injected = True
+
+            # 3. Context exhaustion (always runs — watchdog handles 70%/85%)
+            if not injected and _cooldown_ok(state, ANOMALY_CONTEXT):
+                if _detect_context_exhaustion(self.agent, ctx):
+                    _inject_context_warning(self.agent, ctx, state)
+                    injected = True
+
+            # 3.5. Output stagnation detection (Finding 2, Session 055).
+            # Fires when successful tool calls produce identical output — the agent is
+            # working but not advancing. First fire: soft warning. Second fire without
+            # progress: escalate to Tier 2 surgery (stagnation-specific note).
+            if not injected and _cooldown_ok(state, ANOMALY_STAGNATION):
+                stag_result = _detect_output_stagnation(ctx.get("tool_output_hashes", []))
+                if stag_result.get("stagnating"):
+                    current_tool = stag_result.get("tool", "")
+                    last_stag_tool = state.get("_stagnation_tool", "")
+                    # Reset counter when the stagnating tool changes — different tool means
+                    # a different stagnation episode, not escalation of the current one.
+                    # Do NOT reset when stagnation briefly returns False (oscillation due to
+                    # one non-identical read mixed in) — that was preventing Tier 2 escalation.
+                    if current_tool != last_stag_tool:
+                        stag_fires = 1
+                    else:
+                        stag_fires = state.get("_stagnation_fires", 0) + 1
+                    state["_stagnation_fires"] = stag_fires
+                    state["_stagnation_tool"] = current_tool
+                    if stag_fires >= 2 and not state.get(LOOP_SURGERY_DONE_KEY):
+                        _execute_tier2(
+                            self.agent,
+                            stag_result.get("tool", "code_execution_tool"),
+                            stag_result.get("identical_count", STAGNATION_WINDOW),
+                            state,
+                            stagnation=True,
+                        )
+                        state[LOOP_SURGERY_DONE_KEY] = True
+                    else:
+                        _inject_stagnation(self.agent, stag_result, state)
+                    injected = True
+                else:
+                    state["_stagnation_fires"] = 0  # reset on recovery
+                    state["_stagnation_tool"] = ""
+
+            # 3.6. Phase 4: parallel LLM supervisor — strategic pattern detection.
+            # Fires only when trigger conditions are met and Phases 1-3 have not
+            # already escalated to Tier 2+. The LLM advises; the tier system enforces.
+            # Never blocks the agent: 10s timeout, any failure returns HOLD.
+            if not injected and _cooldown_ok(state, ANOMALY_PHASE4):
+                if _should_trigger_phase4(ctx, state, self.agent):
+                    compressed = _build_phase4_context(
+                        self.agent, ctx, effective_domain, state
+                    )
+                    p4_model    = _get_phase4_model(self.agent)
+                    p4_endpoint = _get_phase4_endpoint(self.agent)
+                    p4_rec = await _call_phase4_supervisor(compressed, p4_model, p4_endpoint)
+                    _log_phase4_decision(self.agent, compressed, p4_rec)
+                    _update_phase4_strategy_hashes(self.agent, state)
+                    if p4_rec.get("action") == "ESCALATE":
+                        _apply_phase4_recommendation(self.agent, p4_rec, state)
+                        injected = True
+                    elif p4_rec.get("action") == "DEESCALATE":
+                        _apply_phase4_recommendation(self.agent, p4_rec, state)
+
+            # Read action gate — suppresses stall/loop-Tier1 when agent is pending authorization
+            action_gate = False
+            try:
+                action_gate = bool(self.agent.get_data("_action_gate_active"))
+            except Exception:
+                pass
+
+            # Read proactive supervisor flag — Tier 1 defers when proactive already intervened
+            # this turn. Tier 2/3 still fire as failsafes regardless.
+            proactive_fired = False
+            try:
+                proactive_fired = bool(self.agent.get_data("_ps_fired"))
+            except Exception:
+                pass
+
+            # 4. Stall detection (org-dependent — requires HTN state)
+            if not injected and org_active and not action_gate and _cooldown_ok(state, ANOMALY_STALL):
+                if _detect_stall(ctx, role):
+                    _inject_stall(self.agent, ctx, role, state)
+                    injected = True
+
+            # 5. Loop detection — Tier 1 (silent), Tier 2+ (substantive)
+            #
+            # SFX-001 (2026-04-15): Tier 1 is now SILENT — it monitors and marks
+            # the cooldown but does NOT inject a "LOOP DETECTED" message.
+            #
+            # Why: injecting "LOOP DETECTED. Use call_subordinate." into a context
+            # already heavy with failed attempts causes a meta-loop — the agent reads
+            # the prescription, tries call_subordinate, that also looks repetitive, the
+            # detector fires again. The weight of history overwhelms one small instruction.
+            # (Documented in instrument/Chatlog_annotated.md: "the instruction to do
+            # something different is drowned by the overwhelming pattern of what it's
+            # been doing.")
+            #
+            # Tier 2 (context surgery) is now the first VISIBLE response — it changes
+            # context structure rather than adding text to an overwhelmed context.
+            # Tier 3 (circuit breaker) remains unchanged.
+            #
+            # Deferred when proactive supervisor has already intervened this turn.
+            if not injected and not action_gate and not proactive_fired and new_loop_tier == "warn" and _cooldown_ok(state, ANOMALY_LOOP):
+                # Silent Tier 1: log internally, mark cooldown, do NOT inject text.
+                print(
+                    f"[SUPERVISOR] Tier 1 loop (silent) — "
+                    f"tool={failing_tool} consecutive={consecutive} "
+                    f"(no injection; first substantive response is Tier 2 surgery)",
+                    flush=True,
+                )
+                _mark_cooldown(state, ANOMALY_LOOP)
+                # Note: injected stays False — downstream handlers may still fire normally.
+            elif proactive_fired and new_loop_tier == "warn":
+                try:
+                    self.agent.context.log.log(
+                        type="info",
+                        content="[SUPERVISOR] Tier 1 deferred — proactive supervisor intervened this turn",
+                    )
+                except Exception:
+                    pass
+
+            # 6. Completion boundary stall detection.
+            # Fires when the agent text signals task completion but the response
+            # tool was not called for COMPLETION_STALL_THRESHOLD consecutive turns.
+            # This is the ST-004 class of failure: task done, response blocked.
+            if not injected and not action_gate and _cooldown_ok(state, ANOMALY_COMPLETION_STALL):
+                stall_count = _detect_completion_stall(self.agent, state)
+                if stall_count >= COMPLETION_STALL_THRESHOLD:
+                    _inject_completion_stall(self.agent, state)
+                    injected = True
+
+            _set_state(self.agent, state)
+
+        except Exception as e:
+            try:
+                self.agent.context.log.log(
+                    type="warning",
+                    content=f"[SUPERVISOR] Error (passthrough): {e}"
+                )
+            except Exception:
+                pass
+
+
+# ── State Management ─────────────────────────────────────────────
+
+def _get_state(agent) -> dict:
+    try:
+        state = getattr(agent, SUPERVISOR_STATE_KEY, None)
+        if state is None:
+            state = {"turn": 0, "cooldowns": {}}
+        return state
+    except Exception:
+        return {"turn": 0, "cooldowns": {}}
+
+
+def _set_state(agent, state: dict):
+    setattr(agent, SUPERVISOR_STATE_KEY, state)
+
+
+# ── Cooldown Management ─────────────────────────────────────────
+
+def _cooldown_ok(state: dict, anomaly_type: str) -> bool:
+    """Check if the cooldown period has elapsed for this anomaly type."""
+    cooldowns = state.get("cooldowns", {})
+    last_turn = cooldowns.get(anomaly_type, 0)
+    current_turn = state.get("turn", 0)
+    return (current_turn - last_turn) >= DEFAULT_COOLDOWN
+
+
+def _mark_cooldown(state: dict, anomaly_type: str):
+    """Record that we just injected a steering message for this anomaly type."""
+    if "cooldowns" not in state:
+        state["cooldowns"] = {}
+    state["cooldowns"][anomaly_type] = state.get("turn", 0)
+
+
+# ── Canary CUSUM Buffer ───────────────────────────────────────────────────────
+
+def _classify_canary_signal(text: str, why: str) -> str:
+    """Deterministic keyword classification of a canary entry's signal type."""
+    combined = (text + " " + why).lower()
+    if any(kw in combined for kw in ["bst", "classified wrong", "misclassified", "domain wrong", "wrong domain"]):
+        return "bst_misclassification"
+    if any(kw in combined for kw in ["same tool", "keep using", "reaching for", "tool drift", "always use"]):
+        return "tool_selection_drift"
+    if any(kw in combined for kw in ["can't", "cannot", "outside", "capability", "don't know how", "beyond"]):
+        return "capability_boundary"
+    if any(kw in combined for kw in ["operator", "relationship", "friction", "tension", "misunderstood"]):
+        return "relational_friction"
+    return "confidence_drift"
+
+
+def _check_canary_staging(agent, state: dict) -> str | None:
+    """
+    CUSUM accumulator for sub-threshold canary signals.
+    Scans staging.jsonl for active canary entries written since the last check.
+    Decays existing accumulators when no new signals arrive.
+    Returns a soft-flag message if any signal type crosses CANARY_H, else None.
+
+    Runs every turn (before the check-interval guard) so signals accumulate
+    at the per-turn resolution the CUSUM mechanism requires.
+    """
+    import json as _json
+    import os as _os
+
+    _STAGING_PATH = "/a0/usr/Exocortex/staging.jsonl"
+    if not _os.path.exists(_STAGING_PATH):
+        return None
+
+    current_turn = state.get("turn", 0)
+    last_check = state.get("_canary_last_check", 0)
+    state["_canary_last_check"] = current_turn
+
+    cusum = state.setdefault("_canary_cusum", {})
+
+    new_canaries = []
+    try:
+        with open(_STAGING_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = _json.loads(line)
+                    if (
+                        entry.get("category") == "canary"
+                        and entry.get("status") == "active"
+                        and entry.get("session_age_at_write", 0) >= last_check
+                    ):
+                        new_canaries.append(entry)
+                except _json.JSONDecodeError:
+                    pass
+    except Exception:
+        return None
+
+    # Decay existing accumulators when no new signals (prevents stale firing)
+    if not new_canaries:
+        for k in list(cusum.keys()):
+            cusum[k] = max(0.0, cusum[k] - CANARY_DECAY)
+        return None
+
+    # CUSUM update: C_t = max(0, C_{t-1} + (x_t - k))
+    fired_signals = []
+    for entry in new_canaries:
+        importance = entry.get("importance", 0.3)
+        sig = _classify_canary_signal(entry.get("text", ""), entry.get("why", ""))
+        cusum[sig] = max(0.0, cusum.get(sig, 0.0) + (importance - CANARY_K))
+        if cusum[sig] >= CANARY_H:
+            fired_signals.append(sig)
+            cusum[sig] = 0.0  # reset after firing
+
+    if not fired_signals:
+        return None
+
+    _SIGNAL_DESCRIPTIONS = {
+        "bst_misclassification": "repeated BST domain misclassification",
+        "tool_selection_drift": "persistent tendency toward a specific tool",
+        "capability_boundary": "task may be near capability boundary",
+        "relational_friction": "possible friction in operator-agent collaboration",
+        "confidence_drift": "accumulating uncertainty signals",
+    }
+    msgs = [_SIGNAL_DESCRIPTIONS.get(s, s) for s in fired_signals]
+    return f"⚠ Canary signals: {'; '.join(msgs)}. Consider pausing to assess."
+
+
+# ── Context Gathering ───────────────────────────────────────────
+
+def _gather_context(agent, role: dict) -> dict:
+    """Read all operational state into a single dict. Defensive on every read."""
+    ctx = {
+        "pace_level": "primary",
+        "htn_state": None,
+        "turns_since_progress": 0,
+        "htn_plan_name": "",
+        "htn_current_step": 0,
+        "htn_total_steps": 0,
+        "bst_domain": "",
+        "tool_failures": None,
+        "failure_history": [],
+        "max_consecutive_failures": 0,
+        "context_fill": 0.0,
+        "error_diagnosis": {},
+    }
+
+    # PACE level
+    try:
+        ctx["pace_level"] = getattr(agent, PACE_LEVEL_KEY, "primary") or "primary"
+    except Exception:
+        pass
+
+    # HTN state
+    try:
+        htn = getattr(agent, HTN_STATE_KEY, None)
+        if htn:
+            ctx["htn_state"] = htn
+            ctx["turns_since_progress"] = htn.get("turns_since_progress", 0)
+            ctx["htn_plan_name"] = htn.get("plan_name", "")
+            ctx["htn_current_step"] = htn.get("current_step", 0)
+            ctx["htn_total_steps"] = htn.get("total_steps", 0)
+    except Exception:
+        pass
+
+    # BST domain
+    try:
+        store = getattr(agent, BST_STORE_KEY, {})
+        belief = store.get(BST_BELIEF_KEY, {})
+        ctx["bst_domain"] = belief.get("domain", "")
+    except Exception:
+        pass
+
+    # Tool failures
+    try:
+        failures = agent.get_data(TOOL_FAILURES_KEY) or {}
+        ctx["tool_failures"] = failures
+        ctx["failure_history"] = failures.get("history", [])
+        consecutive = failures.get("consecutive", {})
+        ctx["max_consecutive_failures"] = max(consecutive.values()) if consecutive else 0
+    except Exception:
+        pass
+
+    # Context fill — read from agent's ctx_window data (same source as context watchdog)
+    try:
+        from agent import Agent
+        ctx_window = agent.get_data(Agent.DATA_NAME_CTX_WINDOW) or {}
+        tokens = ctx_window.get("tokens", 0)
+        window_size = agent.get_data("context_window_size")
+        if not window_size:
+            # context_window_size not yet set (first turn before supervisor init) —
+            # read ctx_length from the model config plugin's global config.
+            from plugins._model_config.helpers.model_config import get_config
+            window_size = int(get_config().get("chat_model", {}).get("ctx_length", 0))
+        if tokens and window_size:
+            ctx["context_fill"] = tokens / window_size
+    except Exception:
+        pass
+
+    # Error diagnosis (from error comprehension layer)
+    try:
+        ctx["error_diagnosis"] = agent.get_data("_error_diagnosis") or {}
+    except Exception:
+        pass
+
+    # Tool output hashes for stagnation detection (from fallback logger success tracking)
+    try:
+        ctx["tool_output_hashes"] = agent.get_data("_tool_output_tracker") or []
+    except Exception:
+        pass
+
+    return ctx
+
+
+# ── Anomaly Detection ───────────────────────────────────────────
+
+def _get_domain_thresholds(bst_domain: str) -> dict:
+    """
+    Select tier threshold profile based on BST domain classification.
+
+    Compound domains (e.g. "analysis+codegen") use the most permissive
+    profile — an agent doing both things simultaneously needs at least as
+    much latitude as either domain alone.
+
+    Always returns values >= the defaults (3/6/9). The system becomes
+    more permissive with domain knowledge, never more restrictive.
+    """
+    if not bst_domain:
+        return DOMAIN_THRESHOLDS["default"]
+    if "+" in bst_domain:
+        parts = bst_domain.split("+")
+        profiles = [DOMAIN_THRESHOLDS.get(p.strip(), DOMAIN_THRESHOLDS["default"]) for p in parts]
+        return {
+            "tier1": max(p["tier1"] for p in profiles),
+            "tier2": max(p["tier2"] for p in profiles),
+            "tier3": max(p["tier3"] for p in profiles),
+        }
+    return DOMAIN_THRESHOLDS.get(bst_domain, DOMAIN_THRESHOLDS["default"])
+
+
+def _get_learned_thresholds(tool_name: str, effective_domain: str, profile_store,
+                            model_overrides: dict = None) -> dict:
+    """
+    Three-layer threshold selection — Phase 3 Adaptive Supervisor.
+
+    Priority:
+      1. Learned profile (observation_count >= MIN_OBSERVATIONS): p50/p90 from accumulated data.
+         Safety floors: learned values never go below cold-start defaults (3/6/9).
+      2. Static DOMAIN_THRESHOLDS: hand-tuned per-domain values. Used when no profile exists
+         or profile has insufficient observations.
+      3. Default 3/6/9: implicit via _get_domain_thresholds("").
+
+    model_overrides (from active model profile supervisor_overrides field) are applied as
+    ceilings after layer selection — they can only lower thresholds, never raise them.
+    This compensates for models with poor self-correction rates.
+
+    No LLM calls in this path. Pure arithmetic on the profile's observation list.
+    """
+    MIN_OBSERVATIONS = 3
+    result = None
+    if profile_store and tool_name:
+        try:
+            profile = profile_store.get_for_compound(tool_name, effective_domain)
+            if profile and profile.observation_count >= MIN_OBSERVATIONS:
+                t1 = max(3, int(profile.p50))
+                t2 = max(6, int(profile.p90))
+                t3 = max(9, int(profile.p90 * 1.5))
+                result = {
+                    "tier1": t1,
+                    "tier2": t2,
+                    "tier3": t3,
+                    "source": "learned",
+                    "observations": profile.observation_count,
+                }
+        except Exception:
+            pass
+    if result is None:
+        static = _get_domain_thresholds(effective_domain)
+        result = {**static, "source": result and result.get("source") or "static"}
+    # Apply model profile overrides as ceilings (never raise, only lower)
+    if model_overrides:
+        for key, override_key in [("tier1", "tier1_threshold"), ("tier2", "tier2_threshold"), ("tier3", "tier3_threshold")]:
+            val = model_overrides.get(override_key)
+            if val is not None and result.get(key, 999) > val:
+                result[key] = val
+    return result
+
+
+def _get_effective_domain(bst_domain: str, failure_history: list) -> str:
+    """
+    Compute the supervisor's operational domain from both BST classification
+    and observed behavioral signals.
+
+    Finding 1 (Session 055): The BST classifies from the user's message intent
+    and maintains momentum. When the user says "run X" and X breaks, the BST
+    stays in 'conversation' while the agent is actually debugging. The supervisor
+    needs a signal that responds to what's ACTUALLY HAPPENING in the execution
+    pattern — its own observation loop, not a dependency on the BST's label.
+
+    The AAR OCT model: the OCT reads the operations order before the exercise
+    (= BST classification) but also observes what's happening on the ground.
+    When reality diverges from the plan, the OCT maintains its own operational
+    picture — it does not rewrite the operations order.
+
+    IMPORTANT: This override flows only to threshold selection. It does NOT
+    modify the BST. The BST continues classifying for enrichment purposes.
+    Two observation loops, two update cadences, same agent.
+    """
+    if not failure_history or len(failure_history) < 3:
+        return bst_domain
+
+    recent = failure_history[-10:]
+    code_exec_failures = [e for e in recent if e.get("tool") == "code_execution_tool"]
+
+    if len(code_exec_failures) >= 2:
+        unique_errors = len(set(
+            e.get("error_type", "") for e in code_exec_failures if e.get("error_type")
+        ))
+        if unique_errors >= 2:
+            # Behavioral signal: iterative debugging on code_execution_tool
+            # regardless of what the user asked for
+            if "debugging" not in bst_domain and "codegen" not in bst_domain:
+                if bst_domain in ("", "conversation", "default"):
+                    return "debugging"
+                else:
+                    return bst_domain + "+debugging"
+
+    return bst_domain
+
+
+def _get_error_diversity(ctx: dict, consecutive: int) -> int:
+    """
+    Count unique error types across the last N failure history entries.
+
+    The fallback logger classifies every tool failure into a structured
+    error_type field (timeout, not_found, syntax, execution, etc.), using
+    the EC diagnosis when available. Counting distinct types over the recent
+    failure window distinguishes iteration (3+ unique types = learning) from
+    fixation (1-2 unique types = same error repeated).
+    """
+    history = ctx.get("failure_history", [])
+    if not history or consecutive < 1:
+        return 0
+    recent = history[-max(consecutive, 1):]
+    types = set(e.get("error_type", "") for e in recent if e.get("error_type"))
+    return len(types)
+
+
+def _detect_stall(ctx: dict, role: dict) -> bool:
+    """Detect if the agent is stalled (no progress for too long)."""
+    if not ctx["htn_state"]:
+        return False
+    max_turns = role.get("doctrine", {}).get("max_turns_without_progress", 12)
+    return ctx["turns_since_progress"] >= max_turns
+
+
+def _detect_loop(ctx: dict) -> bool:
+    """Detect behavioral loops — same tool+error repeated 3+ times in recent history."""
+    history = ctx.get("failure_history", [])
+    if len(history) < LOOP_DETECTION_THRESHOLD:
+        return False
+
+    recent = history[-LOOP_DETECTION_THRESHOLD:]
+
+    # Pattern 1: Same tool + same error type repeated
+    if len(recent) >= LOOP_DETECTION_THRESHOLD:
+        first = (recent[0].get("tool", ""), recent[0].get("error_type", ""))
+        if all(
+            (e.get("tool", ""), e.get("error_type", "")) == first
+            for e in recent
+        ):
+            return True
+
+    # Pattern 2: Oscillation — A, B, A, B pattern
+    if len(history) >= 4:
+        last4 = history[-4:]
+        pair_a = (last4[0].get("tool", ""), last4[0].get("error_type", ""))
+        pair_b = (last4[1].get("tool", ""), last4[1].get("error_type", ""))
+        if pair_a != pair_b:
+            if (last4[2].get("tool", ""), last4[2].get("error_type", "")) == pair_a and \
+               (last4[3].get("tool", ""), last4[3].get("error_type", "")) == pair_b:
+                return True
+
+    return False
+
+
+
+def _detect_completion_stall(agent, state: dict) -> int:
+    """
+    Detect when the agent has completed the task but cannot emit the response tool.
+
+    A completion stall is: the agent's most recent AI message contains completion
+    signals ("done", "complete", "finished", etc.) AND the last tool called was
+    not `response`. Returns the updated completion_stall_count.
+
+    Resets to 0 on: any `response` tool call, or any turn without completion signals.
+    """
+    try:
+        msgs = agent.history.current.messages
+        if not msgs:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # Find the most recent AI message
+        last_ai_msg = None
+        last_tool = ""
+        for msg in reversed(msgs):
+            if getattr(msg, "ai", False):
+                last_ai_msg = msg
+                last_tool = (getattr(msg, "tool_name", None) or "").lower()
+                break
+
+        if not last_ai_msg:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # If last tool was response, task is done — reset counter
+        if "response" in last_tool:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+
+        # Check if AI text contains completion signals
+        content = last_ai_msg.content if isinstance(last_ai_msg.content, str) else str(last_ai_msg.content or "")
+        low = content.lower()
+
+        if any(sig in low for sig in COMPLETION_SIGNALS):
+            count = state.get(COMPLETION_STALL_KEY, 0) + 1
+            state[COMPLETION_STALL_KEY] = count
+            return count
+        else:
+            state[COMPLETION_STALL_KEY] = 0
+            return 0
+    except Exception:
+        return 0
+
+
+def _detect_output_stagnation(tool_output_hashes: list) -> dict:
+    """
+    Detect when tool executions succeed but produce identical output — the
+    agent is working mechanically without advancing the task.
+
+    Finding 2 (Session 055): The consecutive failure counter stays at zero
+    during stagnation (all calls succeed). The supervisor has no failure-based
+    signal. The loop detection message that fired came from Agent Zero's core
+    duplicate response detector (syntactic), not from the supervisor tier system.
+
+    A loop is: same action → same error → same action. Stuck on INPUT side.
+    Stagnation is: different action → same result → different action. Stuck on
+    OUTPUT side. Different diagnosis, different prescription.
+
+    The intervention for stagnation is also different:
+    - Loop: "Your tool is failing. Try a different tool."
+    - Stagnation: "Your tool is working but you're not advancing. Reconsider
+      whether you're done or whether the objective needs clarification."
+    """
+    if len(tool_output_hashes) < STAGNATION_WINDOW:
+        return {"stagnating": False}
+
+    recent = tool_output_hashes[-STAGNATION_WINDOW:]
+    successful = [o for o in recent if o.get("status") == "success"]
+
+    if len(successful) < STAGNATION_MIN_SUCCESSES:
+        return {"stagnating": False}
+
+    # Require all window entries to be from the same tool. Mixed-tool windows mean
+    # the agent is exploring alternatives — that is not stagnation. Without this check,
+    # old identical hashes from tool X pollute the window after the agent switches to
+    # tool Y, causing stagnation to be reported for a tool no longer in use.
+    tools_in_window = {o.get("tool") for o in successful}
+    if len(tools_in_window) > 1:
+        return {"stagnating": False}
+
+    hashes = [o.get("output_hash") for o in successful if o.get("output_hash") is not None]
+    unique_hashes = len(set(hashes))
+
+    if unique_hashes <= STAGNATION_MAX_UNIQUE:
+        return {
+            "stagnating": True,
+            "identical_count": len(successful),
+            "unique_hashes": unique_hashes,
+            "tool": successful[-1].get("tool", "unknown") if successful else "unknown",
+        }
+
+    return {"stagnating": False}
+
+
+def _get_loop_metrics(ctx: dict, thresholds: dict) -> tuple:
+    """
+    Return (consecutive_failure_count, failing_tool) from the tool failure tracker.
+    Uses the 'consecutive' dict maintained by the tool fallback chain — more reliable
+    than scanning failure_history list length.
+    Returns (0, None) if no loop condition is present.
+
+    thresholds: domain-aware profile from _get_domain_thresholds(), so that
+    a codegen task doesn't register as a loop until 6 failures rather than 3.
+    """
+    failures = ctx.get("tool_failures") or {}
+    consecutive = failures.get("consecutive") or {}
+    if not consecutive:
+        return 0, None
+    failing_tool = max(consecutive, key=consecutive.get)
+    count = consecutive[failing_tool]
+    if count < thresholds["tier1"]:
+        return 0, None
+    return count, failing_tool
+
+
+
+def _get_format_failure_count(agent) -> int:
+    """
+    Count consecutive response-format failures at the end of current history.
+    Detects fw.msg_misformat (not valid JSON) and fw.msg_repeat (identical response)
+    warnings injected by the agent-zero core. These bypass tool_failures.consecutive
+    so the graduated cascade wouldn't otherwise detect them.
+    """
+    MISFORMAT_SIGNAL = "You have misformatted your message"  # v1.6: fw.msg_misformat.md
+    REPEAT_SIGNAL = "LOOP DETECTED."
+    try:
+        msgs = agent.history.current.messages
+        count = 0
+        for msg in reversed(msgs):
+            if getattr(msg, "ai", False):
+                continue  # skip AI response messages, only check warnings
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if MISFORMAT_SIGNAL in content or REPEAT_SIGNAL in content:
+                count += 1
+            else:
+                break  # stop at first non-format-failure warning
+        return count
+    except Exception:
+        return 0
+
+
+def _update_loop_state(agent, state: dict, consecutive: int, failing_tool,
+                       thresholds: dict, ctx: dict,
+                       diversity_threshold: int = DIVERSITY_SUPPRESS_THRESHOLD) -> tuple:
+    """
+    Update persistent loop episode state. Computes tier from consecutive count,
+    tracks tier transitions, records message index at episode start.
+    Returns (new_tier, old_tier) as strings.
+
+    Direction A: thresholds are domain-aware (from _get_domain_thresholds).
+    Direction B: Tier 2+ escalation is gated on error type consistency.
+                 If the agent is producing diverse errors (DIVERSITY_SUPPRESS_THRESHOLD+
+                 unique types), it is iterating — suppress surgery/circuit-breaker
+                 and hold at Tier 1 warn only.
+    """
+    old_tier = state.get(LOOP_TIER_KEY, "none")
+
+    if consecutive < thresholds["tier1"]:
+        # Loop resolved -- clear episode state
+        if old_tier != "none":
+            # False recovery tracking: record the surgery tool before clearing state
+            if old_tier in ("summarize", "reset"):
+                try:
+                    agent.set_data("_post_surgery_tool", state.get(LOOP_TOOL_KEY))
+                    agent.set_data("_post_surgery_turn", 0)
+                except Exception:
+                    pass
+            state[LOOP_TIER_KEY] = "none"
+            state[LOOP_TOOL_KEY] = None
+            state.pop(LOOP_START_IDX_KEY, None)
+            state.pop(LOOP_SURGERY_DONE_KEY, None)
+            state.pop(LOOP_RESET_DONE_KEY, None)
+            # Clear loop state for downstream hooks
+            try:
+                agent.set_data("_loop_active", False)
+                agent.set_data("_loop_start_cycle", None)
+            except Exception:
+                pass
+        return "none", old_tier
+
+    # Direction B: check error diversity before escalating past Tier 1
+    error_diversity = _get_error_diversity(ctx, consecutive)
+    diverse_errors = error_diversity >= diversity_threshold
+
+    # Compute new tier — suppress surgery/reset when errors are diverse
+    if consecutive >= thresholds["tier3"]:
+        new_tier = "warn" if diverse_errors else "reset"
+    elif consecutive >= thresholds["tier2"]:
+        new_tier = "warn" if diverse_errors else "summarize"
+    else:
+        new_tier = "warn"
+
+    if diverse_errors and consecutive >= thresholds["tier2"]:
+        try:
+            agent.context.log.log(
+                type="info",
+                content=(
+                    f"[SUPERVISOR] Diversity gate: {consecutive} failures on '{failing_tool}' "
+                    f"but {error_diversity} unique error types — agent is iterating, "
+                    f"suppressing Tier 2+ escalation."
+                ),
+                flush=True
+            )
+        except Exception:
+            pass
+
+    # Record message index at start of episode (first time entering warn)
+    if old_tier == "none" and new_tier == "warn":
+        try:
+            state[LOOP_START_IDX_KEY] = len(agent.history.current.messages)
+        except Exception:
+            pass
+
+    state[LOOP_TIER_KEY] = new_tier
+    state[LOOP_TOOL_KEY] = failing_tool
+    # Track peak for anti-pattern capture (how bad did it get?)
+    state["loop_peak_consecutive"] = max(state.get("loop_peak_consecutive", 0), consecutive)
+    return new_tier, old_tier
+
+
+def _extract_session_intent(agent) -> str:
+    """Extract the original task from the first non-system user message."""
+    try:
+        msgs = agent.history.current.messages
+        for msg in msgs:
+            if getattr(msg, "ai", True):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if content and not content.startswith("[SUPERVISOR"):
+                return content[:200].replace("\n", " ")
+    except Exception:
+        pass
+    return "task not recoverable"
+
+
+def _extract_pre_loop_progress(agent, incision_idx: int) -> str:
+    """Summarize successful tool calls before the incision point."""
+    try:
+        msgs = agent.history.current.messages
+        pre_loop = msgs[:incision_idx]
+        successes = []
+        for msg in reversed(pre_loop[-10:]):  # last 10 pre-loop messages
+            if not getattr(msg, "ai", False):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            # Include AI messages that aren't supervisor warnings
+            if content and not content.startswith("[SUPERVISOR"):
+                successes.append(content[:150].replace("\n", " "))
+                if len(successes) >= 3:
+                    break
+        if successes:
+            return "; ".join(reversed(successes))
+    except Exception:
+        pass
+    return "no progress record available"
+
+
+def _extract_current_state(agent) -> str:
+    """Extract working memory state if available, else return brief placeholder."""
+    try:
+        wm = agent.get_data("_wm_state")
+        if wm and isinstance(wm, dict):
+            parts = []
+            if wm.get("objective"):
+                parts.append(f"objective: {str(wm['objective'])[:100]}")
+            if wm.get("entities"):
+                ents = list(wm["entities"])[:3]
+                parts.append(f"entities: {', '.join(str(e) for e in ents)}")
+            if parts:
+                return "; ".join(parts)
+    except Exception:
+        pass
+    return "working memory not available"
+
+
+def _drain_staging_buffer(agent):
+    """
+    Mark all staging-buffer entries from the loop period as loop_period validity.
+    Called by Tier 2 and Tier 3 surgery. Operates on FAISS and evidence ledger.
+    WAL approximation: writes are immediate but the buffer records them for rollback.
+    """
+    staging = agent.get_data("_memory_staging_buffer") or []
+    loop_start_cycle = agent.get_data("_loop_start_cycle") or 0
+    if not staging or not loop_start_cycle:
+        return
+
+    import asyncio
+    from plugins._memory.helpers.memory import Memory
+
+    affected = [e for e in staging if e.get("turn_idx", 0) >= loop_start_cycle]
+    if not affected:
+        return
+
+    async def _mark():
+        try:
+            db = await Memory.get(agent)
+            all_docs = db.db.get_all_docs() if hasattr(db, "db") else {}
+            changed = False
+            for entry in affected:
+                if entry.get("store") == "faiss":
+                    doc = all_docs.get(entry["doc_id"])
+                    if doc and hasattr(doc, "metadata"):
+                        cls = doc.metadata.get("classification", {})
+                        if cls.get("validity") not in ("deprecated",):
+                            cls["validity"] = "loop_period"
+                            doc.metadata["classification"] = cls
+                            changed = True
+                elif entry.get("store") == "evidence_ledger":
+                    ledger = agent.get_data("_evidence_ledger") or {}
+                    for e in ledger.get("entries", []):
+                        if e.get("_staging_id") == entry["doc_id"]:
+                            e["loop_period"] = True
+            if changed:
+                db.db._save_db()
+        except Exception as e:
+            print(f"[SUPERVISOR] _drain_staging_buffer inner error: {e}", flush=True)
+
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(_mark())
+        else:
+            loop.run_until_complete(_mark())
+    except Exception as e:
+        print(f"[SUPERVISOR] _drain_staging_buffer dispatch error: {e}", flush=True)
+
+    try:
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Staging buffer drain: {len(affected)} entries tagged loop_period",
+            flush=True,
+        )
+    except Exception:
+        pass
+
+
+def _execute_tier2(agent, failing_tool, consecutive: int, state: dict, stagnation: bool = False):
+    """
+    Tier 2: Context surgery. Remove loop messages from the current history topic,
+    inject a diagnostic summary. Breaks the history feedback loop that sustains
+    repetitive failures without requiring a container restart.
+    """
+    try:
+        current_topic = agent.history.current
+        loop_start_raw = state.get(
+            LOOP_START_IDX_KEY,
+            max(0, len(current_topic.messages) - consecutive * 2)
+        )
+        incision_idx = max(0, loop_start_raw - 2)  # -2 lookback: drift precedes detection
+        removed_count = max(0, len(current_topic.messages) - incision_idx)
+        if removed_count > 0:
+            del current_topic.messages[incision_idx:]
+
+        # ── Build recovery summary (omit failure description — prevents re-priming) ──
+        session_intent = _extract_session_intent(agent)
+        progress       = _extract_pre_loop_progress(agent, incision_idx)
+        current_state  = _extract_current_state(agent)
+
+        if stagnation:
+            surgery_note = (
+                "Note: The same approach has been producing identical output without "
+                "advancing the task. That history has been cleared. Consider whether "
+                "the task is already complete, or use the response tool to request "
+                "guidance on a different approach."
+            )
+        else:
+            surgery_note = (
+                "Note: A repetitive failure sequence has been removed from context. "
+                "If the current approach is blocked, use the response tool to report "
+                "the obstacle and request guidance."
+            )
+        summary_lines = [
+            "[SUPERVISOR: CONTEXT SURGERY]",
+            f"Session intent: {session_intent}",
+            f"Progress before interruption: {progress}",
+            f"Current state: {current_state}",
+            surgery_note,
+        ]
+
+        # Add error class from EC if available (no tool name, no count)
+        try:
+            ec = agent.get_data("_error_diagnosis") or {}
+            if ec.get("confidence", 0) > 0.6 and ec.get("error_class"):
+                summary_lines.append(f"Error class detected: {ec['error_class']}.")
+                anti = ec.get("anti_actions", [])
+                if anti:
+                    summary_lines.append(f"Do NOT: {anti[0]}.")
+        except Exception:
+            pass
+
+        summary = "\n".join(summary_lines)
+
+        # ── Insert at incision point (primacy position) rather than appending ─────
+        try:
+            from helpers.history import HistoryMessage
+            summary_msg = HistoryMessage(content=summary, ai=False)
+            current_topic.messages.insert(incision_idx, summary_msg)
+        except Exception:
+            # Fallback: append if insertion fails
+            agent.hist_add_warning(summary)
+
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Tier 2 surgery: removed {removed_count} messages, incision={incision_idx}, consecutive={consecutive}",
+            flush=True
+        )
+
+        # ── Multi-store rollback via staging buffer ───────────────────────────────
+        try:
+            _drain_staging_buffer(agent)
+        except Exception as e:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Staging buffer drain failed (history surgery still applied): {e}",
+                flush=True,
+            )
+    except Exception as e:
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 2 surgery failed: {e}",
+            flush=True
+        )
+
+
+def _execute_tier3(agent, failing_tool, consecutive: int, state: dict):
+    """
+    Tier 3: Circuit breaker. Aggressive surgery + mandatory response instruction.
+    The model's next action MUST be the response tool.
+    """
+    try:
+        current_topic = agent.history.current
+        loop_start_raw = state.get(
+            LOOP_START_IDX_KEY,
+            max(0, len(current_topic.messages) - consecutive * 2)
+        )
+        incision_idx = max(0, loop_start_raw - 2)  # -2 lookback: drift precedes detection
+        removed_count = max(0, len(current_topic.messages) - incision_idx)
+        if removed_count > 0:
+            del current_topic.messages[incision_idx:]
+
+        tool_name = failing_tool or "unknown"
+        msg = (
+            f"[SUPERVISOR TIER 3 - CIRCUIT BREAKER] {consecutive} consecutive failures. "
+            f"Loop context has been cleared.\n"
+            f"YOU MUST USE THE RESPONSE TOOL NOW. No other tool call is acceptable.\n"
+            f"Your next action must be:\n"
+            f'{{"thoughts": "Task interrupted by supervisor circuit breaker.", '
+            f'"tool_name": "response", '
+            f'"tool_args": {{"text": "Describe what was completed before the loop started and what is blocking progress."}}}}'
+        )
+
+        try:
+            ec = agent.get_data("_error_diagnosis") or {}
+            if ec.get("confidence", 0) > 0.6:
+                error_class = ec.get("error_class", "")
+                if error_class:
+                    msg += f"\n[EC] Error class: {error_class}."
+        except Exception:
+            pass
+
+        agent.hist_add_warning(msg)
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 3 circuit breaker: {consecutive} failures, incision={incision_idx}",
+            flush=True
+        )
+
+        # ── Multi-store rollback via staging buffer ───────────────────────────────
+        try:
+            _drain_staging_buffer(agent)
+        except Exception as e:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Staging buffer drain failed (history surgery still applied): {e}",
+                flush=True,
+            )
+    except Exception as e:
+        agent.context.log.log(
+            type="warning",
+            content=f"[SUPERVISOR] Tier 3 failed: {e}",
+            flush=True
+        )
+
+
+def _write_loop_signals(agent, state: dict, consecutive: int, failing_tool):
+    """
+    Write loop state to _layer_signals for BST and memorizer coordination.
+    BST reads loop_active to break momentum lock.
+    Memorizer reads loop_active to suppress writes during active loops.
+    Also exports _loop_active / _loop_start_cycle to agent data for memory
+    classifier and evidence ledger recorder.
+    """
+    try:
+        signals = agent.get_data("_layer_signals") or {}
+        signals["loop_active"]       = consecutive >= WARN_THRESHOLD
+        signals["loop_tier"]         = state.get(LOOP_TIER_KEY, "none")
+        signals["loop_consecutive"]  = consecutive
+        signals["loop_failing_tool"] = failing_tool
+        agent.set_data("_layer_signals", signals)
+    except Exception:
+        pass
+
+    # Export loop state for downstream hooks (memory classifier, evidence ledger)
+    try:
+        is_active = consecutive >= WARN_THRESHOLD
+        agent.set_data("_loop_active", is_active)
+        if is_active and agent.get_data("_loop_start_cycle") is None:
+            agent.set_data("_loop_start_cycle", state.get(LOOP_START_IDX_KEY, 0))
+    except Exception:
+        pass
+
+    # False recovery: increment post-surgery turn counter and check re-failure
+    try:
+        post_tool = agent.get_data("_post_surgery_tool")
+        if post_tool:
+            turn = (agent.get_data("_post_surgery_turn") or 0) + 1
+            agent.set_data("_post_surgery_turn", turn)
+            if turn <= 3 and failing_tool == post_tool and consecutive >= 1:
+                agent.context.log.log(
+                    type="warning",
+                    content=(
+                        f"[SUPERVISOR] False recovery detected: '{post_tool}' failed again "
+                        f"within {turn} turn(s) of surgery. Escalating directly to Tier 3."
+                    ),
+                    flush=True,
+                )
+                # Force Tier 3 threshold: skip directly to reset
+                state[LOOP_TIER_KEY] = "reset"
+                state.pop(LOOP_SURGERY_DONE_KEY, None)
+            elif turn > 3:
+                agent.set_data("_post_surgery_tool", None)
+                agent.set_data("_post_surgery_turn", None)
+    except Exception:
+        pass
+
+
+
+def _get_profile_store(agent):
+    """
+    Get or initialize the session's ProfileStore. Cached on the agent attribute
+    so it's loaded once per session and reused across supervisor invocations.
+    Returns None on import failure so callers degrade gracefully.
+    """
+    try:
+        store = getattr(agent, "_success_profile_store", None)
+        if store is None:
+            from success_profile_store import ProfileStore
+            store = ProfileStore()
+            setattr(agent, "_success_profile_store", store)
+        return store
+    except Exception:
+        return None
+
+
+def _process_episode_buffer(agent, profile_store):
+    """
+    Drain the success episode buffer accumulated by the fallback logger.
+    Called at the start of each supervisor check (every 3 turns).
+    Records each episode into the profile store and flushes to disk.
+
+    Buffer format: list of dicts with {tool_name, failure_count, compound_domain}
+    Written by: _30_tool_fallback_logger.py on successful tool execution
+    after >= 1 consecutive failures.
+    """
+    if profile_store is None:
+        return
+    try:
+        buffer = agent.get_data("_success_episode_buffer") or []
+        if not buffer:
+            return
+        # Clear buffer before processing to avoid double-recording if an exception fires mid-loop
+        agent.set_data("_success_episode_buffer", [])
+        for episode in buffer:
+            tool_name = episode.get("tool_name", "")
+            failure_count = episode.get("failure_count", 0)
+            compound_domain = episode.get("compound_domain", "")
+            if not tool_name:
+                continue
+            try:
+                profile = profile_store.record_episode(tool_name, failure_count, compound_domain)
+                agent.context.log.log(
+                    type="info",
+                    content=(
+                        f"[SUPERVISOR] Phase 3 observation: {tool_name}"
+                        f"/{compound_domain or 'default'} "
+                        f"failures_before_success={failure_count} "
+                        f"n={profile.observation_count} "
+                        f"p50={profile.p50:.1f} p90={profile.p90:.1f}"
+                    ),
+                    flush=True,
+                )
+            except Exception:
+                pass
+        profile_store.flush()
+    except Exception:
+        pass
+
+
+def _capture_anti_pattern(agent, state: dict, domain: str):
+    """
+    Tier 4: Capture loop-and-recovery as an anti-pattern entry in procedural memory.
+    Called when a loop episode resolves (consecutive failures drop below WARN_THRESHOLD).
+    Writes to /a0/usr/Exocortex/procedural_memory/ for cross-session prevention.
+    """
+    try:
+        from procedural_memory_api import ProceduralMemory
+        failing_tool = state.get(LOOP_TOOL_KEY) or "unknown"
+        consecutive = state.get("loop_peak_consecutive", 3)
+
+        pre_action_check = (
+            f"Before calling '{failing_tool}' for {domain} tasks: "
+            f"verify the tool can handle the input in this context. "
+        )
+        alternatives = LOOP_ALTERNATIVES.get(failing_tool, DEFAULT_ALTERNATIVES)
+        if alternatives:
+            pre_action_check += f"If uncertain, use alternative: {alternatives[0]}"
+
+        pm = ProceduralMemory()
+        path = pm.create_anti_pattern(
+            failing_tool=failing_tool,
+            domain=domain,
+            consecutive=consecutive,
+            pre_action_check=pre_action_check,
+        )
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Tier 4 anti-pattern captured: {failing_tool} in {domain} -> {path}",
+            flush=True
+        )
+    except Exception as e:
+        try:
+            agent.context.log.log(
+                type="warning",
+                content=f"[SUPERVISOR] Tier 4 capture failed: {e}",
+                flush=True
+            )
+        except Exception:
+            pass
+
+
+def _detect_context_exhaustion(agent, ctx: dict) -> bool:
+    """Detect context exhaustion at 90%+ (watchdog already handles 70%/85%)."""
+    return ctx["context_fill"] >= CONTEXT_CRITICAL_THRESHOLD
+
+
+def _detect_cascade(ctx: dict) -> bool:
+    """Detect cascade failure — 3+ different tools failing in the last 5 entries."""
+    history = ctx.get("failure_history", [])
+    if len(history) < CASCADE_TOOL_COUNT:
+        return False
+
+    recent = history[-CASCADE_WINDOW:]
+    distinct_tools = set(e.get("tool", "") for e in recent if e.get("tool"))
+    return len(distinct_tools) >= CASCADE_TOOL_COUNT
+
+
+# ── Steering Injection ──────────────────────────────────────────
+
+def _inject_stall(agent, ctx: dict, role: dict, state: dict):
+    """Inject stall warning with task-specific context and PACE next-tier guidance."""
+    task_info = ""
+    if ctx["htn_plan_name"]:
+        task_info = f" on plan '{ctx['htn_plan_name']}' (step {ctx['htn_current_step'] + 1}/{ctx['htn_total_steps']})"
+    elif ctx["bst_domain"]:
+        task_info = f" in domain '{ctx['bst_domain']}'"
+
+    msg = (
+        f"[SUPERVISOR] You appear stalled{task_info} — "
+        f"no progress for {ctx['turns_since_progress']} turns. "
+        f"Reassess your approach: try a different method, simplify the task, or ask the user for guidance."
+    )
+    ec = ctx.get("error_diagnosis", {})
+    if ec.get("confidence", 0) > 0.6:
+        error_class = ec.get("error_class", "")
+        suggested = ec.get("suggested_actions", [])
+        if error_class:
+            msg += f" [{error_class}]"
+        if suggested:
+            msg += f" Suggested: {suggested[0]}."
+
+    # Append PACE next-tier action if a task plan is active
+    pace_action = _get_pace_task_action(agent, "alternate")
+    if pace_action:
+        msg += f"\n[PACE] Your plan's Alternate approach: {pace_action}"
+        try:
+            agent.set_data("_pace_advance_tier", True)
+        except Exception:
+            pass
+
+    _emit(agent, msg, ANOMALY_STALL, state)
+
+
+def _get_last_tool_output(agent) -> str:
+    """
+    Extract the last non-response tool output from agent message history.
+    Trimmed to 600 chars so the injection stays bounded.
+    Used by _inject_loop to give the model concrete diagnostic context,
+    not just a meta-instruction. A model with new information breaks the
+    fixed point; a model with only a warning repeats itself.
+    """
+    try:
+        msgs = agent.history.current.messages
+        for msg in reversed(msgs):
+            if not getattr(msg, "ai", False):
+                continue
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            # Skip final response tool messages — they're user-facing summaries, not errors
+            if '"tool_name": "response"' in content or "'tool_name': 'response'" in content:
+                continue
+            trimmed = content.strip()
+            if len(trimmed) > 600:
+                trimmed = trimmed[:600] + "\n...(trimmed)"
+            return trimmed
+    except Exception:
+        pass
+    return ""
+
+
+def _inject_loop(agent, ctx: dict, state: dict):
+    """
+    Loop detection message — fires at Tier 2+ (after context surgery has
+    already changed the context structure). By the time this fires, Tier 1
+    has silently accumulated evidence across multiple turns, and the model
+    is now looking at a compressed/surgically-modified context.
+
+    SFX-001 (2026-04-15): Removed prescriptive escape routes ("use call_subordinate").
+    Prescribed tool names create meta-loops — the agent tries the prescribed tool,
+    that also looks repetitive, the detector fires again. The message now names
+    the closed strategy and the blocking pattern, trusting the model to choose
+    its own path. The model is a better judge of the right alternative than a
+    static prescription is.
+    """
+    history = ctx.get("failure_history", [])
+    recent = history[-LOOP_DETECTION_THRESHOLD:] if len(history) >= LOOP_DETECTION_THRESHOLD else history
+
+    if recent:
+        tool = recent[-1].get("tool", "unknown")
+        error_type = recent[-1].get("error_type", "unknown")
+        n = len(recent)
+        alternatives = LOOP_ALTERNATIVES.get(tool, DEFAULT_ALTERNATIVES)
+        alt_list = "\n".join(f"  - {a}" for a in alternatives)
+
+        msg = (
+            f"[SUPERVISOR] This approach is blocked — {tool} has not made progress "
+            f"after {n} attempts ({error_type}).\n"
+            f"The current strategy is exhausted. Think about what's blocking progress "
+            f"and choose a fundamentally different path.\n"
+            f"Possible directions:\n{alt_list}"
+        )
+    else:
+        msg = (
+            "[SUPERVISOR] This approach is not making progress. "
+            "Think about what's actually blocking you — "
+            "the obstacle is likely upstream of the tool you're using. "
+            "Choose a different strategy."
+        )
+
+    # Prepend last tool output so the model has concrete diagnostic context.
+    last_output = _get_last_tool_output(agent)
+    if last_output:
+        msg = f"[LAST TOOL OUTPUT]\n{last_output}\n[/LAST TOOL OUTPUT]\n\n" + msg
+
+    ec = ctx.get("error_diagnosis", {})
+    if ec.get("confidence", 0) > 0.6:
+        error_class = ec.get("error_class", "")
+        anti = ec.get("anti_actions", [])
+        if error_class or anti:
+            extra = f"\n[EC] Error class: {error_class}." if error_class else ""
+            if anti:
+                extra += f" Do NOT: {'; '.join(anti[:2])}."
+            msg += extra
+
+    _emit(agent, msg, ANOMALY_LOOP, state)
+
+
+def _inject_completion_stall(agent, state: dict):
+    """
+    Inject completion stall warning.
+
+    The ST-004 class of failure: agent has finished its work, signals completion
+    in its text output, but cannot reach the `response` tool and loops on
+    whatever it can reach instead. The supervisor fires after
+    COMPLETION_STALL_THRESHOLD consecutive turns with this pattern.
+    """
+    count = state.get(COMPLETION_STALL_KEY, COMPLETION_STALL_THRESHOLD)
+    msg = (
+        f"[SUPERVISOR] Completion stall detected (n={count}) — you appear to have "
+        f"completed the task but haven't called the `response` tool.\n"
+        f"Call `response` now with your final answer. Do not call any other tool.\n"
+        f'Your next action: {{"tool_name": "response", "tool_args": {{"text": "your summary here"}}}}'
+    )
+    try:
+        agent.context.log.log(
+            type="info",
+            content=f"[SUPERVISOR] Completion stall detected (n={count}), injecting Tier 1",
+            flush=True,
+        )
+    except Exception:
+        pass
+    _emit(agent, msg, ANOMALY_COMPLETION_STALL, state)
+
+
+def _inject_context_warning(agent, ctx: dict, state: dict):
+    """Inject context exhaustion warning at 90%+."""
+    pct = round(ctx["context_fill"] * 100)
+    msg = (
+        f"[SUPERVISOR] Context window is {pct}% full. "
+        f"Complete your immediate task and respond to the user. Do not start new subtasks."
+    )
+    _emit(agent, msg, ANOMALY_CONTEXT, state)
+
+
+def _inject_stagnation(agent, stagnation: dict, state: dict):
+    """
+    Inject stagnation warning — successful execution without forward progress.
+
+    Distinct from loop detection: the tool is working, the agent is not stuck
+    on a failing approach. The problem is that successful output is identical
+    across multiple calls — the agent is succeeding mechanically without
+    changing the state of the task.
+
+    The prescription is different from a loop intervention:
+    - Loop says: "Your tool failed N times, try X alternative instead."
+    - Stagnation says: "Your tool worked but nothing changed. Reconsider
+      whether you're done or whether the goal needs clarification."
+    """
+    count = stagnation.get("identical_count", 3)
+    tool = stagnation.get("tool", "unknown")
+    msg = (
+        f"[SUPERVISOR] STAGNATION DETECTED — '{tool}' has produced identical output "
+        f"across {count} consecutive successful calls. The method is working but the "
+        f"task is not advancing.\n"
+        f"Consider:\n"
+        f"  1. Whether the current output already satisfies the task objective\n"
+        f"  2. Whether the goal needs refinement (what specifically should change?)\n"
+        f"  3. Using the response tool to report current results and ask for guidance\n"
+        f"Do not re-run the same approach expecting a different result."
+    )
+    _emit(agent, msg, ANOMALY_STAGNATION, state)
+
+
+def _inject_cascade(agent, state: dict):
+    """Inject cascade failure warning."""
+    msg = (
+        "[SUPERVISOR] Multiple different tools are failing. "
+        "Stop executing and verify your assumptions: correct directory, correct file paths, correct environment state."
+    )
+    _emit(agent, msg, ANOMALY_CASCADE, state)
+
+
+def _get_pace_task_action(agent, tier: str) -> str:
+    """
+    Return the specific action for the current PACE plan step at the given tier.
+    Calls the public API exported by _14_pace_plan_generator.
+    Returns empty string if no plan active or import fails.
+    """
+    try:
+        import importlib.util, sys as _sys
+        _MOD = "_14_pace_plan_generator"
+        _PATH = "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_14_pace_plan_generator.py"
+        if _MOD not in _sys.modules:
+            spec = importlib.util.spec_from_file_location(_MOD, _PATH)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _sys.modules[_MOD] = mod
+        return _sys.modules[_MOD].get_current_step_action(agent, tier)
+    except Exception:
+        return ""
+
+
+def _inject_pace_contingent(agent, role: dict, ctx: dict, state: dict):
+    """
+    Inject PACE contingent-level guidance.
+    Uses task-level PACE plan (specific action for current step) when available;
+    falls back to role-level description from org dispatcher.
+    Also sets _pace_advance_tier so the plan generator escalates next turn.
+    """
+    task_action = _get_pace_task_action(agent, "contingency")
+    if task_action:
+        try:
+            plan_ctx = {}
+            import sys as _sys
+            mod = _sys.modules.get("_14_pace_plan_generator")
+            if mod:
+                plan_ctx = mod.get_plan_context(agent)
+        except Exception:
+            plan_ctx = {}
+        step = plan_ctx.get("current_step", "?")
+        total = plan_ctx.get("total_steps", "?")
+        msg = (
+            f"[SUPERVISOR] PACE CONTINGENT — Primary and Alternate approaches failed.\n"
+            f"Your task PACE plan: Step {step}/{total}, escalating to Contingency.\n"
+            f"Execute: {task_action}\n"
+            f"Complete this step at Contingency tier before moving forward."
+        )
+    else:
+        pace_desc = role.get("pace_plan", {}).get("contingent", {}).get("description", "")
+        hint = f" Role guidance: {pace_desc}" if pace_desc else ""
+        msg = (
+            f"[SUPERVISOR] PACE level is CONTINGENT — your current approach has failed repeatedly.{hint} "
+            f"Try a fundamentally different method or ask the user for guidance."
+        )
+    # Signal PACE tier advance to plan generator
+    try:
+        agent.set_data("_pace_advance_tier", True)
+    except Exception:
+        pass
+    _emit(agent, msg, ANOMALY_PACE, state)
+
+
+def _inject_pace_emergency(agent, role: dict, ctx: dict, state: dict):
+    """
+    Inject PACE emergency-level guidance. Always fires (no cooldown).
+    Uses task-level PACE plan when available; falls back to role-level description.
+    Also sets _pace_advance_tier and clears _pace_new_task for next plan cycle.
+    """
+    task_action = _get_pace_task_action(agent, "emergency")
+    if task_action:
+        try:
+            import sys as _sys
+            plan_ctx = {}
+            mod = _sys.modules.get("_14_pace_plan_generator")
+            if mod:
+                plan_ctx = mod.get_plan_context(agent)
+        except Exception:
+            plan_ctx = {}
+        step = plan_ctx.get("current_step", "?")
+        total = plan_ctx.get("total_steps", "?")
+        msg = (
+            f"[SUPERVISOR] PACE EMERGENCY — all standard approaches exhausted for Step {step}/{total}.\n"
+            f"Execute Emergency protocol: {task_action}\n"
+            f"CRITICAL: Preserve all partial results. Do NOT fabricate missing data. "
+            f"Acknowledge the failure explicitly and stop."
+        )
+    else:
+        pace_desc = role.get("pace_plan", {}).get("emergency", {}).get("description", "")
+        hint = f" Role guidance: {pace_desc}" if pace_desc else ""
+        msg = (
+            f"[SUPERVISOR] PACE level is EMERGENCY — stop all work immediately.{hint} "
+            f"Preserve any partial results and report what you've accomplished and where you're stuck."
+        )
+    # Signal tier advance + mark plan for reset on next task start
+    try:
+        agent.set_data("_pace_advance_tier", True)
+        agent.set_data("_pace_new_task", True)  # Emergency = task cycle complete
+    except Exception:
+        pass
+    # Emergency is exempt from cooldown — always inject
+    try:
+        agent.hist_add_warning(msg)
+        agent.context.log.log(type="warning", content=msg)
+    except Exception:
+        pass
+    _mark_cooldown(state, ANOMALY_PACE)
+
+
+def _emit(agent, msg: str, anomaly_type: str, state: dict):
+    """Inject steering message and mark cooldown."""
+    try:
+        agent.hist_add_warning(msg)
+        agent.context.log.log(type="info", content=msg)
+    except Exception:
+        pass
+    _mark_cooldown(state, anomaly_type)
+    # Signal to fallback advisor that supervisor has fired strategic guidance.
+    # Prevents duplicate "try a different approach" messages on the next turn.
+    try:
+        agent.set_data("_supervisor_warned", True)
+    except Exception:
+        pass
+
+
+# ── Phase 4: Parallel LLM Supervisor ─────────────────────────────────────────
+
+def _scan_recent_history(agent, window: int = 30) -> dict:
+    """
+    Scan the last N conversation messages for Phase 4 context signals.
+    Returns operator_confirmations, files_read_count, code_written bool,
+    agent_self_diagnosis bool, and last_proposal_hash.
+    """
+    result = {
+        "operator_confirmations": 0,
+        "files_read_count": 0,
+        "code_written": False,
+        "agent_self_diagnosis": False,
+        "last_proposal_hash": None,
+    }
+    try:
+        msgs = agent.history.current.messages
+        scan = list(msgs)[-window:] if len(msgs) > window else list(msgs)
+        for msg in scan:
+            ai = getattr(msg, "ai", False)
+            raw = msg.content if isinstance(msg.content, str) else str(msg.content or "")
+            low = raw.lower()
+            if not ai:
+                # Operator message — check for confirmation language
+                words = set(low.split())
+                if words & _CONFIRMATION_SIGNALS:
+                    result["operator_confirmations"] += 1
+            else:
+                # Agent message — detect behavioral signals
+                if ("document_query" in low or
+                        ("code_execution" in low and
+                         any(kw in low for kw in ["cat ", "head ", "read ", "open(", "with open"]))):
+                    result["files_read_count"] += 1
+                if any(kw in low for kw in [
+                    "write_to_file", "with open(", "echo >", "cat >", "heredoc",
+                    "created file", "wrote file", "written to",
+                ]):
+                    result["code_written"] = True
+                if any(kw in low for kw in [
+                    "stuck in a loop", "breaking out", "i've been stuck",
+                    "i'm stuck", "different approach", "circular", "i realize i",
+                ]):
+                    result["agent_self_diagnosis"] = True
+                # Strategy hash — hash last response tool content for MACRO_CYCLE
+                tool_name = getattr(msg, "tool_name", None) or ""
+                if "response" in tool_name.lower():
+                    import hashlib
+                    result["last_proposal_hash"] = hashlib.md5(
+                        raw[:300].encode("utf-8", errors="replace")
+                    ).hexdigest()[:8]
+    except Exception:
+        pass
+    return result
+
+
+def _build_phase4_context(agent, ctx: dict, effective_domain: str, state: dict) -> str:
+    """
+    Assemble the compressed context string (~300-500 tokens) for the Phase 4 supervisor.
+    Contains only the signals needed to recognise strategic failure patterns.
+    """
+    hs = _scan_recent_history(agent)
+
+    # BST momentum
+    bst_momentum = 0
+    try:
+        store = getattr(agent, BST_STORE_KEY, {}) or {}
+        belief = store.get(BST_BELIEF_KEY, {})
+        bst_momentum = belief.get("momentum", 0) or 0
+    except Exception:
+        pass
+
+    # Total consecutive failures
+    failures_raw = ctx.get("tool_failures") or {}
+    consecutive_map = failures_raw.get("consecutive") or {}
+    total_failures = sum(consecutive_map.values()) if consecutive_map else 0
+
+    # Recent error sample (last 3 unique, 80 chars each)
+    error_sample: list = []
+    try:
+        history = ctx.get("failure_history", [])
+        seen: set = set()
+        for entry in reversed(history[-10:]):
+            err = entry.get("error", "") if isinstance(entry, dict) else str(entry)
+            short = err[:80]
+            if short and short not in seen:
+                error_sample.append(short)
+                seen.add(short)
+            if len(error_sample) >= 3:
+                break
+    except Exception:
+        pass
+
+    # Stagnation status
+    stagnating = False
+    try:
+        hashes = ctx.get("tool_output_hashes", [])
+        stag = _detect_output_stagnation(hashes)
+        stagnating = stag.get("stagnating", False)
+    except Exception:
+        pass
+
+    # MACRO_CYCLE detection: current hash seen before?
+    prev_hashes = state.get("_p4_strategy_hashes", [])
+    current_hash = hs["last_proposal_hash"]
+    macro_cycle_signal = bool(current_hash and current_hash in prev_hashes)
+
+    lines = [
+        "[PHASE 4 SUPERVISOR CONTEXT]",
+        f"BST: {ctx.get('bst_domain') or 'none'} | effective: {effective_domain or 'none'} | momentum: {bst_momentum}",
+        f"Failure count: {total_failures} | Loop tier: {state.get(LOOP_TIER_KEY, 'none')} | Stagnating: {stagnating}",
+        f"Operator confirmations (recent window): {hs['operator_confirmations']}",
+        f"Files read (recent): {hs['files_read_count']} | Code written: {hs['code_written']}",
+        f"Agent self-diagnosis present: {hs['agent_self_diagnosis']}",
+        f"Strategy hash: {current_hash or 'none'} | Previously seen (MACRO_CYCLE signal): {macro_cycle_signal}",
+    ]
+    if error_sample:
+        lines.append(f"Recent errors (sample): {' | '.join(error_sample)}")
+
+    return "\n".join(lines)
+
+
+def _should_trigger_phase4(ctx: dict, state: dict, agent) -> bool:
+    """
+    Gate — Phase 4 has latency cost (~2-4s). Fire only when a strategic
+    evaluation is warranted. Any one trigger is sufficient.
+    """
+    turn = state.get("turn", 0)
+
+    # Never fire in first 3 turns (let agent orient)
+    if turn < PHASE4_MIN_TURN:
+        return False
+
+    # Don't fire if Phases 1-3 have already escalated to Tier 2+
+    if state.get(LOOP_TIER_KEY, "none") in ("summarize", "reset"):
+        return False
+
+    # Trigger 1: failure accumulation without Phase 1-3 escalation
+    failures_raw = ctx.get("tool_failures") or {}
+    consecutive_map = failures_raw.get("consecutive") or {}
+    if max(consecutive_map.values(), default=0) >= PHASE4_MIN_FAILURES_TRIGGER:
+        return True
+
+    # Trigger 2: loop detector already fired this session
+    if state.get("_p4_loop_fired"):
+        return True
+
+    # Trigger 3: operator confirmed 2+ times (scan and update state on every evaluation)
+    hs_quick = _scan_recent_history(agent, window=10)
+    state["_p4_confirmations_seen"] = hs_quick["operator_confirmations"]
+    if state["_p4_confirmations_seen"] >= PHASE4_CONFIRMATION_TRIGGER:
+        return True
+
+    # Trigger 4: extended BST momentum in one domain
+    try:
+        store = getattr(agent, BST_STORE_KEY, {}) or {}
+        belief = store.get(BST_BELIEF_KEY, {})
+        if (belief.get("momentum") or 0) >= PHASE4_BST_MOMENTUM_TRIGGER:
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+async def _call_phase4_supervisor(
+    compressed_context: str,
+    model: str,
+    endpoint: str = _PHASE4_LM_ENDPOINT_DEFAULT,
+) -> dict:
+    """
+    Fire the parallel LLM supervisor with compressed context only.
+    Returns structured recommendation dict. Never raises — HOLD on any failure.
+    model and endpoint are passed in from the call site so Phase 4 follows the
+    active backend automatically (resolved via _get_phase4_model/_get_phase4_endpoint).
+    """
+    import re as _re
+    import json as _json
+
+    try:
+        import aiohttp
+    except ImportError:
+        return {"action": "HOLD", "reason": "aiohttp_unavailable"}
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": PHASE4_SYSTEM_PROMPT},
+            {"role": "user", "content": compressed_context},
+        ],
+        "max_tokens": PHASE4_MAX_TOKENS,
+        "temperature": PHASE4_TEMPERATURE,
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                endpoint,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=PHASE4_TIMEOUT),
+            ) as resp:
+                if resp.status != 200:
+                    return {"action": "HOLD", "reason": f"lm_status_{resp.status}"}
+                data = await resp.json()
+                text = data["choices"][0]["message"]["content"]
+                # Strip thinking tokens (distill model)
+                text = _re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
+                # Extract first JSON object
+                m = _re.search(r"\{[\s\S]+?\}", text)
+                if m:
+                    return _json.loads(m.group())
+                return {"action": "HOLD", "reason": "no_json_in_response"}
+    except Exception as e:
+        return {"action": "HOLD", "reason": f"call_error:{str(e)[:60]}"}
+
+
+def _apply_phase4_recommendation(agent, recommendation: dict, state: dict):
+    """
+    Translate Phase 4 LLM recommendation into deterministic tier actions.
+    The LLM advises. This function enforces.
+    """
+    action = recommendation.get("action", "HOLD")
+    confidence = float(recommendation.get("confidence") or 0.0)
+
+    if action == "ESCALATE" and confidence >= PHASE4_ESCALATION_CONFIDENCE:
+        intervention = recommendation.get("intervention", "")
+        pattern = recommendation.get("pattern_matched") or ""
+        reason = recommendation.get("reason", "")
+        tag = f"[SUPERVISOR-P4{' ' + pattern if pattern else ''}]"
+        msg = f"{tag} {intervention or reason or 'Strategic pattern detected — reassess current approach.'}"
+        _emit(agent, msg, ANOMALY_PHASE4, state)
+
+    elif action == "DEESCALATE" and confidence >= PHASE4_DEESCALATION_CONFIDENCE:
+        # Clear Tier 1 loop warning cooldown so the next genuine detection can fire
+        state.get("cooldowns", {}).pop(ANOMALY_LOOP, None)
+        try:
+            agent.context.log.log(
+                type="info",
+                content=f"[SUPERVISOR-P4] DEESCALATE confidence={confidence:.2f}",
+                flush=True,
+            )
+        except Exception:
+            pass
+
+    else:
+        # HOLD — no intervention, but mark cooldown so Phase 4 doesn't fire every
+        # turn while trigger conditions persist. Without this, HOLD responses cause
+        # a Phase 4 LLM call on every single turn once momentum crosses the threshold.
+        _mark_cooldown(state, ANOMALY_PHASE4)
+
+
+def _update_phase4_strategy_hashes(agent, state: dict):
+    """
+    Update rolling strategy hash list for MACRO_CYCLE detection.
+    Called after each Phase 4 evaluation.
+    """
+    try:
+        hs = _scan_recent_history(agent, window=5)
+        h = hs.get("last_proposal_hash")
+        if h:
+            prev = state.get("_p4_strategy_hashes", [])
+            if h not in prev:
+                prev.append(h)
+            state["_p4_strategy_hashes"] = prev[-10:]  # rolling window of 10
+    except Exception:
+        pass
+
+
+def _log_phase4_decision(agent, compressed_context: str, recommendation: dict):
+    """
+    Append Phase 4 decision to agent state for sleep consolidation review.
+    Retrospective fields (agent_behavior_next_turn, operator_correction) are
+    filled in by sleep consolidation after the session.
+    """
+    try:
+        from datetime import datetime, timezone
+        log = agent.get_data("_p4_decision_log") or []
+        log.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "context_snapshot": compressed_context,
+            "recommendation": recommendation,
+            "agent_behavior_next_turn": None,
+            "operator_correction_within_3_turns": None,
+        })
+        agent.set_data("_p4_decision_log", log[-20:])
+    except Exception:
+        pass

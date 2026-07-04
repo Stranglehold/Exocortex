@@ -1,0 +1,33 @@
+# Exocortex default configuration
+# These values document the primary tuning parameters across layers.
+# Extensions read from their own constants or JSON config files at present;
+# this file serves as the canonical reference and will wire into the
+# plugin settings UI in a future release.
+
+# ── Working Memory Buffer (_11_working_memory) ────────────────────────────────
+wm_decay_turns: 8             # Prune entities not mentioned in this many turns
+wm_promote_threshold: 3       # Mentions needed to promote to persistent memory
+wm_max_entities: 50           # Cap on active entity count
+wm_max_api_sigs: 25           # Cap on captured API signatures
+
+# ── Supervisor Loop (_50_supervisor_loop) ──────────────────────────────────────
+supervisor_stall_threshold: 3         # Consecutive identical tool calls → stall
+supervisor_loop_threshold: 3          # Repeated loop iterations → intervention
+supervisor_cascade_threshold: 5       # Multi-tool failures → cascade signal
+supervisor_context_threshold: 85      # Context % → watchdog warning
+
+# ── Sleep Consolidation ───────────────────────────────────────────────────────
+sleep_idle_minutes: 10                # Idle time before consolidation triggers
+sleep_config_path: /a0/usr/Exocortex/sleep_config.json
+
+# ── Action Boundary ───────────────────────────────────────────────────────────
+action_boundary_config_path: /a0/usr/Exocortex/action_boundary_config.json
+
+# ── Ontology ──────────────────────────────────────────────────────────────────
+ontology_config_path: /a0/usr/Exocortex/ontology/ontology_config.json
+
+# ── Memory Classification ─────────────────────────────────────────────────────
+memory_classification_config_path: /a0/usr/memory/classification_config.json
+
+# ── Exocortex data root ───────────────────────────────────────────────────────
+exocortex_data_root: /a0/usr/Exocortex

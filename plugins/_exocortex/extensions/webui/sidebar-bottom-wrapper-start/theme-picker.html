@@ -1,0 +1,180 @@
+<html>
+<head>
+  <script type="module">
+    import { store } from "/usr/plugins/_exocortex/webui/theme-store.js";
+    import { ThemeEditor } from "/usr/plugins/_exocortex/webui/theme-editor.js";
+    store.init();
+    window.ThemeEditor = ThemeEditor;
+  </script>
+</head>
+<body>
+  <div x-data>
+    <template x-if="$store.themeStore">
+      <div class="exo-theme-section" x-init="$store.themeStore.init()">
+
+        <h3 class="exo-theme-header">
+          <span @click="$store.themeStore.togglePicker()"
+                :class="{ 'collapsed': !$store.themeStore.pickerOpen }"
+                class="exo-theme-header-label">
+            Themes
+            <svg class="exo-arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="M8 4l8 8-8 8" />
+            </svg>
+          </span>
+          <button class="exo-theme-edit-btn"
+                  title="Edit active theme"
+                  :disabled="!$store.themeStore.activeTheme"
+                  :class="{ 'exo-theme-edit-disabled': !$store.themeStore.activeTheme }"
+                  @click.stop="$store.themeStore.activeTheme && window.ThemeEditor && window.ThemeEditor.open($store.themeStore.activeTheme)">
+            ✏
+          </button>
+        </h3>
+
+        <div x-show="$store.themeStore.pickerOpen" x-transition.duration.150ms class="exo-theme-list">
+
+          <!-- Default option -->
+          <div class="exo-theme-item"
+               :class="{ 'exo-theme-active': $store.themeStore.activeTheme === null }"
+               @click="$store.themeStore.resetTheme()">
+            <span class="exo-theme-preview-dots">
+              <span class="exo-dot" style="background:#131313"></span>
+              <span class="exo-dot" style="background:#737a81"></span>
+              <span class="exo-dot" style="background:#cf6679"></span>
+            </span>
+            <span class="exo-theme-name">Default</span>
+          </div>
+
+          <!-- Theme list from index.json (skip dark/light — covered by Default) -->
+          <template x-for="theme in $store.themeStore.themes.filter(t => t.id !== 'dark' && t.id !== 'light')" :key="theme.id">
+            <div class="exo-theme-item"
+                 :class="{ 'exo-theme-active': $store.themeStore.isActive(theme.id) }"
+                 @click="$store.themeStore.applyTheme(theme.id)"
+                 :title="theme.description">
+              <span class="exo-theme-preview-dots">
+                <span class="exo-dot" :style="'background:' + theme.preview.background"></span>
+                <span class="exo-dot" :style="'background:' + theme.preview.text"></span>
+                <span class="exo-dot" :style="'background:' + theme.preview.accent"></span>
+              </span>
+              <span class="exo-theme-name" x-text="theme.name"></span>
+            </div>
+          </template>
+
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <style>
+    .exo-theme-section {
+      font-size: var(--font-size-small);
+      padding: 0.6rem var(--spacing-md) 0.05rem var(--spacing-md);
+    }
+
+    .exo-theme-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      margin: 0 0 0.2rem 0;
+    }
+
+    .exo-theme-header-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      cursor: pointer;
+      user-select: none;
+      font-size: var(--font-size-small);
+      font-weight: 600;
+      color: var(--color-text);
+      opacity: 0.85;
+    }
+
+    .exo-arrow-icon {
+      flex-shrink: 0;
+      transform: rotate(90deg);
+      transition: transform 0.2s ease;
+      color: var(--color-primary);
+    }
+
+    .exo-theme-header-label.collapsed .exo-arrow-icon {
+      transform: rotate(0deg);
+    }
+
+    .exo-theme-edit-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      font-size: 11px;
+      padding: 1px 3px;
+      opacity: 0.55;
+      border-radius: 3px;
+      line-height: 1;
+      transition: opacity 0.15s, background 0.15s;
+      flex-shrink: 0;
+    }
+    .exo-theme-edit-btn:hover {
+      opacity: 1;
+      background: var(--color-secondary);
+    }
+    .exo-theme-edit-btn.exo-theme-edit-disabled {
+      opacity: 0.2;
+      cursor: not-allowed;
+    }
+
+    .exo-theme-list {
+      padding-bottom: 0.25rem;
+    }
+
+    .exo-theme-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.2rem 0.15rem;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.75;
+      transition: opacity 0.15s ease, background-color 0.15s ease;
+    }
+
+    .exo-theme-item:hover {
+      opacity: 1;
+      background-color: var(--color-background-hover);
+    }
+
+    .exo-theme-item.exo-theme-active {
+      opacity: 1;
+    }
+
+    .exo-theme-item.exo-theme-active .exo-theme-name {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .exo-theme-preview-dots {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .exo-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .exo-theme-name {
+      font-size: 0.78rem;
+      color: var(--color-primary);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</body>
+</html>

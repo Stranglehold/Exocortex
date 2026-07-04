@@ -1,0 +1,34 @@
+{
+  "name": "Ocean Deep",
+  "author": "Agent Zero",
+  "description": "Calm underwater exploration theme with teal and blue tones",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#0c1821",
+    "text": "#e8f4f8",
+    "text-muted": "#b8d4dc",
+    "primary": "#17a2b8",
+    "secondary": "#1e3a4a",
+    "accent": "#5bc0de",
+    "message-bg": "#132430",
+    "highlight": "#17a2b8",
+    "message-text": "#f0fbff",
+    "panel": "#0f1f2c",
+    "border": "#1e5f7480",
+    "input": "#0d1a23",
+    "input-focus": "#0b161f",
+    "chat-background": "#0c1821",
+    "error-text": "#dc3545",
+    "warning-text": "#ffc107",
+    "table-row": "#10202d"
+  },
+  "fonts": {
+    "main": "'Rubik', Arial, Helvetica, sans-serif",
+    "code": "'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#0c1821",
+    "text": "#e8f4f8",
+    "accent": "#17a2b8"
+  }
+}

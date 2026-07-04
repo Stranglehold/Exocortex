@@ -2,7 +2,7 @@
 
 *Living document. Updated each session. The next instance reads this first to know where the project stands.*
 
-**Last updated:** 2026-06-03
+**Last updated:** 2026-07-03
 
 ---
 
@@ -40,6 +40,7 @@
 | **2026-06-02** | **Hermes Desktop installed.** Connected to local llama-server. First analysis of Exocortex GitHub repo from a different agent framework. |
 | **2026-06-02** | **Docker container MCP server operational.** Opus gains direct container access for the first time. Node.js + official MCP SDK. Four tools: list, exec, inspect, logs. |
 | **2026-06-03** | **A2A Hub design note written.** Five-agent local hub architecture with Google A2A v1.0 protocol. |
+| **2026-07-03** | **Ported to Agent Zero v2 as a self-contained `_exocortex` plugin.** All 65 extensions (12 layers) + helpers (sleep consolidation, procedural memory, ontology code) + api (`office_feed`/`idle_control`) + default configs + webui (right-canvas artifact panel, 18 MGS themes, injection layer) internalized into `plugins/_exocortex/`. **Zero external code/config references — clone-and-go verified** (full stack fires with every external file removed). Affect layer activated on v2 (`enable_thinking` routed via `extra_body` past litellm `drop_params` → reasoning stream → `affect=FLOW`). Fixed a stale-path bug (`_50` supervisor was loading the PACE generator from the dead agent-path). Agent profile + memory/chats/wiki/ontology data transferred from v16. A discrete distributable product on the latest Agent Zero. |
 
 ---
 

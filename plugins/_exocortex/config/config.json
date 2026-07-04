@@ -1,0 +1,25 @@
+{
+  "step_budget_tracker": {
+    "enabled": true,
+    "max_steps": 80
+  },
+  "idle_time_engine": {
+    "enabled": false,
+    "idle_threshold_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "max_steps_per_cycle": 20,
+    "workshop_field_ratio": "3:1"
+  },
+  "affect_layer": {
+    "phase2_enabled": true
+  },
+  "methodology_tracker": {
+    "enabled": true
+  },
+  "strategy_advisor": {
+    "enabled": true
+  },
+  "skill_normalizer": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "idle_threshold_minutes": 10,
+  "phases": {
+    "phase1": {
+      "enabled": true,
+      "deduplicate_anti_patterns": true,
+      "initialize_utility_fields": true
+    },
+    "phase2": {
+      "enabled": true,
+      "sessions_to_analyze": 3
+    },
+    "phase3": {
+      "enabled": true,
+      "sessions_to_analyze": 3
+    }
+  }
+}

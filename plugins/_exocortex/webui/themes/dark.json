@@ -1,0 +1,34 @@
+{
+  "name": "Dark",
+  "author": "Agent Zero",
+  "description": "Default dark theme with high contrast",
+  "version": "1.0.0",
+  "colors": {
+    "background": "#131313",
+    "text": "#ffffff",
+    "text-muted": "#d4d4d4e4",
+    "primary": "#737a81",
+    "secondary": "#656565",
+    "accent": "#cf6679",
+    "message-bg": "#2d2d2d",
+    "highlight": "#2b5ab9",
+    "message-text": "#e0e0e0",
+    "panel": "#1a1a1a",
+    "border": "#444444a8",
+    "input": "#131313",
+    "input-focus": "#101010",
+    "chat-background": "#212121",
+    "error-text": "#e72323",
+    "warning-text": "#e79c23",
+    "table-row": "#272727"
+  },
+  "fonts": {
+    "main": "'Rubik', Arial, Helvetica, sans-serif",
+    "code": "'Roboto Mono', monospace"
+  },
+  "preview": {
+    "background": "#131313",
+    "text": "#ffffff",
+    "accent": "#cf6679"
+  }
+}

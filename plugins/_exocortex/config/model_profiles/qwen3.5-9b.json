@@ -1,0 +1,122 @@
+{
+  "profile_version": "1.1",
+  "model_id": "qwen3.5-9b",
+  "model_family": "qwen3.5",
+  "evaluated_at": "2026-03-02T22:00:00.000000+00:00",
+  "fixtures_version": "1.0.0",
+  "profile_notes": "Pre-eval baseline profile. No behavioral data — model released March 2 2026. Dense 9B architecture (no MoE routing unpredictability). Designed from ground up for agentic use with RL scaled across million-agent environments targeting tool usage and structured workflows. BFCL-V4 benchmark data unavailable for 9B specifically but family shows strong tool calling (35B-A3B scored 67.3 vs GPT-5 mini 55.5). Thinking mode disabled by default (ideal for Agent Zero — fast tool calls, enable selectively for complex planning). Recommended quantization: Q8_0 from unsloth (9.53GB, leaves ~14GB VRAM headroom). Conservative settings — tighten after first eval run provides actual data.",
+  "evaluation_summary": {
+    "overall_capability": "unknown",
+    "strongest_area": "unknown",
+    "weakest_area": "unknown",
+    "recommended_prosthetic_level": "moderate"
+  },
+  "bst": {
+    "confidence_adjustment": 0.0,
+    "disabled_domains": [],
+    "enrichment_verbosity": "standard"
+  },
+  "meta_gate": {
+    "strictness": "moderate",
+    "json_repair_enabled": true,
+    "parameter_validation": true
+  },
+  "tool_fallback": {
+    "max_retries": 3,
+    "priority_patterns": [],
+    "escalation_after": 4
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 3,
+    "stale_after_turns": 12,
+    "node_instruction_verbosity": "standard",
+    "inject_boundary_warnings": false
+  },
+  "pace": {
+    "primary_threshold": 3,
+    "alternate_threshold": 6,
+    "contingency_threshold": 10,
+    "emergency_threshold": 13
+  },
+  "context": {
+    "max_injection_tokens": 2000,
+    "layer_priority": [
+      "bst_enrichment",
+      "graph_node",
+      "recalled_memories",
+      "role_profile",
+      "personality"
+    ],
+    "instruction_compliance_warning_threshold": 0.55
+  },
+  "memory": {
+    "max_injected": 8,
+    "similarity_threshold": 0.7,
+    "noise_discrimination": "moderate"
+  },
+  "behavioral_signatures": {
+    "_note": "No behavioral data. Profile will be populated after six-test eval protocol.",
+    "verification_compulsion": {
+      "severity": "unknown",
+      "description": "Not yet observed. Dense architecture may exhibit different patterns from MoE sibling."
+    },
+    "scan_loop_risk": {
+      "severity": "unknown",
+      "description": "Not yet observed. Test 3 (structured analysis) will measure this directly."
+    },
+    "confabulation_risk": {
+      "severity": "unknown",
+      "description": "Not yet observed. Test 5 (error recovery) will probe this."
+    },
+    "cross_session_learning": "unknown",
+    "in_context_learning": "unknown"
+  },
+  "raw_metrics": {
+    "_source": "pre_eval_baseline",
+    "_note": "All metrics null — no eval_runner data and no behavioral observations. Conservative defaults applied. Update this profile after running the six-test eval protocol.",
+    "bst": {
+      "bst_enrichment_compliance_rate": null,
+      "bst_enrichment_confusion_rate": null,
+      "bst_improvement_over_baseline": null,
+      "bst_optimal_confidence_threshold": 0.7,
+      "bst_domains_where_enrichment_hurts": [],
+      "bst_confidence_adjustment": 0.0
+    },
+    "tool_reliability": {
+      "tool_json_validity_rate": null,
+      "tool_parameter_accuracy": null,
+      "tool_selection_accuracy": null,
+      "tool_failure_distribution": {},
+      "tool_recovery_rate": null,
+      "meta_gate_strictness": "moderate",
+      "tool_fallback_priority_patterns": []
+    },
+    "graph_compliance": {
+      "graph_instruction_adherence": null,
+      "graph_premature_completion_rate": null,
+      "graph_retry_effectiveness": null,
+      "graph_escalation_recognition": null,
+      "graph_max_retries_per_node": 3,
+      "graph_stale_detection_turns": 12
+    },
+    "pace_calibration": {
+      "pace_self_recovery_rate": null,
+      "pace_primary_recovery_rate": null,
+      "pace_alternate_recovery_rate": null,
+      "pace_contingency_recovery_rate": null,
+      "pace_emergency_compliance": null,
+      "pace_primary_threshold": 3,
+      "pace_alternate_threshold": 6,
+      "pace_contingency_threshold": 10,
+      "pace_emergency_threshold": 13
+    },
+    "memory_utilization": {
+      "memory_reference_rate": null,
+      "memory_accuracy_rate": null,
+      "memory_noise_discrimination": 0.5,
+      "memory_staleness_sensitivity": null,
+      "memory_optimal_injection_count": 5,
+      "memory_max_injected": 8
+    }
+  }
+}
