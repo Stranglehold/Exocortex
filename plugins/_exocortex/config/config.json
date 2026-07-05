@@ -21,5 +21,11 @@
   },
   "skill_normalizer": {
     "enabled": true
+  },
+  "chat_retention": {
+    "enabled": true,
+    "keep_recent": 25,
+    "max_age_days": 0,
+    "throttle_seconds": 300
   }
 }

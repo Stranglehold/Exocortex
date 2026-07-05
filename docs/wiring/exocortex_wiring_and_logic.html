@@ -2097,7 +2097,7 @@ flowchart TD
   idle_check -- no --> done3[skip — user still active]
   idle_check -- yes --> acquire_lock["acquire fcntl.flock<br/>(LOCK_EX | LOCK_NB)"]
   acquire_lock -- failed --> done4[skip — another holder]
-  acquire_lock -- got it --> recheck_idle{re-check idle<br/>(user may have returned)}
+  acquire_lock -- got it --> recheck_idle{"re-check idle<br/>(user may have returned)"}
   recheck_idle -- not idle anymore --> release1[release lock<br/>skip]
   recheck_idle -- still idle --> cycle_check{cycle_active?}
   cycle_check -- yes --> stale_check{stale heartbeat<br/>OR absolute cap?}
@@ -2145,7 +2145,7 @@ stateDiagram-v2
   Heartbeating --> Heartbeating: more tool calls
   Heartbeating --> Completed: agent calls response tool<br/>(sensor clears flag)
   Heartbeating --> Stale: 20min no heartbeat<br/>OR 60min absolute cap
-  Stale --> Idle: daemon detects + clears<br/>++ total_cycles_since_clear<br/>NOTE: A0 context still alive
+  Stale --> Idle: daemon detects + clears<br/>++ total_cycles_since_clear<br/>A0 context still alive (not killed)
   Completed --> Idle: ++ total_cycles_since_clear<br/>(via sensor)
 
   note right of Stale
@@ -2263,6 +2263,100 @@ stateDiagram-v2
     <p>This is testable. After the redeploy, the next idle cycle that runs to natural completion should show: heartbeat updates throughout, no stale-clear during the run, single context active at any time. If overlap persists, the lifecycle-ownership work is genuinely needed. If it doesn't, the ownership work becomes defense-in-depth rather than load-bearing.</p>
   </div>
 
+  <hr>
+
+  <h3>v2-Port Architecture — the <code>_exocortex</code> plugin form <span class="status ok">verified 2026-07-05 (agent-zero-v2)</span></h3>
+  <div class="callout info">
+    <strong>Everything above describes the v16/v17 engine</strong> (supervisord-managed daemon at <code>/a0/usr/Exocortex/idle_watch.py</code>, state under <code>/a0/usr/Exocortex/office/</code>). The <strong>agent-zero-v2</strong> port relocates the entire engine into the self-contained <code>_exocortex</code> plugin (clone-and-go: no supervisord edit, no external code refs — an A0 rebuild can't wipe it). The firing logic, state schema, and fire-decision tree are unchanged; what moved is <em>where the daemon lives, how it gets launched, and where its files sit</em> — plus a new durable enable/arm mechanism.
+  </div>
+
+  <h4>Path &amp; mechanism delta (v16 → v2)</h4>
+  <table>
+    <thead><tr><th>Concern</th><th>v16/v17 (supervisord)</th><th>agent-zero-v2 (<code>_exocortex</code> plugin)</th></tr></thead>
+    <tbody>
+      <tr><td>Daemon file</td><td class="path-col">/a0/usr/Exocortex/idle_watch.py</td><td class="path-col">/a0/usr/plugins/_exocortex/services/idle_watch.py</td></tr>
+      <tr><td>Launch mechanism</td><td>supervisord program (auto-start on boot, persisted to <code>/per/</code>)</td><td><strong><code>_00_idle_watch_bootstrap.py</code></strong> @ <code>before_main_llm_call</code> (earliest prefix). Spawns the daemon detached (<code>subprocess.Popen</code>, <code>start_new_session=True</code> → reparents to init, survives <code>run_ui</code> restart), pidfile-guarded, throttled 60s.</td></tr>
+      <tr><td>Config</td><td class="path-col">/a0/usr/Exocortex/config.json <code>[idle_time_engine]</code></td><td class="path-col">/a0/usr/plugins/_exocortex/config/config.json <code>[idle_time_engine]</code></td></tr>
+      <tr><td>Office state dir</td><td class="path-col">/a0/usr/Exocortex/office/</td><td class="path-col">/a0/usr/workdir/workspace/office/ (<code>engine_state.json</code>, <code>control.json</code>, <code>status.json</code>, <code>.idle_watch.pid</code>, <code>idle_watch.log</code>)</td></tr>
+      <tr><td>Fire path</td><td colspan="2">Unchanged — <code>POST /api/api_message</code> on port 80 (<code>http.client</code>, <code>create_auth_token</code>, fresh context per cycle).</td></tr>
+      <tr><td>Constants</td><td colspan="2">Unchanged — poll 60s, startup grace 30s, <code>MAX_TOTAL_CYCLES=100000</code> (effectively uncapped per Jake 2026-05-16), <code>idle_threshold_seconds</code> default 1800, <code>min_gap_between_cycles_seconds</code> default 1800.</td></tr>
+    </tbody>
+  </table>
+  <p>The v2-port trade: it gains sovereignty (survives A0 rebuild) but loses supervisord's boot-time auto-start. Nothing launches the daemon until the <em>first agent turn</em> fires the bootstrap hook. That gap is exactly what the durable enable fix closes.</p>
+
+  <h4>Durable enable/arm fix <span class="status ok">deployed + both branches verified 2026-07-05</span></h4>
+  <p>Symptom (Jake, 2026-07-05): "idle engine enabled in v2 but no cycles run." Three stacked root causes at the daemon seam:</p>
+  <ol>
+    <li><strong>Nothing started the daemon.</strong> The bootstrap only spawns on an agent turn; enabling via the Office panel / <code>idle_control</code> API never triggered it, so the daemon was simply never running.</li>
+    <li><strong>Ordering trap.</strong> <code>idle_watch._disable_cycles_on_start()</code> force-sets <code>enabled=false</code> on <em>every</em> daemon boot (cost-safety, 2026-06-20 — a container restart must never silently resume paid cycles). So arming <em>before</em> the daemon is up gets wiped the moment it finally starts.</li>
+    <li><strong>Stale migrated state</strong> (one-time). v2's <code>engine_state.json</code> was v16's Jun-29 copy (<code>cycle_active:true</code> mid-cycle) → the "a cycle is running" guard blocked all fires. Reset live.</li>
+  </ol>
+  <p>The fix adds an <strong><code>armed_at</code></strong> field to <code>control.json</code> and makes the two controls actually drive the daemon:</p>
+  <table>
+    <thead><tr><th>Component</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="path-col">api/idle_control.py<br/><code>action: "enable"</code></td>
+        <td>(1) writes <code>armed_at = time.time()</code> to <code>control.json</code>; (2) <strong>spawns the daemon</strong> if <code>_daemon_alive()</code> is false (<code>_spawn_daemon()</code> — same detached <code>Popen</code> + pidfile as the bootstrap). Clicking enable now <em>starts the engine</em>, not just sets a flag nothing reads. Returns <code>daemon_alive</code> / <code>daemon_spawned</code>.</td>
+      </tr>
+      <tr>
+        <td class="path-col">api/idle_control.py<br/><code>action: "disable"</code></td>
+        <td>Clears <code>armed_at = 0</code> so a later daemon start won't treat a stale arm as intent to run.</td>
+      </tr>
+      <tr>
+        <td class="path-col">services/idle_watch.py<br/><code>_disable_cycles_on_start()</code></td>
+        <td>Reads <code>armed_at</code> <strong>first</strong>: recent arm (<code>now − armed_at &lt; 300s</code>) = operator just explicitly enabled → <strong>keep cycles ENABLED</strong> (honor the arm the <code>enable</code> that spawned this daemon stamped). Stale / absent armed_at (a plain container restart, no recent enable) → still force-OFF, preserving cost-safety.</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart TD
+  click["Office panel / API: enable"] --> ctl["idle_control.enable"]
+  ctl --> arm["control.json:<br/>armed_at = now"]
+  ctl --> cfg["config.json:<br/>enabled = true"]
+  ctl --> alive{_daemon_alive?}
+  alive -- yes --> ready1["engine already running"]
+  alive -- no --> spawn["_spawn_daemon()<br/>Popen start_new_session"]
+  spawn --> boot["idle_watch main()"]
+  boot --> dstart["_disable_cycles_on_start()"]
+  dstart --> check{"armed_at recent?<br/>arm age &lt; 300s"}
+  check -- "yes (just armed)" --> keep["KEEP enabled<br/>'recent explicit arm'"]
+  check -- "no (stale/restart)" --> off["force enabled=false<br/>(cost-safety)"]
+  keep --> poll["poll loop → fires cycles"]
+  ready1 --> poll
+
+  classDef api_c   fill:#161b22,stroke:#58a6ff,color:#c9d1d9
+  classDef state_c fill:#161b22,stroke:#d29922,color:#c9d1d9
+  classDef ok_c    fill:#1c2128,stroke:#3fb950,color:#c9d1d9
+  classDef off_c   fill:#1c2128,stroke:#f85149,color:#c9d1d9
+  class ctl,spawn,dstart api_c
+  class arm,cfg,check state_c
+  class keep,poll,ready1 ok_c
+  class off off_c
+    </div>
+    <div class="caption">The <code>armed_at</code> marker bridges the enable→spawn→disable-on-start sequence: the same <code>enable</code> that spawns the daemon stamps the arm the daemon then honors. A bare container restart (no recent enable) leaves a stale/absent <code>armed_at</code> and still defaults to safe-off — cost-safety intact. Both branches verified live on agent-zero-v2 (2026-07-05): recent arm → "cycles kept ENABLED" + <code>enabled=True</code>; stale arm → "forced OFF on start" + <code>enabled=False</code>.</div>
+  </div>
+  <p class="section-summary" style="margin-top:0"><strong>v2-native:</strong> exocortex_v16 / exocortex_v17 have no <code>_exocortex/{api,services}/idle_watch</code> files (this is the v2-port structure only) — so there is no "deploy to both" for this fix. v16's engine is separately disabled by Jake, leaving agent-zero-v2 the sole cycler on the shared <code>:1235</code> (Ornith) backend — no contention.</p>
+
+  <h4>SYS·MON right-canvas panel <span class="status warn">deployed to v2, synthetic telemetry (M2 bridge pending)</span></h4>
+  <p>A new right-canvas surface (2026-07-04) alongside the Office / EXO·OPS panels, built as an SA <em>instrument</em> (per <code>WEBUI_DESIGN_BRIEF</code>) rather than a dashboard. Follows the v1.20 canvas surface contract — four files:</p>
+  <table>
+    <thead><tr><th>File</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td class="path-col">extensions/webui/right_canvas_register_surfaces/register-sys-monitor.js</td><td>ES-module <code>canvas.registerSurface({id:"sys-monitor", title:"SYS·MON", icon:"monitoring", order:37})</code>. Creates the Alpine store <strong>in the registrar</strong> (<code>Alpine.store("sysMon", …)</code>) — the robust pattern (no hydration race), vs EXO·OPS's plain-JS <code>innerHTML</code>. <code>open()</code>→<code>store.start()</code>, <code>close()</code>→<code>store.stop()</code>.</td></tr>
+      <tr><td class="path-col">extensions/webui/right-canvas-panels/sys-monitor-panel.html</td><td>Thin wrapper (root <code>.right-canvas-surface-panel</code>, <code>data-surface-id</code>, <code>$store.rightCanvas</code> :class bindings). <strong>No <code>x-data</code> / inline content</strong> — that collapses the surface to 0×0. Points at the content <code>&lt;x-component&gt;</code>.</td></tr>
+      <tr><td class="path-col">webui/sys-monitor-content.html</td><td>The <code>&lt;x-component&gt;</code> (scoped <code>.exo-mon</code>, x-data here). Theme-aware tokens (<code>var(--color-accent, #f5a01e)</code> — rides A0's theme, tactical-amber fallback). All SA zones: telemetry (comparison metrics), trajectory stepper, alert hierarchy, inspect dossier. Binds <code>$store.sysMon?.</code> null-safe (fixed an 18→1 hydration-error race).</td></tr>
+      <tr><td class="path-col">webui/sys-monitor-store.js</td><td>Store factory: live tick, metrics / trajectory / alerts / tree / focus state + spark/band/delta helpers.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <strong>Telemetry gap (the M2 bridge).</strong> SYS·MON currently renders <em>synthetic</em> telemetry (a self-contained store tick), not live numbers. Real data needs a <strong>host-side metrics bridge</strong> — the same gap the Office panel has: <code>/api/office_feed</code> carries cycle records but <strong>no GPU telemetry, because the container can't see the GPU</strong>. The real sources exist host-side: the llama.cpp server on <code>:1235</code> (turbo3-cuda / Ornith) exposes <code>/metrics</code> (Prometheus — <code>tokens_predicted_total</code>, <code>tokens_predicted_seconds_total</code>, …) and <code>/slots</code> (<code>is_processing</code>, <code>id_task</code>); VRAM / temp need <code>nvidia-smi</code> on the host. M2 = a plugin <code>api/</code> endpoint that reads those and feeds the store real values. Until then, SYS·MON is a validated <em>shell</em> with placeholder data — no fabricated numbers reach a persisted record.
+  </div>
+  <p><strong>Open item:</strong> the surface registers and its store/content run clean on v2 (verified via <code>browser_evaluate</code>), but a live-docked screenshot couldn't be captured via browser automation — A0's right-canvas open→mount→active-surface-restore reverts to the default <code>files</code> surface when driven by synthetic JS/clicks (works for the load-time default via real gestures). This is an automation-vs-real-gesture artifact, not a panel defect (panel is 575×675 with content present). Confirmation needs a real click on the SYS·MON tab. Not yet committed.</p>
+
+  <hr>
+
   <h3>See also</h3>
   <ul>
     <li><a href="#sec-02">§02 Extension Load Path</a> — explains the mis-deploy that caused the heartbeat-freeze active bug</li>
@@ -2363,7 +2457,7 @@ stateDiagram-v2
     <div class="mermaid">
 flowchart TD
   start([message_loop_end fires]) --> gather["_gather_context()<br/>read all state surfaces<br/>compute pace_level, failing_tool,<br/>consecutive count, tier"]
-  gather --> check_int{check_interval<br/>(every Nth turn)?}
+  gather --> check_int{"check_interval<br/>(every Nth turn)?"}
   check_int -- skip --> done0[no check this turn]
   check_int -- check --> t3{Tier 3: consecutive ≥<br/>T3_THRESHOLD AND<br/>not LOOP_SURGERY_DONE?}
   t3 -- yes --> t3_fire["_execute_tier3()<br/>circuit breaker<br/>force response with progress<br/>set _supervisor_state[loop_tier]='tier3'"]
@@ -2377,28 +2471,28 @@ flowchart TD
   pace_c -- yes --> pace_c_fire["_inject_pace_contingent()"]
   pace_e --> injected
   pace_c_fire --> injected
-  pace -- no --> cascade{cooldown_ok(CASCADE)<br/>AND _detect_cascade?}
+  pace -- no --> cascade{"cooldown_ok(CASCADE)<br/>AND _detect_cascade?"}
   cascade -- yes --> cascade_fire["_inject_cascade()"]
   cascade_fire --> injected
-  cascade -- no --> ctx{cooldown_ok(CONTEXT)<br/>AND _detect_context_exhaustion?}
+  cascade -- no --> ctx{"cooldown_ok(CONTEXT)<br/>AND _detect_context_exhaustion?"}
   ctx -- yes --> ctx_fire["_inject_context_warning()<br/>(at 90%+)"]
   ctx_fire --> injected
-  ctx -- no --> stag{cooldown_ok(STAGNATION)<br/>AND _detect_output_stagnation?}
+  ctx -- no --> stag{"cooldown_ok(STAGNATION)<br/>AND _detect_output_stagnation?"}
   stag -- yes --> stag_check{"_stagnation_fires ≥ 2<br/>AND not surgery_done?"}
   stag_check -- yes --> stag_t2["Escalate to Tier 2 surgery<br/>(stagnation-specific note)"]
   stag_check -- no --> stag_inject["_inject_stagnation()<br/>increment _stagnation_fires"]
   stag_t2 --> injected
   stag_inject --> injected
-  stag -- no --> p4{cooldown_ok(PHASE4)<br/>AND _should_trigger_phase4?}
+  stag -- no --> p4{"cooldown_ok(PHASE4)<br/>AND _should_trigger_phase4?"}
   p4 -- yes --> p4_llm["_build_phase4_context()<br/>10s LLM call → ESCALATE/DEESCALATE/HOLD"]
   p4_llm --> p4_apply["_apply_phase4_recommendation()<br/>(if ESCALATE/DEESCALATE)"]
   p4_apply --> injected
-  p4 -- no --> stall{org_active AND<br/>NOT action_gate AND<br/>cooldown_ok(STALL) AND<br/>_detect_stall?}
+  p4 -- no --> stall{"org_active AND<br/>NOT action_gate AND<br/>cooldown_ok(STALL) AND<br/>_detect_stall?"}
   stall -- yes --> stall_fire["_inject_stall()<br/>with task context"]
   stall_fire --> injected
   stall -- no --> loop_t1{NOT action_gate AND<br/>NOT proactive_fired AND<br/>tier='warn' AND cooldown_ok?}
   loop_t1 -- yes --> loop_silent["Tier 1 SILENT<br/>(SFX-001):<br/>log internally, mark cooldown,<br/>NO injection"]
-  loop_t1 -- no --> compl{NOT action_gate AND<br/>cooldown_ok(COMPLETION_STALL) AND<br/>completion signals ≥ threshold?}
+  loop_t1 -- no --> compl{"NOT action_gate AND<br/>cooldown_ok(COMPLETION_STALL) AND<br/>completion signals ≥ threshold?"}
   compl -- yes --> compl_fire["_inject_completion_stall()"]
   compl_fire --> injected
   compl -- no --> set_state
@@ -3536,7 +3630,7 @@ flowchart LR
     d5 --> d6{"local md5 ==<br/>remote md5?"}
     d6 -- no --> dfail2["FAIL — mis-deploy detected"]
     d6 -- yes --> d7["rm -f pycache"]
-    d7 --> d8["find /a0 -name <file><br/>scan for orphans"]
+    d7 --> d8["find /a0 -name &amp;lt;file&amp;gt;<br/>scan for orphans"]
     d8 --> d9{"orphans with<br/>different md5?"}
     d9 -- yes --> dwarn["WARN — stale copies"]
     d9 -- no --> dok["OK — clean state"]
