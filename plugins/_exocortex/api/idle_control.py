@@ -19,6 +19,7 @@ before disable takes effect (next poll check).
 
 import json
 import os
+import subprocess
 import time
 from datetime import datetime, timezone
 
@@ -28,6 +29,13 @@ _CONFIG_PATH = "/a0/usr/plugins/_exocortex/config/config.json"
 _CONTROL_PATH = "/a0/usr/workdir/workspace/office/control.json"
 _STATUS_PATH = "/a0/usr/workdir/workspace/office/status.json"
 _OFFICE_DIR = "/a0/usr/workdir/workspace/office"
+
+# Daemon launch (mirrors _00_idle_watch_bootstrap) — so `enable` can start the
+# engine itself instead of waiting for the next agent turn to spawn it.
+_PYTHON = "/opt/venv-a0/bin/python3"
+_DAEMON = "/a0/usr/plugins/_exocortex/services/idle_watch.py"
+_PIDFILE = "/a0/usr/workdir/workspace/office/.idle_watch.pid"
+_LOGFILE = "/a0/usr/workdir/workspace/office/idle_watch.log"
 
 
 class IdleControl(ApiHandler):
@@ -45,14 +53,28 @@ class IdleControl(ApiHandler):
         action = (input.get("action") or "").strip().lower()
 
         if action == "enable":
+            # Arm the config, AND stamp an explicit-arm marker the daemon's
+            # disable-on-start respects (so this arm survives the daemon (re)spawn
+            # below). Then ensure the daemon is actually running — clicking enable
+            # must START the engine, not just set a flag nothing reads.
             _update_config_enabled(True)
-            _write_file(_CONTROL_PATH, {"paused_until": 0})
+            _write_file(_CONTROL_PATH, {"paused_until": 0, "armed_at": time.time()})
+            spawned = False
+            if not _daemon_alive():
+                spawned = _spawn_daemon()
             _write_file(_STATUS_PATH, {"state": "idle", "label": "Available"})
-            return {"status": "enabled", "enabled": True}
+            return {
+                "status": "enabled",
+                "enabled": True,
+                "daemon_alive": _daemon_alive(),
+                "daemon_spawned": spawned,
+            }
 
         elif action == "disable":
+            # Clear the arm marker so a later daemon start won't treat a stale
+            # arm as intent to run.
             _update_config_enabled(False)
-            _write_file(_CONTROL_PATH, {"paused_until": 0})
+            _write_file(_CONTROL_PATH, {"paused_until": 0, "armed_at": 0})
             _write_file(_STATUS_PATH, {"state": "disabled", "label": "Disabled"})
             return {"status": "disabled", "enabled": False}
 
@@ -113,3 +135,53 @@ def _write_file(path: str, data: dict) -> None:
         os.replace(tmp, path)
     except Exception:
         pass
+
+
+def _daemon_alive() -> bool:
+    """True iff the pidfile points at a live idle_watch.py process (mirrors the
+    bootstrap's check)."""
+    try:
+        if not os.path.exists(_PIDFILE):
+            return False
+        with open(_PIDFILE, "r", encoding="utf-8") as f:
+            pid = int((f.read() or "0").strip())
+        if pid <= 0:
+            return False
+        os.kill(pid, 0)  # ProcessLookupError if dead
+        try:
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                if b"idle_watch.py" not in f.read():
+                    return False
+        except Exception:
+            pass
+        return True
+    except (ProcessLookupError, ValueError, PermissionError):
+        return False
+    except Exception:
+        return False
+
+
+def _spawn_daemon() -> bool:
+    """Spawn idle_watch.py detached (start_new_session) and record its pid —
+    same launch the bootstrap uses. Returns True on success."""
+    try:
+        if not (os.path.exists(_DAEMON) and os.path.exists(_PYTHON)):
+            return False
+        os.makedirs(_OFFICE_DIR, exist_ok=True)
+        logf = open(_LOGFILE, "ab")
+        proc = subprocess.Popen(
+            [_PYTHON, "-u", _DAEMON],
+            stdout=logf,
+            stderr=logf,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            cwd="/a0",
+        )
+        try:
+            with open(_PIDFILE, "w", encoding="utf-8") as f:
+                f.write(str(proc.pid))
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False

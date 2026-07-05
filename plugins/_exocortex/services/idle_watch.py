@@ -52,6 +52,7 @@ _STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20}
 _POLL_INTERVAL       = 60   # seconds between polls
 _STARTUP_GRACE       = 30   # seconds to wait on boot before first poll (A0 startup time)
 MAX_TOTAL_CYCLES     = 100000   # effectively unlimited — Jake explicit on 2026-05-16 ("no cap or limit"). Counter still tracks for observability; cap is just very far away.
+_CYCLE_HUNG_CAP      = 3600 # s — a cycle whose A0 context is STILL running past this (native is_running, not heartbeat) is treated as hung → reset + fire fresh
 
 # ── Cache Warmer (v2.1 — Opus spec + measured corrections, 2026-05-18) ────────
 # Principle: don't replicate A0's prompt — send a trivial request THROUGH A0 so
@@ -74,8 +75,18 @@ _warmup_inflight_until = 0.0    # real cycles defer until now passes this (belt;
 def _disable_cycles_on_start() -> None:
     """Cost-safety (2026-06-20): force idle cycles OFF on every daemon start so a
     container restart can never silently resume paid cycles. The operator re-arms
-    explicitly (Office panel / idle_control) when ready. Default-disabled on start."""
+    explicitly (Office panel / idle_control) when ready. Default-disabled on start.
+
+    Exception (2026-07-05): if idle_control 'enable' just spawned THIS daemon it
+    stamped control.armed_at. A recent arm = the operator explicitly started the
+    engine — honor it. A stale/absent armed_at (a plain restart, no recent enable)
+    still force-disables, preserving the cost-safety."""
     try:
+        ctrl = _read_control()
+        armed_at = ctrl.get("armed_at", 0) or 0
+        if armed_at and (time.time() - armed_at) < 300:
+            print("[IDLE-WATCH] Startup: recent explicit arm — cycles kept ENABLED.", flush=True)
+            return
         if not os.path.exists(_CONFIG_PATH):
             return
         with open(_CONFIG_PATH, "r", encoding="utf-8-sig") as f:
@@ -191,14 +202,35 @@ def _atomic_check_and_fire(config: dict) -> bool:
                 print("[IDLE-WATCH] Deferring fire — cache warm-up in flight / server busy.", flush=True)
                 return False
 
-        # Guard: active cycle?
-        if state.get("cycle_active", False):
-            if _is_stale_cycle(state, now):
-                print("[IDLE-WATCH] Stale cycle detected — clearing. Will fire next poll.", flush=True)
+        # Guard: is the previous cycle still generating? (NATIVE — authoritative)
+        # Ask A0 its own is_running() (task.is_alive()) for the tracked context via
+        # /api/idle_cycle, NOT the tool-call heartbeat. is_running() is True for the
+        # whole cycle regardless of tool calls, so a zero-tool-call cycle (model
+        # timeout / degenerate output) can no longer be mistaken for "stale" and
+        # stacked on top of — which is exactly what caused the pile-up.
+        prev_ctx = state.get("cycle_context_id", "")
+        if prev_ctx and _cycle_running(prev_ctx):
+            age = now - state.get("last_cycle_start", 0)
+            if age > _CYCLE_HUNG_CAP:
+                print(f"[IDLE-WATCH] Previous cycle context {prev_ctx} still running "
+                      f">{_CYCLE_HUNG_CAP // 60}min — treating as hung, resetting.", flush=True)
+                _reset_cycle(prev_ctx)
+                state["cycle_context_id"]         = ""
                 state["cycle_active"]             = False
                 state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
                 _write_state(state)
-            return False
+                # fall through — fire a fresh cycle this poll
+            else:
+                print(f"[IDLE-WATCH] Previous cycle still generating (context {prev_ctx}) "
+                      "— deferring fire, no overlap.", flush=True)
+                return False
+        elif prev_ctx:
+            # Previous cycle's context is no longer running → it finished. Clear the
+            # active bookkeeping (charge one completed cycle) before firing the next.
+            state["cycle_context_id"]         = ""
+            state["cycle_active"]             = False
+            state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
+            _write_state(state)
 
         # Guard: blast radius cap
         max_total = config.get("max_total_cycles", MAX_TOTAL_CYCLES)
@@ -256,9 +288,10 @@ def _atomic_check_and_fire(config: dict) -> bool:
         )
 
         # Set cycle_active BEFORE firing — prevents parallel fires from other polls.
-        # total_cycles_since_clear is NOT incremented here — only on completion (sensor)
-        # or stale detection (above). A running cycle occupies the slot but consumes
-        # no budget unit until it finishes.
+        # total_cycles_since_clear is NOT incremented here — only when the NEXT poll
+        # observes this cycle's context is no longer running (native), or on the
+        # hung-cycle reset above. A running cycle occupies the slot but consumes no
+        # budget unit until it finishes.
         state["cycle_active"]    = True
         state["cycle_heartbeat"] = now
         state["last_cycle_start"] = now
@@ -270,12 +303,20 @@ def _atomic_check_and_fire(config: dict) -> bool:
             state["build_cycle_count"] = pre_build_count + 1
         _write_state(state)
 
-        sent = _fire_fresh_cycle(activation)
-        if sent:
+        # Fire via the plugin idle_cycle endpoint (API-key, non-blocking) and CAPTURE
+        # the context_id it returns — that id is how the next poll asks A0 whether the
+        # cycle is still running (native is_running), the whole basis of the no-overlap
+        # guarantee.
+        ctx_id = _fire_cycle(activation)
+        if ctx_id:
+            state["cycle_context_id"] = ctx_id
+            _write_state(state)
+            print(f"[IDLE-WATCH] Cycle #{state['cycle_count']} fired → context {ctx_id}.", flush=True)
             return True
 
-        # Fire failed — clear cycle_active
+        # Fire failed — clear cycle_active + context id
         state["cycle_active"] = False
+        state["cycle_context_id"] = ""
         if state.get("cold_start_grace", True):
             # One grace retry per window — roll back type-selection counters
             print("[IDLE-WATCH] Cold start grace — will retry once next poll.", flush=True)
@@ -294,6 +335,61 @@ def _atomic_check_and_fire(config: dict) -> bool:
 
 
 _A0_PORT = 80  # A0 always starts with --port=80 inside the container (run_A0.sh → self_update_manager.py)
+
+
+def _a0_post(path: str, payload: dict, timeout: int = 15) -> dict | None:
+    """POST JSON to an A0 API-key endpoint on localhost:80, return parsed JSON.
+    None on any transport/HTTP error. Used for the idle_cycle lifecycle calls."""
+    try:
+        from helpers.settings import create_auth_token
+        body = json.dumps(payload).encode("utf-8")
+        headers = {"X-API-KEY": create_auth_token(), "Content-Type": "application/json"}
+        conn = http.client.HTTPConnection("localhost", _A0_PORT, timeout=timeout)
+        conn.request("POST", path, body=body, headers=headers)
+        resp = conn.getresponse()
+        raw = resp.read()
+        conn.close()
+        if resp.status != 200:
+            print(f"[IDLE-WATCH] {path} HTTP {resp.status}: {raw[:160]!r}", flush=True)
+            return None
+        return json.loads(raw)
+    except ConnectionRefusedError:
+        print("[IDLE-WATCH] A0 not reachable (connection refused).", flush=True)
+        return None
+    except Exception as e:
+        print(f"[IDLE-WATCH] {path} error: {e}", flush=True)
+        return None
+
+
+def _fire_cycle(activation: str) -> str | None:
+    """Fire one cycle via /api/idle_cycle (non-blocking) and return its NEW
+    context_id, or None on failure. The endpoint starts the agent task without
+    awaiting it, so this returns in ~1s even though the cycle runs for minutes."""
+    data = _a0_post("/api/plugins/_exocortex/idle_cycle", {"action": "fire", "message": activation}, timeout=30)
+    if not data:
+        return None
+    return data.get("context_id") or None
+
+
+def _cycle_running(context_id: str) -> bool:
+    """A0's NATIVE is_running() for the cycle context. Fail-safe: any error →
+    True (can't tell → assume running → never overlap). An unknown/finished id
+    returns found=False → not running → safe to fire."""
+    if not context_id:
+        return False
+    data = _a0_post("/api/plugins/_exocortex/idle_cycle", {"action": "status", "context_id": context_id}, timeout=10)
+    if data is None:
+        return True  # fail-safe: don't stack a cycle when we can't confirm
+    if not data.get("found", False):
+        return False  # context gone → definitely not running
+    return bool(data.get("running", True))
+
+
+def _reset_cycle(context_id: str) -> None:
+    """Kill a hung cycle's task (backstop when a context runs past the cap)."""
+    if not context_id:
+        return
+    _a0_post("/api/plugins/_exocortex/idle_cycle", {"action": "reset", "context_id": context_id}, timeout=10)
 
 
 def _fire_fresh_cycle(activation: str) -> bool:
