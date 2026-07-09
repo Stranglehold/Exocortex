@@ -3456,6 +3456,14 @@ class ReasoningStateInjector(Extension):
     <p><strong>Sibling of Seam #8.</strong> Deployment-hygiene root cause: three different extensions sharing the filename <code>_12_proactive_supervisor.py</code> across three hooks. Renaming them per-hook would close the trap. See <code>feedback_multipath_deploy.md</code> and the playbook deploy section.</p>
   </div>
 
+  <h4>Seam #23 — AgentEvolver Phase 5 fuel line: consumer built, matching producer dormant <span class="status warn">OPEN — scope → Opus</span></h4>
+  <div class="subsys">
+    <p><strong>Where it lives:</strong> <code>sleep_consolidation.run_phase5_consolidation</code> (the consumer) vs the two anti-pattern producers — Supervisor Tier 4 (<code>_50</code>, live) and Sleep Phase 2 (missed-loop capture). Store: <code>/a0/usr/Exocortex/procedural_memory/</code>.</p>
+    <p><strong>What goes wrong:</strong> Phase 5 integrates only anti-patterns tagged <code>sleep-phase2</code> from the current session. Only Sleep Phase 2 writes that tag, and Phase 2 finds ~0 loops (the live supervisor catches them first — <code>loops_found=0</code>). The supervisor's own Tier-4 anti-patterns — the stream that actually fires (4 on v2, 7 on v17) — carry different tags and are never read. The <code>SelfImprovementEngine</code> therefore records ~0 experiences: a present, correctly-wired consumer fed by a near-empty producer while the full producer bypasses it. Inverse of the usual severed loop (producer-built, consumer-assumed): here the consumer is built and the matching producer is dormant.</p>
+    <p><strong>How to detect:</strong> <code>grep -l "sleep-phase2" /a0/usr/Exocortex/procedural_memory/*.md | wc -l</code> (→ 0 on both) vs total ANTI-PATTERN count (→ 4/7). Phase 5 logs <code>experiences_recorded=0</code> every cycle despite anti-patterns existing on disk.</p>
+    <p><strong>Status:</strong> Not a bug — a scope choice. Whether the live supervisor's Tier-4 anti-patterns <em>should</em> also feed the engine is a design decision routed to Opus (Call 3, 2026-07-08); numbers reported, awaiting interpretation. Full treatment in <a href="#sec-17">§17</a>.</p>
+  </div>
+
   <h4>Seam #8 — Wrong-path extension deploy <span class="status err">ACTIVE</span></h4>
   <div class="subsys">
     <p><strong>Where it lives:</strong> Any manual <code>docker cp</code> that constructs the destination path by hand. The required path includes the <code>python/</code> segment: <code>/a0/usr/agents/agent0/extensions/python/&lt;hook&gt;/</code>. The natural-feeling path that omits it (<code>/a0/usr/agents/agent0/extensions/&lt;hook&gt;/</code>) is invisible to A0's loader.</p>
@@ -3793,6 +3801,57 @@ flowchart LR
     The maintenance sweep is the same architecture as the wiki integrity check and (future) the memory-area normalizer: one MAINTAIN pass, multiple deterministic self-heal validations. The system maintains itself.
   </div>
 
+  <h3>Phase 5 — the AgentEvolver self-improvement engine (a second, dormant learning loop)</h3>
+  <p>
+    The capture→surface→consume loop above is the <em>working</em> learning loop. There is a second,
+    older one that runs in the background during sleep consolidation and is almost entirely dormant:
+    <strong>Phase 5 of <code>sleep_consolidation.py</code></strong> feeds the <strong>AgentEvolver
+    <code>SelfImprovementEngine</code></strong>
+    (<code>/a0/usr/plugins/agentevolver_self_improvement/helpers/self_improvement.py</code>) — a
+    deterministic, JSON-backed store of failure "experiences". No LLM calls; registers no turn-path
+    extension or tool, so it is friction-neutral (only the background sleep path touches it).
+  </p>
+  <table>
+    <thead><tr><th>Anti-pattern producer</th><th>Writes</th><th>Read by Phase 5?</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="key">Supervisor Tier 4 (<code>_50</code>, live)</td>
+        <td>Loop-and-recovery ANTI-PATTERN entries → <code>/a0/usr/Exocortex/procedural_memory/</code>. <strong>Fires in practice</strong> (4 on v2, 7 on v17).</td>
+        <td class="center"><span class="status err">no</span></td>
+      </tr>
+      <tr>
+        <td class="key">Sleep Phase 2 (missed-loop capture)</td>
+        <td>ANTI-PATTERN entries tagged <code>sleep-phase2</code> — but only for loops the live supervisor <em>missed</em> in a narrow recent window.</td>
+        <td class="center"><span class="status ok">yes</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Phase 5's integration filter is <code>type == "ANTI-PATTERN" &amp;&amp; session_id == &lt;this session&gt;
+    &amp;&amp; tag contains "sleep-phase2"</code>. That matches <strong>only</strong> the Phase 2 stream — and
+    Phase 2 logs <code>loops_found=0, captured=0</code> every cycle, because the live supervisor catches
+    loops in real time and leaves nothing for the sleep pass to rediscover. Measured 2026-07-08:
+    <strong>0 <code>sleep-phase2</code>-tagged anti-patterns on either container</strong> vs 4/7 total, so
+    Phase 5 records ~0 experiences. The richer supervisor stream that <em>does</em> fire is deliberately
+    ignored by the filter. The engine is wired to the smaller of two producers, and that producer is empty
+    by design — the inverse of a classic severed loop (here the consumer is built and its matching producer
+    is dormant). This is <a href="#sec-13">Seam #23</a>; whether to also feed the engine the supervisor's
+    Tier-4 stream is a scope decision routed to Opus.
+  </p>
+  <div class="callout info">
+    <strong>Durability + reporting fixes (2026-07-08).</strong> The plugin was originally hand-placed on the
+    containers and was <em>not</em> in the install pipeline — a rebuild silently dropped it on v17, and
+    Phase 5 then logged "engine unavailable" every cycle (this is how the finding surfaced, via a v17
+    MAINTAIN report). Two fixes shipped: (1) <strong>durability</strong> — vendored at
+    <code>plugins/agentevolver_self_improvement/</code> and installed by
+    <code>scripts/install_agentevolver.sh</code> (Layer 9, before sleep consolidation, which imports it);
+    code overwrites, data deploys <em>only-if-missing</em> so accumulated experiences are never wiped.
+    DEC-030 applies — "if a rebuild drops it, it wasn't architecture, it was luck." (2) <strong>honest
+    reporting</strong> — <code>run_phase5_consolidation</code> now separates <em>plugin absent</em>
+    (<code>not_installed</code> → <code>N/A</code>, no alarm, no error increment) from <em>plugin present but
+    import fails</em> (a real error). An alarm should catch breakage, not a design choice.
+  </div>
+
   <h3>See also</h3>
   <ul>
     <li><a href="#sec-13">§13 Fragile Seams</a> — seam #21 (<code>error_format</code> is not a universal hook) and seam #7 (hook-timing trap), the class this whole loop's first bug belonged to</li>
@@ -3811,6 +3870,15 @@ flowchart LR
   </p>
 
   <h3>Active</h3>
+
+  <div class="subsys">
+    <div class="subsys-header">
+      <h3>Q9 — AgentEvolver Phase 5 fuel line: should the supervisor's anti-patterns feed the engine? <span class="status warn">SCOPE → Opus</span></h3>
+    </div>
+    <p><strong>Surfaced:</strong> 2026-07-08, tracing a v17 MAINTAIN "engine unavailable" report. Two fixes already shipped (durability: plugin vendored + in <code>install_all.sh</code>; reporting: absent→N/A vs import-fail→error). The remaining item is the fuel-line gap.</p>
+    <p><strong>Finding:</strong> Phase 5's <code>SelfImprovementEngine</code> only integrates <code>sleep-phase2</code>-tagged, same-session anti-patterns. That stream is empty by design (Phase 2 finds 0 loops because the live supervisor catches them first). The supervisor's Tier-4 anti-patterns — which do fire (4 on v2, 7 on v17) — bypass the engine entirely. See <a href="#sec-13">Seam #23</a> and <a href="#sec-17">§17</a>.</p>
+    <p><strong>Decision needed (Opus):</strong> should Tier-4 supervisor anti-patterns also feed the engine, or is the sleep-phase2-only scope intentional? Numbers reported to Opus 2026-07-08; awaiting interpretation. Not blocking — the engine is present, friction-neutral, and now durable.</p>
+  </div>
 
   <div class="subsys">
     <div class="subsys-header">

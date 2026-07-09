@@ -730,11 +730,21 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
         "phase": "Phase 5 - AgentEvolver Experience Integration",
         "experiences_recorded": 0,
         "engine_unavailable": False,
+        "not_installed": False,
         "errors": 0,
     }
 
     # --- Load the SelfImprovementEngine ---
+    # Distinguish "plugin intentionally not installed" (N/A — no alarm, no error)
+    # from "plugin present but failed to import" (a real error worth flagging).
+    # Opus Call 2, 2026-07-08 — an alarm should catch breakage, not a design choice.
     helpers_path = os.path.join(_AGENTEVOLVER_PLUGIN_DIR, "helpers")
+    if not os.path.isdir(_AGENTEVOLVER_PLUGIN_DIR):
+        result["not_installed"] = True
+        print("[SLEEP] Phase 5 — AgentEvolver plugin not installed; N/A (skipped)", flush=True)
+        _write_sleep_report(result)
+        return result
+
     if helpers_path not in sys.path:
         sys.path.insert(0, helpers_path)
 
@@ -744,7 +754,7 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
     except Exception as e:
         result["engine_unavailable"] = True
         result["errors"] += 1
-        print(f"[SLEEP] Phase 5 engine load failed (plugin missing?): {e}", flush=True)
+        print(f"[SLEEP] Phase 5 engine load FAILED (plugin present but broken): {e}", flush=True)
         _write_sleep_report(result)
         return result
 
@@ -783,11 +793,14 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
         result["errors"] += 1
         print(f"[SLEEP] Phase 5 anti-pattern read error: {e}", flush=True)
 
-    summary_msg = (
-        f"Phase 5 — experiences_recorded={result['experiences_recorded']}, "
-        f"errors={result['errors']}"
-        + (" (engine unavailable)" if result["engine_unavailable"] else "")
-    )
+    if result["not_installed"]:
+        summary_msg = "Phase 5 — N/A (AgentEvolver plugin not installed)"
+    else:
+        summary_msg = (
+            f"Phase 5 — experiences_recorded={result['experiences_recorded']}, "
+            f"errors={result['errors']}"
+            + (" (engine load FAILED — plugin present but broken)" if result["engine_unavailable"] else "")
+        )
     print(f"[SLEEP] {summary_msg}", flush=True)
 
     _write_sleep_report(result)

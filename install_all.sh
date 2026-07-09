@@ -160,6 +160,7 @@ LAYERS=(
   "6|A2A compatibility server           |scripts/install_a2a_server.sh"
   "7|Memory classification system       |scripts/install_memory_classification.sh"
   "8|Ontology layer                     |scripts/install_ontology.sh"
+  "9|AgentEvolver self-improvement plugin|scripts/install_agentevolver.sh"
   "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
   "10|Document library (tools + catalog) |scripts/install_library.sh"
   "11|OSS V2 plugin (Intel tab + tools) |services/oss_plugin/install.sh"

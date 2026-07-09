@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AgentEvolver Self-Improvement Settings</title>
+    <script type="module">
+        import { store } from "/components/plugins/plugin-settings-store.js";
+    </script>
+</head>
+<body>
+    <div x-data>
+        <h2>AgentEvolver Self-Improvement Settings</h2>
+        <p>Configure the self-evolving mechanisms for your agent.</p>
+        
+        <div style="margin-bottom: 20px;">
+            <h3>Self-Questioning (Automatic Task Generation)</h3>
+            <label>
+                <input type="checkbox" x-model="config.self_questioning_enabled"> Enable Self-Questioning
+            </label><br>
+            <label>
+                Task Generation Frequency (minutes):
+                <input type="number" x-model="config.task_generation_frequency" min="1" max="1440">
+            </label>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h3>Self-Navigating (Experience-guided Exploration)</h3>
+            <label>
+                <input type="checkbox" x-model="config.self_navigating_enabled"> Enable Self-Navigating
+            </label><br>
+            <label>
+                Experience Pool Size (max entries):
+                <input type="number" x-model="config.experience_pool_size" min="10" max="10000">
+            </label>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h3>Self-Attributing (Credit Assignment)</h3>
+            <label>
+                <input type="checkbox" x-model="config.self_attributing_enabled"> Enable Self-Attributing
+            </label><br>
+            <label>
+                Credit Assignment Depth (steps):
+                <input type="number" x-model="config.credit_assignment_depth" min="1" max="50">
+            </label>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h3>General Settings</h3>
+            <label>
+                Self-Improvement Session Duration (minutes):
+                <input type="number" x-model="config.session_duration" min="1" max="240">
+            </label><br>
+            <label>
+                <input type="checkbox" x-model="config.auto_schedule"> Automatically schedule self-improvement sessions
+            </label>
+        </div>
+    </div>
+</body>
+</html>

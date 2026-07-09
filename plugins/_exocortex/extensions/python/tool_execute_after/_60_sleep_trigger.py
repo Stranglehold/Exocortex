@@ -243,10 +243,13 @@ async def _run_phase1(agent, ctx: str) -> None:
     # Phase 5: AgentEvolver experience integration
     try:
         r5 = run_phase5_consolidation(session_id, phase2_result=locals().get("r2"))
-        summary5 = (
-            f"Phase 5 — experiences_recorded={r5['experiences_recorded']}, "
-            f"engine_unavailable={r5['engine_unavailable']}"
-        )
+        if r5.get("not_installed"):
+            summary5 = "Phase 5 — N/A (AgentEvolver plugin not installed)"
+        else:
+            summary5 = (
+                f"Phase 5 — experiences_recorded={r5['experiences_recorded']}, "
+                f"engine_unavailable={r5['engine_unavailable']}"
+            )
         print(f"[SLEEP] {summary5}", flush=True)
         try:
             agent.context.log.log(type="info", content=f"[SLEEP] {summary5}")

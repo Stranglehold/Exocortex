@@ -1,0 +1,8 @@
+name: agentevolver_self_improvement
+title: AgentEvolver Self-Improvement
+description: Implements AgentEvolver's self-evolving mechanisms (Self-Questioning, Self-Navigating, Self-Attributing) for autonomous agent improvement.
+version: 1.0.0
+settings_sections:
+  - agent
+per_project_config: false
+per_agent_config: true
