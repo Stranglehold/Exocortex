@@ -714,15 +714,16 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
     """
     Phase 5 consolidation — AgentEvolver experience integration.
 
-    Converts sleep-cycle findings into SelfImprovementEngine experiences.
-    Two sources:
-      1. Anti-patterns captured by Phase 2 this session → failure experiences.
-         Lessons = the pre_action_check from the anti-pattern.
-      2. Phase 4 deprecated loop-period memories (if phase2_result provided) →
-         note the failure type in task_description for context.
+    Converts loop/recovery anti-patterns into SelfImprovementEngine experiences.
+    Consumes ALL un-consumed anti-patterns in procedural memory — both the live
+    supervisor's Tier-4 loop-recovery captures AND sleep Phase 2's missed-loop
+    captures — marking each `engine_consumed` so it is recorded exactly once
+    (idempotent across sessions; backfills accumulated anti-patterns on first run).
+    Lessons = the pre_action_check from the anti-pattern. (Opus Call 3, 2026-07-08.)
 
-    No LLM calls. Deterministic read of this session's procedural memory entries.
-    Silently skips if the AgentEvolver plugin is unavailable.
+    No LLM calls. Deterministic read/mark of procedural memory entries.
+    Reports not_installed / engine-load-failure distinctly; skips cleanly if the
+    AgentEvolver plugin is absent.
     """
     result = {
         "session_id": session_id,
@@ -758,7 +759,12 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
         _write_sleep_report(result)
         return result
 
-    # --- Source 1: anti-patterns captured by Phase 2 this session ---
+    # --- Consume anti-patterns → engine "failure experiences" (idempotent) ---
+    # Feeds BOTH sleep-Phase-2 "missed loop" captures AND the live supervisor's
+    # Tier-4 loop-recovery anti-patterns — the routine catches, where the pattern
+    # data actually lives (Opus Call 3, 2026-07-08; closes wiring §17 Seam #23).
+    # The `engine_consumed` marker makes this exactly-once regardless of source or
+    # session, and backfills accumulated anti-patterns on the first run after deploy.
     try:
         from procedural_memory_api import ProceduralMemory  # type: ignore
         pm = ProceduralMemory()
@@ -766,28 +772,33 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
         new_patterns = [
             s for s in pm.index.get("skills", [])
             if s.get("type") == "ANTI-PATTERN"
-            and s.get("session_id") == session_id
-            and any("sleep-phase2" in tag for tag in s.get("tags", []))
+            and not s.get("engine_consumed")
         ]
 
         for pattern in new_patterns:
             tool = pattern.get("failing_tool", "unknown")
             domain = pattern.get("domain", "general")
-            pre_check = pattern.get("pre_action_check", "").strip()
+            pre_check = (pattern.get("pre_action_check") or "").strip()
             lessons = [pre_check] if pre_check else [f"Avoid repeated {tool} calls without state change"]
             consecutive = pattern.get("consecutive", 3)
+            src = ("supervisor Tier-4" if any("loop-recovery" in t for t in pattern.get("tags", []))
+                   else "sleep Phase 2")
 
             engine.add_experience(
                 task_type=domain,
                 task_description=(
                     f"Agent looped on tool '{tool}' in domain '{domain}' "
-                    f"({consecutive} consecutive calls) — captured by sleep Phase 2."
+                    f"({consecutive} consecutive calls) — captured by {src}."
                 ),
                 actions=[f"called '{tool}' {consecutive}+ times without progress"],
                 outcome="failure",
                 lessons_learned=lessons,
             )
+            pattern["engine_consumed"] = True
             result["experiences_recorded"] += 1
+
+        if result["experiences_recorded"] > 0:
+            pm._save_index()
 
     except Exception as e:
         result["errors"] += 1
