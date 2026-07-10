@@ -1,0 +1,118 @@
+diff --git a/ggml/src/ggml-cpu/ops.cpp b/ggml/src/ggml-cpu/ops.cpp
+index cec4855f2..58d85e972 100644
+--- a/ggml/src/ggml-cpu/ops.cpp
++++ b/ggml/src/ggml-cpu/ops.cpp
+@@ -12,6 +12,14 @@
+ #include <cfloat>
+ #include <cmath>
+ 
++// Cross-DLL import of WHT group size from ggml-base (set by CPU SET_ROWS handler).
++// extern "C" required: variable is defined in a .c file (C linkage), ops.cpp is C++.
++#if defined(_WIN32) && defined(GGML_SHARED) && !defined(GGML_BUILD)
++extern "C" __declspec(dllimport) int turbo3_cpu_wht_group_size;
++#else
++extern "C" int turbo3_cpu_wht_group_size;
++#endif
++
+ // ggml_compute_forward_dup
+ 
+ static void ggml_compute_forward_dup_same_cont(
+@@ -4928,7 +4936,6 @@ static void ggml_compute_forward_set_rows_f32(
+ 
+     // For turbo types: communicate WHT group size to the quantize function via global
+     if (dst->type == GGML_TYPE_TURBO3_0 || dst->type == GGML_TYPE_TURBO4_0 || dst->type == GGML_TYPE_TURBO2_0) {
+-        extern int turbo3_cpu_wht_group_size;
+         int gs = 0;
+         memcpy(&gs, dst->op_params, sizeof(int));
+         turbo3_cpu_wht_group_size = (gs == 64 || gs == 128) ? gs : 0;
+diff --git a/ggml/src/ggml-cuda/fattn-vec.cuh b/ggml/src/ggml-cuda/fattn-vec.cuh
+index 991f7e1a7..3db8c9cfe 100644
+--- a/ggml/src/ggml-cuda/fattn-vec.cuh
++++ b/ggml/src/ggml-cuda/fattn-vec.cuh
+@@ -767,7 +767,7 @@ void ggml_cuda_flash_attn_ext_vec_case_impl(ggml_backend_cuda_context & ctx, ggm
+                 int64_t      ne0;
+                 int          n;
+             };
+-            static __attribute__((aligned(16))) sink_async_state sink_state;
++            static sink_async_state sink_state;
+             sink_state = {k_buf_const, k_ne0_full, ss};
+             CUDA_CHECK(cudaMemcpyAsync(d_addr_buf, &sink_state.buf, sizeof(const half *), cudaMemcpyHostToDevice, ctx.stream()));
+             CUDA_CHECK(cudaMemcpyAsync(d_addr_ne0, &sink_state.ne0, sizeof(int64_t),      cudaMemcpyHostToDevice, ctx.stream()));
+diff --git a/ggml/src/ggml-cuda/turbo-innerq.cuh b/ggml/src/ggml-cuda/turbo-innerq.cuh
+index 90103aee3..89ebfb02d 100644
+--- a/ggml/src/ggml-cuda/turbo-innerq.cuh
++++ b/ggml/src/ggml-cuda/turbo-innerq.cuh
+@@ -6,16 +6,28 @@
+ 
+ #define INNERQ_MAX_CHANNELS 128
+ 
++// Windows DLL export/import for symbols crossing the ggml-cuda.dll boundary.
++// ggml_cuda_EXPORTS is set by CMake when building the DLL, not when consuming it.
++#if defined(_WIN32) && !defined(__MINGW32__)
++#    ifdef ggml_cuda_EXPORTS
++#        define GGML_CUDA_TURBO_API __declspec(dllexport)
++#    else
++#        define GGML_CUDA_TURBO_API __declspec(dllimport)
++#    endif
++#else
++#    define GGML_CUDA_TURBO_API
++#endif
++
+ // Host-side shared state (defined in turbo-innerq.cu)
+-extern bool  g_innerq_finalized;
+-extern float g_innerq_scale_inv_host[INNERQ_MAX_CHANNELS];
++extern GGML_CUDA_TURBO_API bool  g_innerq_finalized;
++extern GGML_CUDA_TURBO_API float g_innerq_scale_inv_host[INNERQ_MAX_CHANNELS];
+ 
+ // Called from set-rows.cu after InnerQ finalization to publish scale_inv
+-void turbo_innerq_publish(const float * scale_inv, int group_size);
++GGML_CUDA_TURBO_API void turbo_innerq_publish(const float * scale_inv, int group_size);
+ 
+ // Called from llama-kv-cache.cpp (or equivalent) to check if tensor needs update
+ // Returns true if there are new scale_inv values to upload
+-bool turbo_innerq_needs_tensor_update(void);
++GGML_CUDA_TURBO_API bool turbo_innerq_needs_tensor_update(void);
+ 
+ // Called after tensor update to clear the flag
+-void turbo_innerq_mark_tensor_updated(void);
++GGML_CUDA_TURBO_API void turbo_innerq_mark_tensor_updated(void);
+diff --git a/ggml/src/ggml-turbo-quant.c b/ggml/src/ggml-turbo-quant.c
+index 3e105cfac..13e002588 100644
+--- a/ggml/src/ggml-turbo-quant.c
++++ b/ggml/src/ggml-turbo-quant.c
+@@ -15,7 +15,11 @@
+ #include <assert.h>
+ #include <stdlib.h>
+ 
+-/* Global: WHT group size for CPU quantize path (set by CPU SET_ROWS handler) */
++/* Global: WHT group size for CPU quantize path (set by CPU SET_ROWS handler).
++ * Exported so ggml-cpu.dll (a separate DLL on Windows) can write to it. */
++#if defined(_WIN32) && defined(GGML_SHARED) && defined(GGML_BUILD)
++__declspec(dllexport)
++#endif
+ int turbo3_cpu_wht_group_size = 0;
+ 
+ /* ---------- constants ---------- */
+diff --git a/src/llama-kv-cache.cpp b/src/llama-kv-cache.cpp
+index 0a18e1bf4..4f11076fb 100644
+--- a/src/llama-kv-cache.cpp
++++ b/src/llama-kv-cache.cpp
+@@ -21,10 +21,18 @@
+ #endif
+ 
+ #ifdef GGML_USE_CUDA
++// Symbols live in ggml-cuda.dll; import them on Windows.
++#if defined(_WIN32) && !defined(__MINGW32__)
++extern __declspec(dllimport) bool  g_innerq_finalized;
++extern __declspec(dllimport) float g_innerq_scale_inv_host[INNERQ_MAX_CHANNELS];
++extern __declspec(dllimport) bool  turbo_innerq_needs_tensor_update(void);
++extern __declspec(dllimport) void  turbo_innerq_mark_tensor_updated(void);
++#else
+ extern bool  g_innerq_finalized;
+ extern float g_innerq_scale_inv_host[INNERQ_MAX_CHANNELS];
+ extern bool turbo_innerq_needs_tensor_update(void);
+ extern void turbo_innerq_mark_tensor_updated(void);
++#endif
+ #else
+ static bool  g_innerq_finalized = false;
+ static float g_innerq_scale_inv_host[INNERQ_MAX_CHANNELS] = {};
