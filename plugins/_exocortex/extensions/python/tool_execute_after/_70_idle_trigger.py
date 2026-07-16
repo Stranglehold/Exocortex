@@ -104,13 +104,15 @@ class IdleTrigger(Extension):
                 _write_state(state)
                 _write_status({"state": "idle", "label": "Available"})
             else:
-                # Idle cycle completed normally — clear the active flag and charge budget
-                state = _read_state()
-                if state.get("cycle_active", False):
-                    state["cycle_active"]             = False
-                    state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
-                    _write_state(state)
-                    print("[IDLE] Cycle complete — cycle_active cleared.", flush=True)
+                # Idle cycle's response() fired. The idle_watch DAEMON is now the SOLE
+                # authority over cycle_active — it deasserts on the self-report signal
+                # (cycle_close.py) only once the context has FULLY finished. This hook
+                # must NOT clear the flag: tool_execute_after on response() runs while the
+                # context is still alive finishing monologue_end (memory/ontology/sleep),
+                # so clearing here orphaned still-running contexts as un-reaped zombies —
+                # the concurrency pile-up (2026-07-15). It also double-charged the budget
+                # (daemon._clear_cycle_slot already increments total_cycles_since_clear).
+                # Status only.
                 _write_status({"state": "idle", "label": "Available"})
 
         except Exception as e:

@@ -52,7 +52,9 @@ _STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20}
 _POLL_INTERVAL       = 60   # seconds between polls
 _STARTUP_GRACE       = 30   # seconds to wait on boot before first poll (A0 startup time)
 MAX_TOTAL_CYCLES     = 100000   # effectively unlimited — Jake explicit on 2026-05-16 ("no cap or limit"). Counter still tracks for observability; cap is just very far away.
-_CYCLE_HUNG_CAP      = 3600 # s — a cycle whose A0 context is STILL running past this (native is_running, not heartbeat) is treated as hung → reset + fire fresh
+_CYCLE_HUNG_CAP      = 3600 # s — hard wall-clock backstop: a RUNNING cycle older than this is reaped even if still heartbeating (absurdly long-lived)
+_REAP_GRACE          = 120  # s — a just-fired task can read not-running for a beat before it spins up; hold this grace before treating not-running as "gone" so we never clear our own brand-new cycle
+_CYCLE_STALL_CAP     = 900  # s — (C) a RUNNING cycle with NO heartbeat progress (no tool call) for this long is a hung/degenerate generation → reap fast. Set well above any legit monologue_end (sleep/memory consolidation) so it never false-reaps slow-but-progressing work
 
 # ── Cache Warmer (v2.1 — Opus spec + measured corrections, 2026-05-18) ────────
 # Principle: don't replicate A0's prompt — send a trivial request THROUGH A0 so
@@ -160,6 +162,17 @@ def _poll_once() -> None:
         })
 
 
+def _clear_cycle_slot(state: dict) -> None:
+    """Resolve the current cycle slot: deassert the in-progress flag, clear the
+    tracked context, stamp completion, and charge one cycle against the blast-radius
+    cap. Written under the daemon lock (the caller holds it)."""
+    state["cycle_context_id"]         = ""
+    state["cycle_active"]             = False
+    state["cycle_completed_ts"]       = time.time()
+    state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
+    _write_state(state)
+
+
 def _atomic_check_and_fire(config: dict) -> bool:
     """
     Acquire exclusive file lock, run all guards, fire one cycle if conditions met.
@@ -202,35 +215,73 @@ def _atomic_check_and_fire(config: dict) -> bool:
                 print("[IDLE-WATCH] Deferring fire — cache warm-up in flight / server busy.", flush=True)
                 return False
 
-        # Guard: is the previous cycle still generating? (NATIVE — authoritative)
-        # Ask A0 its own is_running() (task.is_alive()) for the tracked context via
-        # /api/idle_cycle, NOT the tool-call heartbeat. is_running() is True for the
-        # whole cycle regardless of tool calls, so a zero-tool-call cycle (model
-        # timeout / degenerate output) can no longer be mistaken for "stale" and
-        # stacked on top of — which is exactly what caused the pile-up.
+        # ── Cycle-slot state machine (B+C redesign, 2026-07-15) ───────────────
+        # OVERLAP IS A PURE FUNCTION OF is_running (B). The daemon defers as long as
+        # the tracked context is alive, and fires only once it is genuinely gone. It
+        # no longer clears on the cycle_close self-report signal — that was a competing
+        # "done" definition that fired while the context was still finishing monologue_end
+        # (memory/ontology/sleep), orphaning it (2026-07-15 pile-up). is_running is the
+        # single source of truth for "occupied"; the signal is metadata only (cycle-type
+        # reset, below) and cannot gate the slot. Two reapers stop a stuck context from
+        # deadlocking the slot: a STALL watchdog (C — no heartbeat progress ⇒ hung
+        # generation, reap fast) and a hard wall-clock backstop. History: gating on the
+        # signal / a second flag-writer (_70) is exactly what kept breaking; is_running
+        # is the one signal both "completed" and "died" agree on for the fire decision.
         prev_ctx = state.get("cycle_context_id", "")
-        if prev_ctx and _cycle_running(prev_ctx):
+        if state.get("cycle_active") and prev_ctx:
             age = now - state.get("last_cycle_start", 0)
-            if age > _CYCLE_HUNG_CAP:
-                print(f"[IDLE-WATCH] Previous cycle context {prev_ctx} still running "
-                      f">{_CYCLE_HUNG_CAP // 60}min — treating as hung, resetting.", flush=True)
-                _reset_cycle(prev_ctx)
-                state["cycle_context_id"]         = ""
-                state["cycle_active"]             = False
-                state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
-                _write_state(state)
-                # fall through — fire a fresh cycle this poll
+            if _cycle_running(prev_ctx):
+                stall = now - max(state.get("cycle_heartbeat", 0), state.get("last_cycle_start", 0))
+                if stall > _CYCLE_STALL_CAP:
+                    # (C) Fast watchdog: alive but no tool-call progress for too long — a
+                    # hung/degenerate generation (or a stuck await). The cap sits well above
+                    # any legit monologue_end, so this never fires on slow-but-progressing work.
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} stalled {stall/60:.0f}min "
+                          "(no progress — hung generation) — reaping.", flush=True)
+                    _reset_cycle(prev_ctx)
+                    _clear_cycle_slot(state)
+                    # fall through → fire fresh
+                elif age > _CYCLE_HUNG_CAP:
+                    # Hard backstop: heartbeating but absurdly long-lived.
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} exceeded hard cap "
+                          f">{_CYCLE_HUNG_CAP // 60}min — reaping.", flush=True)
+                    _reset_cycle(prev_ctx)
+                    _clear_cycle_slot(state)
+                    # fall through
+                else:
+                    # (B) Running and making progress → NEVER fire over it. This branch is
+                    # the whole overlap guarantee: a live context always holds the slot.
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} in progress — deferring, no overlap.", flush=True)
+                    return False
             else:
-                print(f"[IDLE-WATCH] Previous cycle still generating (context {prev_ctx}) "
-                      "— deferring fire, no overlap.", flush=True)
-                return False
+                # Not running → the context is genuinely gone. For the fire decision,
+                # "completed cleanly" and "died" are identical (the slot is free either
+                # way) — the signal/chat are read only to LOG which, never to gate. A
+                # just-fired task can read not-running for a beat before it spins up, so
+                # hold a short grace to avoid clearing our own brand-new cycle.
+                if age < _REAP_GRACE:
+                    return False
+                sig = _read_cycle_signal()
+                _sr = bool(sig and (float(sig.get("completed_ts", 0) or 0) >= state.get("last_cycle_start", 0)
+                                    or sig.get("context_id") == prev_ctx))
+                if _sr:
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} finished (self-reported) — slot free.", flush=True)
+                elif _cycle_completed(prev_ctx):
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} finished (response written) — slot free.", flush=True)
+                else:
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} ended without completing "
+                          "(died / reaped) — slot free.", flush=True)
+                _clear_cycle_slot(state)
+                # fall through → fire fresh
         elif prev_ctx:
-            # Previous cycle's context is no longer running → it finished. Clear the
-            # active bookkeeping (charge one completed cycle) before firing the next.
-            state["cycle_context_id"]         = ""
-            state["cycle_active"]             = False
-            state["total_cycles_since_clear"] = state.get("total_cycles_since_clear", 0) + 1
-            _write_state(state)
+            # cycle_active already false but a ctx id lingers. Nothing should clear the
+            # flag out of band now that _70 doesn't, but if a lingering ctx is somehow
+            # still alive, reap it (defense-in-depth — never leave a live zombie), then
+            # normalise the slot.
+            if _cycle_running(prev_ctx):
+                print(f"[IDLE-WATCH] Orphaned live cycle {prev_ctx} — reaping, not abandoning.", flush=True)
+                _reset_cycle(prev_ctx)
+            _clear_cycle_slot(state)
 
         # Guard: blast radius cap
         max_total = config.get("max_total_cycles", MAX_TOTAL_CYCLES)
@@ -383,6 +434,45 @@ def _cycle_running(context_id: str) -> bool:
     if not data.get("found", False):
         return False  # context gone → definitely not running
     return bool(data.get("running", True))
+
+
+def _cycle_completed(context_id: str) -> bool:
+    """True only if the cycle's chat actually COMPLETED — its last history message is
+    an AI `response` tool call. A cycle whose task ended without a final response
+    (model timeout / degenerate output) is NOT completed and must be reaped, not
+    mistaken for done. Only consulted once the context is already NOT running, so a
+    `response` as the last message unambiguously means the cycle finished."""
+    if not context_id:
+        return False
+    try:
+        cf = f"/a0/usr/chats/{context_id}/chat.json"
+        if not os.path.exists(cf):
+            return False  # chat gone → can't confirm completion → reap
+        with open(cf) as fh:
+            d = json.load(fh)
+        h = d["agents"][0].get("history")
+        if isinstance(h, str):
+            h = json.loads(h)
+        msgs = []
+        for t in (h.get("topics", []) if isinstance(h, dict) else []):
+            msgs += t.get("messages", [])
+        cur = h.get("current", {}) if isinstance(h, dict) else {}
+        msgs += cur.get("messages", []) if isinstance(cur, dict) else []
+        if not msgs:
+            return False
+        last = msgs[-1]
+        c = last.get("content")
+        tool = ""
+        if isinstance(c, dict):
+            tool = c.get("tool_name", "")
+        elif isinstance(c, str):
+            try:
+                tool = json.loads(c).get("tool_name", "")
+            except Exception:
+                tool = ""
+        return bool(last.get("ai")) and tool == "response"
+    except Exception:
+        return False  # can't parse → fail toward reap, never silent-fire
 
 
 def _reset_cycle(context_id: str) -> None:
