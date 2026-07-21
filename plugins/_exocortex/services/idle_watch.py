@@ -29,6 +29,7 @@ import fcntl
 import http.client
 import json
 import os
+import re
 import socket
 import sys
 import threading
@@ -300,20 +301,20 @@ def _atomic_check_and_fire(config: dict) -> bool:
             if now - state.get("last_cycle_start", 0) < min_gap:
                 return False
 
-        # Process completion signal from previous cycle (written by cycle_close.py)
-        signal = _read_cycle_signal()
-        if signal:
-            prev_type = signal.get("cycle_type", "")
-            # consecutive_maintain_count climbs MONOTONICALLY across MAINTAIN cycles so the
-            # escape to BUILD (_select_cycle_type, threshold 3) is GUARANTEED. The former
-            # reset on `MAINTAIN and sleep_findings > 0` zeroed the escape counter on routine
-            # housekeeping (a single dedup / one promotion counts as a "finding"), which
-            # locked the agent in endless MAINTAIN whenever there was any churn to converge.
-            # EXPLORE remains the rhythm reset: after the ~3-MAINTAIN -> BUILD*5 -> EXPLORE
-            # rotation, an EXPLORE cycle zeroes both counters and the rotation restarts.
-            if prev_type == "EXPLORE":
-                state["build_cycle_count"]          = 0
-                state["consecutive_maintain_count"] = 0
+        # Rotation reset — DETERMINISTIC, keyed on the type the daemon ASSIGNED to the cycle
+        # that just resolved (state["last_cycle_type"]), NOT the agent's self-reported signal.
+        # The local model sometimes mis-routes and reports the wrong cycle type; keying the
+        # reset on that report let the rotation get STUCK assigning EXPLORE forever while the
+        # model kept doing (and reporting) MAINTAIN — the 2026-07-17 stuck-MAINTAIN run. The
+        # daemon knows what it assigned, so it resets correctly regardless of the agent report.
+        # consecutive_maintain_count climbs MONOTONICALLY across MAINTAIN cycles so the escape
+        # to BUILD (_select_cycle_type, threshold 3) is GUARANTEED. EXPLORE is the rhythm reset:
+        # after ~3-MAINTAIN -> BUILD*5 -> EXPLORE, an EXPLORE cycle zeroes both counters.
+        if state.get("last_cycle_type") == "EXPLORE":
+            state["build_cycle_count"]          = 0
+            state["consecutive_maintain_count"] = 0
+        # Consume the completion signal (metadata only now) so it doesn't linger.
+        if _read_cycle_signal():
             try:
                 os.remove(_SIGNAL_PATH)
             except Exception:
@@ -725,12 +726,34 @@ def _read_cycle_signal() -> dict:
     return {}
 
 
+def _select_cycle_section(template: str, cycle_type: str) -> str:
+    """Return the activation prompt with ONLY the assigned cycle-type's section: the shared
+    header (before the first <!-- CYCLE: --> marker), that one section body, and the shared
+    footer (after the last <!-- /CYCLE: --> marker). This removes the 3-way conditional the
+    local model kept resolving wrong (defaulting to MAINTAIN, the first section, when told
+    EXPLORE — 2026-07-17). Safe fallback to the full template if the markers or the requested
+    section are absent, so a malformed prompt degrades to old behavior rather than breaking."""
+    first = template.find("<!-- CYCLE:")
+    body = re.search(
+        r"<!--\s*CYCLE:" + re.escape(cycle_type) + r"\s*-->(.*?)<!--\s*/CYCLE:"
+        + re.escape(cycle_type) + r"\s*-->",
+        template, re.DOTALL,
+    )
+    closers = list(re.finditer(r"<!--\s*/CYCLE:\w+\s*-->", template))
+    if first == -1 or body is None or not closers:
+        return template  # unmarked / missing section — safe fallback
+    return template[:first] + body.group(1).strip() + "\n" + template[closers[-1].end():]
+
+
 def _build_activation_prompt(cycle_type: str, max_steps: int) -> str:
     try:
         if os.path.exists(_PROMPT_PATH):
             with open(_PROMPT_PATH, "r", encoding="utf-8") as f:
                 template = f.read()
-            return (template
+            # DETERMINISTIC ROUTING: inject ONLY the assigned cycle-type's section so the
+            # local model can't default to the wrong one.
+            prompt = _select_cycle_section(template, cycle_type)
+            return (prompt
                     .replace("{cycle_type}", cycle_type)
                     .replace("{max_steps}", str(max_steps)))
     except Exception:

@@ -4,11 +4,14 @@ You are entering an autonomous work cycle. Jake is away. Your Office is open.
 
 ### Cycle Type: {cycle_type} | Step Budget: {max_steps}
 
+This is a **{cycle_type}** cycle. The task below is the ONLY work for this cycle — do exactly it.
+
 ---
 
-**If MAINTAIN:**
+<!-- CYCLE:MAINTAIN -->
+**Your task this cycle — MAINTAIN:**
 
-Phase 0 — Integrity Check (every MAINTAIN cycle, before anything else):
+Phase 0 — Integrity Check (before anything else):
 ```
 python3 /a0/usr/workdir/workspace/self-improvement/integrity_check.py
 ```
@@ -19,7 +22,7 @@ Phases 1-3 — Sleep Consolidation:
 Read the last 10 entries in /a0/usr/workdir/workspace/self-improvement/journal.jsonl for context.
 Run sleep consolidation with this exact command (it executes all three phases in one pass):
 ```
-python3 /a0/usr/Exocortex/sleep_consolidation.py
+python3 /a0/usr/workdir/workspace/self-improvement/sleep_consolidation.py
 ```
 Read the output for the sleep_findings count. The three phases it runs:
   - Phase 1: Deduplication — find near-duplicate memories, merge or discard
@@ -28,10 +31,10 @@ Read the output for the sleep_findings count. The three phases it runs:
 
 Track sleep_findings = total count of (promotions + deduplications + anti-patterns caught).
 A MAINTAIN cycle with sleep_findings=0 is an empty cycle.
+<!-- /CYCLE:MAINTAIN -->
 
----
-
-**If BUILD:**
+<!-- CYCLE:BUILD -->
+**Your task this cycle — BUILD:**
 
 Read /a0/usr/workdir/workspace/wiki/index.md for the current task queue.
 Read the last 5 entries in /a0/usr/workdir/workspace/self-improvement/journal.jsonl for context.
@@ -45,26 +48,31 @@ Your priorities (wiki deepening):
    least recently explored (check journal for prior coverage), create a stub at
    /a0/usr/workdir/workspace/wiki/research/{topic-slug}.md with Status: DRAFT, then deepen it.
    Add the new page to wiki/index.md under "Research" before beginning.
-3. Deepen the page: read primary source material in /a0/usr/Exocortex/specs/ and /a0/usr/Exocortex/research/papers/,
-   cross-reference team-comms/, verify claims against current implementation, use web_search for
-   external sources (arXiv, GitHub, documentation)
+3. Deepen the page — GROUND IT IN THE SHARED CORPUS FIRST, before reaching for the web:
+   - Call **search_memory** (the exocortex_memory tool) — the shared Exocortex corpus: every agent's wiki pages, specs, prior field reports, and saved memories. Pull what the team already knows about this topic.
+   - Call **search_library** (the exocortex_memory tool) — a 355-book technical reference library (security, ML, systems, networking) — for grounded, citable source material.
+   - THEN fill the remaining gaps with web_search (arXiv, GitHub, documentation), and verify claims against the current implementation.
+   The shared corpus and the book library are your PRIMARY sources; the web is for what they don't cover.
 4. memory_save with the essential insight after deepening (Rule 13 — no exceptions)
 5. After deepening: if the methodology generalizes, capture it as a skill in /a0/usr/skills/auto-generated/
 6. Update wiki/index.md — mark the page STABLE if it meets the deepening threshold
 
 Skill capture principle: Capture the search-and-structure PROCEDURE, not the content.
 The facts belong in the wiki; the reusable workflow belongs in the skill.
+<!-- /CYCLE:BUILD -->
 
----
-
-**If EXPLORE:**
+<!-- CYCLE:EXPLORE -->
+**Your task this cycle — EXPLORE:**
 
 Read /a0/usr/Exocortex/interests.md for Jake's exploration directives.
 Read the last 5 entries in /a0/usr/workdir/workspace/self-improvement/journal.jsonl to find which
 topics were explored most recently. Select the LEAST recently explored active interest.
 
-Your task: Research the selected topic autonomously. Use web search, ArXiv, GitHub,
-and public data sources. Follow threads that seem interesting. Make cross-domain connections.
+Your task: Research the selected topic autonomously.
+- START with the shared corpus: call **search_memory** and **search_all** (the exocortex_memory tools) to see what's already been found on this topic or an adjacent one — build on it, don't re-derive it.
+- Pull grounded reference material from **search_library** (exocortex_memory, 355 books) wherever it helps.
+- THEN follow threads outward with web_search, ArXiv, GitHub, and public data sources.
+Follow threads that seem interesting. Make cross-domain connections.
 
 Produce a field report at /a0/usr/workdir/workspace/field-reports/{date}_{topic_slug}.md:
 1. What I explored — the specific thread you followed
@@ -74,6 +82,7 @@ Produce a field report at /a0/usr/workdir/workspace/field-reports/{date}_{topic_
 5. Cross-domain connections — links to other interests that surfaced
 
 After writing the field report: memory_save with the key cross-domain connection (Rule 13).
+<!-- /CYCLE:EXPLORE -->
 
 ---
 
@@ -87,7 +96,8 @@ After writing the field report: memory_save with the key cross-domain connection
 
 ### Closing the cycle (MANDATORY — your FINAL step):
 
-Call cycle_close.py once to batch all bookkeeping (journal + office feed + cycle signal):
+Call cycle_close.py once to batch all bookkeeping (journal + office feed + cycle signal).
+Pass `--cycle-type {cycle_type}` EXACTLY as shown — this cycle is a {cycle_type} cycle:
 
 ```
 python3 /a0/usr/workdir/workspace/self-improvement/cycle_close.py \
