@@ -409,12 +409,14 @@ hr {
 <section id="sec-00">
   <h2><span class="num">00</span>System Overview <a class="anchor" href="#sec-00">#</a></h2>
   <p class="section-summary">
-    One-screen view of the Exocortex inside Agent Zero. Two containers, each
-    running A0 with the hardening stack mounted at the profile path. Outside the
-    container: vendored inference backends (Qwen3.6-27B with MTP+TurboQuant for
-    v16, DeepSeek-V4-Pro API for v17). Inside: 12 layers + cross-cutting
+    One-screen view of the Exocortex inside Agent Zero. Two active containers, each
+    running A0 <strong>v2.9</strong> with the hardening stack as a self-contained plugin at
+    <code>/a0/usr/plugins/_exocortex</code>. Outside the container: inference backends —
+    <strong>ornith-1.0-35b</strong> served by llama.cpp on <code>:1235</code> for Aporia,
+    <strong>deepseek-v4-flash</strong> (API) for Vek. Inside: 12 layers + cross-cutting
     subsystems + idle-time engine + supporting services.
   </p>
+  <div class="caption"><span class="status ok">refreshed 2026-08-14</span> Previously described v16/v17 with Qwen3.6-27B+MTP and DeepSeek-V4-Pro. Both of those containers are retired; see §01.</div>
 
   <h3>Wiring — Physical Layout</h3>
   <div class="diagram">
@@ -528,8 +530,19 @@ sequenceDiagram
 <section id="sec-01">
   <h2><span class="num">01</span>Container Architecture <a class="anchor" href="#sec-01">#</a></h2>
   <p class="section-summary">
-    Two active containers — <code>exocortex_v16</code> (Qwen3.6-27B on local GPU) and <code>exocortex_v17</code> (DeepSeek-V4-Pro API). Both run the same Exocortex extension stack but against different inference backends. Container scope discipline (<a href="https://github.com/Stranglehold/Exocortex">MEMORY.md</a> + playbook): v16 is the working container; v17 is secondary and currently used for PACE-related testing where API spend is acceptable. The "deploy to both containers" rule covers extension code; it explicitly does NOT cover model config, API keys, or container-specific settings.
+    <span class="status ok">refreshed 2026-08-14</span> Two active containers — <code>agent-zero-v2</code> (<strong>Aporia</strong>, local ornith-1.0-35b) and <code>VekV2</code> (<strong>Vek</strong>, deepseek-v4-flash API). Both run A0 <strong>v2.9</strong> and the same Exocortex stack against different inference backends. Container scope discipline (MEMORY.md + playbook): the "deploy to both containers" rule covers extension code; it explicitly does NOT cover model config, API keys, or container-specific settings.
   </p>
+
+  <h3>Container history — what changed and why</h3>
+  <table>
+    <tr><th>Container</th><th>Status</th><th>Notes</th></tr>
+    <tr><td><code>agent-zero-v2</code> — Aporia</td><td><span class="status ok">active</span></td><td>A0 v2.9. Local ornith-1.0-35b via llama.cpp <code>:1235</code>. The v2-layout reference: v16 was migrated onto it.</td></tr>
+    <tr><td><code>VekV2</code> — Vek</td><td><span class="status ok">active</span></td><td>A0 v2.9. deepseek-v4-flash. Created 2026-08-03; Vek's data (wiki, 1,856-cycle journal, FAISS memory, chats, skills, identity doc) migrated from <code>exocortex_v17</code> with copy-verify before teardown.</td></tr>
+    <tr><td><code>exocortex_v17</code></td><td><span class="status warn">retired</span></td><td>A0 v1.20. Vek's pre-migration host — still running but superseded. Do NOT sync or deploy to it: it would republish retired work.</td></tr>
+    <tr><td><code>exocortex_v16</code></td><td><span class="status warn">retired</span></td><td>Exited. Migrated onto the v2 layout earlier.</td></tr>
+  </table>
+  <div class="caption"><strong>Why the v2 layout matters:</strong> the stack lives entirely in <code>/a0/usr/plugins/_exocortex</code>, so <code>git status</code> on <code>/a0</code> shows <strong>zero core modifications</strong>. The A0 v2.8→v2.9 upgrade required no re-patching at all — contrast the v1.18 upgrade, which broke both containers until core patches were re-applied. That is DEC-030 (sovereignty boundary) paying off.</div>
+  <div class="caption"><span class="status err">No volume mounts.</span> Every container keeps its data in the writable layer — see <a href="#sec-18">§18 Durability</a>.</div>
 
   <h3>Active vs historical containers</h3>
   <table>
@@ -3204,7 +3217,7 @@ class ReasoningStateInjector(Extension):
 <section id="sec-13">
   <h2><span class="num">13</span>Fragile Seams <a class="anchor" href="#sec-13">#</a></h2>
   <p class="section-summary">
-    The catalog of "this kind of thing keeps biting." Seams are places in the architecture where two components hold a contract that has no compile-time enforcement — when one side changes and the other doesn't, the system breaks silently. Carries forward the 12 seams from <code>WIRING.md</code> (Apr 17) plus six new ones surfaced or sharpened tonight. Each entry: where the seam lives, how it fails, how to detect, and current mitigation status.
+    The catalog of "this kind of thing keeps biting." Seams are places in the architecture where two components hold a contract that has no compile-time enforcement — when one side changes and the other doesn't, the system breaks silently. Carries forward the 12 seams from <code>WIRING.md</code> (Apr 17), those added through May-June, and <strong>seven added 2026-08-14</strong> (#22-#28) from the JSON-reliability and durability work. Each entry: where the seam lives, how it fails, how to detect, and current mitigation status.
   </p>
 
   <div class="callout info">
@@ -3357,7 +3370,56 @@ class ReasoningStateInjector(Extension):
         <td>Wrong import path → <code>ModuleNotFoundError</code> at extension load → entire hook fails silently</td>
         <td><span class="status info">well-known; pattern: <code>from helpers.extension import Extension</code></span></td>
       </tr>
-    </tbody>
+          <tr>
+        <td>22</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Intervention placed downstream of the failure</strong></td>
+        <td>A gate can only ever see requests that already survived everything upstream of it. <code>_20</code>'s size gate exists to prevent truncated JSON payloads — but <code>json_parse_dirty</code> <em>rejects</em> truncated payloads (returns <code>None</code>, tested at 60% truncation), so anything reaching the gate has already parsed. The 300 blocked writes were intact content refused for surviving a danger that never reaches the hook. Symmetrically, malformed calls can never be fixed there because they die in the parser.</td>
+        <td><span class="status warn">Structural. Before designing any gate/hook/router, trace whether the target failure actually reaches that code path — DEC-046.</span></td>
+      </tr>
+      <tr>
+        <td>23</td>
+        <td><span class="status err">CRIT</span></td>
+        <td><strong>Host filesystem naming rules silently truncate a backup</strong></td>
+        <td>Agents write ISO-8601 timestamps into filenames (<code>..._baseline_2026-05-10T19:30:53Z.md</code>). Colons are legal on Linux and <strong>illegal on NTFS</strong>, so <code>docker cp</code> to a host mirror aborts on the first such file — skipping Vek's <em>entire</em> workdir (wiki, journals, identity doc) behind one truncated warning, while Aporia (no colon filenames) looked perfectly healthy. A backup that silently omits data is worse than none.</td>
+        <td><span class="status ok">RESOLVED 2026-08-14 — capture tar STREAMS, never extract to the host. 146 lost files recovered. DEC-050.</span></td>
+      </tr>
+      <tr>
+        <td>24</td>
+        <td><span class="status warn">HIGH</span></td>
+        <td><strong>Allowlist scope blindness</strong></td>
+        <td>Any "list the paths to copy/index/sync" design silently misses data added later. The first backup scope named six directories and omitted <code>chats_archive</code> (1&nbsp;GB of conversation history), <code>uploads</code> (inter-agent letters), <code>knowledge</code>, <code>ontology</code>, <code>swarmfish</code>, <code>oss</code>. Nothing errors — the omission is invisible until a restore.</td>
+        <td><span class="status ok">RESOLVED — inverted to a denylist (capture all, exclude explicitly). Apply the same inversion to any future capture scope.</span></td>
+      </tr>
+      <tr>
+        <td>25</td>
+        <td><span class="status warn">HIGH</span></td>
+        <td><strong>Extension module cache — on-disk correct ≠ in-memory loaded</strong></td>
+        <td>A <em>new</em> extension file is picked up on the next hook fire without a restart. A <em>modified</em> one is not: Python returns the cached module from <code>sys.modules</code>, so md5-verifying the deployed file proves nothing about what is running. Observed live — a fixed <code>_02_mcp_health</code> kept emitting the old false CRITICAL despite matching md5 on disk, until the container restarted.</td>
+        <td><span class="status warn">Mitigation: restart the container after modifying an existing extension, and verify by log output, not by md5 alone.</span></td>
+      </tr>
+      <tr>
+        <td>26</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>MCP server name normalization (hyphen → underscore)</strong></td>
+        <td>A0 normalizes MCP server names for tool namespacing: <code>deep-wiki</code> is reported as <code>deep_wiki</code>, <code>exocortex-memory</code> as <code>exocortex_memory</code>. Settings are written with hyphens (that is what the UI takes), so any raw string comparison against a configured name produces a false negative — a server reported as connected and missing in the same breath.</td>
+        <td><span class="status ok">RESOLVED in <code>_02_mcp_health</code> via normalized compare; documented in-code. Any future consumer of server names must normalize.</span></td>
+      </tr>
+      <tr>
+        <td>27</td>
+        <td><span class="status warn">MED</span></td>
+        <td><strong>Shared single-slot inference server</strong></td>
+        <td>ornith runs <code>total_slots: 1</code> and now serves <strong>both</strong> Aporia and Hermes. Requests serialize, so Hermes usage can stall an Aporia cycle, and it silently contaminated two benchmark runs before being identified. The config dimension is worse than the latency one: a server-level flag (e.g. <code>--json-schema</code>) applies to every client and would destroy Hermes, which has its own tool protocol.</td>
+        <td><span class="status warn">Open. Doctrine: behavioural config belongs on the REQUEST, never the server or a global kwargs bag — DEC-049. Before adding any launch-script flag, enumerate every client.</span></td>
+      </tr>
+      <tr>
+        <td>28</td>
+        <td><span class="status warn">HIGH</span></td>
+        <td><strong>Built but never armed</strong></td>
+        <td>A pipeline can be fully written, documented, correct — and never scheduled. <code>sync_agent_exports.py</code> was written 2026-07-09 with the <code>schtasks</code> command in its own docstring and never registered. Exports froze that day; <code>search_memory</code> served a five-week-stale corpus while both agents' prompts named it their PRIMARY source. A reindex even ran on 08-11, faithfully re-embedding stale files — the indexer was healthy, the trigger was absent.</td>
+        <td><span class="status ok">RESOLVED 2026-08-14 — registered as <code>ExocortexAgentSync</code> (6h). Generalization: "the code exists" is not "the code runs"; verify the scheduler, not just the script.</span></td>
+      </tr>
+</tbody>
   </table>
 
   <hr>
@@ -3712,7 +3774,18 @@ flowchart LR
 
 <section id="sec-15">
   <h2><span class="num">15</span>Failure Modes &amp; Recovery Logic <a class="anchor" href="#sec-15">#</a></h2>
-  <p class="section-summary"><span class="status todo">todo</span> Burst (fixed May 15 by lock), retry storm (fixed May 15 by no-decrement), overlap (current gap — daemon doesn't kill old context on stale-clear), OOM cascade (downstream effect of overlap on GPU-collision substrate).</p>
+  <p class="section-summary"><span class="status ok">refreshed 2026-08-14</span> Known idle-engine failure modes and their current status. <strong>Overlap is no longer an open gap</strong> — it was listed here as "daemon doesn't kill old context on stale-clear" long after the B+C redesign fixed it, which is exactly the sort of stale entry that sends someone to re-fix a fixed bug.</p>
+
+  <table>
+    <tr><th>Failure mode</th><th>Status</th><th>Detail</th></tr>
+    <tr><td>Burst</td><td><span class="status ok">fixed 2026-05-15</span></td><td>pidfile + flock singleton on the daemon.</td></tr>
+    <tr><td>Retry storm</td><td><span class="status ok">fixed 2026-05-15</span></td><td>no-decrement on failed fires ("Fire failed — skipped, no budget consumed").</td></tr>
+    <tr><td>Overlap / zombie cycle</td><td><span class="status ok">fixed (B+C redesign)</span></td><td>Replaced signal-based logic with a pure <code>is_running</code> gate plus a stall watchdog: if a cycle stops progressing past <code>_CYCLE_STALL_CAP</code> (900s) it is <strong>reaped</strong>, and <code>cycle_active</code> has a single writer. Verified in production — the daemon log shows <code>Cycle bzhKwysG stalled 16min (no progress — hung generation) — reaping</code>, five distinct reaps in one window.</td></tr>
+    <tr><td>Stuck cycle-type (10x MAINTAIN)</td><td><span class="status ok">fixed</span></td><td>Deterministic single-section prompt routing + deterministic rotation reset. The model was defaulting to MAINTAIN inside a 3-way conditional prompt; now only the selected cycle's section is rendered.</td></tr>
+    <tr><td>Hung generation</td><td><span class="status warn">transient, watched</span></td><td>2026-08-07→10 every fire timed out: cycles hung on generation, the watchdog reaped each after ~15 min, and 243/265 fires timed out while A0 was occupied. Resolved on its own; cycles run clean now. The watchdog worked — the hangs were upstream of it.</td></tr>
+    <tr><td>Startup safety latch</td><td><span class="status info">by design</span></td><td>The daemon force-disables cycles on every start (<code>Startup safety: idle cycles were ENABLED — forced OFF on start</code>). Combined with the above, this is why an engine can look "switched off" when nobody switched it off. Re-arm via <code>idle_control {"action":"enable"}</code>.</td></tr>
+    <tr><td>OOM cascade</td><td><span class="status info">downstream</span></td><td>Was a consequence of overlap on a GPU-collision substrate; overlap being fixed removes the driver. Note the single-slot server (§18) is a separate contention path.</td></tr>
+  </table>
 </section>
 
 <section id="sec-16">
