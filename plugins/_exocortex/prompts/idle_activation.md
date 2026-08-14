@@ -51,7 +51,12 @@ Your priorities (wiki deepening):
 3. Deepen the page — GROUND IT IN THE SHARED CORPUS FIRST, before reaching for the web:
    - Call **search_memory** (the exocortex_memory tool) — the shared Exocortex corpus: every agent's wiki pages, specs, prior field reports, and saved memories. Pull what the team already knows about this topic.
    - Call **search_library** (the exocortex_memory tool) — a 355-book technical reference library (security, ML, systems, networking) — for grounded, citable source material.
-   - THEN fill the remaining gaps with web_search (arXiv, GitHub, documentation), and verify claims against the current implementation.
+   - THEN fill the remaining gaps — reach for the SPECIALIST tool that fits the gap, not a generic search:
+     - **arxiv** (MCP tool) — when you need research papers: search, download, read. Call the tool; do NOT web_search for arXiv.
+     - **context7** (MCP tool) — when the gap is a library/framework/API specific: current syntax, version differences, config options. Prefer it over web_search, which returns stale or blog-grade docs.
+     - **deep-wiki** (MCP tool) — when you need how a specific GitHub project works internally: architecture, module layout, design decisions.
+     - **web_search** / browser — everything else, and anything time-sensitive or recent.
+   - Verify claims against the current implementation.
    The shared corpus and the book library are your PRIMARY sources; the web is for what they don't cover.
 4. memory_save with the essential insight after deepening (Rule 13 — no exceptions)
 5. After deepening: if the methodology generalizes, capture it as a skill in /a0/usr/skills/auto-generated/
@@ -71,7 +76,11 @@ topics were explored most recently. Select the LEAST recently explored active in
 Your task: Research the selected topic autonomously.
 - START with the shared corpus: call **search_memory** and **search_all** (the exocortex_memory tools) to see what's already been found on this topic or an adjacent one — build on it, don't re-derive it.
 - Pull grounded reference material from **search_library** (exocortex_memory, 355 books) wherever it helps.
-- THEN follow threads outward with web_search, ArXiv, GitHub, and public data sources.
+- THEN follow threads outward, reaching for the SPECIALIST tool that fits the thread:
+  - **arxiv** (MCP tool) — research papers: search, download, read. Call the tool; do NOT web_search for arXiv.
+  - **context7** (MCP tool) — library/framework/API specifics: current syntax, versions, config options.
+  - **deep-wiki** (MCP tool) — how a specific GitHub project works internally: architecture, design decisions.
+  - **web_search** / browser — everything else, and anything time-sensitive or recent.
 Follow threads that seem interesting. Make cross-domain connections.
 
 Produce a field report at /a0/usr/workdir/workspace/field-reports/{date}_{topic_slug}.md:
