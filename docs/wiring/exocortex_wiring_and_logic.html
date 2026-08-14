@@ -375,6 +375,7 @@ hr {
     <li><a href="#sec-15"><span class="num">15</span>Failure Modes</a></li>
     <li><a href="#sec-16"><span class="num">16</span>Component Index</a></li>
     <li><a href="#sec-17"><span class="num">17</span>Cycle-to-Skill Pipeline &amp; Skill Quality</a></li>
+    <li><a href="#sec-18"><span class="num">18</span>Durability &amp; Corpus Freshness</a></li>
     <li><a href="#sec-open-questions"><span class="num">??</span>Open Questions</a></li>
   </ol>
   <div class="meta">
@@ -3974,6 +3975,100 @@ flowchart LR
 
 <!-- ╔════════════════ MERMAID INIT ════════════════╗ -->
 <script src="lib/mermaid.min.js"></script>
+
+<section id="sec-18">
+  <h2><span class="num">18</span>Durability &amp; Corpus Freshness <a class="anchor" href="#sec-18">#</a></h2>
+  <p class="section-summary">
+    <span class="status ok">built 2026-08-14</span> Two scheduled host-side pipelines that keep the agents' work <em>survivable</em> and <em>findable</em>, plus the in-process diagnostic that reports whether the shared corpus is actually reachable. All three exist because of the same failure shape found repeatedly in this system: something is produced faithfully and nothing ever reads it back. <strong>Every container runs with ZERO volume mounts</strong> — each agent's wiki, FAISS memory, journals, chats and self-authored identity doc live in the container's writable layer, so a single <code>docker rm</code> is total loss.
+  </p>
+
+  <h3>Why backups instead of volume mounts</h3>
+  <p>
+    Volume mounts were considered and rejected. They require recreating all three containers (the operation with the highest blast radius available), and they defend against exactly <em>one</em> failure — container removal. Snapshots additionally cover agent self-deletion, torn writes, corruption and disk failure, and need no downtime. <span class="status info">DEC-050</span>
+  </p>
+
+  <h3>Wiring — two pipelines, one direction each</h3>
+  <div class="mermaid">
+flowchart LR
+  subgraph containers["Agent containers (NO volume mounts)"]
+    apo["agent-zero-v2 — Aporia<br/>local ornith-1.0-35b"]
+    vek["VekV2 — Vek<br/>deepseek-v4-flash"]
+  end
+
+  apo -->|"docker exec tar -c (READ-ONLY)"| bk["backup_agents.py<br/>ExocortexAgentBackup — every 6h"]
+  vek -->|"docker exec tar -c (READ-ONLY)"| bk
+  bk --> arch["_agent_backups/&lt;agent&gt;/<br/>full/&lt;ts&gt;.tar.gz (every 12 runs)<br/>delta/&lt;ts&gt;.tar.gz (changed files only)<br/>state.json — size|mtime manifest"]
+
+  apo -->|"docker cp wiki + field-reports"| sy["sync_agent_exports.py<br/>ExocortexAgentSync — every 6h"]
+  vek -->|"docker cp wiki + field-reports"| sy
+  sy --> exp["agent-exports/&lt;name&gt;/"]
+  exp -->|"reindex ONLY when the<br/>change-signature moves"| mem["Opus Memory server :5055<br/>LanceDB + nomic-embed"]
+  mem -->|"search_memory / search_library<br/>via MCP"| apo
+  mem -->|"search_memory / search_library"| vek
+
+  bk -.->|"restore is a SEPARATE manual script —<br/>never scheduled, explicit target,<br/>defaults to a throwaway container"| restore["(dangerous direction:<br/>deliberately not wired)"]
+  </div>
+  <div class="caption">Both pipelines are strictly one-way <em>out of</em> the containers. <code>backup_agents.py</code> contains no code path that writes into a container — its only container operations are <code>docker inspect</code>, and <code>docker exec</code> running <code>find</code> / <code>sha256sum</code> / <code>tar -c</code>. The restore direction is a separate script by design, because most data-loss incidents are a restore firing when nobody expected it.</div>
+
+  <h3>Two bugs this design exists to avoid</h3>
+  <table>
+    <tr><th>Bug</th><th>What happened</th><th>Fix</th></tr>
+    <tr>
+      <td><strong>NTFS filename loss</strong></td>
+      <td>The first implementation copied files to the host with <code>docker cp</code>. The agents write ISO-8601 timestamps into filenames (<code>..._baseline_2026-05-10T19:30:53Z.md</code>). <strong>Colons are legal on Linux and illegal on NTFS</strong>, so <code>docker cp</code> aborted on the first such file — silently skipping Vek's <em>entire</em> workdir (wiki, journals, identity doc) behind one truncated warning. Aporia had no colon filenames and looked perfectly healthy.</td>
+      <td>Capture tar <em>streams</em>; never extract to the host. 146 previously-lost files now preserved byte-exact.</td>
+    </tr>
+    <tr>
+      <td><strong>Allowlist blindness</strong></td>
+      <td>The first path list named 6 directories and silently missed <code>chats_archive</code> (1&nbsp;GB of conversation history on Aporia), <code>uploads</code> (inter-agent letters), <code>knowledge</code>, <code>ontology</code>, <code>swarmfish</code> and <code>oss</code>.</td>
+      <td>Inverted to a <strong>denylist</strong> — capture everything under <code>/a0/usr</code>, exclude only what is regenerable, huge or secret. An allowlist backup silently misses data added later; a denylist captures it by default.</td>
+    </tr>
+  </table>
+
+  <h3>What is captured / excluded</h3>
+  <table>
+    <tr><th>Included</th><th>Excluded</th><th>Why excluded</th></tr>
+    <tr>
+      <td>everything under <code>/a0/usr</code> — workdir (wiki, field-reports, self-improvement, identity-conditions), memory (FAISS), chats, chats_archive, skills, Exocortex runtime, ontology, uploads, knowledge, organizations, swarmfish, oss, settings.json</td>
+      <td><code>.time_travel</code></td>
+      <td>A0 file-version cache — 460&nbsp;MB (Aporia) / 171&nbsp;MB (Vek), regenerable</td>
+    </tr>
+    <tr><td></td><td><code>obsidian-runtime</code>, <code>logs</code>, <code>downloads</code></td><td>runtime cache / regenerable / transient</td></tr>
+    <tr><td></td><td><code>secrets.env</code>, <code>.env</code></td><td>API keys — opt in with <code>--include-secrets</code>. Note the file is <code>secrets.env</code> on v2, not <code>.env</code>.</td></tr>
+    <tr><td></td><td><code>__pycache__</code>, <code>*.pyc</code>, <code>node_modules</code>, <code>.git</code></td><td>build artefacts / in git</td></tr>
+  </table>
+
+  <h3>FAISS consistency</h3>
+  <p>
+    <code>index.faiss</code> and <code>index.pkl</code> must be captured as a <strong>consistent pair</strong> — a torn copy looks fine and restores broken, which is worse than no backup at all. The <code>index.faiss.sha256</code> sidecar is verified <em>in-container</em> before capture; a mismatch is recorded as <span class="status err">DEGRADED</span> in the run manifest rather than silently accepted. <em>(Related: <code>Memory.index</code> is a class-level RAM cache — the on-disk pair is only rewritten on <code>_save_db()</code>, so a capture during a write window is the risk this check exists for.)</em>
+  </p>
+
+  <h3>Corpus freshness — the failure this caught</h3>
+  <p>
+    <code>sync_agent_exports.py</code> was written 2026-07-09 and <strong>never scheduled</strong>. Its docstring even contained the <code>schtasks</code> command. Exports therefore froze on the day the script was created, and because the memory server indexes <code>agent-exports/</code>, <code>search_memory</code> served a <strong>five-week-stale corpus</strong> while both agents' cycle prompts named it their PRIMARY source. A reindex had run as recently as 2026-08-11 — faithfully re-embedding stale files. The indexer was healthy; the sync was the missing link.
+  </p>
+  <p>
+    Its <code>AGENTS</code> map was also stale: it still pointed at <code>exocortex_v17</code>, the container Vek was migrated <em>off</em> on 2026-08-03. Armed unfixed, it would have faithfully republished retired work. Export directory names are kept stable (<code>v2</code>, <code>v17</code>) because the index and prior citations reference <code>agent-exports/&lt;name&gt;/…</code>; the mapping is agent-identity based, not container-name based.
+  </p>
+
+  <h3>MCP health diagnostic</h3>
+  <p>
+    <code>_02_mcp_health.py</code> (<code>before_main_llm_call</code>) reports live MCP connection state and raises a <span class="status err">CRITICAL</span> line when a required server is missing or down. It exists because Vek ran 2026-08-03 → 08-12 with <strong>no <code>exocortex-memory</code> server at all</strong> while his prompts told him to ground every BUILD cycle in it — cycles reported <code>completed</code>, journals looked normal, nine days of research ran ungrounded, and nothing in the stack reported MCP state.
+  </p>
+  <p>
+    It must run <em>inside</em> A0's process: a separate process gets a fresh <code>MCPConfig</code> singleton that reports zero servers regardless of truth, and <code>/api/mcp_servers_status</code> can exceed a request timeout. Both failed to diagnose the outage. On its first live fire it also caught its own false positive — <strong>A0 normalizes server names hyphen→underscore</strong> (<code>deep-wiki</code> → <code>deep_wiki</code>), so a raw string compare reported a server as simultaneously connected and missing.
+  </p>
+
+  <h3>Schedule &amp; footprint</h3>
+  <table>
+    <tr><th>Task</th><th>Cadence</th><th>Notes</th></tr>
+    <tr><td><code>ExocortexAgentBackup</code></td><td>every 6h</td><td>full capture every 12 runs (~3 days), delta otherwise; 40 archives retained per agent. Aporia ≈ 311&nbsp;MB/full (1137&nbsp;MB → tar.gz), Vek ≈ 40&nbsp;MB.</td></tr>
+    <tr><td><code>ExocortexAgentSync</code></td><td>every 6h</td><td>reindex fires <strong>only</strong> when the change-signature moves — a reindex is a full ~24k-chunk rebuild on the shared 3090. Must run with the memory-server venv python (it has <code>fastmcp</code>).</td></tr>
+  </table>
+
+  <div class="caption"><span class="status warn">Doc currency</span> §00–§01 still describe <code>exocortex_v16</code> / <code>exocortex_v17</code> with Qwen3.6-27B and DeepSeek-V4-Pro. Current reality: <strong>agent-zero-v2 (Aporia, local ornith-1.0-35b)</strong> and <strong>VekV2 (Vek, deepseek-v4-flash)</strong>, both on <strong>A0 v2.9</strong> with the stack in <code>/a0/usr/plugins/_exocortex</code> and zero core modifications. Those sections need a pass.</div>
+</section>
+
 <script>
 mermaid.initialize({
   startOnLoad: true,

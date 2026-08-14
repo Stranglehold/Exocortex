@@ -573,3 +573,21 @@
 **The rule:** Scope behavioral config to the narrowest unit that owns the behavior — the request, or at minimum the specific model role. Never the shared server, never a global kwargs bag. Before adding any flag to an inference launch script, enumerate every client of that server.
 **Related:** The single-slot sharing also means Hermes usage can stall Aporia's cycles, and contaminated two benchmark runs before it was identified.
 **Revisit if:** Clients get dedicated servers, or the server supports per-request grammar scoping natively (it does — via `response_format`, which is exactly why the request is the correct layer).
+
+---
+
+## DEC-050: Snapshots Over Volume Mounts for Agent Durability
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / durability
+**Principle:** Where a running system holds irreplaceable state, prefer read-only external snapshots over in-place storage guarantees. A mount defends against exactly one failure; a snapshot defends against every failure that produces bad or missing data — and costs no downtime to adopt.
+**Context:** All Agent-Zero containers run with **zero volume mounts**: each agent's wiki, FAISS memory, journals, chats, skills and self-authored identity doc live in the container's writable layer. One `docker rm` is total, unrecoverable loss.
+1. **Mounts were considered and rejected.** They require recreating all three containers — the highest-blast-radius operation available, and one refused earlier the same session for a mere port change. They protect only against container removal, not agent self-deletion, torn writes, corruption or disk failure.
+2. **Two bugs found while building the alternative, both instructive:**
+   - **NTFS filename loss.** The first implementation used `docker cp` to a host mirror. Agents write ISO-8601 timestamps into filenames (`..._2026-05-10T19:30:53Z.md`); colons are legal on Linux and illegal on NTFS, so `docker cp` aborted on the first one and **silently skipped Vek's entire workdir** behind a single truncated warning — while Aporia, which has no colon filenames, looked perfectly healthy. Fix: capture tar **streams**, never extract to the host. A backup must store what the source contains, not what the backup host can represent.
+   - **Allowlist blindness.** The first path list named six directories and missed `chats_archive` (1 GB of conversation history), `uploads` (inter-agent letters), `knowledge`, `ontology`, `swarmfish`, `oss`. Fix: **denylist**. An allowlist backup silently misses data added later; a denylist captures it by default.
+3. **Safety is structural, not promised.** The backup script's only container operations are `docker inspect` and `docker exec` running `find`/`sha256sum`/`tar -c` — all read-only. There is deliberately no code path that writes into a container. Restore lives in a separate script that is never scheduled, requires an explicit target, and defaults to a throwaway container, because most data-loss incidents are a restore firing unexpectedly. Deletes are limited to retention sweeps fenced by an assertion that refuses any path outside the backup root.
+4. **FAISS is captured as a verified pair.** `index.faiss` + `index.pkl` torn apart restore broken while looking fine — worse than no backup. The sha256 sidecar is checked in-container before capture; a mismatch is recorded as DEGRADED rather than silently accepted.
+**The rule:** For irreplaceable state, back up rather than bind. Capture as an archive stream (not a file mirror) whenever source and destination filesystems have different naming rules. Default to capturing everything and exclude explicitly. Keep the restore path manual, separate and unscheduled.
+**Related:** `sync_agent_exports.py` was written 2026-07-09 and never scheduled — exports froze that day and `search_memory` served a five-week-stale corpus while both agents' prompts named it their PRIMARY source. Built-but-never-armed is the same failure family as producer-built/consumer-assumed.
+**Revisit if:** Containers gain mounts for another reason, or agent data grows past what snapshot retention can hold.
