@@ -495,3 +495,81 @@
 **The same pattern applies to:** The supervisor (five detectors composed into affect states rather than any single detector), the idle engine (cooldown counter + time cap + state detector rather than any single escape mechanism), the DEC-026 audit tool (checks all paths rather than assuming the correct one).
 **The rule:** Any data quality mechanism should have at least two independent layers. If the system accepts data from multiple sources (user input, autonomous generation, external import), each source should be validated by at least one layer.
 **Revisit if:** Never. This is infrastructure design.
+
+---
+
+## DEC-045: Advisory Scaffolding Works for Rare Branches, Fails for Default Paths
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / JSON reliability investigation
+**Principle:** An advisory intervention (surface a lesson, warn, remind) changes behavior only when the corrective action is an *exception*. When the corrective action is what the agent must do on nearly every task, advisory fails categorically — you are asking the model to re-derive a routing decision from context on every single deliverable, forever.
+**Context:** A natural controlled experiment, unplanned, inside one file.
+1. **The failure:** `text_editor/oversized_tool_write` recurred **300 times** across two agents in ten weeks (Aporia 97, Vek 203) with the corrective lesson **surfaced into planning context 302 times** by `_24_skill_surfacer`. Per-cycle rate stayed flat (Aporia .15/.09/.14, Vek .26/.24/.18). Capture worked, surfacing worked, behavior did not change.
+2. **Why it could not work:** 94-95% of Vek's deliverables exceed the gate (82%/64% Aporia). The "exception" was the norm.
+3. **The control:** the same file `_20_meta_reasoning_gate.py` corrects four other failure modes *deterministically* (arg aliases, unknown-arg strip, value aliases, defaults). Those appear **nowhere** in the lesson ledger — the agent never experiences them.
+4. **The counter-check that proved the rule rather than the exception:** `code_execution_tool/terminal_session_hung` went 55 (June) to **0**, permanently. Opus asked whether the agent had simply stopped using terminal sessions (avoidance masquerading as learning). It had not — terminal is 100% of Aporia's runtime usage with zero hangs since 2026-06-20. Genuine correction. That failure was a *rare branch*, and advisory worked.
+**The rule:** Before choosing an advisory intervention, measure how often the corrective action would fire. If it is the default path, go deterministic. If it is a rare branch, advisory is appropriate and cheaper.
+**Applied:** A2 (scope-expansion detector) is correctly advisory by this rule — scope expansion is genuinely rare.
+**Revisit if:** Never. Adopted as a standing design heuristic by Opus 2026-08-11.
+
+---
+
+## DEC-046: An Intervention Can Only Live Where the Failure Actually Arrives
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / JSON reliability investigation
+**Principle:** Before designing a gate, hook, or router, verify that the failure it targets actually reaches that point in the pipeline. A defense placed downstream of the thing that kills the request can only ever see survivors.
+**Context:** Two approved builds died on this, both verified empirically rather than argued:
+1. **`tool_execute_before` cannot substitute a tool.** A0 resolves `tool` *before* the hook (`agent.py` ~1189) and calls `tool.execute(**tool_args)` on that same object after. The hook receives a mutable `tool_args` dict and an immutable `tool_name` string. The approved "gate performs the write via `code_execution_tool`" auto-route has **no mechanism at this layer**.
+2. **`json_parse_dirty` rejects truncated payloads** (returns `None`; tested at 60% truncation) — it does not silently repair them into short-but-valid content. **Therefore any content reaching the size gate has already parsed successfully.** The gate's own comment cites "content >5000 chars, payload truncates, malformed JSON" as its rationale — a failure that, if it occurred, would prevent the gate from ever seeing the call.
+**Consequence:** The 300 blocked writes (DEC-045) were **intact, complete content refused for exceeding a limit measuring a danger already survived**. Class A never needed routing; it needed the gate to stop blocking. Class B (malformed JSON) cannot be fixed at this hook at all — those calls die upstream in the parser and never arrive.
+**The rule:** For any proposed intervention, ask first: *does the failure I am targeting reach this code path?* Trace the pipeline before designing the fix. Blocking successes is worse than useless — it costs a round-trip and teaches nothing.
+**Revisit if:** A0 changes tool dispatch so `tool_execute_before` can substitute the resolved tool, or the parser becomes repair-tolerant.
+
+---
+
+## DEC-047: Complexity, Not Length, Predicts Structured-Output Failure
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / JSON reliability investigation
+**Principle:** Character count is the wrong variable for gating model-emitted structured output. What predicts failure is escaping/structural complexity of the payload — quotes, fenced code, nested braces, rigid formatting requirements.
+**Context:** Measured independently on both active models.
+1. **deepseek-v4-flash:** clean prose 100% valid at 12K/20K/32K chars — and a **valid tool call at 43,609 chars**. Add verbatim quotes: 75%. Add fenced code blocks: **25% at 32K**. Length barely moved; content shape collapsed it.
+2. **ornith-1.0-35b:** at a fixed 6,000 chars — prose **5/5**, code-with-fences **2/5**. Same size, same model, 2.5x difference from content shape alone.
+3. **Production corroboration (Aporia):** 142 misformat events, **~82% adjacent to a `text_editor` call**; ~2.7% of all tool calls but **~20-44% of `text_editor` calls** — the lab rate matches production for the population it measured.
+4. **Methodology warning:** a first sweep using repetitive lorem content showed ornith clean to 24,000 chars. Realistic varied prose broke it by 8,000. **Content realism was worth 3-5x** — the lorem instrument was measuring "can the model repeat a pattern," not "can it emit valid JSON containing real prose." Shipping that number would have set a threshold ~4x too high.
+5. **Retracted along the way:** "ornith fails at every size" (33-83% curve) did not survive a clean rerun — 83% overall, 100% on prose. That curve used a rigid section-numbering prompt and/or ran under slot contention.
+**The rule:** Any future gate on structured output should key on complexity signals (count of fenced blocks, quote density, escape density) rather than character count alone — and any benchmark of model output must use content representative of the real workload.
+**Revisit if:** Models change materially; re-measure per model rather than inheriting a constant.
+
+---
+
+## DEC-048: Constrained Decoding Rejected for Reasoning-Bearing Calls
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / JSON reliability investigation
+**Principle:** Grammar-constrained decoding (`response_format: json_schema`) buys structural validity at a measured cost to task accuracy. On calls that carry reasoning — which in Agent Zero is *every tool call* — the trade is not worth it.
+**Context:** llama.cpp build `b8794` accepts `response_format`; A0 sends nothing. Tested on ornith, exclusive slot, temp 0.8.
+1. **Structure: it delivers.** Code tier (the hardest) **20/20** constrained vs **2/5** freehand; 39/40 overall across all tiers.
+2. **Reasoning: it costs.** Verifiable multi-step problems, n=24/condition — freehand **23/24 (95%)**, schema_answer **17/24 (70%)**, schema_reasoning **16/24 (66%)**, two_stage **18/24 (75%)**. A 20-29pp accuracy drop.
+3. **Mechanism hypothesis FALSIFIED.** Predicted the grammar suppresses ornith's native thinking phase, so constrained runs should burn far fewer tokens. They burned **1039 vs 1041 — identical**. Same compute, worse answers. The fit is per-token logit masking: whenever the model's best continuation is not schema-legal it is forced onto a lower-probability path, degrading quality continuously.
+4. **Proposed fix also failed.** Two-stage (reason freely, then a second constrained call that only *extracts* the answer) recovered only +5pp and still sat 20pp below freehand at double the tokens. The constrained *extraction* degrades too — **any** constrained call on this model performs worse, regardless of whether the task involves reasoning.
+5. **No clean place to apply it:** in A0 the tool call *is* the model's decision. There is no formatting-only call to constrain.
+**The rule:** Do not enable constrained decoding on the chat model. If it is ever revisited, it must be scoped to calls that carry no reasoning — and it must be demonstrated that such calls exist in the loop.
+**Unmeasured:** whether constraint degrades *writing* quality as it degrades puzzle-solving (structure was verified for bulk writes; prose quality inside them was not). n=24, puzzle tasks, one model.
+**Revisit if:** A different model shows no accuracy penalty under constraint, or a genuinely reasoning-free call path appears.
+
+---
+
+## DEC-049: Constraints and Model Config Scope to the Request, Never the Server
+
+**Date:** 2026-08-14
+**Session:** VekV2 arc / JSON reliability investigation
+**Principle:** When multiple independent clients share one inference server, any behavioral configuration must travel **with the request**. Applying it at the server — or at a global config layer — silently breaks every other consumer.
+**Context:** ornith runs with `total_slots: 1` and now serves **both** Aporia (Agent Zero) and Hermes.
+1. **Server-level would break Hermes.** A `--json-schema` / `--grammar-file` flag applies to every request the process handles. Hermes has its own tool protocol (26 tools, 85 skills) and mixes conversational prose with tool calls. A0 constrains cleanly only because JSON-only *is* its contract. Forcing A0's schema on Hermes destroys it — and it would look like a harmless serving optimization in a launch script.
+2. **The same error repeats one level down.** `litellm_global_kwargs` is a settings key (no core patch required — attractive), but it is **global**: it would also constrain the **utility model**, which does summarization and memory work that is not a tool call at all.
+3. **Generalization:** server breaks other clients; global breaks other call types. Both are the same mistake at different altitudes.
+**The rule:** Scope behavioral config to the narrowest unit that owns the behavior — the request, or at minimum the specific model role. Never the shared server, never a global kwargs bag. Before adding any flag to an inference launch script, enumerate every client of that server.
+**Related:** The single-slot sharing also means Hermes usage can stall Aporia's cycles, and contaminated two benchmark runs before it was identified.
+**Revisit if:** Clients get dedicated servers, or the server supports per-request grammar scoping natively (it does — via `response_format`, which is exactly why the request is the correct layer).
