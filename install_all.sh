@@ -282,10 +282,27 @@ fi
 if [ -z "$LAYER_ONLY" ] && [ -f "$SCRIPT_DIR/plugins/_exocortex/patches/patch_pty_session_leak.py" ]; then
   echo ""
   log_header "A0 core patch: PTY session leak"
-  /opt/venv-a0/bin/python3 "$SCRIPT_DIR/plugins/_exocortex/patches/patch_pty_session_leak.py" \
-    --apply --idle-seconds 600 --interval-seconds 120 2>/dev/null \
-    | grep -E "APPLIED|already patched|ABORT|WARNING" \
-    || echo "  (patch skipped — A0 env unavailable)"
+  # Capture BOTH streams and the real exit code. The previous version sent stderr
+  # to /dev/null and printed "(patch skipped)" whenever the grep missed, so a crash,
+  # a missing target, an anchor mismatch and a genuinely absent A0 env all reported
+  # the same benign-sounding message. A patch that silently declines to apply is
+  # exactly how a fixed leak comes back unnoticed.
+  pty_script="$SCRIPT_DIR/plugins/_exocortex/patches/patch_pty_session_leak.py"
+  pty_out="$(/opt/venv-a0/bin/python3 "$pty_script" --apply --idle-seconds 600 --interval-seconds 120 2>&1)"
+  pty_rc=$?
+  echo "$pty_out" | grep -E "a0 ver|APPLIED|already patched|ABORT|WARNING|MISSING" | sed 's/^/  /'
+  case "$pty_rc" in
+    0) : ;;                                  # applied, or already applied
+    2) log_warn "PTY patch: target missing - is this an A0 container?" ;;
+    3) log_err  "PTY patch: ANCHORS MISSING - A0 core changed. Re-derive before trusting it."
+       log_err  "  The PTY/shell leak is UNMITIGATED on this container."
+       failed=$((failed + 1)) ;;
+    4) log_err  "PTY patch: patched source failed to compile - target left untouched."
+       failed=$((failed + 1)) ;;
+    *) log_err  "PTY patch: unexpected exit $pty_rc"
+       echo "$pty_out" | tail -5 | sed 's/^/    /'
+       failed=$((failed + 1)) ;;
+  esac
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
@@ -300,24 +317,35 @@ echo ""
 if [ "$failed" -eq 0 ]; then
   echo -e "${GREEN}${BOLD}All layers installed successfully.${NC}"
   echo ""
-  echo "  Deployment map:"
-  echo "    Layer 1  fw-replacements   → /a0/prompts/
-    Layer 1  core patches      → /a0/python/helpers/ + /a0/prompts/"
-  echo "    Layer 2  profile (DEC-030) → /a0/usr/agents/agent0/extensions/ (persistent)"
-  echo "    Layer 2  extensions        → /a0/python/extensions/ (legacy, shadowed by profile)"
-  echo "    Layer 2  org kernel        → /a0/python/extensions/ + /a0/usr/organizations/"
-  echo "    Layer 2  supervisor loop   → /a0/usr/agents/agent0/extensions/message_loop_end/"
-  echo "    Layer 3  prompt-patches    → /a0/prompts/"
-  echo "    Layer 3  personalities     → /a0/prompts/ + /a0/usr/personalities/"
-  echo "    Layer 4  skills            → /a0/usr/skills/ (persistent; migrates /a0/skills/)"
-  echo "    Layer 5  translation-layer → /a0/usr/agents/agent0/extensions/before_main_llm_call/"
-  echo "    Layer 5  graph engine      → /a0/usr/agents/agent0/extensions/before_main_llm_call/"
-  echo "    Layer 6  A2A server        → /a0/python/a2a_server/"
-  echo "    Layer 7  memory classify   → /a0/usr/agents/agent0/extensions/monologue_end/ + /a0/usr/memory/"
-  echo "    Layer 8  ontology layer    → /a0/usr/ontology/ + /a0/python/tools/"
-  echo "    Layer 9  sleep consolidation → /a0/usr/Exocortex/ + profile tool_execute_after/"
-  echo "    Layer 10 document library   → /a0/usr/library/ + /a0/python/tools/ + profile ext/"
-  echo "    Note: Phase 2 will retire legacy /a0/python/extensions/ install scripts."
+  # MEASURED, not asserted. The previous map was a hand-maintained list that went
+  # silently false: it still named /a0/python/* and the DEC-030 profile path, both of
+  # which Tier 1.1 retired, so it described a layout this pipeline no longer produces.
+  # A curated list is a claim; a directory walk is a measurement. This walks.
+  echo "  Deployment map (measured on this container):"
+  plugin_root=/a0/usr/plugins/_exocortex
+  echo "    Exocortex plugin  -> $plugin_root ($(find $plugin_root -type f 2>/dev/null | wc -l) files)"
+  echo "                         extensions, api, tools, prompts, webui, services, patches"
+  usr_dirs=""
+  for d in skills library memory ontology organizations personalities Exocortex artifact_templates oss swarmfish; do
+    [ -d "/a0/usr/$d" ] && usr_dirs="$usr_dirs $d"
+  done
+  echo "    Agent content     -> /a0/usr/{$(echo $usr_dirs | tr " " ",")}"
+  echo "    A0 surfaces       -> /a0/prompts/  /a0/webui/   (framework prompts + UI assets)"
+  if grep -q EXOCORTEX-PTY-REAPER /a0/plugins/_code_execution/helpers/tty_session.py 2>/dev/null; then
+    echo "    A0 core patch     -> tty_session.py PTY reaper ACTIVE (reversible: patch_pty_session_leak.py --revert)"
+  else
+    echo "    A0 core patch     -> tty_session.py PTY reaper NOT APPLIED"
+  fi
+  # Legacy roots are printed with live counts so a regression is visible here, not
+  # only in the separate parity gate. Anything non-zero means the strip has come undone.
+  legacy_total=0
+  for d in /a0/python /a0/usr/agents/agent0/extensions /a0/usr/plugins/exocortex; do
+    n=$(find "$d" -type f 2>/dev/null | wc -l); legacy_total=$((legacy_total + n))
+    [ "$n" -gt 0 ] && log_warn "legacy root NOT empty: $d ($n files)"
+  done
+  echo "    Legacy roots      -> $legacy_total files (expected 0: /a0/python, profile ext, plugins/exocortex)"
+  echo ""
+  echo "  Verify with: scripts/verify_plugin_parity.py  (repo vs container, authoritative)"
   echo ""
   echo "  Restart agent-zero or start a fresh chat to load all changes."
   echo "  A2A server: python -m a2a_server.run (port 8200)"

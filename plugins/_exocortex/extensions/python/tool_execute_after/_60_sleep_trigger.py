@@ -173,13 +173,22 @@ async def _run_phase1(agent, ctx: str) -> None:
 
     # Phase 1: dedup + utility init
     try:
-        r1 = run_phase1_consolidation(session_id)
+        r1 = run_phase1_consolidation(session_id, agent=agent)
         summary1 = (
             f"Phase 1 — utility_init={r1['utility_fields_initialized']}, "
             f"dedup_removed={r1['duplicates_removed']}, "
             f"entries={r1['total_entries_before']}→{r1['total_entries_after']}"
         )
         print(f"[SLEEP] {summary1}", flush=True)
+        # Tier 1.4 - mirror anomalies into the agent-visible log. run_phase1_consolidation
+        # already prints them to stdout, so this deliberately does NOT print again; a
+        # cycle that ran without its corpus must say so where the OPERATOR looks, and
+        # duplicate stdout lines just make the log harder to read.
+        for _anom in r1.get("anomalies", []):
+            try:
+                agent.context.log.log(type="warning", content=f"[SLEEP] Phase 1 {_anom}")
+            except Exception:
+                pass
         try:
             agent.context.log.log(type="info", content=f"[SLEEP] {summary1}")
         except Exception:

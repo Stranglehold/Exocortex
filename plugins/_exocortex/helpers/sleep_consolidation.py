@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -303,7 +304,91 @@ def run_phase0_consolidation(session_id: str = "unknown") -> dict:
     return result
 
 
-def run_phase1_consolidation(session_id: str = "unknown") -> dict:
+# ── Tier 1.4: MCP connection state as a Phase 1 anomaly ──────────────────────
+# A consolidation cycle that runs while the memory server is down looks exactly
+# like a healthy one in the report: dedup counts, entry totals, no errors. That
+# silence is the defect. `search_memory`/`search_library` degrade to nothing and
+# the cycle proceeds as though the corpus were consulted. That is how the corpus
+# went five weeks stale while both agents' prompts named it their PRIMARY source
+# (wiring seam #28) -- nothing ever said out loud that it was unreachable.
+#
+# READ-ONLY and NON-BLOCKING by contract. It reports; it never gates the phase.
+#
+# It reads the CACHED agent._mcp_health written by _02_mcp_health, and never calls
+# get_servers_status() itself: that opens connections and can exceed the request
+# timeout (same reason api/diagnostics.py reads the cache).
+#
+# Three states, deliberately distinct -- "I cannot tell" is not "everything is
+# fine", and collapsing them is what made the original outage unreadable:
+#   ok        cache present, nothing required is missing or down
+#   degraded  a required server is missing or down  -> CRITICAL ANOMALY
+#   unknown   no cache (extension disabled, or has not fired in this process)
+#             -> reported as an anomaly too, because absence of evidence here is
+#                not evidence of health.
+_MCP_CACHE_STALE_SECONDS = 900   # 3x _02_mcp_health's 300s check interval
+
+
+def _mcp_connection_state(agent) -> dict:
+    """Summarize memory-server reachability for the Phase 1 report. Never raises."""
+    state = {"status": "unknown", "detail": "", "stale_seconds": None}
+    try:
+        if agent is None:
+            state["detail"] = "no agent in scope at Phase 1"
+            return state
+        health = getattr(agent, "_mcp_health", None)
+        if not isinstance(health, dict):
+            state["detail"] = "no cached _mcp_health (_02_mcp_health disabled or not yet fired)"
+            return state
+
+        # A cache that is present but malformed must NOT fall through to "ok". Caught by
+        # the branch test: a dict with a non-numeric checked_at and no required_* keys
+        # produced status "ok", i.e. a corrupt reading reported as health -- the exact
+        # failure this function exists to prevent. If the fields we key on are not the
+        # shape _02_mcp_health writes, we cannot tell, and we say so.
+        checked_at = health.get("checked_at")
+        if not isinstance(checked_at, (int, float)) or "required_missing" not in health \
+                or "required_down" not in health:
+            state["detail"] = (
+                "cached _mcp_health is malformed (checked_at="
+                f"{type(checked_at).__name__}, keys={sorted(health)[:6]}) - cannot tell"
+            )
+            return state
+        state["stale_seconds"] = round(time.time() - float(checked_at), 1)
+
+        missing = list(health.get("required_missing") or [])
+        down = list(health.get("required_down") or [])
+        state["connected"] = health.get("connected")
+        state["total"] = health.get("total")
+
+        if missing or down:
+            bits = []
+            if missing:
+                bits.append("NOT CONFIGURED: " + ", ".join(missing))
+            if down:
+                bits.append("CONFIGURED BUT DOWN: " + ", ".join(down))
+            state["status"] = "degraded"
+            state["detail"] = "; ".join(bits)
+            return state
+
+        # A cache old enough to predate the cycle cannot vouch for the present.
+        # Report it rather than quietly upgrading a stale reading to "ok".
+        if state["stale_seconds"] is not None and state["stale_seconds"] > _MCP_CACHE_STALE_SECONDS:
+            state["status"] = "unknown"
+            state["detail"] = (
+                f"cached health is {state['stale_seconds']:.0f}s old "
+                f"(> {_MCP_CACHE_STALE_SECONDS}s) - cannot vouch for current state"
+            )
+            return state
+
+        state["status"] = "ok"
+        state["detail"] = f"{health.get('connected')}/{health.get('total')} servers connected"
+    except Exception as e:  # a diagnostic must never break consolidation
+        state["status"] = "unknown"
+        state["detail"] = f"probe failed: {type(e).__name__}: {str(e)[:80]}"
+    return state
+
+
+def run_phase1_consolidation(session_id: str = "unknown", agent=None) -> dict:
     """
     Phase 1 consolidation — two deterministic operations:
 
@@ -316,6 +401,23 @@ def run_phase1_consolidation(session_id: str = "unknown") -> dict:
 
     Returns a summary dict that the trigger logs and writes to the report dir.
     """
+    # Tier 1.4 - reachability FIRST, before any work that can fail. If
+    # ProceduralMemory() raises, the phase dies and the caller logs a generic error;
+    # the operator would still never learn the corpus was unreachable. Ordering this
+    # ahead of the import means the anomaly is emitted either way.
+    mcp_state = _mcp_connection_state(agent)
+    anomalies = []
+    if mcp_state["status"] == "degraded":
+        anomalies.append(
+            "CRITICAL ANOMALY - required MCP server unavailable during consolidation: "
+            + mcp_state["detail"]
+            + ". Corpus-grounded recall degraded to nothing for this cycle."
+        )
+    elif mcp_state["status"] == "unknown":
+        anomalies.append("ANOMALY - MCP connection state UNKNOWN: " + mcp_state["detail"])
+    for _a in anomalies:
+        print(f"[SLEEP] Phase 1 {_a}", flush=True)
+
     from procedural_memory_api import ProceduralMemory
 
     pm = ProceduralMemory()
@@ -330,6 +432,10 @@ def run_phase1_consolidation(session_id: str = "unknown") -> dict:
         "groups_processed": 0,
         "total_entries_before": len(pm.index["skills"]),
         "total_entries_after": 0,
+        # Tier 1.4 - carried into the written report, so a cycle that ran without its
+        # corpus is legible later and not only in the moment it scrolled past.
+        "mcp": mcp_state,
+        "anomalies": anomalies,
     }
 
     changed = False

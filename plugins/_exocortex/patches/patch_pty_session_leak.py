@@ -71,9 +71,11 @@ this script. See team-comms/kestrel-to-opus/pty_session_leak_20260818.md.
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 
-DEFAULT_TARGET = "/a0/plugins/_code_execution/helpers/tty_session.py"
+A0_ROOT = "/a0"                      # A0 ships this as a git checkout; the tag is the version
+DEFAULT_TARGET = A0_ROOT + "/plugins/_code_execution/helpers/tty_session.py"
 BACKUP_SUFFIX = ".exocortex-orig"
 MARKER = "EXOCORTEX-PTY-REAPER"
 SUPPORTED_A0 = ("v2.9",)
@@ -170,6 +172,28 @@ def write(path, text):
 
 
 def detect_a0_version():
+    """Report the A0 version this container is running.
+
+    MEASURED 2026-08-19: the original implementation read /a0/VERSION and
+    /a0/conf/version.txt. NEITHER EXISTS on A0 v2.9, so it always returned
+    "unknown" and the SUPPORTED_A0 guard below could never fire — the version
+    check was decorative. A0 ships /a0 as a git checkout and the authoritative
+    version is its tag; that is exactly what install_all.sh's preflight uses
+    (`cd /a0 && git describe --tags`). Same source here, so the patch and the
+    pipeline can never disagree about what they are running on.
+
+    The file paths are kept as a fallback in case a future A0 ships one.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "describe", "--tags"],
+            cwd=A0_ROOT,
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except Exception:
+        pass
     for p in ("/a0/VERSION", "/a0/conf/version.txt"):
         try:
             return read(p).strip()
@@ -293,7 +317,12 @@ def main():
     if a.revert:
         return revert(a.target)
     rc = check(a.target)
-    if rc == 3:
+    # check() returns 0=already patched, 1=not yet patched (the proceed case),
+    # 2=target missing, 3=anchors missing. Only 1 and 0 may fall through to
+    # apply(). Previously ONLY 3 short-circuited, so a missing target fell into
+    # apply() -> read() -> uncaught FileNotFoundError -> exit 1 with a traceback,
+    # and the caller saw a generic failure instead of "target missing".
+    if rc in (2, 3):
         return rc
     return apply(a.target, a.idle_seconds, a.interval_seconds)
 
