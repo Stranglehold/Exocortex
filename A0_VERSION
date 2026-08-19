@@ -11,4 +11,13 @@
 # v1.20 pinned 2026-06-20 — only solving.md + tips.md conflicted (A0 changed them);
 #   both re-based (merged our delta onto v1.20). All other overwrite-patches verified
 #   unchanged in v1.20 via check against the 221-file diff. Validated on v16.
-v1.20
+# v2.9 pinned 2026-08-19 — Tier 1.1 pipeline migration. The pin was accurate at
+#   v1.20: the pipeline genuinely targeted the DEC-030 v1.x layout and the guard
+#   was right to fail. Bumped only after all FIVE gate conditions passed on a
+#   fresh v2.9 container built BY the pipeline: layout parity 183/183 with the
+#   three legacy roots empty, zero STALE core patches, boots + turn completes,
+#   11 plugin extensions firing with the retired ones gone, and a post-strip write
+#   audit showing zero LEGACY writes.
+#   Verify with: scripts/verify_plugin_parity.py + scripts/check_core_patch_staleness.py
+#                + scripts/audit_install_writes.sh
+v2.9
