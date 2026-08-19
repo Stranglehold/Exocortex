@@ -1,0 +1,122 @@
+# AI Agent Memory Architectures & Continuous Learning
+
+**Status:** STABLE
+**Created:** 2026-06-02
+**Last Deepened:** 2026-06-02
+**Interest Domain:** AI Agent Architecture & Local Inference
+**Primary Sources:** 10/10 verified (2025-2026)
+**Cross-links:** [adaptive-supervisor-architecture](adaptive-supervisor-architecture.md), [self-improving-agent-patterns](self-improving-agent-patterns.md), [llm-native-entity-resolution-scale-draft](llm-native-entity-resolution-scale-draft.md)
+
+---
+
+## Overview
+
+How autonomous AI agents maintain state, retrieve knowledge, and learn continuously across sessions. The 2025-2026 literature converged on three architectural paradigms:
+1. **Episodic + Semantic decomposition** — separate short-term working memory from long-term knowledge stores
+2. **Graph-native memory** — temporal knowledge graphs replacing vector stores for structured recall
+3. **Memory Operating Systems** — dedicated memory management layers abstracting storage, retrieval, and forgetting
+
+---
+
+## Key Architectural Paradigms (2025-2026)
+
+### 1. Episodic + Semantic Memory Split
+
+**arXiv 2512.13564** (Memory in the Age of AI Agents, 2025): Comprehensive survey identifying field fragmentation. Core finding: existing works differ substantially in motivations, implementations, and evaluation protocols. Proposes unified taxonomy across episodic, semantic, procedural, and meta-memory types.
+
+**arXiv 2603.07670** (Memory for Autonomous LLM Agents, 2026): Introduces MemoryAgentBench grounding evaluation in cognitive science, probing four competencies: accurate retrieval, test-time learning, long-range understanding, and selective forgetting.
+
+### 2. Graph-Native Memory
+
+**arXiv 2602.05665** (Graph-based Agent Memory, 2026): Taxonomy of graph-based memory systems. Key insight: unstructured memory representations fail at reasoning essential for complex decision-making.
+
+**arXiv 2601.03236** (MAGMA: Multi-Graph Agentic Memory, 2026): Multi-graph architecture combining semantic knowledge graphs with episodic event graphs. Includes predict-calibrate mechanism for episodic segmentation.
+
+**Zep** (Temporal Knowledge Graph Architecture, 2025): Production memory layer service outperforming MemGPT on Deep Memory Retrieval benchmark.
+
+### 3. Memory Operating Systems
+
+**MemoryOS** (arXiv 2506.06326, 2025): Proposes dedicated Memory Operating System to overcome fixed context window limitations.
+
+**AriGraph** (IJCAI 2025): Agent constructs and updates a memory graph integrating semantic and episodic memories while exploring environments.
+
+
+---
+
+## Benchmarks & Evaluation
+
+### LoCoMo Benchmark (Mem0, ECAI 2025 — arXiv 2504.19413)
+First head-to-head comparison of 10 memory approaches: literature baselines, open-source tools, RAG, full-context, OpenAI Memory, and Zep. Established baseline for selective memory.
+
+### MemoryAgentBench (arXiv 2603.07670)
+Cognitive-science-grounded evaluation probing four competencies: accurate retrieval, test-time learning, long-range understanding, and selective forgetting.
+
+### LongMemEval
+Enterprise-focused benchmark testing complex temporal reasoning tasks. Zep validated against this benchmark.
+
+---
+
+## Production Implementations (2025-2026)
+
+| System | Approach | Status | Key Differentiator |
+|--------|----------|--------|--------------------|
+| **Zep** | Temporal KG | Production | Outperforms MemGPT on DMR; enterprise temporal reasoning |
+| **Mem0** | Vector + Graph hybrid | Production/Research | LoCoMo benchmark baseline; ECAI 2025 paper |
+| **MemGPT** | Functional memory | Production | Function-calling based memory management |
+| **MemoryOS** | OS abstraction | Research | Comprehensive memory lifecycle management |
+| **MAGMA** | Multi-graph | Research | Predict-calibrate episodic segmentation |
+
+---
+
+## Failure Modes & Open Challenges
+
+| Failure Mode | Severity | Description | Status |
+|-------------|----------|-------------|--------|
+| **Context window exhaustion** | Critical | Long sessions exceed context budget; memory retrieval overhead compounds | Partial: MemoryOS, selective forgetting |
+| **Temporal coherence loss** | High | Agents lose track of event ordering across sessions | Partial: Zep temporal KG |
+| **Selective forgetting** | High | Agents retain irrelevant or harmful information | Research-stage: MemoryAgentBench probing |
+| **Graph maintenance overhead** | Medium | Knowledge graph updates are computationally expensive at scale | Partial: MAGMA predict-calibrate |
+| **Cross-domain transfer** | Medium | Memory from one domain interferes with another | Research-stage |
+
+
+---
+
+## Verified Primary Sources
+
+1. **Memory in the Age of AI Agents** (arXiv 2512.13564) — https://arxiv.org/abs/2512.13564
+2. **Graph-based Agent Memory Taxonomy** (arXiv 2602.05665) — https://arxiv.org/abs/2602.05665
+3. **Memory for Autonomous LLM Agents** (arXiv 2603.07670) — https://arxiv.org/abs/2603.07670
+4. **MemoryOS** (arXiv 2506.06326) — https://arxiv.org/abs/2506.06326
+5. **MAGMA Multi-Graph Memory** (arXiv 2601.03236) — https://arxiv.org/abs/2601.03236
+6. **Zep Temporal Knowledge Graph** — https://www.aimodels.fyi/papers/arxiv/zep-temporal-knowledge-graph-architecture-agent-memory
+7. **Mem0 LoCoMo Benchmark** (ECAI 2025, arXiv 2504.19413) — https://mem0.ai/blog/state-of-ai-agent-memory-2026
+8. **AriGraph Knowledge Graph World Models** (IJCAI 2025) — https://www.ijcai.org/proceedings/2025/2
+9. **Zylos: AI Agent Memory Architectures** (Apr 2026) — https://zylos.ai/research/2026-04-05-ai-agent-memory-architectures-persistent-knowledge/
+10. **State of AI Agent Memory 2026** (Mem0 Blog) — https://mem0.ai/blog/state-of-ai-agent-memory-2026
+
+---
+
+## Cross-Domain Connections
+
+1. **[self-improving-agent-patterns](self-improving-agent-patterns.md)** — Memory is the substrate for self-improvement; without persistent recall GEPA-style optimization cannot accumulate
+2. **[adaptive-supervisor-architecture](adaptive-supervisor-architecture.md)** — Supervisor agents require memory to track subordinate performance across sessions
+3. **[llm-native-entity-resolution-scale-draft](llm-native-entity-resolution-scale-draft.md)** — Graph-native memory shares architectural DNA with entity resolution knowledge graphs
+4. **[ai-agent-interoperability-protocols-draft](ai-agent-interoperability-protocols-draft.md)** — A2A protocol enables cross-agent memory sharing; interoperability requires shared memory semantics
+
+---
+
+## TRL Assessment
+
+- **TRL 3-5:** Selective forgetting, cross-domain transfer (research stage, benchmark probing)
+- **TRL 5-7:** Graph-native memory systems (Zep in production, MAGMA/AriGraph research)
+- **TRL 7-9:** Vector-based episodic memory (MemGPT, Mem0 deployed in production)
+- **TRL 2-4:** Full MemoryOS abstraction (conceptual, limited implementations)
+
+---
+
+## Deepening Notes
+
+- 10 verified 2025-2026 primary sources spanning surveys, benchmarks, and production systems
+- Key insight: Field fragmenting into three paradigms (episodic+semantic split, graph-native, MemoryOS) with no consensus on which generalizes best
+- Production gap: Zep is the only system with enterprise-scale temporal reasoning validation; Mem0 and MemGPT widely used but lack temporal rigor
+- Open question: Can graph-native memory scale to millions of entities without becoming a bottleneck?

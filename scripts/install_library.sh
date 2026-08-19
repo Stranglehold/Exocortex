@@ -47,18 +47,19 @@ TOOL_SRC="$REPO_ROOT/tools/library.py"
 TOOL_DST_PYTHON="/a0/python/tools/library.py"
 TOOL_DST_PROFILE="/a0/usr/agents/agent0/tools/library.py"
 
-if [ -f "$TOOL_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/python/tools
-  _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/tools
+# ── STRIPPED 2026-08-19 (Tier 1.1): both destinations are dead roots ──────────
+# /a0/python/tools does not exist in stock A0 v2.9 (the old pipeline created it)
+# and /a0/usr/agents/agent0/tools is the DEC-030 profile path. library.py ships in
+# plugins/_exocortex/tools/ and is deployed by the walk. The library DATA this
+# script installs (/a0/usr/workdir/library, /a0/usr/Exocortex) is outside the
+# plugin and is kept untouched below.
+if false; then
+  _exec "$CONTAINER" mkdir -p /a0/python/tools /a0/usr/agents/agent0/tools
   docker cp "$TOOL_SRC" "$CONTAINER:$TOOL_DST_PYTHON"
   docker cp "$TOOL_SRC" "$CONTAINER:$TOOL_DST_PROFILE"
   _exec "$CONTAINER" bash -c "rm -rf /a0/python/tools/__pycache__ /a0/usr/agents/agent0/tools/__pycache__" 2>/dev/null || true
-  _exec "$CONTAINER" bash -c \
-    "/opt/venv-a0/bin/python3 -m py_compile '$TOOL_DST_PYTHON' && echo '[LIBRARY] tools/library.py OK'"
-  echo "[LIBRARY] tools/library.py deployed (python + profile paths)."
-else
-  echo "[LIBRARY] WARNING: $TOOL_SRC not found — skipped."
 fi
+echo "[LIBRARY] tools/library.py: deployed by the plugin walk"
 
 # ── Extension ─────────────────────────────────────────────────────────────────
 
@@ -66,16 +67,17 @@ EXT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_17_library_catalog.py"
 EXT_DST="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_17_library_catalog.py"
 EXT_PYCACHE="/a0/usr/agents/agent0/extensions/python/before_main_llm_call/__pycache__"
 
-if [ -f "$EXT_SRC" ]; then
+# ── STRIPPED 2026-08-19 (Tier 1.1): DEC-030 profile path is a dead root ───────
+# _17_library_catalog.py ships in plugins/_exocortex/extensions/python/
+# before_main_llm_call/ and is deployed by the walk. Writing it to the profile
+# path is worse than useless: that path still LOADS, so it produced a second copy
+# of the extension alongside the plugin one.
+if false; then
   _exec "$CONTAINER" mkdir -p /a0/usr/agents/agent0/extensions/python/before_main_llm_call
   docker cp "$EXT_SRC" "$CONTAINER:$EXT_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$EXT_PYCACHE'" 2>/dev/null || true
-  _exec "$CONTAINER" bash -c \
-    "/opt/venv-a0/bin/python3 -m py_compile '$EXT_DST' && echo '[LIBRARY] _17_library_catalog.py OK'"
-  echo "[LIBRARY] _17_library_catalog.py deployed."
-else
-  echo "[LIBRARY] WARNING: $EXT_SRC not found — skipped."
 fi
+echo "[LIBRARY] _17_library_catalog.py: deployed by the plugin walk"
 
 # ── Batch ingest script ───────────────────────────────────────────────────────
 

@@ -24,15 +24,20 @@ safe_cp() {
 echo "=== Installing Epistemic Integrity Layer ==="
 
 echo "[1/6] Ensuring directories exist..."
-docker exec "$CONTAINER" mkdir -p "$PROFILES_DIR" "$PROF_AFTER" "$PROF_MONO"
+docker exec "$CONTAINER" mkdir -p "$PROFILES_DIR"
 
-echo "[2/6] Deploying _25_evidence_ledger_recorder.py (tool_execute_after)..."
-safe_cp "$REPO_ROOT/extensions/tool_execute_after/_25_evidence_ledger_recorder.py" \
-        "$PROF_AFTER/_25_evidence_ledger_recorder.py"
-
-echo "[3/6] Deploying _25_epistemic_integrity.py (monologue_end)..."
-safe_cp "$REPO_ROOT/extensions/monologue_end/_25_epistemic_integrity.py" \
-        "$PROF_MONO/_25_epistemic_integrity.py"
+# ── STRIPPED 2026-08-19 (Tier 1.1): DEC-030 profile path is a dead root ───────
+# Both extensions ship in the plugin tree and are deployed by the walk. The MODEL
+# PROFILES below go to /a0/usr/Exocortex/eval/model_profiles, which is outside the
+# plugin, and are kept untouched.
+echo "[2/6] extensions: deployed by the plugin walk"
+if false; then
+    docker exec "$CONTAINER" mkdir -p "$PROF_AFTER" "$PROF_MONO"
+    safe_cp "$REPO_ROOT/extensions/tool_execute_after/_25_evidence_ledger_recorder.py" \
+            "$PROF_AFTER/_25_evidence_ledger_recorder.py"
+    safe_cp "$REPO_ROOT/extensions/monologue_end/_25_epistemic_integrity.py" \
+            "$PROF_MONO/_25_epistemic_integrity.py"
+fi
 
 echo "[4/6] Deploying model profiles..."
 safe_cp "$REPO_ROOT/eval/model_profiles/default.json" \
@@ -40,14 +45,16 @@ safe_cp "$REPO_ROOT/eval/model_profiles/default.json" \
 safe_cp "$REPO_ROOT/eval/model_profiles/qwen3.5-27b-claude-4.6-opus-reasoning-distilled.json" \
         "$PROFILES_DIR/qwen3.5-27b-claude-4.6-opus-reasoning-distilled.json"
 
-echo "[5/6] Clearing pycache..."
-docker exec "$CONTAINER" rm -rf "$PROF_AFTER/__pycache__/" "$PROF_MONO/__pycache__/"
-
-echo "[6/6] Verifying compilation..."
-docker exec "$CONTAINER" /opt/venv-a0/bin/python3 -m py_compile \
-    "$PROF_AFTER/_25_evidence_ledger_recorder.py"
-docker exec "$CONTAINER" /opt/venv-a0/bin/python3 -m py_compile \
-    "$PROF_MONO/_25_epistemic_integrity.py"
+echo "[5/6] pycache + compile checks: handled by the plugin walk"
+# Both targeted the dead DEC-030 profile path. The walk clears __pycache__ under
+# the plugin, and py_compile against a path we no longer write would fail.
+if false; then
+    docker exec "$CONTAINER" rm -rf "$PROF_AFTER/__pycache__/" "$PROF_MONO/__pycache__/"
+    docker exec "$CONTAINER" /opt/venv-a0/bin/python3 -m py_compile \
+        "$PROF_AFTER/_25_evidence_ledger_recorder.py"
+    docker exec "$CONTAINER" /opt/venv-a0/bin/python3 -m py_compile \
+        "$PROF_MONO/_25_epistemic_integrity.py"
+fi
 
 echo ""
 echo "=== Epistemic Integrity Layer Installed ==="

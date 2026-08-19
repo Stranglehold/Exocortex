@@ -49,7 +49,17 @@ set -e
 CONTAINER="${1:-flamboyant_bell}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PATCH_DIR="$REPO_ROOT/patches"
-PLUGIN_EXT="$CONTAINER:/a0/usr/plugins/exocortex/extensions/python"
+# ── Tier 1.1 (2026-08-19): destinations repointed ───────────────────────────
+# These wrote to /a0/usr/plugins/exocortex (NO underscore) and to the DEC-030
+# profile path — both dead roots. Repointed to /a0/usr/plugins/_exocortex, which
+# is where A0 v2.9 actually loads from. The extensions also ship in the plugin
+# tree and are deployed by the walk, so these copies are belt-and-braces rather
+# than load-bearing.
+#
+# EXCEPTION — _18_memory_catalog.py is NOT in the plugin tree and is absent from
+# both live containers. It is a retired extension; deploying it resurrects it.
+# Its block is disabled below rather than repointed.
+PLUGIN_EXT="$CONTAINER:/a0/usr/plugins/_exocortex/extensions/python"
 
 # Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
 _exec() { MSYS_NO_PATHCONV=1 docker exec "$@"; }
@@ -203,11 +213,11 @@ fi
 # v1.6: profile path only (extensions/python/ subdirectory)
 
 EXT_SRC="$REPO_ROOT/extensions/response_stream_chunk/_21_plain_text_response.py"
-EXT_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/response_stream_chunk/_21_plain_text_response.py"
-EXT_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/response_stream_chunk/__pycache__"
+EXT_PROFILE_DST="/a0/usr/plugins/_exocortex/extensions/python/response_stream_chunk/_21_plain_text_response.py"
+EXT_PROFILE_PYCACHE="/a0/usr/plugins/_exocortex/extensions/python/response_stream_chunk/__pycache__"
 
 if [ -f "$EXT_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/response_stream_chunk
+  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/_exocortex/extensions/python/response_stream_chunk
   docker cp "$EXT_SRC" "$CONTAINER:$EXT_PROFILE_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$EXT_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$EXT_PROFILE_DST' && echo '[PATCH] _21_plain_text_response.py OK'"
@@ -221,11 +231,11 @@ fi
 # doesn't render the raw streaming JSON for every tool call turn.
 
 CLR_SRC="$REPO_ROOT/extensions/response_stream_end/_20_clear_generating_content.py"
-CLR_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/response_stream_end/_20_clear_generating_content.py"
-CLR_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/response_stream_end/__pycache__"
+CLR_PROFILE_DST="/a0/usr/plugins/_exocortex/extensions/python/response_stream_end/_20_clear_generating_content.py"
+CLR_PROFILE_PYCACHE="/a0/usr/plugins/_exocortex/extensions/python/response_stream_end/__pycache__"
 
 if [ -f "$CLR_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/response_stream_end
+  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/_exocortex/extensions/python/response_stream_end
   docker cp "$CLR_SRC" "$CONTAINER:$CLR_PROFILE_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$CLR_PROFILE_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$CLR_PROFILE_DST' && echo '[PATCH] _20_clear_generating_content.py OK'"
@@ -234,22 +244,30 @@ else
   echo "[PATCH] WARNING: $CLR_SRC not found — skipped."
 fi
 
-# ── 4. Extension: _18_memory_catalog.py ──────────────────────────────────────
-# v1.6: profile path only
+# ── 4. Extension: _18_memory_catalog.py — DISABLED 2026-08-19 (Tier 1.1) ─────
+# This extension is NOT in plugins/_exocortex/ and is absent from BOTH live
+# containers. It is retired. Deploying it here resurrected it — the same class
+# of problem as the DEC-030 profile path reviving _71_cache_warmer and friends.
+# If it is wanted again, add it to the plugin tree and the walk will deploy it.
+# That is the whole point of the walk: the repo tree is the single source of
+# truth about what the plugin contains.
 
 CAT_SRC="$REPO_ROOT/extensions/before_main_llm_call/_18_memory_catalog.py"
-CAT_PROFILE_DST="/a0/usr/plugins/exocortex/extensions/python/before_main_llm_call/_18_memory_catalog.py"
-CAT_PROFILE_PYCACHE="/a0/usr/plugins/exocortex/extensions/python/before_main_llm_call/__pycache__"
+CAT_PROFILE_DST="/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_18_memory_catalog.py"
+CAT_PROFILE_PYCACHE="/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/__pycache__"
 
-if [ -f "$CAT_SRC" ]; then
-  _exec "$CONTAINER" mkdir -p /a0/usr/plugins/exocortex/extensions/python/before_main_llm_call
-  docker cp "$CAT_SRC" "$CONTAINER:$CAT_PROFILE_DST"
-  _exec "$CONTAINER" bash -c "rm -rf '$CAT_PROFILE_PYCACHE'" 2>/dev/null || true
-  _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$CAT_PROFILE_DST' && echo '[PATCH] _18_memory_catalog.py OK'"
-  echo "[PATCH] extensions/before_main_llm_call/_18_memory_catalog.py deployed (profile path)."
-else
-  echo "[PATCH] WARNING: $CAT_SRC not found — skipped."
+if false; then
+    if [ -f "$CAT_SRC" ]; then
+      _exec "$CONTAINER" mkdir -p /a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call
+      docker cp "$CAT_SRC" "$CONTAINER:$CAT_PROFILE_DST"
+      _exec "$CONTAINER" bash -c "rm -rf '$CAT_PROFILE_PYCACHE'" 2>/dev/null || true
+      _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$CAT_PROFILE_DST' && echo '[PATCH] _18_memory_catalog.py OK'"
+      echo "[PATCH] extensions/before_main_llm_call/_18_memory_catalog.py deployed (profile path)."
+    else
+      echo "[PATCH] WARNING: $CAT_SRC not found — skipped."
+    fi
 fi
+echo "[PATCH] _18_memory_catalog.py — retired, not deployed"
 
 # ── 5. API: artifacts_list.py (remove polling noise) ─────────────────────────
 # Removes the PrintStyle.print() success log that fires on every 30s poll
@@ -308,7 +326,7 @@ else:
 
 # ── 8. Extension: _20_meta_reasoning_gate.py ─────────────────────────────────
 # Two active targets:
-#   - /a0/usr/plugins/exocortex/extensions/python/.../  (exocortex plugin tree)
+#   - /a0/usr/plugins/_exocortex/extensions/python/.../  (exocortex plugin tree)
 #   - /a0/usr/agents/agent0/extensions/python/.../      (canonical profile path A0 loads from)
 # (Previously also wrote to /a0/usr/Exocortex/extensions/... which is the REPO
 # itself — a self-copy when run in-container — and to the direct profile path
@@ -318,8 +336,8 @@ else:
 GATE_SRC="$REPO_ROOT/extensions/tool_execute_before/_20_meta_reasoning_gate.py"
 
 GATE_PATHS=(
-  "/a0/usr/plugins/exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
-  "/a0/usr/agents/agent0/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
+  "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
+  "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py"
 )
 
 if [ -f "$GATE_SRC" ]; then

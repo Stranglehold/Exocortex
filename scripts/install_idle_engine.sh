@@ -27,7 +27,12 @@ EXT_DEST="/a0/usr/agents/agent0/extensions/python/tool_execute_after"
 EXOCORTEX_DEST="/a0/usr/Exocortex"
 API_DEST="/a0/api"
 WEBUI_DEST="/a0/webui"
-PLUGIN_WEBUI="/a0/usr/plugins/exocortex/extensions/webui"
+# -- REPOINTED 2026-08-19 (Tier 1.1) -----------------------------------------
+# Was /a0/usr/plugins/exocortex (NO underscore) - the wrong plugin name, so every
+# webui asset landed in a directory A0 never reads. These files also ship in the
+# plugin tree and are deployed by the walk; repointing keeps this script correct
+# rather than merely inert.
+PLUGIN_WEBUI="/a0/usr/plugins/_exocortex/extensions/webui"
 ERRORS=0
 
 # Prevent Git Bash on Windows from translating Unix paths in docker exec arguments.
@@ -155,16 +160,23 @@ for CONTAINER in "${CONTAINERS[@]}"; do
     done
     echo "  OK    [${CONTAINER}] runtime directories"
 
-    # ── Extension ──
-    install_file \
-        "${REPO_DIR}/extensions/tool_execute_after/_70_idle_trigger.py" \
-        "${EXT_DEST}/_70_idle_trigger.py" \
-        "_70_idle_trigger.py" \
-        "${CONTAINER}"
+    # ── Extension: STRIPPED 2026-08-19 (Tier 1.1) ──
+    # EXT_DEST is the DEC-030 profile path, which still LOADS — so writing here
+    # produced a SECOND copy of _70_idle_trigger.py alongside the plugin's. It
+    # ships in plugins/_exocortex/extensions/python/tool_execute_after/ and is
+    # deployed by the walk.
+    if false; then
+        install_file \
+            "${REPO_DIR}/extensions/tool_execute_after/_70_idle_trigger.py" \
+            "${EXT_DEST}/_70_idle_trigger.py" \
+            "_70_idle_trigger.py" \
+            "${CONTAINER}"
 
-    clear_pycache \
-        "${EXT_DEST}/__pycache__/_70_idle_trigger.cpython-312.pyc" \
-        "${CONTAINER}"
+        clear_pycache \
+            "${EXT_DEST}/__pycache__/_70_idle_trigger.cpython-312.pyc" \
+            "${CONTAINER}"
+    fi
+    echo "  OK    [${CONTAINER}] _70_idle_trigger.py — deployed by the plugin walk"
 
     # ── Prompt template ──
     # 2026-08-19: this shipped a stale prompt to a path nothing reads.
@@ -268,7 +280,7 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "${CONTAINER}"
     install_file \
         "${REPO_DIR}/patches/webui/exo-ops-content.html" \
-        "/a0/usr/plugins/exocortex/webui/exo-ops-content.html" \
+        "/a0/usr/plugins/_exocortex/webui/exo-ops-content.html" \
         "exo-ops-content.html" \
         "${CONTAINER}"
 

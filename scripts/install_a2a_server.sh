@@ -22,25 +22,31 @@ if ! "$PYTHON" -c "import aiohttp" 2>/dev/null; then
     "$PYTHON" -m pip install aiohttp
 fi
 
-# ── Backup existing installation ────────────────────────────────
-if [ -d "$TARGET_DIR" ]; then
-    BACKUP_DIR="$TARGET_DIR/../a2a_server_backup_$(date +%Y%m%d_%H%M%S)"
-    cp -r "$TARGET_DIR" "$BACKUP_DIR"
-    echo "[A2A] Backed up existing installation to $BACKUP_DIR"
+# ── Server module deploy: STRIPPED 2026-08-19 (Tier 1.1) ────────
+# This deployed the package to /a0/python/a2a_server — a path that does not exist
+# in stock A0 v2.9 and that nothing consumes. Verified before cutting:
+# _01_a2a_server_bootstrap.py sets
+#   _A2A_DIR = "/a0/usr/plugins/_exocortex/services/a2a_server"
+# and its own docstring says the server "ships in the plugin (services/a2a_server/)
+# and self-launches, so it's clone-and-go". On live VekV2, /a0/python/a2a_server
+# does not exist at all while the plugin copy does.
+#
+# The package is now deployed by the directory walk as part of the plugin tree.
+# The config below is genuinely outside the plugin and is KEPT.
+if false; then
+    if [ -d "$TARGET_DIR" ]; then
+        BACKUP_DIR="$TARGET_DIR/../a2a_server_backup_$(date +%Y%m%d_%H%M%S)"
+        cp -r "$TARGET_DIR" "$BACKUP_DIR"
+        echo "[A2A] Backed up existing installation to $BACKUP_DIR"
+    fi
+    mkdir -p "$TARGET_DIR"
+    for f in __init__.py config.py agent_card.py task_registry.py \
+             translation.py agent_bridge.py server.py run.py; do
+        cp "$SOURCE_DIR/$f" "$TARGET_DIR/"
+    done
+    echo "[A2A] Installed server module to $TARGET_DIR"
 fi
-
-# ── Install server module ───────────────────────────────────────
-mkdir -p "$TARGET_DIR"
-cp "$SOURCE_DIR/__init__.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/config.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/agent_card.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/task_registry.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/translation.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/agent_bridge.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/server.py" "$TARGET_DIR/"
-cp "$SOURCE_DIR/run.py" "$TARGET_DIR/"
-
-echo "[A2A] Installed server module to $TARGET_DIR"
+echo "[A2A] server module: deployed by the plugin walk (services/a2a_server)"
 
 # ── Install default config (read-merge-write) ───────────────────
 if [ ! -f "$CONFIG_PATH" ]; then

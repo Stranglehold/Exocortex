@@ -142,23 +142,15 @@ fi
 LAYERS=(
   "1|Framework message replacements      |fw-replacements/install_fw_replacements.sh"
   "1|Core file patches (JSON fallback)   |scripts/install_core_patches.sh"
-  "2|Profile deployment (DEC-030)        |scripts/install_exocortex_profile.sh"
-  "2|Extensions — retry + watchdog       |extensions/install_extensions.sh"
-  "2|Extensions — failure tracker        |extensions/install_failure_tracker.sh"
-  "2|Extensions — error comprehension   |scripts/install_error_comprehension.sh"
   "2|Extensions — tool fallback chain   |scripts/install_tool_fallback.sh"
   "2|Extensions — action boundary gate   |scripts/install_action_boundary.sh"
-  "2|Extensions — meta-reasoning gate   |scripts/install_meta_gate.sh"
   "2|Extensions — organization kernel   |scripts/install_org_kernel.sh"
-  "2|Extensions — supervisor loop       |scripts/install_supervisor_loop.sh"
   "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
   "3|Personality loader                  |scripts/install_personalities.sh"
   "3|Communication protocol              |scripts/install_communication_protocol.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
-  "5|Graph workflow engine              |scripts/install_graph_engine.sh"
   "6|A2A compatibility server           |scripts/install_a2a_server.sh"
-  "7|Memory classification system       |scripts/install_memory_classification.sh"
   "8|Ontology layer                     |scripts/install_ontology.sh"
   "9|AgentEvolver self-improvement plugin|scripts/install_agentevolver.sh"
   "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
@@ -168,27 +160,21 @@ LAYERS=(
   "12|Idle engine + idle_watch daemon   |scripts/install_idle_engine.sh"
   "12|SearXNG academic-engine config    |services/searxng/install.sh"
   "13|Theme system (presets + editor)   |scripts/install_theme_editor.sh"
-  "14|Metacognitive injection           |scripts/install_metacognitive_injection.sh"
   "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
-  "14|Write guard + validator           |scripts/install_write_guard.sh"
   "15|Artifact system                   |scripts/install_artifact_system.sh"
-  # ── Tier 1.1 step 3: authoritative plugin deploy ────────────────────────────
-  # Runs LAST so it is the final word on plugin content. Walks
-  # plugins/_exocortex/ and reproduces it exactly at /a0/usr/plugins/_exocortex/
-  # (config/config.json merged, never clobbered).
+  # ── Authoritative plugin deploy (Tier 1.1) ──────────────────────────────────
+  # Runs LAST so it is the final word on plugin content. Walks plugins/_exocortex/
+  # and reproduces it exactly at /a0/usr/plugins/_exocortex/ (config/config.json
+  # merged, never clobbered). Verify with scripts/verify_plugin_parity.py.
   #
-  # Measured 2026-08-19: 24 of the 32 steps above still write to paths A0 v2.9
-  # does not load from — 16 to /a0/python (absent in v2.9; the installer creates
-  # it), 8 to the DEC-030 profile path, 7 to plugins/exocortex without the
-  # underscore. The profile path DOES load, which is worse than dead: it
-  # resurrects extensions that were explicitly retired. Proven sufficient on a
-  # clean v2.9 container — with ONLY this tree present the stack boots, a turn
-  # completes, 11 extensions fire, and [CACHE-WARM]/[CACHE-METRICS] (retired) no
-  # longer appear.
-  #
-  # Those steps are therefore REDUNDANT for plugin content rather than
-  # mis-pointed, so retiring them is a pipeline change, not a repoint. Held for
-  # a design call rather than done unilaterally — see the step 3 letter.
+  # TEN STEPS WERE RETIRED here on 2026-08-19 because every write they made landed
+  # in a path A0 v2.9 does not load from, and their content is in the plugin tree:
+  #   install_exocortex_profile · install_extensions · install_failure_tracker
+  #   install_error_comprehension · install_meta_gate · install_supervisor_loop
+  #   install_graph_engine · install_metacognitive_injection · install_write_guard
+  #   install_memory_classification
+  # The files remain in the repo with a retirement header so nobody recreates them.
+  # Measured by scripts/audit_install_writes.sh, not assumed.
   "16|Exocortex plugin (directory walk) |scripts/install_exocortex_plugin.sh"
 )
 

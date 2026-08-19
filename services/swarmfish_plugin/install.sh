@@ -80,8 +80,11 @@ docker cp "$TOOLS_SRC/swarmfish_panel.py"       "$A0_TOOLS/"
 # Tool documentation also goes to Exocortex plugin prompts.
 # Ensure the dir exists — on a fresh one-shot install swarmfish may run before
 # the exocortex plugin, and `docker cp` into a missing dir would abort (set -e).
-_exec "$CONTAINER" mkdir -p "/a0/usr/plugins/exocortex/prompts"
-EXOCORTEX_PROMPTS="$CONTAINER:/a0/usr/plugins/exocortex/prompts"
+# ── STRIPPED 2026-08-19 (Tier 1.1): dead root; the plugin walk deploys this ──
+# Wrote into plugins/exocortex (NO underscore) — the wrong plugin name. Repointed
+# to the real plugin; the swarmfish plugin content itself is outside and is kept.
+_exec "$CONTAINER" mkdir -p "/a0/usr/plugins/_exocortex/prompts"
+EXOCORTEX_PROMPTS="$CONTAINER:/a0/usr/plugins/_exocortex/prompts"
 docker cp "$PROMPT_SRC/agent.system.tool.swarmfish.md" "$EXOCORTEX_PROMPTS/"
 
 # ── Clear pycache ──────────────────────────────────────────────────────────────

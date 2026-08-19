@@ -19,13 +19,17 @@ TARGET_ORG="/a0/usr/organizations"
 
 echo "[OrgKernel] Installing organization kernel..."
 
-# ── Dispatcher extension ────────────────────────────────────────
+# ── STRIPPED 2026-08-19 (Tier 1.1): dead root; the plugin walk deploys this ──
+# _12_org_dispatcher.py is one of the THREE extensions DEC-030 explicitly dropped
+# (with _13_operator_profile and _14_metacognitive_injection, replaced by static
+# prompt files). Deploying it to /a0/python resurrected a retired extension.
+# The organization DATA below is outside the plugin and is kept.
 BEFORE_DIR="$TARGET_EXT/before_main_llm_call"
-mkdir -p "$BEFORE_DIR"
-if [ -f "$SOURCE_EXT/before_main_llm_call/_12_org_dispatcher.py" ]; then
+if false; then
+    mkdir -p "$BEFORE_DIR"
     cp "$SOURCE_EXT/before_main_llm_call/_12_org_dispatcher.py" "$BEFORE_DIR/"
-    echo "[OrgKernel] Installed dispatcher extension (_12_)"
 fi
+echo "[OrgKernel] dispatcher: retired by DEC-030 — not deployed"
 
 # ── Organization data directories ───────────────────────────────
 mkdir -p "$TARGET_ORG/roles"

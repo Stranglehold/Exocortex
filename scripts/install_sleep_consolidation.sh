@@ -114,19 +114,28 @@ install_file_if_missing \
 
 # ── Extension files ───────────────────────────────────────────────────────────
 
-install_file \
-    "${REPO_DIR}/extensions/tool_execute_after/_60_sleep_trigger.py" \
-    "${EXT_DEST}/_60_sleep_trigger.py" \
-    "_60_sleep_trigger.py"
+# ── STRIPPED 2026-08-19 (Tier 1.1): dead root; the plugin walk deploys this ──
+# Both went to /a0/python/extensions, which does not exist in stock A0 v2.9 — the
+# old pipeline created it. _60_sleep_trigger.py ships in the plugin tree.
+# _13_operator_profile.py is one of the three extensions DEC-030 dropped outright
+# (replaced by a static prompt file), so it should not be deployed anywhere.
+# The Exocortex runtime dirs and config this script also installs are OUTSIDE the
+# plugin and are kept untouched.
+if false; then
+    install_file \
+        "${REPO_DIR}/extensions/tool_execute_after/_60_sleep_trigger.py" \
+        "${EXT_DEST}/_60_sleep_trigger.py" \
+        "_60_sleep_trigger.py"
 
-install_file \
-    "${REPO_DIR}/extensions/before_main_llm_call/_13_operator_profile.py" \
-    "${EXT_BEFORE_LLM}/_13_operator_profile.py" \
-    "_13_operator_profile.py"
+    install_file \
+        "${REPO_DIR}/extensions/before_main_llm_call/_13_operator_profile.py" \
+        "${EXT_BEFORE_LLM}/_13_operator_profile.py" \
+        "_13_operator_profile.py"
 
-# Clear pycache for extensions
-clear_pycache "${EXT_DEST}/__pycache__/_60_sleep_trigger.cpython-312.pyc"
-clear_pycache "${EXT_BEFORE_LLM}/__pycache__/_13_operator_profile.cpython-312.pyc"
+    clear_pycache "${EXT_DEST}/__pycache__/_60_sleep_trigger.cpython-312.pyc"
+    clear_pycache "${EXT_BEFORE_LLM}/__pycache__/_13_operator_profile.cpython-312.pyc"
+fi
+echo "  OK    extensions: deployed by the plugin walk"
 
 # ── Runtime directories ───────────────────────────────────────────────────────
 

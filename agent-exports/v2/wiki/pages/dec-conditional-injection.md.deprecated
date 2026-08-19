@@ -1,0 +1,43 @@
+# Decision: Conditional Injection Skip Strategy
+## Status: PROPOSED → PENDING VALIDATION
+## Domain: Enrichment Layer Optimization
+## Date Created: 2026-05-08 (Workshop Cycle #2)
+
+---
+
+## Problem Statement
+The enrichment layer currently processes every turn regardless of whether there's any signal to enrich. This wastes LLM calls and tokens on turns that don't need augmentation.
+
+Current behavior:
+1. Every turn: run belief_state_tracker → working_memory → supervisor → HTN → selective_memorizer
+2. Even during simple Q&A or status checks, full pipeline executes
+3. Extension hooks add per-turn overhead with no benefit when no signal exists
+
+## Proposed Change
+Implement conditional skip logic:
+- **Phase A**: Skip enrichment passes when belief_state_tracker returns confidence < 2 on all domains
+- **Phase B**: Don't merge extensions into system prompt when no domain is active (momentum_turns == 0)
+
+## Hypothesis
+Skipping injection during low-signal turns will reduce per-turn overhead by ~40% without degrading performance on actual complex tasks.
+
+## Risk Assessment
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Missed signal on first turn of a multi-step task | Medium | High | Keep belief_state_tracker running, only skip downstream passes |
+| False negative on compound classification | Low | Medium | Maintain 2-turn buffer before skipping |
+
+## Validation Plan
+1. Measure current per-turn enrichment token cost (baseline)
+2. Implement Phase A skip with logging
+3. Compare: turns skipped vs signal missed rate
+4. Rollback if >5% signal miss rate observed
+
+## Dependencies
+- `/a0/usr/plugins/exocortex/_11_belief_state_tracker.py`
+- `/a0/usr/plugins/exocortex/_12_proactive_supervisor.py`
+- Config: `enrichment_skip_threshold` in exocortex config.json
+
+## Related Pages
+- [[dec-lower-supervisor-thresholds]] — recovery rate 33% needs earlier intervention
+- [[inc-oracle-fabrication]] — enrichment may have contributed to overconfidence

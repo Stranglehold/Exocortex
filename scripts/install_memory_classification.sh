@@ -1,4 +1,37 @@
 #!/bin/bash
+# ==============================================================================
+# RETIRED 2026-08-19 — DO NOT ADD BACK TO install_all.sh
+# ==============================================================================
+# Every path this script wrote is one A0 v2.9 does not load from, and its content
+# now lives in plugins/_exocortex/ and is deployed by the directory walk in
+# scripts/install_exocortex_plugin.sh.
+#
+# It used to write: /a0/usr/extensions/{message_loop_prompts_after,monologue_end} — the FOURTH root
+#
+# SPECIFIC NOTE: this wrote to /a0/usr/extensions/, a FOURTH extension root that
+# is neither the plugin nor the DEC-030 profile path. Both files it deployed
+# (_55_memory_relevance_filter.py, _55_memory_classifier.py) were already in the
+# plugin tree and BYTE-IDENTICAL, so folding the fourth root into the plugin
+# required moving nothing. Opus's call: one authoritative root.
+#
+# Why the legacy paths are dead:
+#   /a0/python/**                        does not exist in stock v2.9 — the old
+#                                        pipeline CREATED it, then wrote into it
+#   /a0/usr/agents/agent0/extensions/**  the DEC-030 profile path. Worse than
+#                                        dead: it still LOADS, so it resurrected
+#                                        extensions that had been retired
+#                                        (_71_cache_warmer, _05_cache_warm_bypass,
+#                                        _02_cache_metrics_logger, and the three
+#                                        dropped by DEC-030 itself)
+#   /a0/usr/plugins/exocortex/**         no underscore — wrong plugin name; every
+#                                        registered route is /_exocortex
+#
+# Measured, not assumed: scripts/audit_install_writes.sh attributes every write to
+# the step that made it. Manifest: specs/INSTALL_PIPELINE_WRITE_MANIFEST.md
+#
+# The file is kept rather than deleted so nobody recreates it from scratch.
+# ==============================================================================
+
 # Layer: Memory Classification System (Hardening Layer 7)
 # Installs the four-axis memory classification engine and relevance filter.
 # Backs up any existing files before overwriting.

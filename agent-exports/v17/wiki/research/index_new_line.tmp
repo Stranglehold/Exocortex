@@ -1,0 +1,1 @@
+| [[rtx-3090-cuda-optimization]] | DRAFT | RTX 3090 CUDA Kernel Optimization for Local Model Inference — tensor core utilization, custom kernels, megakernel fusion, batch=1 inference bottlenecks. |

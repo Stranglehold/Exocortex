@@ -1,0 +1,44 @@
+# Decision: Disable Enrichment During Bugfix Turns
+## Status: PROPOSED → PENDING VALIDATION  
+## Domain: Enrichment Layer Optimization, Model-Specific Behavior
+## Date Created: 2026-05-08 (Workshop Cycle #3)
+## Model Context: Qwen3.6-27B via LM Studio local inference
+---
+## Problem Statement
+During bugfix turns — when the agent is correcting its own mistakes or responding to error feedback — enrichment passes add latency without value. The model already has full context of the failure and doesn't benefit from belief state tracking, working memory promotion, or proactive supervisor intervention.
+
+Current behavior:
+1. Error occurs → framework catches it → feeds back as system message
+2. Full enrichment pipeline still runs: BST compound classify → WM entity extract → supervisor check → HTN plan → selective memorizer
+3. Bugfix turn executes with 40+ extension hooks active, most returning no-action
+4. Per-turn overhead ~800-1200ms from enrichment layers during what should be a fast recovery path
+
+## Proposed Change
+Implement model-aware skip logic for bugfix turns:
+- **Detection**: When system message contains error feedback markers ("This error has occurred", "Traceback", "Proceed with your original task")
+- **Skip**: Bypass BST compound classification, WM extraction, proactive supervisor injection
+- **Retain**: Keep context watchdog and selective memorizer (they're lightweight and still valuable)
+
+## Hypothesis
+Disabling enrichment during bugfix turns will reduce recovery latency by 60% while maintaining error resolution quality. The model doesn't need belief state tracking or working memory management when it's already operating in a constrained correction mode.
+
+## Risk Assessment
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| Bugfix turn triggers new error requiring BST domain switch | Low | Medium | Keep context watchdog active to catch cascading failures |
+| Multi-step recovery loses working memory state | Low | High | WM decay doesn't apply during bugfix turns — state is preserved |
+
+## Validation Plan
+1. Measure current bugfix turn latency (baseline: ~800-1200ms)
+2. Implement skip logic with logging to journal.jsonl
+3. Compare: recovery success rate with enrichment disabled vs enabled
+4. Rollback if recovery failure rate increases >5%
+
+## Dependencies
+- `/a0/usr/plugins/exocortex/_11_belief_state_tracker.py` (skip compound classification)
+- `/a0/usr/plugins/exocortex/_12_proactive_supervisor.py` (skip intervention injection)
+- Config: add `enrichment_skip_bugfix_turns` boolean to exocortex config.json
+
+## Related Pages
+- [[dec-conditional-injection]] — broader signal-based skip strategy
+- [[inc-watchdog-blind]] — context overflow during recovery compounded by enrichment overhead

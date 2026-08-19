@@ -17,7 +17,10 @@ TOOL_SRC="$REPO_DIR/tools/artifact_create.py"
 TEMPLATES_SRC="$REPO_DIR/artifact_templates"
 
 # Container paths
-TOOL_DEST="/a0/usr/plugins/exocortex/tools/artifact_create.py"
+# ── STRIPPED 2026-08-19 (Tier 1.1): dead root; the plugin walk deploys this ──
+# artifact_create.py ships in plugins/_exocortex/tools/ and is deployed by the
+# walk. The artifact TEMPLATES this script installs are outside and are kept.
+TOOL_DEST="/a0/usr/plugins/_exocortex/tools/artifact_create.py"
 TEMPLATES_DEST="/a0/usr/artifact_templates"
 OUTPUT_DEST="/a0/work/artifacts"
 

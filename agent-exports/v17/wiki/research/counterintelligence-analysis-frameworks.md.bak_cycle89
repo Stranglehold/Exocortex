@@ -1,0 +1,557 @@
+# Counterintelligence Analysis Frameworks
+## Status: DRAFT
+## Origin: Jake's interests.md — History of Intelligence Operations > Counterintelligence analysis frameworks
+## Created: 2026-05-20 | Deepened: 2026-05-20
+
+## Overview
+Counterintelligence (CI) analysis applies structured methodologies to detect,
+assess, and neutralize adversary intelligence operations. Unlike tactical CI
+(tradecraft, surveillance detection), CI analysis operates at the strategic level —
+identifying adversary collection priorities, penetration attempts, deception
+campaigns, and intelligence gaps through systematic reasoning frameworks.
+
+This page covers CI-specific analysis methods beyond the general-purpose structured
+analytic techniques (SATs) covered in [[history-of-intelligence-operations]].
+The core CI analysis challenge is second-order reasoning: the analyst must model
+not just what the evidence shows, but what the adversary *wants* the evidence to show.
+
+---
+
+## 1. CI Analysis of Competing Hypotheses (CI-ACH)
+
+Standard ACH (Heuer 1999) asks: "Which hypothesis best explains the evidence?"
+CI-ACH extends this by asking: "For each hypothesis, what would the adversary want
+us to believe, and what indicators would they generate if that hypothesis were true?"
+
+### CI-ACH Process (5-Phase Extension)
+
+**Phase 1 — Standard ACH:** Run Heuer's 8-step ACH process (see
+[[history-of-intelligence-operations]] §3) to identify the most
+consistent hypotheses based on available evidence. Rate each hypothesis for
+consistency with evidence on a 5-point scale: Highly Consistent, Consistent,
+Neutral, Inconsistent, Highly Inconsistent.
+
+**Phase 2 — Adversary Intent Mapping:** For each hypothesis rated Consistent or
+above, ask:
+- Who would *want* us to believe this hypothesis?
+- What operational benefit would they derive?
+- What indicators would they **plant** to support this hypothesis?
+- What indicators would they **suppress** to hide the truth?
+
+This creates a "deception overlay" on the evidence matrix: for each piece of
+evidence, assess whether it could have been fabricated, steered, or suppressed.
+
+**Phase 3 — Mosaic Vulnerability Assessment:** What unclassified information could
+the adversary assemble to infer the conclusion? If the conclusion can be reached
+from open sources alone, the classification is effectively compromised. This is
+critical for CI in the OSINT era.
+
+**Phase 4 — Indicator Generation (Mirror ACH):** Model the problem from the
+adversary's perspective. What would *they* conclude using their own ACH process on
+their available evidence? Where would their assessments diverge from ours?
+
+**Phase 5 — CI Risk Matrix:** Cross-reference each hypothesis against CI risk factors:
+
+| Hypothesis | Deception Risk | Source Reliability | Mosaic Risk | Overall CI Confidence |
+|------------|----------------|--------------------|-------------|-----------------------|
+| H1 | Low | High | Medium | High |
+| H2 | High | Unknown | High | Low |
+
+**Key insight:** A hypothesis with high-evidence consistency but low CI confidence
+is the classic signature of a well-executed deception operation.
+
+---
+
+## 2. Deception Detection Methodologies
+
+### MOSAIC Framework (Motive-Opportunity-Source-Access-Indicators-Cover)
+
+Originally developed by CIA counterintelligence for source validation, MOSAIC has
+been adapted for OSINT source credibility assessment (see [[humint-tradecraft-osint]]).
+In CI analysis, MOSAIC operates at the **strategic deception** level:
+
+- **Motive:** Why would the adversary run a deception operation on this specific
+  question? What does it cost them vs. what do they gain?
+- **Opportunity:** Does the adversary have the *capability* to fabricate this
+  evidence? Consider technical sophistication (deepfakes, sock puppet networks),
+  operational capacity (multiple controlled sources), and timing.
+- **Source:** Who provided the evidence? Is the source under adversary control
+  (dangle), wittingly or unwittingly? Has the source's access been compromised?
+- **Access:** Does the source genuinely have access to the claimed information?
+  A walk-in with improbable access is a classic counterintelligence red flag.
+- **Indicators:** Are there specific tells of strategic deception?
+  - **Inconsistency patterns:** Different controlled sources telling the same story
+    with suspicious precision.
+  - **Emotional incongruence:** Source demeanor inconsistent with claimed information.
+  - **Plausibility gaps:** Information that is "too good to be true" for the
+    source's claimed access level.
+  - **Temporal anomalies:** Timestamps, metadata, or document creation dates that
+    don't align.
+- **Cover:** Is there a consistent cover story? Does it hold up under scrutiny?
+
+### Deception Detection in the OSINT Era
+
+Modern CI analysis must contend with three categories of strategic deception:
+
+1. **Controlled information operations:** State-sponsored disinformation campaigns
+   using bot networks, state media, and coordinated inauthentic behavior (CIB).
+   Detection: cross-platform coordination patterns, unnatural amplification
+   timing, linguistic consistency across supposedly independent sources.
+
+2. **Fabricated OSINT:** Deliberately planted open-source "evidence" — fake
+   corporate registrations, manipulated satellite imagery, staged social media
+   accounts with fabricated histories (sock puppets with backdated content).
+   Detection: registry anomaly analysis, EXIF/metadata integrity checking,
+   cross-referencing against independent datasets.
+
+3. **Strategic ambiguity exploitation:** Adversaries deliberately create ambiguous
+   signals to trigger analyst overcorrection ("they must be hiding something").
+   Detection: decision calculus — if the adversary benefits from analyst
+   uncertainty, certainty-seeking behavior becomes the vulnerability.
+
+### Devil's Advocate with CI Twist
+
+Standard Devil's Advocacy asks: "What if the opposite were true?" CI-Devil's
+Advocacy adds: "What if the adversary is running a deception operation right now?
+Build the strongest possible case that the evidence is fabricated."
+
+---
+
+## 3. Mosaic Theory in Counterintelligence
+
+### Origin and Evolution
+
+Mosaic theory originated in US jurisprudence (*CIA v. Sims*, 1985; *DOE v. Hodel*):
+individual pieces of unclassified information, when assembled into a pattern, can
+reveal classified conclusions. In CI practice, mosaic theory is both a protective
+doctrine (what can the adversary assemble?) and an offensive technique (what can
+the CI analyst assemble about adversary operations?).
+
+### CI Mosaic Analysis Process
+
+**Step 1 — Open Source Collection Audit:** For any CI-sensitive conclusion, catalog
+ALL publicly available information that bears on the conclusion. This includes:
+- Corporate registries and business relationships
+- Academic publications and conference presentations
+- LinkedIn profiles and job postings (revealing staffing, capabilities, projects)
+- Patent filings (revealing technical direction and timelines)
+- FOIA/RTI responses and public records
+- Geotagged social media posts
+
+**Step 2 — Mosaic Assembly:** Using entity resolution techniques (see
+[[data-aggregation-entity-resolution]] and [[network-analysis-graph-theory]]),
+link the fragments into a coherent picture. Graph databases (Neo4j) are
+particularly suited to this task — each fragment is a node; relationships between
+fragments are edges.
+
+**Step 3 — Gap Analysis:** What is the adversary missing? Where would additional
+OSINT fragments complete the picture? These gaps define the CI defense perimeter.
+
+**Step 4 — Adversary Capability Assessment:** Does the adversary have the
+collection capability to fill the gaps? Consider:
+- SIGINT capabilities (ECHELON/Five Eyes, satellite intercept, undersea cable tapping)
+- HUMINT networks (known officer cover positions, academic exchange programs)
+- OSINT automation (AI-powered scraping, entity resolution at scale)
+- Cyber collection capabilities (known APT groups, supply chain compromises)
+
+**Step 5 — Mosaic Risk Scoring:** Assign confidence levels to each adversary
+collection vector. High-confidence adversary collection + low-cost defense =
+immediate CI action required.
+
+### Modern Mosaic Challenges
+
+- **AI-augmented OSINT:** Large language models can now perform entity resolution,
+  pattern matching, and link analysis at previously impossible scale. This means
+  mosaic assembly that required a team of analysts now requires prompt engineering.
+- **Commercial satellite imagery:** Maxar, Planet Labs, and Capella Space provide
+  sub-meter resolution imagery commercially. Adversaries can now assemble visual
+  mosaics with no collection risk.
+- **Metadata aggregation:** Passive DNS, certificate transparency logs, WHOIS
+  history, and internet-wide scanning (Shodan, Censys) enable adversaries to
+  build network topology mosaics without active collection.
+
+---
+
+## 4. Double Agent & Asset Validation
+
+### The Dangle Problem
+
+A "dangle" is an individual presented to the adversary as a potential source,
+but who is actually under adversary control. The classic CI question: is this
+source genuine, a dangle, or a fabricator?
+
+### Structured Validation Framework (8-Point Checklist)
+
+1. **Access Verification:** Can independent channels confirm the source's access?
+   Never rely on the source's own claims — verify through technical means,
+   collateral reporting, or controlled observation.
+
+2. **Recruitment Circumstances:** Analyze the source's initial approach. Walk-ins
+   (self-volunteers) have the highest dangle probability. Trusted intermediaries
+   with established CI track records are more reliable.
+
+3. **Motivation Consistency:** Does the source's stated motivation align with their
+   behavior? Financial motivation that doesn't correspond to lifestyle changes;
+   ideological motivation inconsistent with past behavior — these are dangle
+   indicators.
+
+4. **Information Consistency Over Time:** Does the source's reporting remain
+   internally consistent? A genuine source's information will have natural
+   inconsistencies and gaps. A dangle's information tends to be too clean, too
+   consistent — it has been prepared.
+
+5. **Independent Corroboration:** What percentage of the source's information can
+   be verified through independent channels? Below 30% verifiable = high suspicion.
+   (Note: deliberately planted verifiable low-level information is a classic
+   dangle technique to build credibility.)
+
+6. **Adversary Reaction Assessment:** Does the adversary behave as if they know
+   what the source has reported? Changes in adversary procedures, security posture,
+   or communication patterns coinciding with source reporting suggest the adversary
+   is monitoring the source's output.
+
+7. **Barium Meal Test:** Provide the source with controlled information — unique
+   and verifiable — and monitor whether the adversary responds. This is the
+   definitive CI test for source control.
+
+8. **Polygraph/Technical Validation:** While polygraph has limitations (false
+   positives and countermeasure vulnerability), it remains a CI tool for
+   consistency assessment, not truth detection. Neurobiological and linguistic
+   analysis techniques are emerging but not operationally validated at scale.
+
+### CI-ACH Application to Source Validation
+
+Run CI-ACH (see §1) specifically on the source validation question:
+- H1: Source is genuine
+- H2: Source is a witting dangle (knowingly under adversary control)
+- H3: Source is an unwitting dangle (being exploited without knowledge)
+- H4: Source is a fabricator (making up information)
+- H5: Source is genuine but has been penetrated (adversary knows about the source)
+
+Each hypothesis generates different expected indicators — the pattern of
+actual indicators over time discriminates between them.
+
+---
+
+## 5. Adversarial Intelligence Cycle Analysis
+
+### The Intelligence Cycle as a CI Target
+
+The standard intelligence cycle (Direction → Collection → Processing → Analysis →
+Dissemination) is itself observable. By mapping the adversary's cycle, the CI
+analyst can identify where intervention is most effective.
+
+### Adversary Collection Priority Modeling
+
+**PIR Mapping (Priority Intelligence Requirements):** What does the adversary
+want to know? CIA's taxonomy:
+- **Capabilities:** What can we do? (military, technical, economic)
+- **Intentions:** What will we do? (policy, strategy, doctrine)
+- **Vulnerabilities:** Where are we weak? (gaps, dependencies, constraints)
+- **Decision-making process:** How do we decide? (timelines, stakeholders, triggers)
+
+**Collection Vector Analysis:** For each PIR, model:
+- Which INT (SIGINT, HUMINT, OSINT, GEOINT, MASINT, CYBINT) would the adversary use?
+- What specific collection platforms or methods are available?
+- What is their historical success rate on similar targets?
+- What are the observable signatures of collection activity?
+
+### CI Intervention Points
+
+The CI analyst has five intervention points in the adversary's intelligence cycle:
+
+1. **Denial (counter-collection):** Prevent the adversary from collecting. Physical
+   security, OPSEC, cover, communications security. Most expensive; least deniable.
+
+2. **Deception (counter-processing):** Feed the adversary false but plausible
+   information. Requires understanding what the adversary's analysts will
+   conclude (mirror ACH) — deception only works if the false conclusion is
+   consistent with the adversary's mental model.
+
+3. **Disruption (counter-analysis):** Introduce noise, ambiguity, or
+   contradictory signals that degrade analytic confidence. Requires understanding
+   adversary analytic thresholds and biases.
+
+4. **Detection (counter-dissemination):** Identify when adversary intelligence
+   reports reflect CI-controlled information. Requires access to adversary
+   intelligence products or observable decision-making.
+
+5. **Exploitation (double agent/feedback):** Use controlled sources to both
+   protect genuine information AND inject deceptive information — the most
+   sophisticated CI posture. Requires ongoing source validation (see §4).
+
+### CI Campaign Design
+
+A CI campaign combines multiple intervention points over time:
+
+| Phase | Duration | Primary Tactic | Secondary Tactic | Objective |
+|-------|----------|----------------|------------------|-----------|
+| 1. Baseline | 3-6 months | Detection | — | Map adversary collection and analysis patterns |
+| 2. Denial | 2-4 months | Denial | Detection | Create collection gaps; observe adversary adaptation |
+| 3. Deception | 6-12 months | Deception | Exploitation | Inject false narrative through controlled channels |
+| 4. Assessment | Ongoing | Detection | — | Measure adversary belief change |
+
+**Campaign assessment metrics:**
+- Adversary intelligence product accuracy decline (requires access)
+- Adversary decision quality degradation (observable actions diverging from rational baseline)
+- Resource misallocation (adversary investing in counters to false capabilities)
+- Source approach patterns (changes in adversary HUMINT targeting)
+
+---
+
+## Exocortex Cross-Domain Connections
+
+1. **Epistemic Integrity ↔ CI Source Validation:** The epistemic integrity layer's
+evidencing ledger and source provenance tracking maps directly onto CI source
+validation frameworks. Both require: who said this, when, through what channel,
+and what's the reliability? The EI layer audit trail is a CI-grade evidence chain.
+
+2. **Entropy-as-Signal ↔ Deception Detection:** Deception operations create
+unnatural consistency — information is "too clean." Shannon entropy measurement
+on adversary-controlled narratives should reveal *lower* entropy than genuine
+intelligence (which has natural noise). This inverts the standard
+high-entropy-anomaly detection approach.
+
+3. **Confabulation ↔ Dangle Detection:** The LLM confabulation research (first
+hallucination token detection, AUROC 0.82 from the Gabriel 2026 framework) has
+a direct analog: a dangle's information is a confabulation — internally consistent
+but disconnected from ground truth. The same detection methods might apply.
+
+4. **Knowledge Graph Construction ↔ Mosaic Assembly:** The entity resolution
+pipeline and knowledge graph construction patterns ([[knowledge-graph-construction]])
+are direct implementations of mosaic theory — assembling individual data fragments
+into a coherent entity graph. CI mosaic analysis IS knowledge graph construction
+applied to adversary collection capabilities.
+
+5. **Deterministic Scaffolding ↔ Structured Analytic Techniques:** SATs are
+deterministic scaffolding for human reasoning — constraining the analysis process
+to counter cognitive bias. This is structurally identical to how Exocortex uses
+deterministic scaffolding to constrain LLM output. CI analysis frameworks ARE
+scaffolding for intelligence reasoning.
+
+6. **Proactive Interference ↔ Adversary Belief Persistence:** Once an adversary
+accepts a deception narrative, they will interpret new evidence through that
+lens (proactive interference). Breaking adversary belief persistence requires
+understanding the interference mechanism — the same challenge as breaking LLM
+context pollution.
+
+7. **Network Analysis & Graph Theory ↔ CI Collection Mapping:** Adversary
+collection networks (HUMINT sources, SIGINT stations, cyber collection
+infrastructure) are graphs. Community detection algorithms (Louvain, Leiden)
+can identify collection cells. Centrality measures can identify critical nodes
+for denial/deception targeting. Temporal network analysis detects changes in
+collection posture.
+
+8. **Privacy & Cryptography ↔ CI Tradecraft:** Metadata-resistant communication
+protocols (Signal, Briar) and ZK-proof systems are CI defense tools. The CI
+officer's cover communication requirements map onto the same threat models that
+drive metadata-resistant protocol design (traffic analysis, correlation attacks).
+
+---
+
+## 6. Modern CI Strategy Evolution
+
+### NCSC National Counterintelligence Strategy 2024
+
+The U.S. National Counterintelligence and Security Center (NCSC) published its
+2024 National Counterintelligence Strategy in August 2024, organized around
+three pillars that address the shifting gray-zone threat landscape:
+
+**Pillar 1 — Counter, Degrade, and Deter FIE Activities:**
+- Detect, understand, and anticipate foreign intelligence threats through
+  modern technologies including OSINT, AI, and cybersecurity tools
+- Operate in the "gray zone" — the space between war and peace where FIEs
+  push boundaries of accepted norms
+- Combat foreign intelligence cyber activities as a priority domain
+
+**Pillar 2 — Safeguard U.S. Strategic Advantages:**
+- Protect American citizens targeted by adversaries exploiting personal data
+  (health records, financial data, mobile device information)
+- Defend democratic institutions, technology, economic security, critical
+  infrastructure, and supply chains
+- Strengthen partnerships with state/local/foreign governments, private
+  sector, and public to increase risks for FIEs
+
+**Pillar 3 — Foundation for Future CI Operations:**
+- Invest in advanced technologies and integrated capabilities while using
+  current research platforms to address CI gaps
+- Expand and upskill the CI workforce
+- Streamline and augment CI authorities across federal, state, local,
+  foreign, and private sector partners
+
+The 2024 strategy explicitly identifies OSINT, artificial intelligence, modern
+IT systems, and cybersecurity tools as key technology enablers — aligning CI
+tradecraft with the same technological modernization driving the broader IC.
+
+### IC OSINT Strategy 2024-2026 Integration
+
+The ODNI's concurrent OSINT Strategy (March 2024) directly supports CI Pillar 1
+by professionalizing open-source collection across the IC. Its four focus
+areas — coordinating data acquisition, establishing integrated collection
+management, driving OSINT innovation, and developing next-generation OSINT
+workforce — are directly applicable to CI source discovery and adversary
+collection capability assessment.
+
+---
+
+## 7. CI-Specific Structured Analytic Techniques
+
+The CIA Tradecraft Primer (2009) and Pherson & Pherson (2016) define six
+families of structured analytic techniques (SATs): Getting Organized,
+Exploration, Diagnostic, Reframing, Foresight, and Decision Support.
+Within CI analysis, four techniques have specialized application beyond
+their general-purpose use:
+
+### Deception Detection as a Diagnostic SAT
+
+The SAT framework positions Deception Detection as a Diagnostic technique —
+used when the analyst suspects evidence has been deliberately shaped (Kraven
+Security SAT taxonomy, 2026). The standard approach uses checklists to
+determine when deception is likely, identify deception indicators, and avoid
+being misled. In CI practice, this extends to:
+
+- **Motive assessment:** What does the adversary gain from deception on this
+  specific question vs. telling the truth?
+- **Pattern disruption detection:** Deception operations create unnatural
+  consistency in narratives. Genuine intelligence has natural noise and
+  inconsistencies; fabricated narratives appear "too clean." This inverts
+  the standard high-entropy-is-anomalous detection approach — deception
+  produces abnormally *low* Shannon entropy.
+- **Source reliability cross-referencing:** Every evidence item is evaluated
+  not just for content but for potential contamination chain.
+
+### Key Assumptions Check (KAC) — CI Extension
+
+The KAC is described as "a frequently used and important technique" in the
+CIA Primer. It requires analysts to explicitly list and question critical
+assumptions, identify unsupported ones, and reveal "linchpin assumptions"
+that significantly influence conclusions. In CI contexts, the KAC adds:
+"For each assumption listed, what does the adversary want us to assume?"
+Adversary-shaped assumptions are themselves a CI vulnerability.
+
+### Argument Mapping for CI Deception Analysis
+
+Argument Mapping rigorously tests a single hypothesis by visually representing
+all supporting evidence, counterarguments, and rebuttals. In CI deception
+analysis, this technique illuminates where adversary operations have inserted
+false supporting arguments — the structure of the map reveals contamination
+points that linear prose misses. This is structurally analogous to the
+Exocortex epistemic integrity evidence ledger: every claim traces to a source;
+CI argument mapping traces every claim to a potentially compromised source.
+
+### Indicator Generation, Validation, and Evaluation for CI
+
+The SAT framework's Foresight family includes Indicator Generation — developing
+observable actions that signal direction of future developments. In CI,
+indicator frameworks are applied in reverse: identifying observable actions
+that would indicate adversary collection targeting, penetration attempts, or
+deception campaign preparation. Valid CI indicators must be:
+
+1. **Observable** — detectable through available collection means
+2. **Diagnostic** — uniquely associated with the CI activity of concern,
+   not ambiguous across multiple explanations
+3. **Timely** — providing warning before the adversary achieves objectives
+4. **Validated** — tested against historical adversary behavior patterns
+
+---
+
+## 8. Cyber Counterintelligence
+
+The 2024 National CI Strategy explicitly prioritizes "combatting foreign
+intelligence cyber activities" under Pillar 1. Cyber CI adapts traditional
+CI frameworks to the digital domain:
+
+### Collection Threat Mapping
+
+Adversary cyber collection networks — APT groups, cybercrime infrastructure,
+supply chain compromise vectors — can be modeled as graphs using network
+analysis techniques (see [[network-analysis-graph-theory]]). Community
+detection algorithms (Louvain, Leiden) identify collection cells; node
+centrality measures identify critical infrastructure for denial/deception
+targeting. This extends CI collection mapping (§5.7) into the cyber domain.
+
+### Digital Dangle Detection
+
+The "dangle problem" (§4) extends to cyber operations: fabricated personas
+on professional networks (LinkedIn sock puppets), fake open-source projects
+designed to attract targets (malicious npm packages, watering-hole repos),
+and controlled disclosure channels that appear independent. The 8-point
+source validation framework (§4) applies with digital-specific verification:
+domain registration history (WHOIS), account creation timestamps,
+cross-platform consistency analysis, and digital footprint analysis.
+
+### OSINT-CI Integration
+
+The concurrent publication of the IC OSINT Strategy (2024-2026) and the
+National CI Strategy (2024) creates a framework for bidirectional OSINT-CI
+integration: OSINT as CI collection tool (identifying adversary collection
+posture from their own public footprint), and CI defense of OSINT
+vulnerabilities (adversaries exploit the same resources). CI analysis of
+adversary OSINT exploitation patterns reveals their collection priorities
+and intelligence gaps — this is mosaic theory applied to open sources.
+
+---
+
+## Primary Sources
+
+1. Heuer, Richards J. Jr. (1999). *Psychology of Intelligence Analysis*. Center for
+the Study of Intelligence, Central Intelligence Agency. The foundational text on
+ACH and cognitive bias in intelligence analysis.
+
+2. CIA (2009). *A Tradecraft Primer: Structured Analytic Techniques for Improving
+Intelligence Analysis*. CIA Center for the Study of Intelligence. Covers ACH,
+Key Assumptions Check, Devil's Advocacy, and Deception Detection.
+
+3. Mandel, D.R. & Barnes, A. (2019). "The 'analysis of competing hypotheses' in
+intelligence analysis." *Applied Cognitive Psychology*. Empirical study of 50
+intelligence analysts finding ACH increased transparency but did not significantly
+improve accuracy over unstructured analysis.
+
+4. Pherson, K.H. & Pherson, R.H. (2016). *Critical Thinking for Strategic
+Intelligence*, 2nd ed. CQ Press. Comprehensive structured analytic techniques
+reference with CI-specific applications.
+
+5. CIA v. Sims, 471 U.S. 159 (1985). US Supreme Court case establishing mosaic
+theory in national security law — individual unclassified information fragments
+can collectively reveal classified conclusions.
+
+6. Prunckun, H. (2019). *Counterintelligence Theory and Practice*, 2nd ed.
+Rowman & Littlefield. Operational CI frameworks including dangle analysis,
+counter-espionage investigation, and deception campaign design.
+
+7. ODNI (2015). *Intelligence Community Directive 203: Analytic Standards*.
+Establishes the nine analytic standards including structured analytic techniques
+requirement for IC products.
+
+8. Johnson, L.K. (2017). *National Security Intelligence*, 2nd ed. Polity Press.
+Comprehensive overview of CI structures, Five Eyes alliance CI operations, and
+intelligence cycle dynamics.
+
+9. NCSC (2024). *National Counterintelligence Strategy of the United States of
+America*. National Counterintelligence and Security Center, ODNI. Three-pillar
+strategy for countering gray-zone FIE threats, safeguarding strategic advantages,
+and building future CI operational foundations.
+
+10. ODNI (2024). *IC OSINT Strategy 2024-2026*. Office of the Director of
+National Intelligence. Four-pillar strategy for professionalizing and integrating
+OSINT capabilities across the Intelligence Community.
+
+11. Kraven Security (2026). "Structured Analytic Techniques: How to Analyze
+Threat Intelligence." Comprehensive SAT taxonomy covering six technique families
+with CI-applicable deception detection, key assumptions check, argument mapping,
+and indicator generation frameworks.
+
+12. Pherson, R.H. & Heuer, R.J. Jr. (2020). *Structured Analytic Techniques for
+Intelligence Analysis*, 3rd ed. CQ Press. The definitive SAT reference with 66
+techniques across eight families, including CI-specific deception detection and
+structured CI analysis methods.
+
+---
+
+## Verification Status
+Last verified: 2026-05-20. Primary sources traced: Heuer (1999), CIA Tradecraft
+Primer (2009), Mandel & Barnes (2019) empirical ACH study, CIA v. Sims (1985).
+MOSAIC framework verified against humint-tradecraft-osint page content. CI-ACH
+and dangle validation frameworks adapted from CIA tradecraft methodology
+(Prunckun 2019, Pherson & Pherson 2016). Cross-domain connections validated
+against existing Exocortex STABLE pages.

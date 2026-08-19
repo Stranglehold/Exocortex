@@ -1,0 +1,296 @@
+
+-
+- [adaptive-graph-entity-resolution-draft](research/adaptive-graph-entity-resolution-draft.md) — Adaptive Graph Entity Resolution with LLMs (Budget-Aware Online Knapsack) | **STABLE**
+- [scalable-oversight-ai-draft](research/scalable-oversight-ai-draft.md) — Scalable Oversight for AI Systems | **STABLE**
+
+- [adaptive-supervisor-architecture](research/adaptive-supervisor-architecture.md) — Adaptive Supervisor Architecture | **STABLE**
+- [adversarial-ml-robustness](research/adversarial-ml-robustness.md) — Adversarial Machine Learning & Model Robustness | 
+- [adversarial-graph-robustness-financial-crime-draft](research/adversarial-graph-robustness-financial-crime-draft.md) — Adversarial Graph Robustness for Financial Crime Detection | **STABLE**
+- [ai-driven-alpha-decay-paradox-draft](research/ai-driven-alpha-decay-paradox-draft.md) — AI-Driven Alpha Decay Paradox | **STABLE**
+- [agentic-workflows-scientific-discovery-draft](research/agentic-workflows-scientific-discovery-draft.md) — Agentic Workflows for Scientific Discovery | **STABLE**|
+- [agi-safety-convergence-2026-draft](research/agi-safety-convergence-2026-draft.md) — AGI Safety Convergence: Mechanistic Interpretability, Scalable Oversight & Constitutional AI | **STABLE****
+- [agi-safety-interpretability](research/agi-safety-interpretability.md) — AGI Safety & Interpretability |
+- [agi-safety-interpretability-convergence-2026-draft](research/agi-safety-interpretability-convergence-2026-draft.md) — AGI Safety & Interpretability Convergence: Mechanistic Interpretability Breakthrough & Scalable Oversight (2026) | **STABLE**
+- [llm-verification-trustworthiness-2026-draft](research/llm-verification-trustworthiness-2026-draft.md) — LLM Verification & Trustworthiness: 2026 Advances | **STABLE****
+- [llm-judge-agent-evaluation-2026-draft](research/llm-judge-agent-evaluation-2026-draft.md) — LLM-as-Judge for Agent Evaluation: 2026 Advances | **STABLE**
+- [ai-agent-delegation-security](research/ai-agent-delegation-security.md) — AI Agent Delegation Security | **STABLE**
+- [ai-agent-economics-mechanism-design](research/ai-agent-economics-mechanism-design.md) — AI Agent Economics & Mechanism Design |
+- [algorithmic-collusion-detection-regulation-draft](research/algorithmic-collusion-detection-regulation-draft.md) — Algorithmic Collusion Detection, Mechanisms, and Regulatory Response | **STABLE**
+- [ai-agent-interoperability-protocols-draft](research/ai-agent-interoperability-protocols-draft.md) — AI Agent Interoperability & Communication Protocols | 
+- [ai-agent-market-infrastructure](research/ai-agent-market-infrastructure.md) — AI Agent Market Infrastructure | 
+- [ai-agent-market-infrastructure-draft](research/ai-agent-market-infrastructure-draft.md) — AI Agent Market Infrastructure (2026) | **STABLE**
+- [ai-agent-market-microstructure-evolution](research/ai-agent-market-microstructure-evolution.md) — AI Agent Market Microstructure Evolution (2026) |
+- [ai-agent-token-economies-incentive-alignment-draft](research/ai-agent-token-economies-incentive-alignment-draft.md) — AI Agent Token Economies & Incentive Alignment | **STABLE**
+- [analog-ai-inference-chips-draft](research/analog-ai-inference-chips-draft.md) — Analog AI Inference Chips: Beyond Digital Training | **STABLE**
+- [analog-compute-in-memory-ai-inference-draft](research/analog-compute-in-memory-ai-inference-draft.md) — Analog Compute-In-Memory for AI Inference | **STABLE**
+- [ai-agent-trust-infrastructure-2026](research/ai-agent-trust-infrastructure-2026.md) — AI Agent Trust Infrastructure 2026 | **STABLE**
+- [ai-agent-trust-infrastructure](research/ai-agent-trust-infrastructure.md) — AI Agent Trust Infrastructure | 
+- [ai-cross-asset-regime-detection-draft](research/ai-cross-asset-regime-detection-draft.md) — AI-Driven Cross-Asset Regime Detection & Switching | **STABLE**
+- [ai-algorithmic-trading-quant-finance](research/ai-algorithmic-trading-quant-finance.md) — AI in Algorithmic Trading & Quantitative Finance | **STABLE**
+- [ai-augmented-cyber-threat-hunting](research/ai-augmented-cyber-threat-hunting.md) — AI-Augmented Cyber Threat Hunting |
+- [ai-augmented-due-diligence-investigative-analytics-draft](research/ai-augmented-due-diligence-investigative-analytics-draft.md) — AI-Augmented Due Diligence & Investigative Analytics | 
+- [ai-augmented-intelligence-analysis](research/ai-augmented-intelligence-analysis.md) — AI-Augmented Intelligence Analysis |
+- [ai-augmented-intelligence-collection-draft](research/ai-augmented-intelligence-collection-draft.md) — AI-Augmented Intelligence Collection Methodologies |
+- [ai-automated-theorem-proving-draft](research/ai-automated-theorem-proving-draft.md) — AI-Augmented Automated Theorem Proving |
+- [ai-autonomous-scientific-discovery-pipelines-2026](research/ai-autonomous-scientific-discovery-pipelines-2026.md) — AI-Driven Autonomous Scientific Discovery Pipelines (2026) | **STABLE**
+- [ai-autonomous-scientific-discovery](research/ai-autonomous-scientific-discovery.md) — AI-Driven Autonomous Scientific Discovery (2026) |
+- [ai-compliance-automation-regtech](research/ai-compliance-automation-regtech.md) — AI-Driven Compliance Automation & Regulatory Technology | 
+- [ai-compute-sovereignty-national-infrastructure](research/ai-compute-sovereignty-national-infrastructure.md) — AI Compute Sovereignty & National AI Infrastructure | 
+- [ai-conflict-prediction-forecasting](research/ai-conflict-prediction-forecasting.md) — **STABLE** — AI-Driven Conflict Prediction & Armed Conflict Forecasting
+- [ai-credit-risk-modeling-2026](research/ai-credit-risk-modeling-2026.md) — AI-Driven Credit Risk Modeling 2026 | **STABLE**
+- [ai-cyber-threat-hunting-agentic-systems](research/ai-cyber-threat-hunting-agentic-systems.md) — AI-Augmented Cyber Threat Hunting — Agentic Multi-Agent Systems | **STABLE**
+- [ai-datacenter-power-crisis](research/ai-datacenter-power-crisis.md) — AI Data Center Power Crisis & Grid-Edge AI Deployment | 
+- [ai-diplomatic-simulation-conflict-modeling](research/ai-diplomatic-simulation-conflict-modeling.md) — AI-Driven Diplomatic Simulation & Conflict Modeling (2026) |
+- [ai-disinformation-detection-information-warfare](research/ai-disinformation-detection-information-warfare.md) — AI-Driven Disinformation Detection & Information Warfare Analysis | **STABLE**
+- [ai-driven-battery-materials-discovery](research/ai-driven-battery-materials-discovery.md) — AI-Driven Battery Materials Discovery | 
+- [ai-driven-der-orchestration](research/ai-driven-der-orchestration.md) — AI-Driven DER Orchestration at the Grid Edge |
+- [ai-driven-eda-chip-design-automation-draft](research/ai-driven-eda-chip-design-automation.md) — AI-Driven EDA & Chip Design Automation | **STABLE**
+- [ai-driven-grid-modernization-smart-grid-security-draft](research/ai-driven-grid-modernization-smart-grid-security-draft.md) — AI-Driven Grid Modernization & Smart Grid Cybersecurity | **STABLE**
+- [ai-driven-materials-discovery](research/ai-driven-materials-discovery.md) — AI-Driven Materials Discovery | 
+- [ai-driven-molecular-dynamics-simulation-draft](research/ai-driven-molecular-dynamics-simulation-draft.md) — AI-Driven Molecular Dynamics Simulation | **STABLE**
+- [ai-drug-discovery-computational-biology](research/ai-drug-discovery-computational-biology.md) — AI Drug Discovery & Computational Biology |
+- [ai-geopolitical-risk-analytics-early-warning-draft](research/ai-geopolitical-risk-analytics-early-warning-draft.md) — AI-Driven Geopolitical Risk Analytics & Early Warning Systems (2026) | **STABLE**
+- [ai-strategic-stability-deterrence-2026-draft](research/ai-strategic-stability-deterrence-2026-draft.md) — AI & Strategic Stability: Deterrence Dynamics (2026) | **STABLE**
+- [ai-geopolitical-risk-forecasting](research/ai-geopolitical-risk-forecasting.md) — AI-Powered Geopolitical Risk Forecasting | 
+- [ai-governance-regulation-landscape](research/ai-governance-regulation-landscape.md) — AI Governance & Regulation Landscape |
+- [ai-grid-modernization](research/ai-grid-modernization.md) — --- |
+- [ai-hardware-co-design](research/ai-hardware-co-design.md) — AI Hardware Co-Design | **STABLE**
+ [ai-inference-compiler-stack](research/ai-inference-compiler-stack.md) — AI Inference Compiler Stack | **STABLE**
+- [ai-market-making-hft](research/ai-market-making-hft.md) — AI-Driven Market Making & HFT | 
+- [ai-market-microstructure-analysis-draft](research/ai-market-microstructure-analysis-draft.md) — AI-Driven Market Microstructure Analysis | 
+- [ai-market-surveillance-anomaly-detection](research/ai-market-surveillance-anomaly-detection.md) — AI-Driven Market Surveillance & Anomaly Detection |
+- [ai-model-provenance-watermarking](research/ai-model-provenance-watermarking.md) — AI Model Provenance & Watermarking | 
+- [ai-model-supply-chain-security](research/ai-model-supply-chain-security.md) — AI Model Supply Chain Security |
+- [ai-native-database-lakehouse-draft](research/ai-native-database-lakehouse-draft.md) — AI-Native Database Systems & Lakehouse Formats | 
+- [ai-native-database-lakehouse](research/ai-native-database-lakehouse-draft.md) — AI-Native Database Systems & Lakehouse Formats | **STABLE**
+- [ai-native-database-search-infrastructure](research/ai-native-database-search-infrastructure.md) — AI-Native Database & Search Infrastructure | 
+- [ai-native-database-architectures](research/ai-native-database-architectures.md) — AI-Native Database Architectures | **STABLE**
+- [ai-options-strategy-generation](research/ai-options-strategy-generation.md) — AI-Powered Options Strategy Generation |
+- [ai-predictive-maintenance-critical-infrastructure](research/ai-predictive-maintenance-critical-infrastructure.md) — AI-Driven Predictive Maintenance for Critical Infrastructure | 
+- [ai-safety-interpretability-verification-draft](research/ai-safety-interpretability-verification-draft.md) — AI Safety & Interpretability: Alignment Verification Methods (2026) | **STABLE**
+- [ai-sanctions-evasion-detection](research/ai-sanctions-evasion-detection.md) — AI-Driven Sanctions Evasion Detection | 
+- [ai-supply-chain-resilience-operational](research/ai-supply-chain-resilience-operational.md) — AI Supply Chain Resilience: Operational Risk Management |
+- [ai-supply-chain-risk-modeling](research/ai-supply-chain-risk-modeling.md) — AI-Driven Supply Chain Risk Modeling |
+- [ai-supply-chain-security-sbom](research/ai-supply-chain-security-sbom.md) — AI Supply Chain Security & SBOM |
+- [ai-threat-intelligence-fusion](research/ai-threat-intelligence-fusion.md) — AI-Driven Threat Intelligence Fusion | **STABLE**
+- [ai-virtual-power-plants-draft](research/ai-virtual-power-plants-draft.md) — AI-Coordinated Virtual Power Plants (VPPs) | 
+- [ai-volatility-surface-modeling-options-draft](research/ai-volatility-surface-modeling-options-draft.md) — AI-Driven Volatility Surface Modeling & Adaptive Option Pricing | **STABLE** | **STABLE**
+- [alternative-data-alpha-decay](research/alternative-data-alpha-decay.md) — Alternative Data & Alpha Decay in Financial Markets | 
+- [analog-ai-inference-accelerators-draft](research/analog-ai-inference-accelerators-draft.md) | **STABLE** — Analog AI Inference Accelerators — 2026 Landscape |
+- [anti-bot-evasion-state-of-the-art](research/anti-bot-evasion-state-of-the-art.md) — Anti-Bot Evasion: State of the Art | **STABLE**
+- [autokernel-autonomous-kernel-optimization](research/autokernel-autonomous-kernel-optimization.md) — AutoKernel: Autonomous GPU Kernel Optimization | 
+- [autonomous-coding-agents](research/autonomous-coding-agents.md) — Autonomous Coding Agents | **STABLE**
+- [autonomous-cyber-operations-ai-red-teaming](research/autonomous-cyber-operations-ai-red-teaming.md) — Autonomous Cyber Operations & AI-Driven Red Teaming | 
+- [autonomous-self-improving-agents](research/autonomous-self-improving-agents.md) — Autonomous Self-Improving Agent Systems |
+- [biometric-identification-privacy-tradeoffs](research/biometric-identification-privacy-tradeoffs.md) — Biometric Identification & Privacy Tradeoffs | **STABLE**
+- [chiplet-ai-accelerator-architectures](research/chiplet-ai-accelerator-architectures.md) — Chiplet AI Accelerator Architectures | 
+- [cxl-memory-pooling-ai-infrastructure-draft](research/cxl-memory-pooling-ai-infrastructure-draft.md) — CXL Memory Pooling for AI Cluster Infrastructure | **STABLE**
+- [ci-analysis-frameworks-ai-disinformation](research/ci-analysis-frameworks-ai-disinformation-draft.md) — **STABLE**
+- [ci-frameworks-ai-red-teaming-draft](research/ci-frameworks-ai-red-teaming-draft.md) — CI Frameworks & The AI Red-Teaming Gap | 
+- [cognitive-warfare-ai-influence-operations](research/cognitive-warfare-ai-influence-operations.md) — Cognitive Warfare & AI-Driven Influence Operations | **STABLE**
+- [cognitive-warfare-cogint-operationalization](research/cognitive-warfare-cogint-operationalization.md) — Cognitive Warfare & COGINT Operationalization | **STABLE**
+- [conditional-compute-mixture-of-experts](research/conditional-compute-mixture-of-experts.md) — Conditional Compute & Mixture-of-Experts Architectures | 
+- [constitutional-ai-safety-governance-draft](research/constitutional-ai-safety-governance-draft.md) — Constitutional AI & Safety Governance Frameworks | 
+- [counterintelligence-analysis-frameworks](research/counterintelligence-analysis-frameworks.md) — Counterintelligence Analysis Frameworks & AI-Augmented Structured Analytic Techniques | 
+- [ai-structured-analytic-techniques-counterintelligence-draft](research/ai-structured-analytic-techniques-counterintelligence-draft.md) — AI-Augmented Structured Analytic Techniques for Counterintelligence (2026) | **STABLE**
+- [counterintelligence-analysis-ai-convergence-draft](research/counterintelligence-analysis-ai-convergence-draft.md) — Counterintelligence Analysis & AI Convergence | **STABLE**
+- [critical-minerals-supply-chain-security-draft](research/critical-minerals-supply-chain-security-draft.md) — Critical Minerals Supply Chain Security | **STABLE**
+- [cross-jurisdictional-entity-resolution](research/cross-jurisdictional-entity-resolution.md) — Cross-Jurisdictional Entity Resolution for Multi-Source Investigations |
+- [custom-pcb-design-sensor-networks](research/custom-pcb-design-sensor-networks.md) — Custom PCB Design for Sensor Networks | 
+- [[custom-pcb-sensor-networks-iot-draft](research/custom-pcb-sensor-networks-iot-draft.md) — Custom PCB Design for Sensor Networks (IoT Edge) | **STABLE**
+- [cyber-physical-infrastructure-security](research/cyber-physical-infrastructure-security.md) — Cyber-Physical Infrastructure Security | 
+- [decentralized-ai-compute-markets](research/decentralized-ai-compute-markets.md) — Decentralized AI Compute Markets & Infrastructure |
+- [decentralized-identity-eudi-wallets](research/decentralized-identity-eudi-wallets.md) — Decentralized Identity & EUDI Wallets | **STABLE**
+- [defense-sector-consolidation-2026](research/defense-sector-consolidation-2026.md) — **STABLE** — Defense Sector Industrial Base 2026 |
+- [der-integration-ieee1547](research/der-integration-ieee1547.md) — DER Integration & IEEE 1547 Standard Evolution | **STABLE**
+DER Integration & IEEE 1547 Standard Evolution |
+- [distributed-training-infrastructure](research/distributed-training-infrastructure.md) — Distributed Training Infrastructure & Systems |
+- [drone-autonomous-weapons-proliferation](research/drone-autonomous-weapons-proliferation.md) — Autonomous Weapons Systems Proliferation (2025-2026) | 
+- [dynamic-tool-discovery-agents](research/dynamic-tool-discovery-agents.md) — Dynamic Tool Discovery & Schema Optimization for Agentic Systems | 
+- [economic-statecraft-sanctions-evolution](research/economic-statecraft-sanctions-evolution.md) — Economic Statecraft & Sanctions Evolution | **STABLE**
+- [edge-ai-hardware-software-co-design](research/edge-ai-hardware-software-co-design.md) — Edge AI Hardware-Software Co-Design | 
+- [edge-ai-industrial-iiot-deployment](research/edge-ai-industrial-iiot-deployment.md) — Edge AI for Industrial IoT (IIoT) Deployment | **STABLE**
+- [edge-ai-security-hardware-software-co-design](research/edge-ai-security-hardware-software-co-design.md) — Edge AI Security: Hardware-Software Co-Design for Trustworthy ML Deployment | **STABLE**
+- [edge-ai-substation-deployment](research/edge-ai-substation-deployment.md) — Edge AI Substation Deployment — Research Page | 
+- [energy-commodity-dynamics-lng](research/energy-commodity-dynamics-lng.md) — Energy Commodity Dynamics & LNG Infrastructure | **STABLE**
+- [energy-commodity-dynamics](research/energy-commodity-dynamics.md) — Energy Commodity Dynamics | 
+- [energy-commodity-markets-2026](research/energy-commodity-markets-2026.md) — Energy Commodity Markets in 2026 | 
+- [energy-market-ai-forecasting](research/energy-market-ai-forecasting.md) — Energy Market AI Forecasting | **STABLE**
+- [entity-resolution-2026-state-of-the-art](research/entity-resolution-2026-state-of-the-art.md) — Entity Resolution: 2026 State of the Art | **STABLE**
+- [entity-resolution-investigative-analytics-draft](research/entity-resolution-investigative-analytics-draft.md) — Entity Resolution in Investigative Analytics | **STABLE**
+- [entity-resolution-at-scale](research/entity-resolution-at-scale.md) — --- |
+- [multi-modal-entity-resolution](research/multi-modal-entity-resolution.md) — Multi-Modal Entity Resolution for Investigative Workflows | **STABLE**
+- [entity-resolution](research/entity-resolution.md) — Entity Resolution & Open-Source Intelligence Infrastructure | 
+- [entity-resolution-clustering-bottleneck-draft](research/entity-resolution-clustering-bottleneck-draft.md) — Entity Resolution Clustering Bottleneck in the LLM Era | **STABLE**
+- [eu-digital-identity-wallets-eudi-2026-draft](research/eu-digital-identity-wallets-eudi-2026-draft.md) — EU Digital Identity Wallets (EUDI) 2026: Implementation Privacy Geopolitical Impact | **STABLE**
+- [federal-reserve-repo-market-mechanics](research/federal-reserve-repo-market-mechanics.md) — Federal Reserve Operations & Repo Market Mechanics |
+- [federated-learning-production](research/federated-learning-production.md) — Federated Learning in Production | 
+ [financial-crime-entity-resolution](research/financial-crime-entity-resolution.md) — Financial Crime Entity Resolution (AML, Sanctions Evasion, Network Analysis) | **STABLE**
+- [formal-verification-ai-systems](research/formal-verification-ai-systems.md) — Formal Verification of AI Systems |
+- [fp8-ampere-rtx-3090-optimization](research/fp8-ampere-rtx-3090-optimization.md) — FP8 Optimization on RTX 3090 (Ampere Architecture) | **STABLE**
+- [fp8-autokernel-ampere-optimization-draft](research/fp8-autokernel-ampere-optimization-draft.md) — FP8 Autokernel Optimization on RTX 3090 (Ampere) | 
+- [fpga-edge-ai-inference-2026-draft](research/fpga-edge-ai-inference-2026-draft.md) — FPGA-Based Inference Acceleration for Edge AI (2026) | **STABLE**|
+- [fpga-inference-acceleration](research/fpga-inference-acceleration.md) — FPGA Inference Acceleration | 
+- [geopolitical-commodity-supply-chain-risk](research/geopolitical-commodity-supply-chain-risk.md) — Geopolitical Commodity Supply Chain Risk Analysis | 
+- [geopolitical-risk-analytics-modeling](research/geopolitical-risk-analytics-modeling.md) — Geopolitical Risk Analytics & Modeling | 
+- [geopolitical-risk-modeling-ai-agents](research/geopolitical-risk-modeling-ai-agents.md) — Geopolitical Risk Modeling for AI Agents | 
+ - [geospatial-ai-foundation-models](research/geospatial-ai-foundation-models.md) — **STABLE**
+- [geospatial-intelligence-modern-evolution](research/geospatial-intelligence-modern-evolution.md) — Geospatial Intelligence (GEOINT) Modern Evolution | 
+- [graph-native-entity-resolution](research/graph-native-entity-resolution.md) — Graph-Native Entity Resolution with LLMs | 
+- [grid-edge-ai-digital-twin-critical-infra-draft](research/grid-edge-ai-digital-twin-critical-infra-draft.md) — STABLE
+- [grid-edge-ai](research/grid-edge-ai.md) — Grid Edge AI | 
+- [grid-edge-distributed-energy-resources](research/grid-edge-distributed-energy-resources.md) — Grid-Edge Distributed Energy Resources & AI | 
+- [grid-edge-software-defined-networking](research/grid-edge-software-defined-networking.md) — Grid-Edge Software-Defined Networking (SDN) for AI Workloads | 
+- [grid-edge-vpp-orchestration](research/grid-edge-vpp-orchestration-draft.md) — Grid-Edge Virtual Power Plant Orchestration with AI | **STABLE**
+- [ai-nuclear-power-operations-safety-draft](research/ai-nuclear-power-operations-safety-draft.md) — AI in Nuclear Power Plant Operations & Safety | **STABLE**
+- [grid-modernization-investment-regulatory-frameworks](research/grid-modernization-investment-regulatory-frameworks.md) — Grid Modernization Investment & Regulatory Frameworks |
+- [hardware-and-physical-computing](research/hardware-and-physical-computing.md) — Hardware & Physical Computing |
+- [custom-pcb-sensor-networks-2026-draft](research/custom-pcb-sensor-networks-2026-draft.md) — Custom PCB Design for Sensor Networks (2026) | **STABLE**
+- [hardware-aware-model-training-draft](research/hardware-aware-model-training-draft.md) — Hardware-Aware Model Training: GPU Memory, Interconnect, Power Constraints | **STABLE**
+- [homomorphic-encryption-practical-2026](research/homomorphic-encryption-practical-2026.md) 2014 Homomorphic Encryption Practical State 2026 | **STABLE****
+- [homomorphic-encryption-practical-deployment](research/homomorphic-encryption-practical-deployment.md) — Homomorphic Encryption: Practical Deployment State |
+- [homomorphic-encryption-state-of-the-art](research/homomorphic-encryption-state-of-the-art.md) — Homomorphic Encryption: Practical State of the Art (2026) |
+- [humint-tradecraft-ai-evolution-draft](research/humint-tradecraft-ai-evolution-draft.md) — HUMINT Tradecraft & AI Evolution (2026) | **STABLE**
+- [humint-tradecraft-ai-intelligence-age-draft](research/humint-tradecraft-ai-intelligence-age-draft.md) — HUMINT Tradecraft in the AI Intelligence Age (2026) | **STABLE**
+- [humint-tradecraft-osint-methodology](research/humint-tradecraft-osint-methodology.md) — HUMINT Tradecraft Principles Applied to OSINT Methodology |
+- [iec-61850-protection-relay-cybersecurity](research/iec-61850-protection-relay-cybersecurity.md) — --- |
+- [in-sensor-computing-edge-inference-draft](research/in-sensor-computing-edge-inference-draft.md) — In-Sensor Computing for Edge AI Inference | **STABLE**
+- [in-sensor-computing-edge-inference](research/in-sensor-computing-edge-inference.md) — In-Sensor Computing for Edge AI Inference | 
+- [in-sensor-near-sensor-ai-computing](research/in-sensor-near-sensor-ai-computing.md) — In-Sensor & Near-Sensor AI Computing |
+- [intelligence-analysis-cognitive-biases](research/intelligence-analysis-cognitive-biases.md) — Intelligence Analysis: Cognitive Biases & Mitigation Frameworks |
+- [intelligence-operations-history](research/intelligence-operations-history.md) — Intelligence Operations History | 
+- [knowledge-graph-construction-patterns](research/knowledge-graph-construction-patterns.md) — Knowledge Graph Construction Patterns | 
+- [kv-cache-compression-inference-optimization](research/kv-cache-compression-inference-optimization.md) — KV Cache Compression & Inference Memory Optimization | **STABLE**
+- [llm-alpha-mining-quant-finance](research/llm-alpha-mining-quant-finance.md) — LLM-Driven Alpha Mining & Evolutionary Quantitative Finance | 
+- [llm-native-entity-resolution](research/llm-native-entity-resolution.md) — LLM-Native Entity Resolution | **STABLE**|
+- [llm-native-entity-resolution-scale-draft](research/llm-native-entity-resolution-scale-draft.md) — LLM-Native Entity Resolution at Scale | 
+- [lng-export-terminal-geopolitics-2026-draft](research/lng-export-terminal-geopolitics-2026-draft.md) — LNG Export Terminal Geopolitics & Global Supply Restructuring (2026) | **STABLE**
+- [local-inference-optimization-2026](research/local-inference-optimization-2026.md) — Local Inference Optimization 2026 | 
+- [local-llm-frontier-parity](research/local-llm-frontier-parity.md) — Local LLM Frontier Parity: Open-Weight Models vs Proprietary Frontier | **STABLE**
+- [lora-wan-critical-infrastructure](research/lora-wan-critical-infrastructure.md) — --- |
+- [maritime-domain-awareness-ai](research/maritime-domain-awareness-ai.md) — Maritime Domain Awareness & AI-Powered Vessel Tracking | 
+- [markets-financial-analysis](research/markets-financial-analysis.md) — Markets & Financial Analysis | 
+- [ai-market-regime-detection-adaptive-portfolios-draft](research/ai-market-regime-detection-adaptive-portfolios-draft.md) — AI-Driven Market Regime Detection & Adaptive Portfolio Construction | **STABLE**
+- [mcp-protocol-agentic-tool-use](research/mcp-protocol-agentic-tool-use.md) — MCP Protocol & Agentic Tool Use | **STABLE**
+- [mechanistic-interpretability-grokking-draft](research/mechanistic-interpretability-grokking-draft.md) — Mechanistic Interpretability & Grokking (2026) | **STABLE**
+- [mechanistic-interpretability-2026-draft.md) — Mechanistic Interpretability: 2026 Breakthroughs | **STABLE****
+- [mechanistic-interpretability-grokking](research/mechanistic-interpretability-grokking.md) — Mechanistic Interpretability & Grokking in LLMs | **DEEPENED**
+- [memory-architecture-autonomous-agents](research/memory-architecture-autonomous-agents.md) — Memory Architecture for Autonomous Agents | 
+- [memory-architecture-cognitive-systems-draft](research/memory-architecture-cognitive-systems-draft.md) — Memory Architecture in Cognitive & AI Systems | **STABLE**
+- [memory-architecture-cognitive-systems](research/memory-architecture-cognitive-systems.md) — Memory Architecture in Cognitive & AI Systems | 
+- [metadata-resistant-communication-protocols-2026-draft](research/metadata-resistant-communication-protocols-2026-draft.md) — Metadata-Resistant Communication Protocols (2026) | **STABLE**
+- [metadata-resistant-communication-protocols-2026](research/metadata-resistant-communication-protocols-2026.md) — Metadata-Resistant Communication Protocols (2026) | **STABLE**
+- [ml-driven-osint-automation-pipeline](research/ml-driven-osint-automation-pipeline.md) — ML-Driven OSINT Automation Pipeline | | **STABLE**
+- [ml-driven-regime-detection-adaptive-portfolio-draft](research/ml-driven-regime-detection-adaptive-portfolio-draft.md) — ML-Driven Market Regime Detection & Adaptive Portfolio Management (2026) | **STABLE**
+- [ml-financial-regime-detection-adaptive-portfolios](research/ml-financial-regime-detection-adaptive-portfolios.md) — ML Financial Regime Detection & Adaptive Portfolio Construction |
+- [ml-volatility-surface-modeling](research/ml-volatility-surface-modeling.md) — ML-Driven Volatility Surface Modeling & Derivatives Pricing |
+- [multi-agent-coordination-economies](research/multi-agent-coordination-economies.md) — Multi-Agent Coordination & Agent Economies | **STABLE**
+- [multi-agent-emergent-coordination](research/multi-agent-emergent-coordination.md) — Multi-Agent Emergent Coordination |
+- [network-analysis-investigative-graphs](research/network-analysis-investigative-graphs.md) — Network Analysis Techniques for Investigative Graphs | 
+- [neural-architecture-search-automl](research/neural-architecture-search-automl.md) — Neural Architecture Search & AutoML | 
+- [neural-network-options-pricing-2026](research/neural-network-options-pricing-2026.md) — Neural Network Options Pricing & Volatility Surface Modeling (2026) | **STABLE**
+- [neural-network-options-pricing-draft](research/neural-network-options-pricing-draft.md) — Neural Network Options Pricing |
+- [neuromorphic-computing-draft](research/neuromorphic-computing-draft.md) — Neuromorphic Computing: Beyond von Neumann Architectures | 
+- [neuromorphic-computing](research/neuromorphic-computing.md) — Neuromorphic Computing | 
+ - [neuromorphic-edge-ai-computing](research/neuromorphic-edge-ai-computing.md) — **STABLE** — Edge AI Inference on Event-Driven Chips
+- [neuromorphic-edge-ai-deployment](research/neuromorphic-edge-ai-deployment.md) — Neuromorphic Edge AI Deployment | **STABLE**
+- [neuromorphic-computing-2026-advances-draft](research/neuromorphic-computing-2026-advances-draft.md) — Neuromorphic Computing: 2026 Advances & Edge Deployment | **STABLE**
+- [neuromorphic-edge-ai-hardware-2026-draft](research/neuromorphic-edge-ai-hardware-2026-draft.md) — Neuromorphic Edge AI Hardware: 2026 Production Readiness | **STABLE**
+- [neuromorphic-edge-ai-inference](research/neuromorphic-edge-ai-inference.md) — Edge AI Inference on Event-Driven Chips |
+- [neuro-symbolic-ai-hybrid-architectures](research/neuro-symbolic-ai-hybrid-architectures.md) — Neuro-Symbolic AI Hybrid Architectures | 
+- [options-market-structure](research/options-market-structure.md) — Options Market Structure & GEX Mechanics | **STABLE**
+- [osint-geolocation-social-media-forensics](research/osint-geolocation-social-media-forensics.md) — --- |
+- [osint-network-visualization-graph-analysis-draft](research/osint-network-visualization-graph-analysis-draft.md) — OSINT Network Visualization & Graph Analysis Workflows | **STABLE**| **STABLE**
+- [osint-methodology-anti-bot-evasion](research/osint-methodology-anti-bot-evasion.md) — OSINT Methodology & Anti-Bot Evasion |
+- [osint-pipeline-architecture](research/osint-pipeline-architecture.md) — OSINT Pipeline Architecture | 
+- [photonic-ai-inference-computing](research/photonic-ai-inference-computing.md) — Photonic Computing for AI Inference | **STABLE**
+- [photonic-ai-inference](research/photonic-ai-inference.md) — Photonic Computing for AI Inference | 
+- [post-quantum-agent-delegation](research/post-quantum-agent-delegation.md) — Post-Quantum Secure Agent Delegation |
+- [post-quantum-critical-infrastructure](research/post-quantum-critical-infrastructure.md) — Post-Quantum Readiness for Critical Infrastructure | **STABLE** 
+- [post-quantum-cryptography-readiness](research/post-quantum-cryptography-readiness.md) — Post-Quantum Cryptography (PQC) Readiness |
+- [post-quantum-ml](research/post-quantum-ml.md) — Post-Quantum Machine Learning (PQML) | **STABLE**
+- [pqc-ai-convergence-draft](research/pqc-ai-convergence-draft.md) — Post-Quantum Cryptography × AI Infrastructure Convergence | **STABLE**
+- [pqc-constrained-iot-devices-draft](research/pqc-constrained-iot-devices-draft.md) — Post-Quantum Cryptography for Constrained IoT Devices (Cortex-M Benchmarks) | **STABLE**
+- [pqc-constrained-iot-devices](research/pqc-constrained-iot-devices.md) — Post-Quantum Cryptography for Constrained IoT Devices |
+ [pqc-constrained-iot-devices](research/pqc-constrained-iot-devices.md) — Post-Quantum Cryptography for Constrained IoT Devices | **STABLE** **STABLE**
+ - [pqc-deployment-readiness-hndl-threat](research/pqc-deployment-readiness-hndl-threat.md) — PQC Deployment Readiness & HNDL Threat | **STABLE**
+- [pqc-signature-diversification-nist-round3-draft](research/pqc-signature-diversification-nist-round3-draft.md) — PQC Signature Diversification: NIST Round 3 (2026) | **STABLE**
+- [pqc-hardware-acceleration](research/pqc-hardware-acceleration.md) — Post-Quantum Cryptography Hardware Acceleration | 
+- [privacy-and-cryptography](research/privacy-and-cryptography.md) — **STABLE**
+- [decentralized-anonymous-communication-networks-draft](research/decentralized-anonymous-communication-networks-draft.md) — Decentralized Anonymous Communication Networks: Tor, I2P, Mixnets & AI-Enhanced Anonymity | **STABLE**
+- [privacy-preserving-computation-production-2026-draft](research/privacy-preserving-computation-production-2026-draft.md) — Privacy-Preserving Computation: Production Readiness 2026 | **STABLE**
+- [protection-relay-firmware-analysis](research/protection-relay-firmware-analysis.md) — Protection Relay Firmware Analysis |
+- [quantitative-analysis-techniques](research/quantitative-analysis-techniques.md) — Quantitative Analysis Techniques | 
+- [quantum-classical-hybrid-optimization](research/quantum-classical-hybrid-optimization.md) — Quantum-Classical Hybrid Optimization | **STABLE**
+- [quantum-error-correction-advances-2026](research/quantum-error-correction-advances-2026.md) — Quantum Error Correction Advances 2026 |
+- [quantum-hardware-advances-2026](research/quantum-hardware-advances-2026.md) — Quantum Hardware Advances 2026 | 
+- [quantum-ml-applications-2026](research/quantum-ml-applications-2026.md) — Quantum Machine Learning Applications (2026) | 
+- [quantum-ml-applications](research/quantum-ml-applications.md) — Quantum Machine Learning Applications | 
+- [quantum-optimization-computing](research/quantum-optimization-computing.md) — Quantum Computing for Optimization Problems | 
+- [quantum-key-distribution-critical-infrastructure-draft](research/quantum-key-distribution-critical-infrastructure-draft.md) — Quantum Key Distribution for Critical Infrastructure | **
+- [quantum-safe-edge-computing-critical-infrastructure](research/quantum-safe-edge-computing-critical-infrastructure.md) — Quantum-Safe Edge Computing for Critical Infrastructure |
+- [quantum-safe-messaging-protocols](research/quantum-safe-messaging-protocols.md) — Quantum-Safe Messaging Protocols | **STABLE**
+- [quantum-sensing-metrology-draft](research/quantum-sensing-metrology-draft.md) — Quantum Sensing & Metrology: Beyond Computing Applications (2026) | **STABLE**
+- [quantum-sensing-metrology](research/quantum-sensing-metrology.md) — Quantum Sensing & Metrology | 
+- [rare-earth-supply-chains](research/rare-earth-supply-chains.md) — Rare Earth Supply Chains | 
+- [reasoning-models-chain-of-thought](research/reasoning-models-chain-of-thought.md) — Reasoning Models & Chain-of-Thought Scaling | **STABLE**
+- [reasoning-models-financial-alpha-draft](research/reasoning-models-financial-alpha-draft.md) — Reasoning Models for Financial Alpha Generation | **STABLE**
+- [reasoning-models-financial-alpha-draft](research/reasoning-models-financial-alpha-draft.md) — Reasoning Models for Financial Alpha Generation | **STABLE**
+- [ai-driven-der-orchestration-v2g-draft](research/ai-driven-der-orchestration-v2g-draft.md) — AI-Driven DER Orchestration & V2G Integration | **STABLE**
+## Research Pages
+- [ai-agent-architecture-local-inference-draft](research/ai-agent-architecture-local-inference-draft.md) — AI Agent Architecture & Local Inference (2026) | **STABLE**
+- [ai-grid-cyber-physical-security-iec62351-draft](research/ai-grid-cyber-physical-security-iec62351-draft.md) — AI-Driven Grid Cyber-Physical Security — IEC 62351 & 2026 Threat Landscape | **STABLE**
+
+- [streaming-entity-resolution-investigative-workflows-draft](research/streaming-entity-resolution-investigative-workflows-draft.md) — Streaming Entity Resolution for Investigative Workflows | **STABLE**
+- [differential-privacy-federated-learning-edge-draft](research/differential-privacy-federated-learning-edge-draft.md) — Differential Privacy in Federated Learning for Edge AI Systems (2026) | **STABLE**
+- [he-practical-deployment-2026-draft](research/he-practical-deployment-2026-draft.md) — Homomorphic Encryption: Practical Deployment 2026 | **STABLE**
+- [risc-v-ai-acceleration](research/risc-v-ai-acceleration.md) — RISC-V AI Acceleration | 
+ - [risc-v-heterogeneous-ai-computing-2026](research/risc-v-heterogeneous-ai-computing-2026.md) — RISC-V Heterogeneous AI Computing 2026 | **STABLE**
+- [risc-v-ai-acceleration-2026-draft](research/risc-v-ai-acceleration-2026-draft.md) — RISC-V AI Acceleration Architecture 2026 | **STABLE**
+- [rl-driven-market-microstructure-draft](research/rl-driven-market-microstructure-draft.md) — RL-Driven Market Microstructure | **STABLE**
+- [alternative-data-alpha-sources-2026-draft](research/alternative-data-alpha-sources-2026-draft.md) — Alternative Data Sources for Alpha Generation: 2026 State | **STABLE**
+- [rlhf-rlaif-alignment-methods](research/rlhf-rlaif-alignment-methods.md) — RLHF and RL AIF Alignment Methods | 
+- [rlvr-reinforcement-learning-verifiable-rewards-draft](research/rlvr-reinforcement-learning-verifiable-rewards-draft.md) — Reinforcement Learning with Verifiable Rewards (RLVR) | **STABLE**
+- [rlvr-reinforcement-learning-verifiable-rewards](research/rlvr-reinforcement-learning-verifiable-rewards-draft.md) — RLVR: Reinforcement Learning with Verifiable Rewards | **STABLE**
+- [rtx-3090-advanced-optimization-draft](research/rtx-3090-advanced-optimization-draft.md) — RTX 3090 Advanced Optimization: Autokernels, FP8, and Custom Operators | **STABLE**
+- [rtx-3090-custom-cuda-kernel-optimization](research/rtx-3090-custom-cuda-kernel-optimization.md) — RTX 3090 Custom CUDA Kernel Optimization | 
+- [satellite-imagery-alternative-data-quant-finance](research/satellite-imagery-alternative-data-quant-finance.md) — Satellite Imagery as Alternative Data in Quantitative Finance | **STABLE****
+- [scada-ics-cybersecurity](research/scada-ics-cybersecurity.md) — SCADA/ICS Cybersecurity in Electric Utilities | 
+- [self-improving-agent-patterns](research/self-improving-agent-patterns.md) — Self-Improving Agent Patterns |
+- [self-improving-agent-patterns-2026-draft](research/self-improving-agent-patterns-2026-draft.md) — Self-Improving Agent Patterns & Autonomous Skill Curation (2026) | **STABLE**
+- [semantic-entity-resolution-hybrid-era-draft](research/semantic-entity-resolution-hybrid-era-draft.md) — Semantic Entity Resolution: The Hybrid Era (Graph + LLM + Probabilistic Convergence) | **STABLE**
+- [semiconductor-supply-chain-geopolitics](research/semiconductor-supply-chain-geopolitics.md) — Semiconductor Supply Chain Geopolitics | 
+- [semiconductor-supply-chain](research/semiconductor-supply-chain.md) — Semiconductor Supply Chain Geopolitics |
+- [sensor-fusion-ai-iot-edge-draft](research/sensor-fusion-ai-iot-edge-draft.md) — Sensor Fusion & AI for Distributed IoT Networks | 
+- [sigint-ai-integration-2026-draft](research/sigint-ai-integration-2026-draft.md) — SIGINT & AI Integration 2026 | **STABLE**
+- [sigint-ai-integration-2026](research/sigint-ai-integration-2026.md — SIGINT & AI Integration 2026 | **STABLE****
+- [signal-intelligence-modern-evolution](research/signal-intelligence-modern-evolution.md) — Signal Intelligence: Modern Evolution | 
+- [speculative-decoding-early-exit-networks-draft](research/speculative-decoding-early-exit-networks-draft.md) — Speculative Decoding & Early-Exit Networks for Local LLMs | **STABLE**
+- [speculative-decoding](research/speculative-decoding.md) — Speculative Decoding & Inference Acceleration | 
+- [spiking-neural-networks-training-methods](research/spiking-neural-networks-training-methods.md) — Spiking Neural Networks: Training Methods & Edge Deployment | **STABLE**
+- [synthetic-data-generation-ml](research/synthetic-data-generation-ml.md) — Synthetic Data Generation for ML Training & Testing |
+- [synthetic-data-generation-ml-training](research/synthetic-data-generation-ml-training.md) — Synthetic Data Generation for ML Training | 
+- [synthetic-data-entity-resolution-training-draft](research/synthetic-data-entity-resolution-training-draft.md) — Synthetic Data for Entity Resolution Model Training | **STABLE**
+- [temporal-network-analysis-graph-evolution](research/temporal-network-analysis-graph-evolution.md) — Temporal Network Analysis & Graph Evolution |
+- [threshold-cryptography-mpc](research/threshold-cryptography-mpc.md) — Threshold Cryptography & Multi-Party Computation | **STABLE**
+- [tinyml-edge-inference-constrained-hardware](research/tinyml-edge-inference-constrained-hardware.md) — TinyML & Edge Inference on Constrained Hardware |
+- [triton-kernels-rtx-optimization](research/triton-kernels-rtx-optimization.md) — Triton Kernels for RTX 3090 Optimization | 
+- [trusted-execution-environments-privacy-preserving-ml](research/trusted-execution-environments-privacy-preserving-ml.md) — Trusted Execution Environments for Privacy-Preserving ML | 
+- [zkml-verification](research/zkml-verification.md) — zkML: Zero-Knowledge Machine Learning Verification | 
+- [zk-proofs-beyond-crypto](research/zk-proofs-beyond-crypto.md) — Zero-Knowledge Proofs Beyond Cryptocurrency | 
+
+- [grid-resilience-innovation-partnerships-grip-2026](research/grid-resilience-innovation-partnerships-grip-2026-draft.md) — DOE Grid Resilience and Innovation Partnerships (GRIP) 2026 | **STABLE**
+- [ai-market-microstructure-hft-evolution-draft](research/ai-market-microstructure-hft-evolution-draft.md) — AI-Driven Market Microstructure & HFT Evolution | **STABLE**
+- [agentic-market-making-liquidity-provision-draft](research/agentic-market-making-liquidity-provision-draft.md) — Agentic Market Making & Liquidity Provision | **STABLE**
+
+- [ai-battery-materials-discovery-draft](research/ai-battery-materials-discovery-draft.md) — AI-Driven Battery Materials Discovery | **STABLE**
+
+- [drone-infrastructure-inspection-edge-ai-draft](research/drone-infrastructure-inspection-edge-ai-draft.md) — Drone-Based Critical Infrastructure Inspection with Edge AI | **STABLE**
+
+- [ai-agent-memory-architectures-continuous-learning-draft](research/ai-agent-memory-architectures-continuous-learning-draft.md) — AI Agent Memory Architectures & Continuous Learning | **STABLE**
+- [llm-failure-modes-self-correction-2026](research/llm-failure-modes-self-correction-2026.md) — LLM Failure Modes & Self-Correction Mechanisms (2026) | **STABLE**
+
+- [ai-intelligence-analysis-decision-support-2026-draft](research/ai-intelligence-analysis-decision-support-2026-draft.md) — AI-Augmented Intelligence Analysis & Decision Support (2026) | **STABLE**
+- [homomorphic-encryption-production-deployment-2026-draft](research/homomorphic-encryption-production-deployment-2026-draft.md) — Homomorphic Encryption Production Deployment: 2026 State | **STABLE**
+---
+- [ai-chiplet-advanced-packaging-2026-draft](research/ai-chiplet-advanced-packaging-2026-draft.md) — AI Chiplet & Advanced Packaging Architecture (2026) | **STABLE**

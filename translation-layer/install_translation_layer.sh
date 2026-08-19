@@ -3,7 +3,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYER_DIR="$SCRIPT_DIR"
-TARGET_DIR="/a0/python/extensions/before_main_llm_call"
+# ── STRIPPED 2026-08-19 (Tier 1.1): wrote to a dead root; the plugin walk deploys this ──
+# The BST and its taxonomy ship in the plugin tree. This variable is retained
+# only because later lines reference it inside disabled blocks.
+TARGET_DIR="/a0/python/extensions/before_main_llm_call"   # DEAD ROOT — do not write
 
 echo "================================================================"
 echo "Installing Translation Layer (Belief State Tracker)"
@@ -20,44 +23,29 @@ if [[ ! -f "$LAYER_DIR/slot_taxonomy.json" ]]; then
     exit 1
 fi
 
-# Ensure target directory exists
-mkdir -p "$TARGET_DIR"
-
-# Backup existing files if present
-timestamp=$(date +%Y%m%d_%H%M%S)
-if [[ -f "$TARGET_DIR/_11_belief_state_tracker.py" ]]; then
-    backup="$TARGET_DIR/_11_belief_state_tracker.py.backup_$timestamp"
-    echo "→ Backing up existing BST to: $backup"
-    cp "$TARGET_DIR/_11_belief_state_tracker.py" "$backup"
-fi
-
-if [[ -f "$TARGET_DIR/slot_taxonomy.json" ]]; then
-    backup="$TARGET_DIR/slot_taxonomy.json.backup_$timestamp"
-    echo "→ Backing up existing taxonomy to: $backup"
-    cp "$TARGET_DIR/slot_taxonomy.json" "$backup"
-fi
-
-# Install files
-echo "→ Installing _11_belief_state_tracker.py"
-cp "$LAYER_DIR/_11_belief_state_tracker.py" "$TARGET_DIR/"
-
-echo "→ Installing slot_taxonomy.json"
-cp "$LAYER_DIR/slot_taxonomy.json" "$TARGET_DIR/"
-
-# Clear Python cache to force reload
-if [[ -d "$TARGET_DIR/__pycache__" ]]; then
-    echo "→ Clearing Python cache"
+# ── STRIPPED 2026-08-19 (Tier 1.1) ──────────────────────────────────────────
+# This deployed _11_belief_state_tracker.py and slot_taxonomy.json to
+# /a0/python/extensions/before_main_llm_call — a root that does not exist in stock
+# A0 v2.9 (the old pipeline created it) and that nothing loads. Both files ship in
+# plugins/_exocortex/extensions/python/before_main_llm_call/ and are deployed by
+# scripts/install_exocortex_plugin.sh.
+#
+# The prompt content this script also installs is OUTSIDE the plugin and is kept
+# above, untouched.
+if false; then
+    mkdir -p "$TARGET_DIR"
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    for f in _11_belief_state_tracker.py slot_taxonomy.json; do
+        [ -f "$TARGET_DIR/$f" ] && cp "$TARGET_DIR/$f" "$TARGET_DIR/$f.backup_$timestamp"
+        cp "$LAYER_DIR/$f" "$TARGET_DIR/"
+        chmod 644 "$TARGET_DIR/$f"
+    done
     rm -rf "$TARGET_DIR/__pycache__"
 fi
 
-# Set permissions
-chmod 644 "$TARGET_DIR/_11_belief_state_tracker.py"
-chmod 644 "$TARGET_DIR/slot_taxonomy.json"
-
 echo ""
-echo "✓ Translation layer installed successfully"
+echo "✓ Translation layer: BST + taxonomy deployed by the plugin walk"
 echo ""
-echo "Files installed to: $TARGET_DIR"
 echo "  - _11_belief_state_tracker.py"
 echo "  - slot_taxonomy.json"
 echo ""

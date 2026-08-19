@@ -1,4 +1,42 @@
 #!/bin/bash
+# ==============================================================================
+# RETIRED 2026-08-19 — DO NOT ADD BACK TO install_all.sh
+# ==============================================================================
+# Every path this script wrote is one A0 v2.9 does not load from, and its content
+# now lives in plugins/_exocortex/ and is deployed by the directory walk in
+# scripts/install_exocortex_plugin.sh.
+#
+# It used to write: profile-ext (12 dirs, incl. the .hardening_originals backups)
+#
+# SPECIFIC NOTE: this also wrote the .hardening_originals backups of stock A0
+# files before overwriting them. That capability is retired DELIBERATELY, not by
+# accident: the backups existed to protect against this installer clobbering A0
+# files, and the walk-based installer never writes into A0 core at all. The
+# threat is gone, so the mitigation goes with it. A0 core patches are handled
+# separately by the reversible patch scripts in plugins/_exocortex/patches/.
+#
+# It also carried a CURATED INSTALL_LIST of ~16 files against 69 live extensions.
+# That list is the mechanism that let the pipeline drift: a list is a claim about
+# what the plugin contains; the walk is a measurement of it.
+#
+# Why the legacy paths are dead:
+#   /a0/python/**                        does not exist in stock v2.9 — the old
+#                                        pipeline CREATED it, then wrote into it
+#   /a0/usr/agents/agent0/extensions/**  the DEC-030 profile path. Worse than
+#                                        dead: it still LOADS, so it resurrected
+#                                        extensions that had been retired
+#                                        (_71_cache_warmer, _05_cache_warm_bypass,
+#                                        _02_cache_metrics_logger, and the three
+#                                        dropped by DEC-030 itself)
+#   /a0/usr/plugins/exocortex/**         no underscore — wrong plugin name; every
+#                                        registered route is /_exocortex
+#
+# Measured, not assumed: scripts/audit_install_writes.sh attributes every write to
+# the step that made it. Manifest: specs/INSTALL_PIPELINE_WRITE_MANIFEST.md
+#
+# The file is kept rather than deleted so nobody recreates it from scratch.
+# ==============================================================================
+
 # install_extensions.sh
 # Installs the v1.13 curated Exocortex extension stack to the agent0 profile path.
 # Profile path persists across A0 image updates (/a0/usr/agents/agent0/extensions/python/).
