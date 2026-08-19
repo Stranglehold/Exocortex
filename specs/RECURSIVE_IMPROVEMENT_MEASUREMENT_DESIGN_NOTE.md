@@ -224,14 +224,148 @@ Specific assertions, not vibes:
 
 ---
 
-## 12. Open questions
+## 12. Resolved — Opus's answers, 2026-08-19
 
-1. **What is our held-out set?** PACE needs paired evaluation on identical instances. Dogfood's battery can serve, but we need a disjoint split reserved for acceptance that is never used for tuning. Jake/Opus call on where that comes from.
-2. **What is a "candidate" for us?** PACE assumes discrete proposals. A skill is clearly one. Is a wiki page? Is a config change? The gate needs a defined unit.
-3. **Does the semantic critic need an LLM, and does that make skill admission too expensive per skill?** VaG uses three critics; ours must be cheap enough to run at capture rate.
-4. **Do we adopt the α/λ defaults or sweep them?** The paper's values are defensible starting points. Our own sweep is a Phase B task, not a blocker.
+All four open questions were answered the same night. Recording the answers and what
+verification added to them.
+
+### R1. Sequencing: gate before discovery. Decided.
+
+Jake: *"it'd probably be prudent to gate the skills before discovery if we're unsure if
+they actually work or improve performance."* Phase A unchanged. **Phase B becomes the
+acceptor gate + the two missing critics + the skill-pool audit + holdout design.** Phase C
+(SEL, discovery) only after. Widening an ungated intake makes an irreversible problem
+worse faster.
+
+### R2. The gated unit is a SKILL. Wiki pages are not candidates.
+
+The failure modes are categorically different and the gating investment should be
+proportional:
+
+| | Wrong wiki page | Wrong skill |
+|---|---|---|
+| Effect | wrong reference | wrong **behaviour** |
+| Class | noise | contamination |
+| Recoverable? | yes, via better retrieval | **no** — irreversible per VaG |
+
+Wiki pages get quality management (dedup, staleness, factual accuracy). Skills get the
+McNemar acceptor. This resolves Open Question 2 and it is the right cut: PACE's guarantee
+is about commits that change what the system *does*.
+
+### R3. Holdout design — two pools, structurally disjoint
+
+Adopted from StrongDM's scenario-holdout practice:
+
+- **Pool A (acceptance).** Visible during the improvement cycle. The PACE e-process runs
+  against these. This is where the commit/reject decision is made.
+- **Pool B (holdout).** Sealed. Tests the *same capability* with *different concrete
+  scenarios* — different wiki state, different tool targets. Run **only after** a change
+  is accepted, to check the improvement generalised.
+
+**The decision rule that makes it useful:** Pool A improves and Pool B does not ⇒ the
+skill overfit to the acceptance set. It learned to pass T03 specifically rather than
+learning to verify-before-assert generally. That is a reject, applied after the fact.
+
+**PACE and the holdout are complementary, not alternatives.** They sit at different points
+and neither substitutes for the other:
+
+- PACE controls the **false-commit rate** under repeated testing *on Pool A*.
+- Pool B catches **overfitting to Pool A**, which PACE cannot see because PACE's guarantee
+  is about the set it is measuring.
+
+Passing both is the bar. It would be easy to read the holdout as making the acceptor
+unnecessary; it does not.
 
 ---
+
+## 13. Verification of the StrongDM lead
+
+Jake supplied `github.com/strongdm/attractor` as the implementation pattern for the
+holdout. Verified 2026-08-19 rather than assumed, because my own prior note on this repo
+(Session 049, "no code — three NLSpec documents") is itself a stored snapshot of a moving
+repo, and so is any description of it.
+
+**What the repo actually contains:** three Markdown NLSpecs — `attractor-spec.md`,
+`coding-agent-loop-spec.md`, `unified-llm-spec.md` — Apache-2.0, 1.3k stars. Still
+spec-only; the Session 049 assessment holds.
+
+**What it does NOT contain — checked directly, not inferred:**
+
+- `attractor-spec.md` is a **workflow-engine spec**: a Graphviz-DOT graph DSL for
+  composing multi-stage pipelines, an execution engine, state/checkpoint/resume, and
+  human-gate "Interviewer" nodes. Its only validation concept is *lint* — structural
+  diagnostics that refuse to execute a malformed pipeline. No acceptance mechanism.
+- `coding-agent-loop-spec.md` is the **agent execution architecture** — LLM calls, tool
+  execution, context management, a typed event stream. It is *deliberately agnostic* about
+  quality assurance: the host application may implement validation by observing events,
+  but the spec prescribes none.
+- **Scenario holdouts, satisfaction testing, Digital Twin Universe and CXDB appear in
+  neither spec.** They are described in the Ry Walker writeup *about* the factory, not in
+  the published artifact.
+
+**So there is no implementation to copy. There is a validated practice to imitate.** That
+is still worth having — it is production evidence that the holdout pattern works at scale —
+but the mechanism is ours to design. Specifically unspecified in the source: *who writes
+the scenarios*, and *what structurally prevents the agent from reaching Pool B during
+development*. Those are the two hard parts and we do not get them for free.
+
+### Three caveats on transferability
+
+**1. Satisfaction testing is LLM-judged, which collides with DEC-001.** Correctness is
+inferred by an LLM judging whether observed trajectories satisfy expectations. That puts a
+probabilistic evaluator inside the loop we are trying to make trustworthy — and PACE's own
+related work notes that loop-based self-improvement is bounded by the reliability of
+self-evaluation, that intrinsic self-correction can degrade reasoning, and that unanchored
+loops get reward-hacked. **Rule adopted: Pool B checks are deterministic wherever a
+deterministic check exists. Where LLM judging is unavoidable, the judge is never the model
+under test.**
+
+**2. The domain match is weaker than it looks.** StrongDM's factory tests
+*integration-heavy software* against behavioural clones of cloneable APIs — Okta, Jira,
+Slack, Google Workspace. Their own stated limitation: *"works well for integration-heavy
+software… unclear for other domains."* Our agents write wiki pages, research, and maintain
+a corpus. The thing we want to measure is **judgment**, which does not have an API to
+clone. The DTU pattern maps to our test-container idea in spirit, but the hard part for us
+is scenario design, not service mocking — and that is precisely the part their writeup
+leaves unspecified.
+
+**3. The cost model is not ours.** Their reported operating point is **$1,000/day in
+tokens per engineer**, enabling "thousands of scenarios per hour." We should design for a
+small, cheap, frozen battery run at cycle cadence — not for volume. This matters because
+PACE's early stopping is a *cost* advantage (~18% fewer evaluations), which suits a
+budget-constrained battery far better than brute-force scenario volume does.
+
+### Verdict (own integration framework)
+
+**Extract patterns** — the same verdict as Session 049, now for a sharper reason. There is
+no code to integrate and the mechanism we need is not in the artifact. What we extract:
+
+1. **Scenario holdouts** — the Pool A / Pool B structure. The genuine extraction.
+2. **Behaviour-not-inspection judging** — we need not read a skill to judge it; run with it
+   active, run without, measure behaviour. This composes cleanly with PACE's paired design,
+   since "with skill" vs "without skill" on identical instances *is* the paired comparison.
+3. **`attractor-spec.md`'s workflow DSL** — filed separately. A graph DSL with checkpoint,
+   resume and human gates is interesting for cycle orchestration, unrelated to measurement.
+
+Not adopted: satisfaction testing as the primary judge (caveat 1), DTU at volume (caveat 3).
+
+---
+
+## 14. Open questions
+
+1. **Who writes Pool B, and what structurally seals it?** The source does not answer this
+   and it is the load-bearing part. A pool the agent can read during development is not a
+   holdout. Candidate: authored by Opus from the spec, stored outside the container's
+   reachable filesystem, injected only by the harness at verification time.
+2. **Does the semantic critic need an LLM, and is it cheap enough at capture rate?**
+3. **α and λ:** adopt PACE's 0.05 / 0.5 or sweep? A Phase B task, not a blocker.
+4. **Bayesian bandits as a cross-check.** Opus flagged the Improvement Loops chapter of
+   *Building Applications with AI Agents* (library, p.263–265) as a cross-reference against
+   the e-process. Worth reading before building the acceptor — adaptive experimentation is
+   the same problem from a different tradition.
+
+---
+
 
 *The proposer generates. The acceptor decides. We have built the first and specified nothing about the second — and the measured failure mode of that asymmetry is a system that modifies itself 13–21 times per run on pure noise while its dashboard shows a rising line.*
 
