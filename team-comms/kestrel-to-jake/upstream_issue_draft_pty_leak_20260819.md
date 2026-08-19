@@ -34,53 +34,7 @@ it, so both leak — exactly one per context, monotonically, for the life of the
 
 `TTYSession.close()` itself is correct. The bug is that it is never invoked.
 
-## Reproduction
-
-Three `POST /api/api_message` calls, each in a **new chat/context**, each running a
-trivial `code_execution` command (`echo hi`):
-
-```
-baseline        ptmx=0  pidfds=0  threads=64
-after msg #1    ptmx=1  pidfds=1  threads=84
-after msg #2    ptmx=2  pidfds=2  threads=100
-after msg #3    ptmx=3  pidfds=3  threads=101
-```
-
-Count handles with:
-
-```sh
-docker exec <container> sh -c 'P=$(pgrep -f run_ui.py | head -1);
-  for f in /proc/$P/fd/*; do readlink $f; done | grep -c ptmx'
-```
-
-It is 1:1 and it never comes back down. Reusing an *existing* context does not add a
-handle — the leak is per context, not per command.
-
-## Mechanism
-
-1. `code_execution_tool` creates a `TTYSession` and stores it on the agent
-   (`agent.set_data("_cet_state", ...)`).
-2. The agent is held by its `AgentContext`.
-3. `AgentContext` objects are not destroyed — they stay in the registry for the life of
-   the process. Deleting the chat does not release the session (see "Dead ends" below).
-4. So the session is strongly referenced forever, and `close()` is never reached.
-
-### Why the best-effort destructor does not save it
-
-`TTYSession.__del__` is the only fallback, and it cannot work here for two independent
-reasons:
-
-- **It never runs.** `__del__` fires on garbage collection, and the object is strongly
-  reachable from the context registry for the process lifetime. There is nothing to
-  collect.
-- **When it does run, it fails silently.** It calls `nest_asyncio.apply()` and then
-  `asyncio.run(self.close())`. `asyncio.run()` raises `RuntimeError` when a loop is
-  already running, and the surrounding `except Exception: pass` discards it. No log line,
-  no warning. Three days of logs never mentioned the leak once — the failure has no voice.
-
-That silent-except is worth fixing on its own merits regardless of the leak.
-
-## Impact
+## What operators experience
 
 Field-measured on a container running autonomous cycles (each cycle creates a fresh
 context):
@@ -105,6 +59,52 @@ open fds            223           56
 
 A single healthy user turn leaks **nothing** — measured, pidfds 0 afterwards. So this is
 not inherent to normal operation; it is specifically that sessions are never released.
+
+## Reproduction
+
+Three `POST /api/api_message` calls, each in a **new chat/context**, each running a
+trivial `code_execution` command (`echo hi`):
+
+```
+baseline        ptmx=0  pidfds=0  threads=64
+after msg #1    ptmx=1  pidfds=1  threads=84
+after msg #2    ptmx=2  pidfds=2  threads=100
+after msg #3    ptmx=3  pidfds=3  threads=101
+```
+
+Count handles with:
+
+```sh
+docker exec <container> sh -c 'P=$(pgrep -f run_ui.py | head -1);
+  for f in /proc/$P/fd/*; do readlink $f; done | grep -c ptmx'
+```
+
+It is 1:1 and it never comes back down. Reusing an *existing* context does not add a
+handle — the leak is per context, not per command.
+
+## Root cause, and why A0's built-in cleanup does not catch it
+
+1. `code_execution_tool` creates a `TTYSession` and stores it on the agent
+   (`agent.set_data("_cet_state", ...)`).
+2. The agent is held by its `AgentContext`.
+3. `AgentContext` objects are not destroyed — they stay in the registry for the life of
+   the process. Deleting the chat does not release the session (see "Dead ends" below).
+4. So the session is strongly referenced forever, and `close()` is never reached.
+
+### Why the best-effort destructor does not save it
+
+`TTYSession.__del__` is the only fallback, and it cannot work here for two independent
+reasons:
+
+- **It never runs.** `__del__` fires on garbage collection, and the object is strongly
+  reachable from the context registry for the process lifetime. There is nothing to
+  collect.
+- **When it does run, it fails silently.** It calls `nest_asyncio.apply()` and then
+  `asyncio.run(self.close())`. `asyncio.run()` raises `RuntimeError` when a loop is
+  already running, and the surrounding `except Exception: pass` discards it. No log line,
+  no warning. Three days of logs never mentioned the leak once — the failure has no voice.
+
+That silent-except is worth fixing on its own merits regardless of the leak.
 
 ## Why this is not #1575
 
@@ -136,7 +136,19 @@ would not have prevented either observed outage.
 ## What we run locally
 
 We mitigate with option 2: an idle reaper (600s idle, 120s sweep) applied by a small,
-reversible, anchor-gated patch script, re-applied after every A0 update. Verified over
-50 concurrent sessions: handles rise 1:1, are harvested back to zero, and
-`code_execution` continues to work in a context whose shell was reaped. We would much
-rather delete that patch and run stock — happy to test any upstream fix.
+reversible, anchor-gated patch script that re-applies after every A0 update.
+
+Measured over 50 concurrent sessions:
+
+```
+t+0       ptmx=50   50 sessions allocated, container still serving in 6ms
+t+600s    ptmx=47   3 reaped   — only those past the idle threshold
+t+723s    ptmx=0    50 reaped  — remainder on the next sweep
+```
+
+Log line: `closing idle shell (idle 600s >= 600s)`. The partial-then-complete shape is
+the point — it reaps per session at the threshold rather than sweeping indiscriminately,
+so an in-flight command is never interrupted. After a full reap, new sessions allocate
+normally and `code_execution` still works in a context whose shell was reaped.
+
+We would much rather delete that patch and run stock — happy to test any upstream fix.
