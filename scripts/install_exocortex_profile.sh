@@ -19,6 +19,23 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER="${CONTAINER:-exocortex_v17}"
+# !! KNOWN WRONG — 2026-08-19, proven by a fresh-container install test !!
+# Live containers (VekV2, agent-zero-v2) run the stack at /a0/usr/plugins/_exocortex
+# (WITH underscore): 184 files there, 0 here, and /api/plugins/_exocortex/* routes
+# return 200 while the no-underscore form 404s. This constant is a leftover from the
+# draft DEC-030 plan, which proposed /a0/usr/plugins/exocortex/ before the A0 v2.x
+# plugin system existed. Ten files across the pipeline still hardcode this spelling.
+#
+# NOT changed here because it is not a one-line fix: the same install run also puts
+# 82 extension files at /a0/usr/agents/agent0/extensions (the DEC-030 v1.x PROFILE
+# path) and 27 at /a0/python (which does not exist in v2.9 stock). Repointing the
+# plugin name without migrating those leaves the stack split across three dead paths.
+# That is a migration, and it needs a design pass — see the buildplan item.
+#
+# CONSEQUENCE TO KNOW: plugin.yaml (repointed to the real tree above) correctly
+# declares `name: _exocortex`, so a fresh install currently produces directory
+# `exocortex/` holding a manifest that names `_exocortex`. The manifest is right for
+# the target state and wrong for this constant. Fix them together, not separately.
 PLUGIN_BASE="/a0/usr/plugins/exocortex"
 PROFILE_EXT="/a0/usr/agents/agent0/extensions/python"
 
