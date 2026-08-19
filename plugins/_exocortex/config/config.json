@@ -27,5 +27,12 @@
     "keep_recent": 25,
     "max_age_days": 0,
     "throttle_seconds": 300
+  },
+  "cycle_to_skill": {
+    "enabled": true,
+    "failure_lesson_capture": true,
+    "max_failure_captures_per_cycle": 3,
+    "methodology_capture": true,
+    "methodology_capture_llm": true
   }
 }

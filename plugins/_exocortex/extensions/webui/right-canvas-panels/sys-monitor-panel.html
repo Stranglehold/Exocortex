@@ -1,0 +1,18 @@
+<!--
+  SYS·MONITOR right-canvas surface — THIN WRAPPER (v1.20 canvas contract).
+  The .right-canvas-surface-panel root must NOT carry x-data or inline content:
+  in A0 v1.20 that collapses the panel box to 0x0 and lets content escape. The
+  real UI lives in the nested <x-component>; x-data belongs inside that component.
+  Mirrors the EXO·OPS / Intelligence wrapper.
+-->
+<div
+  class="right-canvas-surface-panel"
+  data-surface-id="sys-monitor"
+  :class="{
+    'is-active': $store.rightCanvas?.isSurfaceVisible('sys-monitor'),
+    'is-mounted': $store.rightCanvas?.isSurfaceRendered('sys-monitor')
+  }"
+  :aria-hidden="(!$store.rightCanvas?.isSurfaceVisible('sys-monitor')).toString()"
+>
+  <x-component path="/plugins/_exocortex/webui/sys-monitor-content.html"></x-component>
+</div>

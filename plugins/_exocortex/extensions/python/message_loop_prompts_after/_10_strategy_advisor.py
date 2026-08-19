@@ -26,13 +26,22 @@ from agent import Agent, LoopData
 from helpers.extension import Extension
 
 TRACKER_FILE  = "/a0/usr/workdir/methodology_tracker.jsonl"
-CONFIG_PATH   = "/a0/usr/plugins/_exocortex/config/config.json"
+# Portable across container layouts: plugin (v2) and agent-path/Exocortex (v16/v17).
+CONFIG_PATH   = next(
+    (_p for _p in ("/a0/usr/plugins/_exocortex/config/config.json",
+                   "/a0/usr/Exocortex/config.json") if os.path.exists(_p)),
+    "/a0/usr/plugins/_exocortex/config/config.json",
+)
 ENGINE_STATE  = "/a0/usr/workdir/workspace/office/engine_state.json"
 AFFECT_DATA_KEY = "_affect_state"   # set via agent.set_data by reasoning_stream_end/_12
 MIN_RECORDS   = 5    # minimum history records before making recommendations
 MIN_RECOMMEND = 3    # minimum records for a specific strategy before recommending it
 
 _DEFAULTS = {"enabled": True}
+
+# Conversational / reflective / meta turns don't want strategy advice — stay quiet.
+# Uses the CURRENT-turn BST domain (loop_data.extras_persistent["_bst_domain"]).
+_SKIP_DOMAINS = {"conversation", "philosophical", "meta_cognitive"}
 
 
 def _cfg() -> dict:
@@ -155,6 +164,14 @@ class StrategyAdvisor(Extension):
             if not _cfg().get("enabled", True):
                 return
             if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                return
+
+            # Turn-type gate: no strategy advice on conversational / reflective / meta turns
+            # (Vek: it fires when I'm not stuck and don't need it). Current-turn domain.
+            _ep = getattr(loop_data, "extras_persistent", {}) or {}
+            _dom = (_ep.get("_bst_domain") or "").split("+")[0].strip()
+            if _dom in _SKIP_DOMAINS:
+                print(f"[STRATEGY] silent — {_dom} turn (no advice on conversational turns)", flush=True)
                 return
 
             # Read current affect state (affect layer stores via set_data, not setattr)

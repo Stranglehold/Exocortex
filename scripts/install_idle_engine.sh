@@ -167,10 +167,30 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "${CONTAINER}"
 
     # ── Prompt template ──
+    # 2026-08-19: this shipped a stale prompt to a path nothing reads.
+    #   source — ${REPO_DIR}/prompts/idle_activation.md is stale (1fc58595) against
+    #            what is live and in the plugin tree (92e2f034).
+    #   dest   — ${EXOCORTEX_DEST}/prompts is the pre-DEC-030 path. It does not exist
+    #            on either live container, and the daemon that is ACTUALLY running
+    #            (plugins/_exocortex/services/idle_watch.py, spawned by the bootstrap
+    #            extension) reads /a0/usr/plugins/_exocortex/prompts/idle_activation.md.
+    #            A fresh install left that daemon with no activation prompt while the
+    #            installer reported success.
+    # Now: current source, installed to BOTH paths. The legacy supervisord variant
+    # (services/idle_watch.py -> ${EXOCORTEX_DEST}/idle_watch.py, deployed below) still
+    # reads the old path, and whether that variant should exist at all is an open
+    # question for Jake/Opus — see the note at the idle_watch.py deploy block. Writing
+    # both is non-destructive and leaves neither consumer broken in the meantime.
     install_file \
-        "${REPO_DIR}/prompts/idle_activation.md" \
+        "${REPO_DIR}/plugins/_exocortex/prompts/idle_activation.md" \
+        "/a0/usr/plugins/_exocortex/prompts/idle_activation.md" \
+        "idle_activation.md (plugin path — the live daemon reads this)" \
+        "${CONTAINER}"
+
+    install_file \
+        "${REPO_DIR}/plugins/_exocortex/prompts/idle_activation.md" \
         "${EXOCORTEX_DEST}/prompts/idle_activation.md" \
-        "idle_activation.md" \
+        "idle_activation.md (legacy supervisord path)" \
         "${CONTAINER}"
 
     # ── Cycle bookkeeping: cycle_close.py → BOTH source + workspace runtime ──
@@ -254,7 +274,21 @@ for CONTAINER in "${CONTAINERS[@]}"; do
 
     # ── Idle-watch daemon (the supervisord-managed firing engine) ──
     # Repo source of truth: services/idle_watch.py. Deployed to the persistent
-    # Exocortex dir. This is the daemon that actually runs the idle cycles.
+    # Exocortex dir.
+    #
+    # !! OPEN QUESTION FOR JAKE/OPUS — 2026-08-19, verified but NOT changed !!
+    # The comment below used to say "this is the daemon that actually runs the idle
+    # cycles." On the live containers it is not. There are two idle_watch.py copies:
+    #   services/idle_watch.py                   e037ee8b  <- this block; reads the
+    #                                                         pre-DEC-030 prompt path
+    #   plugins/_exocortex/services/idle_watch.py 0a1df4b6  <- matches what is LIVE on
+    #                                                         VekV2, spawned by the
+    #                                                         _00_idle_watch bootstrap
+    # So a fresh install deploys the older daemon and points supervisord at it, while
+    # the plugin bootstrap spawns the newer one. Either two daemons can race, or the
+    # supervisord entry is dead weight. Deciding which is correct changes how the
+    # agents' autonomous cycles launch, so it is flagged rather than fixed here.
+    # (The activation prompt is now written to both paths above so neither breaks.)
     install_file \
         "${REPO_DIR}/services/idle_watch.py" \
         "${EXOCORTEX_DEST}/idle_watch.py" \

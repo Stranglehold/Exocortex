@@ -195,6 +195,14 @@ def main():
         "pages_deepened":   args.pages_deepened,
         "priority":         args.priority,
         "status":           args.status,
+        # Self-reported completion: the daemon DEASSERTS the "cycle in progress"
+        # flag on this signal (authoritative), instead of inferring completion from
+        # task-liveness. Primary key is `completed_ts` — a completion written AFTER
+        # the cycle fired unambiguously identifies THIS cycle (only one runs at a
+        # time), so it works even when A0_CHAT_ID is unset. `context_id` is a
+        # secondary confirmation when available.
+        "completed_ts":     datetime.now(timezone.utc).timestamp(),
+        "context_id":       os.environ.get("A0_CHAT_ID", ""),
     }
     try:
         tmp = _SIGNAL_PATH + ".tmp"

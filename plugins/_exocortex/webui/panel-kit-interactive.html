@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Kit — M1.5 Interactive</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+
+<!-- kit -->
+<link rel="stylesheet" href="./panel-kit.css">
+
+<!-- uPlot (live telemetry charts). Vendored locally for production in A0. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css">
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
+
+<!-- Alpine. In A0 Alpine is ALREADY loaded — there we register the console()
+     component on alpine:init and drop this script tag.
+     (@alpinejs/collapse is the height-animated upgrade for accordions that are
+     visible at load; inside an initially-hidden tab it measures 0, so here the
+     tree uses x-show + x-transition instead.) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<style>
+  /* --- Theme palettes (mimics what theme-store.js sets on :root) --- */
+  body.theme-magi {
+    --color-accent:#e8a020; --color-background:#0a0c0a; --color-panel:#141712;
+    --color-text:#e8e4d9; --color-text-muted:#9a968b; --color-border:#3a4030;
+    --color-primary:#6fae4a; --color-secondary:#4a90c0;
+    --color-warning-text:#ff9933; --color-error-text:#cc3322;
+    --font-family-main:"Share Tech Mono","Courier New",monospace;
+  }
+  body.theme-yorha {
+    --color-accent:#c8b48a; --color-background:#3f3c35; --color-panel:#4b473e;
+    --color-text:#d9d3c2; --color-text-muted:#a49d8a; --color-border:#6f6858;
+    --color-primary:#9fae7a; --color-secondary:#8a9db0;
+    --color-warning-text:#d0a24a; --color-error-text:#b25a4a;
+    --font-family-main:"EB Garamond",Georgia,serif;
+  }
+  html,body{margin:0;min-height:100%;}
+  body{background:var(--color-background);padding:22px 30px 60px;
+       font-family:var(--font-family-main);color:var(--color-text);
+       background-image:radial-gradient(120% 90% at 50% -10%,
+         color-mix(in srgb,var(--color-accent) 8%,transparent),transparent 60%);}
+  h1{font-family:"Rajdhani",sans-serif;font-weight:600;letter-spacing:.14em;
+     font-size:15px;color:var(--color-accent);text-transform:uppercase;margin:0 0 2px;}
+  .sub{font-size:11px;color:var(--color-text-muted);margin:0 0 14px;letter-spacing:.1em;}
+  .sec{margin:22px 0 8px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+       color:color-mix(in srgb,var(--color-accent) 60%,transparent);
+       border-bottom:1px solid color-mix(in srgb,var(--color-accent) 22%,transparent);padding-bottom:5px;}
+  .toggle{position:fixed;top:16px;right:20px;z-index:9;font-family:"Share Tech Mono",monospace;
+          font-size:11px;letter-spacing:.12em;color:var(--color-accent);cursor:pointer;
+          border:1px solid color-mix(in srgb,var(--color-accent) 45%,transparent);
+          background:color-mix(in srgb,var(--color-panel) 85%,transparent);padding:6px 12px;}
+  .toggle:hover{background:color-mix(in srgb,var(--color-accent) 14%,transparent);}
+  .cols{display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start;}
+  [x-cloak]{display:none!important;}
+  .hint{font-size:10px;color:var(--color-text-muted);letter-spacing:.06em;opacity:.8;margin-top:3px;}
+  .pk-chart-box{min-height:150px;}
+  /* let x-show control the tree children (override the kit's static default) */
+  .panel-kit .pk-tree .pk-children{display:block;}
+</style>
+</head>
+
+<body class="panel-kit" :class="'theme-'+theme" x-data="console()" x-cloak>
+
+  <div class="toggle" @click="toggleTheme()">◑ THEME: <span x-text="theme==='magi'?'MAGI':'YoRHa'"></span></div>
+
+  <h1>EXOCORTEX · PANEL KIT</h1>
+  <p class="sub">M1.5 INTERACTIVE — 対話診断 · click anything · everything is live &amp; data-bound</p>
+
+  <!-- Breadcrumb reflects the current focus -->
+  <div class="pk-breadcrumb">
+    <template x-for="(c,i) in focus.crumbs" :key="i">
+      <span>
+        <span class="pk-crumb" :class="i===focus.crumbs.length-1 && 'current'" x-text="c"></span>
+        <span class="pk-sep" x-show="i < focus.crumbs.length-1">›</span>
+      </span>
+    </template>
+  </div>
+
+  <!-- Real tab bar — switches the whole lower view -->
+  <div class="pk-tabs">
+    <template x-for="t in tabs" :key="t.id">
+      <div class="pk-tab" :class="tab===t.id && 'active'" @click="switchTab(t.id)" x-text="t.label"></div>
+    </template>
+  </div>
+
+  <!-- ===================== MONITOR TAB ===================== -->
+  <div x-show="tab==='monitor'" x-transition.opacity>
+
+    <div class="sec">TELEMETRY — click a metric to inspect it live</div>
+    <div class="pk-row-flex">
+      <template x-for="m in metrics" :key="m.key">
+        <div class="pk-frame pk-card pk-clickable pk-tip"
+             :class="focus.key===m.key && 'pk-selected'"
+             :data-tip="m.tip" @click="focusMetric(m.key)">
+          <div class="pk-card-head"><span class="pk-label" x-text="m.label"></span><span class="pk-jp" x-text="m.jp"></span></div>
+          <div>
+            <span class="pk-card-value" :class="m.flash && 'pk-flash'"
+                  :style="m.big?'font-size:18px':''"
+                  x-text="m.fmt(live[m.key])"></span>
+            <span class="pk-card-unit" x-text="m.unit"></span>
+          </div>
+          <div class="pk-card-foot">
+            <span class="pk-trend" :class="m.trend"
+                  x-text="(m.trend==='up'?'▲ ':m.trend==='down'?'▼ ':'■ ')+m.foot"></span>
+            <span class="pk-label" x-text="m.footlabel"></span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Live linear gauges -->
+      <div class="pk-frame pk-gauge pk-tip" :class="live.vram>90 && 'crit'" style="min-width:210px"
+           data-tip="GPU memory in use / total">
+        <div class="pk-gauge-head"><span class="pk-label">VRAM</span>
+          <span class="pk-gauge-read" x-text="(live.vram/100*24).toFixed(1)+' / 24.0 GB'"></span></div>
+        <div class="pk-gauge-track"><div class="pk-gauge-fill" :style="'--pk-val:'+live.vram+'%'"></div></div>
+      </div>
+      <div class="pk-frame pk-gauge warn pk-tip" style="min-width:200px" data-tip="Core temperature">
+        <div class="pk-gauge-head"><span class="pk-label">GPU Temp</span>
+          <span class="pk-gauge-read" x-text="Math.round(live.temp)+'°C'"></span></div>
+        <div class="pk-gauge-track"><div class="pk-gauge-fill" :style="'--pk-val:'+live.temp+'%'"></div></div>
+      </div>
+      <!-- Radial gauge, data-bound -->
+      <div class="pk-frame pk-gauge pk-tip" style="display:flex;gap:12px;align-items:center;min-width:200px"
+           data-tip="Speculative-decode acceptance">
+        <div class="pk-ring" :style="'--pk-val:'+(live.draft/100)">
+          <svg width="76" height="76" viewBox="0 0 76 76">
+            <circle class="pk-ring-bg" cx="38" cy="38" r="35"></circle>
+            <circle class="pk-ring-arc" cx="38" cy="38" r="35"></circle>
+          </svg>
+          <div class="pk-ring-text" x-text="Math.round(live.draft)+'%'"></div>
+        </div>
+        <div><div class="pk-label">Draft Accept</div><div class="pk-jp">採択率</div></div>
+      </div>
+    </div>
+
+    <!-- Live streaming chart of the focused metric -->
+    <div class="sec" x-text="'TREND — '+focus.title+' · 60s rolling'"></div>
+    <div class="pk-frame pk-chart pk-chart-box"><div x-ref="chart"></div></div>
+  </div>
+
+  <!-- ===================== WIKI TAB (master → detail drill-down) ===================== -->
+  <div x-show="tab==='wiki'" x-transition.opacity>
+    <div class="sec">KNOWLEDGE — expand a group, click an entry, watch the detail change</div>
+    <div class="cols">
+      <!-- master tree -->
+      <div class="pk-frame pk-tree" style="padding:6px 4px">
+        <template x-for="grp in tree" :key="grp.id">
+          <div class="pk-node" :class="grp.open && 'is-open'">
+            <div class="pk-row" @click="grp.leaf ? pick(grp) : (grp.open=!grp.open)"
+                 :class="focus.id===grp.id && 'pk-selected'">
+              <span class="pk-caret" :style="grp.leaf && 'visibility:hidden'">▶</span>
+              <span x-text="grp.label"></span><span class="pk-meta" x-text="grp.meta"></span>
+            </div>
+            <div class="pk-children" x-show="grp.open && !grp.leaf" x-transition.opacity.duration.180ms>
+              <template x-for="node in grp.children" :key="node.id">
+                <div class="pk-node leaf" :class="focus.id===node.id && 'sel'">
+                  <div class="pk-row" @click="pick(node)">
+                    <span class="pk-caret" style="visibility:hidden">▶</span>
+                    <span x-text="node.label"></span><span class="pk-meta" x-text="node.meta"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- detail — fully reactive to `focus` -->
+      <div class="pk-frame pk-detail">
+        <div class="pk-detail-head">
+          <span class="pk-detail-title" x-text="focus.title"></span>
+          <span class="pk-label" x-text="focus.sub"></span>
+        </div>
+        <div class="pk-detail-body">
+          <div class="pk-detail-stage" x-text="focus.stage"></div>
+          <div class="pk-detail-text" x-html="focus.body"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hint">↑ selecting a different entry repopulates the panel — that's the master-detail drill-down (MGSV iDroid pattern).</div>
+  </div>
+
+  <!-- ===================== CYCLES TAB ===================== -->
+  <div x-show="tab==='cycles'" x-transition.opacity>
+    <div class="sec">CYCLE MODE — click to arm the next idle cycle</div>
+    <div class="pk-row-flex">
+      <template x-for="c in cycles" :key="c.id">
+        <div class="pk-frame pk-cyclecard pk-clickable" :class="[c.cls, armed===c.id && 'active']"
+             @click="armed=c.id">
+          <div class="pk-ct-icon" x-text="c.icon"></div>
+          <div class="pk-ct-name" x-text="c.name"></div>
+          <div class="pk-ct-sub" x-text="c.sub"></div>
+        </div>
+      </template>
+    </div>
+    <div class="hint">Armed: <b x-text="cycles.find(c=>c.id===armed).name"></b>
+      — this is a data-bound selection (class follows state, not the mouse).</div>
+  </div>
+
+  <!-- Status bar — always visible, live -->
+  <div class="sec">STATUS</div>
+  <div class="pk-statusbar">
+    <div class="pk-stat"><span class="pk-dot"></span> <span class="pk-label">v16</span> <b>ONLINE</b></div>
+    <div class="pk-stat"><span class="pk-label">MODEL</span> <b>ornith-1.0-35b</b></div>
+    <div class="pk-stat"><span class="pk-label">VRAM</span> <b x-text="(live.vram/100*24).toFixed(1)+'G'"></b></div>
+    <div class="pk-stat"><span class="pk-label">TPUT</span> <b x-text="Math.round(live.tput)+' t/s'"></b></div>
+    <div class="pk-stat"><span class="pk-label">CYCLE</span> <b x-text="'#'+live.cycles+' '+cycles.find(c=>c.id===armed).name"></b></div>
+    <div class="pk-stat"><span class="pk-label">TIME</span> <b x-text="clock"></b></div>
+  </div>
+
+<script>
+function console(){
+  return {
+    theme:'magi',
+    tab:'monitor',
+    clock:'--:--:--',
+    armed:'build',
+    chart:null,
+    // ---- live telemetry state (nudged every tick) ----
+    live:{ tput:107, vram:72, temp:71, draft:91, cycles:1344 },
+    // rolling buffers per metric for the chart
+    buf:{}, chartKey:'tput',
+
+    tabs:[ {id:'monitor',label:'Monitor'}, {id:'wiki',label:'Wiki'}, {id:'cycles',label:'Cycles'} ],
+
+    metrics:[
+      {key:'tput', label:'Throughput', jp:'処理速度', unit:'tok/s', big:false,
+       fmt:v=>Math.round(v), trend:'up', foot:'4.2%', footlabel:'vs 5m', flash:false,
+       tip:'Decode speed — click to stream it below',
+       title:'Throughput', desc:'Tokens/sec at the decode head.'},
+      {key:'draft', label:'Draft Accept', jp:'採択率', unit:'%', big:false,
+       fmt:v=>Math.round(v), trend:'up', foot:'live', footlabel:'spec-decode', flash:false,
+       tip:'Speculative-decode acceptance ratio',
+       title:'Draft Acceptance', desc:'Fraction of drafted tokens the target model accepts.'},
+      {key:'vram', label:'VRAM', jp:'記憶', unit:'%', big:false,
+       fmt:v=>Math.round(v), trend:'flat', foot:'stable', footlabel:'of 24G', flash:false,
+       tip:'GPU memory pressure',
+       title:'VRAM Utilization', desc:'RTX 3090 memory in use as a percent of 24 GB.'},
+      {key:'temp', label:'GPU Temp', jp:'温度', unit:'°C', big:false,
+       fmt:v=>Math.round(v), trend:'up', foot:'warm', footlabel:'core', flash:false,
+       tip:'Core temperature',
+       title:'GPU Temperature', desc:'Core temperature under sustained inference load.'},
+    ],
+
+    // tree (master) — each node carries its own detail payload
+    tree:[
+      {id:'wiki', label:'WIKI', meta:339, open:true, children:[
+        {id:'semi', label:'semiconductors', meta:'STABLE',
+         title:'SEMICONDUCTORS', sub:'WIKI · STABLE · rev 7', stage:'◈ HOLOGRAPHIC PROJECTION ◈',
+         body:'Cross-referenced field record. Rare-earth supply chains constrain advanced-node fabrication; <span class="pk-em">export-control regimes</span> are the dominant near-term variable. Linked cycles: BUILD #1344, #1331. Sources verified against the promoted claim ledger.'},
+        {id:'horm', label:'iran-hormuz', meta:'DRAFT',
+         title:'IRAN · HORMUZ', sub:'WIKI · DRAFT · rev 2', stage:'◈ HOLOGRAPHIC PROJECTION ◈',
+         body:'Strait-of-Hormuz transit risk. <span class="pk-em">Falsifiable forecast</span> open in SWARMFISH; resolves on the dated question at deadline. Contradiction flags: 0. Trust lifecycle: STAGED.'},
+        {id:'rare', label:'rare-earths', meta:'STABLE',
+         title:'RARE EARTHS', sub:'WIKI · STABLE · rev 4', stage:'◈ HOLOGRAPHIC PROJECTION ◈',
+         body:'Refining concentration is the choke point, not raw reserves. <span class="pk-em">Downstream separation capacity</span> dominates. Linked to semiconductors via export-control coupling.'},
+      ]},
+      {id:'field', label:'FIELD REPORTS', meta:88, open:false, children:[
+        {id:'fr1', label:'2026-07-04 · grid',
+         title:'FIELD REPORT · GRID', sub:'REPORT · 2026-07-04', stage:'◈ CYCLE ARTIFACT ◈',
+         body:'EXPLORE cycle #1344 output. Grid-stability signals cross-referenced against the claim ledger. Methodology: web-verified resolution, crisp dated questions.'},
+        {id:'fr2', label:'2026-07-03 · markets',
+         title:'FIELD REPORT · MARKETS', sub:'REPORT · 2026-07-03', stage:'◈ CYCLE ARTIFACT ◈',
+         body:'BUILD cycle deepened the markets page to STABLE. Affect: focused. No token-rep recurrence. Draft-accept held at 0.9+.'},
+      ]},
+      {id:'skills', label:'SKILLS', meta:14, leaf:true,
+       title:'SKILLS', sub:'PROCEDURAL · 14 captured', stage:'◈ CAPABILITY INDEX ◈',
+       body:'Procedural skills promoted from field reports via the capture pipeline. Each carries a <span class="pk-em">.memory.md</span> the agent meets before repeating a task.'},
+    ],
+
+    cycles:[
+      {id:'build',    cls:'build',    icon:'⬢', name:'BUILD',    sub:'deepen · 30 steps'},
+      {id:'explore',  cls:'explore',  icon:'◇', name:'EXPLORE',  sub:'discover · 20 steps'},
+      {id:'maintain', cls:'maintain', icon:'▤', name:'MAINTAIN', sub:'consolidate · 15 steps'},
+    ],
+
+    // focus = whatever the detail panel + breadcrumb + chart title reflect
+    focus:{ id:'tput', key:'tput', title:'Throughput', sub:'LIVE METRIC',
+            stage:'◈ LIVE TELEMETRY ◈', body:'', crumbs:['OFFICE','SYSTEM','MONITOR'] },
+
+    init(){
+      // seed rolling buffers with 60 points of plausible history
+      const now = Date.now()/1000;
+      ['tput','vram','temp','draft'].forEach(k=>{
+        const xs=[], ys=[];
+        for(let i=59;i>=0;i--){ xs.push(now-i); ys.push(this.live[k] + (Math.random()-0.5)*this._amp(k)); }
+        this.buf[k]={x:xs,y:ys};
+      });
+      this.focusMetric('tput');           // sets focus + points chart
+      this.$nextTick(()=>this.buildChart());
+      // live loop — the whole reason it "feels alive"
+      setInterval(()=>this.tick(), 1000);
+      setInterval(()=>{ this.clock = new Date().toTimeString().slice(0,8); }, 1000);
+      this.clock = new Date().toTimeString().slice(0,8);
+    },
+
+    _amp(k){ return {tput:6, vram:2.5, temp:2, draft:3}[k] || 3; },
+    _clamp(k,v){ const b={tput:[70,150],vram:[40,98],temp:[55,86],draft:[80,99]}[k]; return Math.max(b[0],Math.min(b[1],v)); },
+
+    tick(){
+      const now = Date.now()/1000;
+      ['tput','vram','temp','draft'].forEach(k=>{
+        const nv = this._clamp(k, this.live[k] + (Math.random()-0.5)*this._amp(k));
+        this.live[k] = nv;
+        const b=this.buf[k]; b.x.push(now); b.y.push(nv);
+        if(b.x.length>60){ b.x.shift(); b.y.shift(); }
+      });
+      this.live.cycles += (Math.random()<0.06?1:0);
+      // flash the focused metric card so the eye follows what just moved
+      const m=this.metrics.find(x=>x.key===this.chartKey);
+      if(m){ m.flash=false; this.$nextTick(()=>m.flash=true); }
+      if(this.chart){ const b=this.buf[this.chartKey]; this.chart.setData([b.x,b.y], false); }
+    },
+
+    focusMetric(key){
+      const m=this.metrics.find(x=>x.key===key);
+      this.chartKey=key;
+      this.focus={ id:key, key, title:m.title, sub:'LIVE METRIC',
+        stage:'◈ LIVE TELEMETRY ◈',
+        body:m.desc+' Current: <span class="pk-em">'+m.fmt(this.live[key])+m.unit+'</span>. Streaming the last 60 seconds below.',
+        crumbs:['OFFICE','SYSTEM',m.title.toUpperCase()] };
+      if(this.chart){ const b=this.buf[key]; this.chart.setData([b.x,b.y], true); }
+    },
+
+    // clicking a wiki/report/skill node drills the detail panel into it
+    pick(node){
+      this.focus={ id:node.id, key:null, title:node.title, sub:node.sub,
+        stage:node.stage, body:node.body,
+        crumbs:['OFFICE','KNOWLEDGE',node.title] };
+    },
+
+    _accent(){ return getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#e8a020'; },
+    _muted(){ return getComputedStyle(document.body).getPropertyValue('--color-text-muted').trim() || '#9a968b'; },
+    _grid(){ return 'color-mix(in srgb,'+this._accent()+' 16%,transparent)'; },
+
+    buildChart(){
+      if(!window.uPlot) return;                 // graceful degrade if CDN blocked
+      const el=this.$refs.chart; if(!el) return;
+      const b=this.buf[this.chartKey];
+      const accent=this._accent(), muted=this._muted();
+      const opts={
+        width: el.clientWidth||760, height:150, pxAlign:false,
+        cursor:{ points:{size:6} },
+        scales:{ x:{time:true} },
+        axes:[
+          { stroke:muted, grid:{stroke:this._grid(),width:1}, ticks:{stroke:muted}, font:'10px Share Tech Mono' },
+          { stroke:muted, grid:{stroke:this._grid(),width:1}, ticks:{stroke:muted}, font:'10px Share Tech Mono', size:38 },
+        ],
+        series:[ {},
+          { label:'value', stroke:accent, width:1.5,
+            fill:'color-mix(in srgb,'+accent+' 14%,transparent)',
+            points:{show:false} } ],
+      };
+      this.chart = new uPlot(opts, [b.x, b.y], el);
+    },
+
+    // each tab lands on a sensible default so the detail panel is never stale
+    switchTab(id){
+      this.tab=id;
+      if(id==='wiki'  && this.focus.key){ this.pick(this.tree[0].children[0]); }
+      if(id==='monitor' && !this.focus.key){ this.focusMetric(this.chartKey); }
+    },
+
+    toggleTheme(){
+      this.theme = this.theme==='magi' ? 'yorha' : 'magi';
+      // uPlot bakes stroke colors at build → rebuild so the chart re-themes too
+      if(this.chart){ this.chart.destroy(); this.chart=null; this.$nextTick(()=>this.buildChart()); }
+    },
+  };
+}
+</script>
+</body>
+</html>

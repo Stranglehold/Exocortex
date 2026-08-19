@@ -199,3 +199,87 @@
 /* Utility layout for the showcase / panels -------------------------------- */
 .pk-grid { display: grid; gap: 12px; }
 .pk-row-flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+
+/* ============================================================================
+   INTERACTIVITY (M1.5) — click/hover affordances, data-bound selection,
+   CSS tooltip, live-value flash, uPlot theming.
+   ----------------------------------------------------------------------------
+   Purely additive: every M1 component renders identically without these
+   classes. Behavior is driven by Alpine (state), not by :hover pseudo-classes,
+   so visual state tracks DATA state (ROADMAP finding #12).
+   ========================================================================== */
+
+/* Clickable affordance — tactile scale feedback (ROADMAP finding #3:
+   "scale feedback is more valuable than color change"). 80–120ms, ease-out. */
+.panel-kit .pk-clickable {
+  cursor: pointer;
+  transition: transform .09s cubic-bezier(.16,1,.3,1),
+              border-color .12s ease, box-shadow .12s ease;
+}
+.panel-kit .pk-clickable:hover {
+  transform: translateY(-1px) scale(1.015);
+  border-color: var(--pk-accent-dim);
+  box-shadow: 0 4px 16px -8px color-mix(in srgb, var(--pk-accent) 55%, transparent);
+}
+.panel-kit .pk-clickable:active { transform: scale(.985); }
+
+/* Selected state — bound to data via :class, not mouse position. */
+.panel-kit .pk-selected {
+  border-color: var(--pk-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--pk-accent),
+              0 0 16px -4px color-mix(in srgb, var(--pk-accent) 50%, transparent);
+}
+.panel-kit .pk-selected .pk-label { color: var(--pk-accent); }
+
+/* CSS-only tooltip (ROADMAP finding #5) — zero JS, one rule serves every
+   element that carries data-tip. */
+.panel-kit .pk-tip { position: relative; }
+.panel-kit .pk-tip::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  white-space: nowrap; font-size: 10px; letter-spacing: .08em;
+  padding: 4px 9px; color: var(--pk-accent);
+  background: color-mix(in srgb, var(--pk-bg) 92%, transparent);
+  border: 1px solid var(--pk-hairline); clip-path: var(--pk-clip);
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.panel-kit .pk-tip:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Data-driven open state for the tree (Alpine toggles .is-open). */
+.panel-kit .pk-tree .pk-node.is-open > .pk-row .pk-caret { transform: rotate(90deg); }
+
+/* Live-value flash — a value briefly lights amber when it changes, so the
+   operator's eye is drawn to what just moved. */
+@keyframes pk-flash {
+  0%   { color: var(--pk-accent); text-shadow: var(--pk-glow); }
+  100% { color: var(--pk-accent); }
+}
+.panel-kit .pk-flash { animation: pk-flash .45s ease-out; }
+
+/* Chart wrapper + uPlot re-theming to the palette. uPlot renders its own DOM;
+   these override its defaults to read theme vars. */
+.panel-kit .pk-chart { padding: 6px 8px 2px; }
+.panel-kit .pk-chart .uplot,
+.panel-kit .pk-chart .u-wrap { color: var(--pk-muted); }
+.panel-kit .pk-chart .u-title {
+  color: var(--pk-muted); font: 10px/1 var(--pk-mono);
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.panel-kit .pk-chart .u-legend { font: 10px var(--pk-mono); color: var(--pk-muted); }
+.panel-kit .pk-chart .u-legend .u-value { color: var(--pk-accent); }
+
+/* Tab bar — a real switcher (active tab drives which view is shown). */
+.panel-kit .pk-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--pk-accent-faint); margin: 4px 0 14px; }
+.panel-kit .pk-tab {
+  padding: 6px 16px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--pk-muted); cursor: pointer; border: 1px solid transparent; border-bottom: 0;
+  transition: color .12s ease, background .12s ease;
+}
+.panel-kit .pk-tab:hover { color: var(--pk-text); background: var(--pk-accent-faint); }
+.panel-kit .pk-tab.active {
+  color: var(--pk-accent); border-color: var(--pk-hairline);
+  background: color-mix(in srgb, var(--pk-panel) 80%, transparent);
+  clip-path: polygon(0 6px, 6px 0, 100% 0, 100% 100%, 0 100%);
+}

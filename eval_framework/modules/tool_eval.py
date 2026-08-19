@@ -279,6 +279,11 @@ class ToolEval(BaseEval):
 
         result["json_valid"] = True
 
+        # Some models (e.g. ornith) emit the tool call as a single-element JSON array
+        # rather than a bare object. Normalize to the first dict element.
+        if isinstance(parsed, list):
+            parsed = next((x for x in parsed if isinstance(x, dict)), {})
+
         tool_name = parsed.get("tool_name", parsed.get("name", ""))
         expected_tool = test["expected_tool"]
         if tool_name == expected_tool:

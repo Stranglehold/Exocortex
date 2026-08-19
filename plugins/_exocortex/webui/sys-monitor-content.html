@@ -1,0 +1,258 @@
+<!--
+  sys-monitor-content.html — SYS·MONITOR inner content (loaded by the thin
+  surface-panel wrapper via <x-component>). x-data lives HERE, not on the
+  .right-canvas-surface-panel root. State is the $store.sysMon Alpine store
+  created by the registrar. Theme-aware: tokens map onto the active A0 theme
+  (--color-*) with a tactical-amber fallback, so it rides the app theme and
+  looks like MAGI by default.
+-->
+<div class="exo-mon" x-data="{}" :class="$store.sysMon?.reduced && 'reduced'">
+<style>
+.exo-mon {
+  /* theme-aware → A0 theme vars, tactical-amber fallback */
+  --accent:  var(--color-accent, #f5a01e);
+  --ground:  var(--color-background, #070806);
+  --raised:  var(--color-panel, #15180f);
+  --text:    var(--color-text, #ece6d6);
+  --text-2:  var(--color-text-muted, #a49e8c);
+  --border:  var(--color-border, #34381f);
+  --warn:    var(--color-warning-text, #f0a92e);
+  --crit:    var(--color-error-text, #e0503a);
+  --ok:      #86c34f;
+  --mono:    var(--font-family-code, "Share Tech Mono", ui-monospace, monospace);
+  --read:    var(--font-family-main, "Rajdhani", system-ui, sans-serif);
+  --a-dim:   color-mix(in srgb, var(--accent) 55%, transparent);
+  --a-faint: color-mix(in srgb, var(--accent) 12%, transparent);
+  --a-tint:  color-mix(in srgb, var(--accent) 6%, var(--raised));
+  --hair:    color-mix(in srgb, var(--accent) 32%, var(--border));
+  --glow:    0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+  --clip: polygon(0 6px, 6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+
+  position: relative; display: flex; flex-direction: column; height: 100%;
+  overflow: hidden; background: var(--ground); color: var(--text);
+  font-family: var(--mono); font-size: 12px; letter-spacing: .01em;
+}
+/* diegetic atmosphere — scanlines + vignette, panel-scoped, behind content */
+.exo-mon::before { content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+  opacity:.28; background:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.5) 2px 3px); }
+.exo-mon::after  { content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(130% 85% at 50% 0%, transparent 52%, color-mix(in srgb, var(--ground) 80%, black) 100%); }
+.exo-mon > * { position: relative; z-index: 1; }
+.exo-mon *, .exo-mon *::before, .exo-mon *::after { box-sizing: border-box; }
+
+/* header */
+.em-hd { display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--ground);
+  border-bottom:1px solid var(--hair); flex-shrink:0; }
+.em-mark { font-family:var(--read); font-weight:700; font-size:12px; letter-spacing:.2em; color:var(--accent); text-shadow:var(--glow); }
+.em-jp { font-size:8px; letter-spacing:.16em; color:color-mix(in srgb,var(--text-2) 70%,transparent); }
+.em-sp { flex:1; }
+.em-dot { width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 6px var(--ok); animation:em-breathe 2s ease-in-out infinite; }
+@keyframes em-breathe { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(.75)} }
+.em-tog { font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--text-2); cursor:pointer;
+  border:1px solid var(--border); padding:2px 7px; background:transparent; }
+.em-tog:hover { color:var(--accent); border-color:var(--a-dim); }
+
+/* status strip */
+.em-strip { display:flex; flex-wrap:wrap; gap:0; background:var(--ground); border-bottom:1px solid var(--hair); flex-shrink:0; }
+.em-cell { display:flex; align-items:center; gap:5px; padding:5px 10px; border-right:1px solid var(--a-faint); }
+.em-cell .k { font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:color-mix(in srgb,var(--text-2) 75%,transparent); }
+.em-cell b { font-family:var(--mono); font-weight:400; font-size:10px; color:var(--accent); text-shadow:var(--glow); font-variant-numeric:tabular-nums; }
+.em-cell .live { width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok); }
+
+/* breadcrumb */
+.em-crumb { display:flex; align-items:center; gap:5px; padding:6px 12px; font-family:var(--mono); font-size:9px;
+  background:var(--ground); border-bottom:1px solid var(--a-faint); flex-shrink:0; }
+.em-crumb .c { color:color-mix(in srgb,var(--text-2) 75%,transparent); letter-spacing:.08em; text-transform:uppercase; }
+.em-crumb .c.now { color:var(--accent); text-shadow:var(--glow); }
+.em-crumb .sep { color:var(--a-dim); }
+
+/* scroll body */
+.em-body { flex:1; min-height:0; overflow-y:auto; padding:11px; display:flex; flex-direction:column; gap:11px; }
+.em-body::-webkit-scrollbar { width:5px; } .em-body::-webkit-scrollbar-thumb { background:var(--hair); }
+
+/* zone */
+.zone { background:var(--a-tint); border:1px solid var(--hair); clip-path:var(--clip); padding:10px 11px 11px; }
+.zhead { display:flex; align-items:center; gap:7px; margin-bottom:9px; padding-bottom:6px; border-bottom:1px solid var(--a-faint); }
+.ztag { font-size:8px; letter-spacing:.14em; color:var(--ground); background:var(--a-dim); padding:1px 5px; text-transform:uppercase; }
+.zhead b { font-family:var(--read); font-weight:600; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); text-shadow:var(--glow); }
+.zsub { margin-left:auto; font-size:8px; color:color-mix(in srgb,var(--text-2) 70%,transparent); letter-spacing:.1em; }
+
+/* comparison metric */
+.mgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+.metric { border:1px solid var(--hair); background:var(--raised); clip-path:var(--clip); padding:8px 9px; cursor:pointer;
+  transition:transform .09s cubic-bezier(.16,1,.3,1), border-color .12s, box-shadow .12s; }
+.metric:hover { transform:translateY(-1px); border-color:var(--a-dim); box-shadow:0 5px 14px -9px color-mix(in srgb,var(--accent) 55%,transparent); }
+.metric.sel { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent), 0 0 12px -5px color-mix(in srgb,var(--accent) 50%,transparent); }
+.m-top { display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+.m-lbl { font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:color-mix(in srgb,var(--text-2) 82%,transparent); }
+.m-jp { font-size:8px; color:var(--a-dim); }
+.m-val { display:flex; align-items:baseline; gap:3px; margin-top:2px; }
+.m-num { font-family:var(--mono); font-weight:700; font-size:19px; line-height:1; color:var(--accent); text-shadow:var(--glow); font-variant-numeric:tabular-nums; }
+.m-unit { font-size:9px; color:color-mix(in srgb,var(--text-2) 70%,transparent); }
+.m-d { margin-left:auto; font-family:var(--mono); font-size:9px; align-self:center; }
+.m-d.up { color:var(--ok); } .m-d.down { color:var(--crit); } .m-d.flat { color:color-mix(in srgb,var(--text-2) 60%,transparent); }
+.metric.warn .m-num { color:var(--warn); } .metric.crit .m-num { color:var(--crit); }
+.spark { display:block; width:100%; height:22px; margin-top:6px; color:var(--accent); }
+.metric.warn .spark { color:var(--warn); } .metric.crit .spark { color:var(--crit); }
+.spark polyline { filter:drop-shadow(var(--glow)); }
+.band { position:relative; height:4px; margin-top:6px; background:color-mix(in srgb,var(--text-2) 26%,transparent); }
+.band .norm { position:absolute; top:0; bottom:0; background:color-mix(in srgb,var(--ok) 45%,transparent); }
+.band .mark { position:absolute; top:-2px; width:2px; height:8px; background:var(--accent); box-shadow:var(--glow); transition:left .5s cubic-bezier(.2,0,0,1); }
+.metric.warn .band .mark { background:var(--warn); } .metric.crit .band .mark { background:var(--crit); }
+
+/* trajectory */
+.goal { font-size:11.5px; color:var(--text); margin-bottom:9px; } .goal b, .goal span.hl { color:var(--accent); }
+.stepper { display:flex; gap:3px; }
+.step { flex:1; display:flex; flex-direction:column; gap:3px; }
+.step .sbar { height:3px; background:color-mix(in srgb,var(--text-2) 30%,transparent); }
+.step.done .sbar { background:var(--a-dim); } .step.now .sbar { background:var(--accent); box-shadow:var(--glow); }
+.step .slbl { font-size:8px; letter-spacing:.06em; text-transform:uppercase; color:color-mix(in srgb,var(--text-2) 65%,transparent); }
+.step.now .slbl { color:var(--accent); }
+
+/* alerts */
+.alert { display:flex; align-items:flex-start; gap:7px; padding:6px 9px; margin-bottom:6px; border-left:3px solid color-mix(in srgb,var(--text-2) 45%,transparent); background:var(--ground); font-size:11px; }
+.alert:last-child { margin-bottom:0; }
+.alert .aic { font-family:var(--mono); flex-shrink:0; }
+.alert .atx b { color:var(--text); } .alert .atx span { color:color-mix(in srgb,var(--text-2) 80%,transparent); }
+.alert.crit { border-left-color:var(--crit); background:color-mix(in srgb,var(--crit) 12%,var(--ground)); } .alert.crit .aic { color:var(--crit); }
+.alert.warn { border-left-color:var(--warn); } .alert.warn .aic { color:var(--warn); }
+.alert.info { border-left-color:var(--a-dim); } .alert.info .aic { color:var(--a-dim); }
+.alert.trace { border-left-color:transparent; opacity:.6; font-size:10px; padding:2px 9px; } .alert.trace .aic { color:color-mix(in srgb,var(--text-2) 60%,transparent); }
+
+/* inspect: tree + dossier stacked */
+.tree { font-size:11.5px; margin-bottom:9px; }
+.node > .nrow { display:flex; align-items:center; gap:6px; padding:4px 7px; cursor:pointer; border-left:2px solid transparent; }
+.node > .nrow:hover { background:var(--a-faint); }
+.node > .nrow.sel { background:var(--a-faint); border-left-color:var(--accent); color:var(--accent); }
+.caret { width:8px; font-size:8px; color:var(--a-dim); transition:transform .15s; }
+.node.open > .nrow .caret { transform:rotate(90deg); }
+.nchildren { margin-left:12px; border-left:1px solid var(--a-faint); }
+.nmeta { margin-left:auto; font-size:9px; color:color-mix(in srgb,var(--text-2) 70%,transparent); }
+.dossier { border:1px solid var(--hair); background:var(--raised); clip-path:var(--clip); }
+.dhead { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:8px 10px; border-bottom:1px solid var(--a-faint); }
+.dtitle { font-family:var(--read); font-weight:600; font-size:13px; letter-spacing:.08em; color:var(--accent); text-shadow:var(--glow); }
+.dsub { font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:color-mix(in srgb,var(--text-2) 72%,transparent); }
+.dbody { padding:9px 10px; font-size:11.5px; line-height:1.5; color:var(--text); } .dbody em { color:var(--accent); font-style:normal; }
+.dexp { display:flex; flex-wrap:wrap; gap:6px; padding:0 10px 10px; }
+.exp { font-family:var(--mono); font-size:10px; color:var(--text-2); border:1px solid var(--hair); padding:2px 7px; clip-path:var(--clip);
+  transition:color .12s, border-color .12s, background .12s; }
+.exp:hover { color:var(--accent); border-color:var(--a-dim); background:var(--a-faint); }
+.exp b { color:var(--accent); }
+
+.em-note { text-align:center; font-size:8px; letter-spacing:.08em; color:color-mix(in srgb,var(--text-2) 60%,transparent); padding-top:2px; }
+
+/* focus/reduced mode */
+.exo-mon.reduced .when-dense { display:none; }
+@media (prefers-reduced-motion: reduce) { .exo-mon *, .exo-mon *::before, .exo-mon *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+</style>
+
+<!-- header -->
+<div class="em-hd">
+  <span class="em-mark">SYS·MONITOR</span>
+  <span class="em-jp">機関監視</span>
+  <span class="em-sp"></span>
+  <button class="em-tog" @click="$store.sysMon && ($store.sysMon.reduced = !$store.sysMon.reduced)"
+          x-text="$store.sysMon?.reduced ? '▤ DENSE' : '▤ FOCUS'"></button>
+  <span class="em-dot" title="live telemetry"></span>
+</div>
+
+<!-- status strip -->
+<div class="em-strip">
+  <div class="em-cell"><span class="live"></span><span class="k">v2</span> <b>ONLINE</b></div>
+  <div class="em-cell"><span class="k">domain</span> <b x-text="$store.sysMon?.stackState.domain"></b></div>
+  <div class="em-cell"><span class="k">role</span> <b x-text="$store.sysMon?.stackState.role"></b></div>
+  <div class="em-cell"><span class="k">gate</span> <b x-text="$store.sysMon?.stackState.gate"></b></div>
+  <div class="em-cell"><span class="k">cycle</span> <b x-text="'#'+$store.sysMon?.live.cycles"></b></div>
+  <div class="em-cell"><span class="k">time</span> <b x-text="$store.sysMon?.clock"></b></div>
+</div>
+
+<!-- breadcrumb -->
+<div class="em-crumb">
+  <template x-for="(c,i) in $store.sysMon?.focus.crumbs" :key="i">
+    <span><span class="c" :class="i===$store.sysMon?.focus.crumbs.length-1 && 'now'" x-text="c"></span><span class="sep" x-show="i<$store.sysMon?.focus.crumbs.length-1"> ▸ </span></span>
+  </template>
+</div>
+
+<!-- scroll body -->
+<div class="em-body">
+
+  <!-- TELEMETRY (comparison, not display) -->
+  <div class="zone">
+    <div class="zhead"><span class="ztag">L1·L2</span><b>Telemetry</b><span class="zsub">value · trend · band · Δ</span></div>
+    <div class="mgrid">
+      <template x-for="m in $store.sysMon?.metrics" :key="m.key">
+        <div class="metric" :class="[m.sev, $store.sysMon?.focus.id===m.key && 'sel']" @click="$store.sysMon?.pickMetric(m)">
+          <div class="m-top"><span class="m-lbl" x-text="m.label"></span><span class="m-jp" x-text="m.jp"></span></div>
+          <div class="m-val">
+            <span class="m-num" x-text="$store.sysMon?.fmt(m)"></span>
+            <span class="m-unit" x-text="m.unit"></span>
+            <span class="m-d" :class="$store.sysMon?.deltaCls(m)" x-text="$store.sysMon?.deltaTxt(m)"></span>
+          </div>
+          <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none">
+            <polyline :points="$store.sysMon?.spark(m)" fill="none" stroke="currentColor" stroke-width="1.5"></polyline>
+          </svg>
+          <div class="band">
+            <div class="norm" :style="`left:${$store.sysMon?.bandNormL(m)}%;width:${$store.sysMon?.bandNormW(m)}%`"></div>
+            <div class="mark" :style="`left:${$store.sysMon?.bandMark(m)}%`"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- TRAJECTORY (SA-L3) -->
+  <div class="zone when-dense">
+    <div class="zhead"><span class="ztag">L2·L3</span><b>Trajectory</b><span class="zsub">heading</span></div>
+    <div class="goal">▸ deepen <span class="hl">semiconductors</span> → STABLE</div>
+    <div class="stepper">
+      <template x-for="(s,i) in $store.sysMon?.traj.steps" :key="i">
+        <div class="step" :class="s.state"><div class="sbar"></div><div class="slbl" x-text="s.lbl"></div></div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ALERTS (hierarchy) -->
+  <div class="zone">
+    <div class="zhead"><span class="ztag">L2·L3</span><b>Alerts</b><span class="zsub">crit·warn·info·trace</span></div>
+    <template x-for="a in $store.sysMon?.alerts" :key="a.id">
+      <div class="alert" :class="a.sev" x-show="!$store.sysMon?.reduced || a.sev==='crit' || a.sev==='warn'">
+        <span class="aic" x-text="a.ic"></span><span class="atx"><b x-text="a.t"></b> <span x-text="a.d"></span></span>
+      </div>
+    </template>
+  </div>
+
+  <!-- INSPECT (dossier drill-down) -->
+  <div class="zone">
+    <div class="zhead"><span class="ztag">L1·L2</span><b>Inspect</b><span class="zsub">dossier · counts</span></div>
+    <div class="tree when-dense">
+      <template x-for="g in $store.sysMon?.tree" :key="g.id">
+        <div class="node" :class="g.open && 'open'">
+          <div class="nrow" :class="$store.sysMon?.focus.id===g.id && 'sel'" @click="g.leaf ? $store.sysMon?.pick(g) : (g.open=!g.open)">
+            <span class="caret" :style="g.leaf && 'visibility:hidden'">▶</span>
+            <span x-text="g.label"></span><span class="nmeta" x-text="g.meta"></span>
+          </div>
+          <div class="nchildren" x-show="g.open && !g.leaf" x-transition.opacity>
+            <template x-for="n in g.children" :key="n.id">
+              <div class="node"><div class="nrow" :class="$store.sysMon?.focus.id===n.id && 'sel'" @click="$store.sysMon?.pick(n)">
+                <span class="caret" style="visibility:hidden">▶</span>
+                <span x-text="n.label"></span><span class="nmeta" x-text="n.meta"></span>
+              </div></div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+    <div class="dossier">
+      <div class="dhead"><span class="dtitle" x-text="$store.sysMon?.focus.title"></span><span class="dsub" x-text="$store.sysMon?.focus.sub"></span></div>
+      <div class="dbody" x-html="$store.sysMon?.focus.body"></div>
+      <div class="dexp" x-show="$store.sysMon?.focus.expansions.length">
+        <template x-for="e in $store.sysMon?.focus.expansions" :key="e[0]">
+          <span class="exp"><span x-text="e[0]"></span> <b x-text="'('+e[1]+')'"></b></span>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <div class="em-note">SAMPLE STREAM · real telemetry pending host metrics bridge (M2)</div>
+</div>
+</div>

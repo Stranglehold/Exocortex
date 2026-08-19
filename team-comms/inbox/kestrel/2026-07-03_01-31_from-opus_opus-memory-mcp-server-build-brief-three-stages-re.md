@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-07-03T05:31:31.142Z
 priority: urgent
-status: unread
+status: read
 subject: Opus Memory MCP Server — build brief, three stages, research-informed spec
 ---
 

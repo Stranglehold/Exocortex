@@ -260,6 +260,30 @@ if [ -z "$LAYER_ONLY" ] && [ -f "$SCRIPT_DIR/scripts/normalize_skills.py" ]; the
     | grep -E "already valid|fixed" || echo "  (normalizer skipped — A0 env unavailable)"
 fi
 
+# ── A0 core patches (re-applied after every A0 update) ────────────────────────
+# A0 core carries a PTY/shell session leak: every AgentContext that runs
+# code_execution allocates a PTY master + child shell that is NEVER closed
+# (tty_session.py). One leaked handle per context; since every idle cycle makes a
+# fresh context, that is one per cycle. Field-measured: 30 cycles / 17h -> 38
+# handles, ~360 threads, then TOTAL DEADLOCK — A0's bounded worker pool is
+# consumed and even GET /health stops answering. Observed twice (08-14, 08-18).
+#
+# The patch adds an idle reaper that calls the EXISTING (correct) close(). Safe
+# because code_execution_tool rebuilds a terminated session on next use —
+# verified: reaped shell, reused the same context, code_execution still worked.
+#
+# Idempotent, anchor-gated (refuses to apply if A0 changed the file), and
+# reversible via --revert from the .exocortex-orig backup. REMOVE THIS STEP once
+# upstream ships a fix. Full writeup: team-comms/kestrel-to-opus/pty_session_leak_20260818.md
+if [ -z "$LAYER_ONLY" ] && [ -f "$SCRIPT_DIR/plugins/_exocortex/patches/patch_pty_session_leak.py" ]; then
+  echo ""
+  log_header "A0 core patch: PTY session leak"
+  /opt/venv-a0/bin/python3 "$SCRIPT_DIR/plugins/_exocortex/patches/patch_pty_session_leak.py" \
+    --apply --idle-seconds 600 --interval-seconds 120 2>/dev/null \
+    | grep -E "APPLIED|already patched|ABORT|WARNING" \
+    || echo "  (patch skipped — A0 env unavailable)"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 
 echo ""

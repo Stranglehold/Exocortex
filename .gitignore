@@ -35,3 +35,8 @@ monitor/attention_router.log
 
 # BP-02 harness runtime results
 harness/results/
+
+# Local backups and Windows shortcuts — never artifacts, always machine-local
+*.bak-*
+*.bak
+*.lnk

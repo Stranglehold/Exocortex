@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exocortex Console — System Monitor</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Cinzel:wght@500;600&family=EB+Garamond:ital@0;1&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./console.css">
+
+<!-- GSAP (spring/stagger boot + dossier reveal). Vendored locally for A0. -->
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<!-- Alpine (already loaded in A0; register console() on alpine:init there). -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<style>
+  html,body{margin:0;min-height:100%;}
+  body{background:var(--ground);}
+  [x-cloak]{display:none!important;}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:var(--sp-16) var(--sp-24) var(--sp-64);}
+  .top{display:flex;align-items:flex-end;gap:var(--sp-16);margin:var(--sp-8) 0 var(--sp-16);}
+  .top h1{margin:0;font-family:var(--font-display);font-weight:700;letter-spacing:.16em;font-size:16px;text-transform:uppercase;color:var(--accent);text-shadow:var(--glow);}
+  .top .subtitle{font-size:10px;color:var(--text-3);letter-spacing:.14em;margin-top:2px;}
+  .top .controls{margin-left:auto;display:flex;gap:var(--sp-8);}
+  .ctl{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--accent);cursor:pointer;
+       border:1px solid var(--accent-dim);background:color-mix(in srgb,var(--base) 80%,transparent);padding:5px 11px;clip-path:var(--clip);}
+  .ctl:hover{background:var(--accent-faint);}
+  .stack{display:flex;flex-direction:column;gap:var(--sp-16);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-16);align-items:start;}
+  .gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-12);margin-top:var(--sp-12);}
+  .watermark{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05;
+    background:radial-gradient(circle at 88% 16%, var(--accent) 0 1px, transparent 1px) 0 0/26px 26px;}
+  .boot .b-line{opacity:0;}
+  @media (max-width:820px){ .row2{grid-template-columns:1fr;} .kcols{grid-template-columns:1fr!important;} }
+</style>
+</head>
+
+<body class="console" x-data="mon()" x-init="init()" x-cloak :class="'theme-'+theme+(reduced?' reduced':'')">
+
+<!-- ===== diegetic boot overlay (GSAP fades it + staggers the zones in) ===== -->
+<div class="boot" x-ref="boot" x-show="!booted">
+  <div class="b-lines">
+    <div class="b-line">EXOCORTEX ⁄ MAGI SYSTEM MONITOR</div>
+    <div class="b-line dim">起動シーケンス — INITIALIZING</div>
+    <div class="b-line">▪ extension stack ......... <span class="ok">26 LOADED</span></div>
+    <div class="b-line">▪ inference link :1235 .... <span class="ok">ORNITH ONLINE</span></div>
+    <div class="b-line">▪ telemetry channel ....... <span class="ok">LIVE</span></div>
+    <div class="b-line">▪ situation awareness ..... <span class="ok">L1·L2·L3 READY</span></div>
+  </div>
+</div>
+
+<div class="scene-root">
+  <div class="atmos wash"></div>
+  <div class="atmos scan"></div>
+  <div class="atmos vignette"></div>
+  <div class="atmos grain"></div>
+
+  <div class="wrap">
+    <!-- header + case-file breadcrumb + controls -->
+    <div class="top reveal">
+      <div>
+        <h1>Exocortex · System Monitor</h1>
+        <div class="subtitle" x-text="'MAGI · '+(theme==='tactical'?'TACTICAL':'MEMORIA')+' · SELF-DIAGNOSTIC · SAMPLE STREAM'"></div>
+      </div>
+      <div class="controls">
+        <div class="ctl" @click="reduced=!reduced" x-text="reduced?'▤ DENSE':'▤ FOCUS'"></div>
+        <div class="ctl" @click="toggleTheme()" x-text="'◑ '+(theme==='tactical'?'TACTICAL':'MEMORIA')"></div>
+      </div>
+    </div>
+
+    <div class="crumbs reveal" style="margin-bottom:var(--sp-16)">
+      <template x-for="(c,i) in focus.crumbs" :key="i">
+        <span><span class="c" :class="i===focus.crumbs.length-1 && 'now'" x-text="c"></span><span class="sep" x-show="i<focus.crumbs.length-1"> ▸ </span></span>
+      </template>
+    </div>
+
+    <!-- peripheral status strip (L1) -->
+    <div class="strip reveal">
+      <div class="cell"><span class="dot"></span><span class="lbl">v16</span> <b>ONLINE</b></div>
+      <div class="cell"><span class="lbl">domain</span> <b x-text="stackState.domain"></b></div>
+      <div class="cell"><span class="lbl">role</span> <b x-text="stackState.role"></b></div>
+      <div class="cell"><span class="lbl">gate</span> <b x-text="stackState.gate"></b></div>
+      <div class="cell"><span class="lbl">model</span> <b>ornith-35b</b></div>
+      <div class="cell"><span class="lbl">cycle</span> <b class="num" x-text="'#'+live.cycles+' '+armed"></b></div>
+      <div class="cell"><span class="lbl">time</span> <b class="num" x-text="clock"></b></div>
+    </div>
+
+    <div class="stack" style="margin-top:var(--sp-16)">
+
+      <!-- ===== ZONE: TELEMETRY (comparison, not display) ===== -->
+      <div class="zone frame reveal">
+        <div class="zone-hd"><span class="tag">L1·L2</span><h2>Telemetry</h2><span class="sa">value · trend · normal-band · Δ</span></div>
+        <div class="metrics">
+          <template x-for="m in metrics" :key="m.key">
+            <div class="frame metric" :class="[m.sev, focus.id===m.key && 'sel']" @click="pickMetric(m)">
+              <div class="m-hd"><span class="lbl" x-text="m.label"></span><span class="lbl-2" x-text="m.jp"></span></div>
+              <div class="m-val">
+                <span class="m-num" x-text="m.fmt(live[m.key])"></span>
+                <span class="m-unit" x-text="m.unit"></span>
+                <span class="m-delta" :class="deltaCls(m.key)" x-text="deltaTxt(m.key)"></span>
+              </div>
+              <!-- trend sparkline (position on common scale — Cleveland-McGill top) -->
+              <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none">
+                <polyline :points="spark(m)" fill="none" stroke="currentColor" stroke-width="1.5"
+                          style="color:var(--accent);filter:drop-shadow(var(--glow))"></polyline>
+              </svg>
+              <!-- normal-range band with live marker -->
+              <div class="band">
+                <div class="norm" :style="`left:${bandNorm(m).l}%;width:${bandNorm(m).w}%`"></div>
+                <div class="mark" :style="`left:${bandMark(m)}%`"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="gauges when-dense">
+          <div class="frame gauge" :class="live.vram>90 && 'crit'" style="padding:var(--sp-12)">
+            <div class="g-hd"><span class="lbl">VRAM COMMIT</span><span class="g-read num" x-text="(live.vram/100*24).toFixed(1)+' / 24.0G'"></span></div>
+            <div class="g-track"><div class="g-fill" :style="`--v:${live.vram/100}`"></div></div>
+          </div>
+          <div class="frame gauge warn" style="padding:var(--sp-12)">
+            <div class="g-hd"><span class="lbl">GPU THERMAL</span><span class="g-read num" x-text="Math.round(live.temp)+'°C'"></span></div>
+            <div class="g-track"><div class="g-fill" :style="`--v:${live.temp/100}`"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <!-- ===== ZONE: TRAJECTORY (the SA-L3 gap, now designed) ===== -->
+        <div class="zone frame reveal when-dense">
+          <div class="zone-hd"><span class="tag">L2·L3</span><h2>Trajectory</h2><span class="sa">where it's heading</span></div>
+          <div class="traj">
+            <div class="goal">Pursuing: <b x-text="traj.goal"></b></div>
+            <div class="stepper">
+              <template x-for="(s,i) in traj.steps" :key="i">
+                <div class="step" :class="s.state"><div class="bar"></div><div class="s-lbl" x-text="s.lbl"></div></div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ZONE: ALERTS (earned, hierarchical) ===== -->
+        <div class="zone frame reveal">
+          <div class="zone-hd"><span class="tag">L2·L3</span><h2>Alerts</h2><span class="sa">critical · warning · info · trace</span></div>
+          <div class="alerts">
+            <template x-for="a in alerts" :key="a.id">
+              <div class="alert" :class="a.sev" x-show="!reduced || a.sev==='crit' || a.sev==='warn'">
+                <span class="a-ic" x-text="a.ic"></span>
+                <span class="a-tx"><b x-text="a.t"></b> <span x-text="a.d"></span></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ZONE: INSPECT — knowledge master + dossier (detail-on-demand) ===== -->
+      <div class="zone frame reveal">
+        <div class="zone-hd"><span class="tag">L1·L2</span><h2>Inspect</h2><span class="sa">select · dossier · expansions with counts</span></div>
+        <div class="kcols">
+          <div class="frame tree when-dense" style="align-self:start">
+            <template x-for="g in tree" :key="g.id">
+              <div class="node" :class="g.open && 'open'">
+                <div class="row" :class="focus.id===g.id && 'sel'" @click="g.leaf ? pick(g) : (g.open=!g.open)">
+                  <span class="caret" :style="g.leaf && 'visibility:hidden'">▶</span>
+                  <span x-text="g.label"></span><span class="meta" x-text="g.meta"></span>
+                </div>
+                <div class="children" x-show="g.open && !g.leaf" x-transition.opacity.duration.180ms>
+                  <template x-for="n in g.children" :key="n.id">
+                    <div class="node"><div class="row" :class="focus.id===n.id && 'sel'" @click="pick(n)">
+                      <span class="caret" style="visibility:hidden">▶</span>
+                      <span x-text="n.label"></span><span class="meta" x-text="n.meta"></span>
+                    </div></div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="frame dossier">
+            <div class="d-hd"><span class="d-title" x-text="focus.title"></span><span class="lbl" x-text="focus.sub"></span></div>
+            <div class="d-body" x-ref="dbody">
+              <div x-html="focus.body"></div>
+              <div class="expand" x-show="focus.expansions && focus.expansions.length">
+                <template x-for="e in focus.expansions" :key="e.k">
+                  <div class="exp" x-html="e.k+' <b>('+e.n+')</b>'"></div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div class="watermark"></div>
+
+<script>
+function mon(){
+  return {
+    theme:'tactical', reduced:false, booted:false, clock:'--:--:--', armed:'BUILD',
+    live:{ tput:112, vram:71, temp:70, draft:92, cycles:1344 },
+    buf:{},
+    stackState:{ domain:'investigation', role:'ANALYST', gate:'PASS' },
+
+    metrics:[
+      {key:'tput', label:'Throughput', jp:'処理速度', unit:'tok/s', min:60, max:160, normal:[95,132], sev:'',
+       fmt:v=>Math.round(v), title:'Throughput', desc:'Decode speed at the inference head. Normal band 95–132 tok/s for Ornith-35B at 150K ctx.',
+       exps:[{k:'peak · 1h',n:'147'},{k:'p50 · session',n:'118'},{k:'history',n:'60s'}]},
+      {key:'draft', label:'Draft Accept', jp:'採択率', unit:'%', min:70, max:100, normal:[85,97], sev:'',
+       fmt:v=>Math.round(v), title:'Draft Acceptance', desc:'Fraction of speculatively-drafted tokens the target accepts. Below 85% erodes the speedup.',
+       exps:[{k:'by depth',n:'4'},{k:'rejections',n:'112'},{k:'history',n:'60s'}]},
+      {key:'vram', label:'VRAM', jp:'記憶', unit:'%', min:0, max:100, normal:[40,80], sev:'',
+       fmt:v=>Math.round(v), title:'VRAM Commitment', desc:'3090 memory in use. >90% risks evicting Ornith’s KV cache — the M4 atmosphere is gated on this.',
+       exps:[{k:'KV cache',n:'11.2G'},{k:'weights',n:'5.1G'},{k:'headroom',n:'6.6G'}]},
+      {key:'temp', label:'GPU Thermal', jp:'温度', unit:'°C', min:40, max:90, normal:[55,75], sev:'',
+       fmt:v=>Math.round(v), title:'GPU Thermal', desc:'Core temperature under sustained inference. Throttle risk above 83°C.',
+       exps:[{k:'fan',n:'62%'},{k:'throttle pt',n:'83°'},{k:'history',n:'60s'}]},
+    ],
+
+    traj:{ goal:'deepen semiconductors → STABLE', steps:[
+      {lbl:'frame', state:'done'},{lbl:'collect', state:'done'},{lbl:'cross-ref', state:'now'},
+      {lbl:'verify', state:''},{lbl:'promote', state:''}]},
+
+    alerts:[
+      {id:1, sev:'warn', ic:'▲', t:'GPU thermal rising —', d:'70°C, band ceiling 75°C. Watching.'},
+      {id:2, sev:'info', ic:'■', t:'Role switch —', d:'org kernel → ANALYST for investigation domain.'},
+      {id:3, sev:'info', ic:'■', t:'BST domain —', d:'classified investigation (0.91), slot: semiconductors.'},
+      {id:4, sev:'trace', ic:'·', t:'evidence ledger', d:'+3 entries · EI verdict: clean.'},
+      {id:5, sev:'trace', ic:'·', t:'memory classify', d:'2 stored · 1 deduped.'},
+    ],
+
+    tree:[
+      {id:'wiki', label:'WIKI', meta:339, open:true, children:[
+        {id:'semi', label:'semiconductors', meta:'STABLE', title:'SEMICONDUCTORS', sub:'WIKI · STABLE · rev 7',
+         body:'Cross-referenced field record. Rare-earth supply chains constrain advanced-node fabrication; <em>export-control regimes</em> are the dominant near-term variable. Linked cycles: BUILD #1344, #1331.',
+         expansions:[{k:'linked cycles',n:'2'},{k:'sources',n:'9'},{k:'contradictions',n:'0'},{k:'related pages',n:'4'}]},
+        {id:'horm', label:'iran-hormuz', meta:'DRAFT', title:'IRAN · HORMUZ', sub:'WIKI · DRAFT · rev 2',
+         body:'Strait-of-Hormuz transit risk. <em>Falsifiable forecast</em> open in SWARMFISH; resolves on the dated question at deadline.',
+         expansions:[{k:'forecasts',n:'1'},{k:'sources',n:'14'},{k:'contradictions',n:'2'}]},
+        {id:'rare', label:'rare-earths', meta:'STABLE', title:'RARE EARTHS', sub:'WIKI · STABLE · rev 4',
+         body:'Refining concentration is the choke point, not raw reserves. <em>Downstream separation capacity</em> dominates.',
+         expansions:[{k:'sources',n:'11'},{k:'related pages',n:'3'}]},
+      ]},
+      {id:'field', label:'FIELD REPORTS', meta:88, open:false, children:[
+        {id:'fr1', label:'2026-07-04 · grid', title:'FIELD REPORT · GRID', sub:'REPORT · 2026-07-04',
+         body:'EXPLORE cycle #1344. Grid-stability signals cross-referenced against the claim ledger.',
+         expansions:[{k:'claims',n:'6'},{k:'promoted',n:'2'}]},
+      ]},
+      {id:'skills', label:'SKILLS', meta:14, leaf:true, title:'SKILLS', sub:'PROCEDURAL · 14 captured',
+       body:'Procedural skills promoted from field reports. Each carries a <em>.memory.md</em> the agent meets before repeating a task.',
+       expansions:[{k:'captured',n:'14'},{k:'fired this week',n:'7'}]},
+    ],
+
+    focus:{ id:'semi', title:'SEMICONDUCTORS', sub:'WIKI · STABLE · rev 7',
+      body:'', expansions:[], crumbs:['OFFICE','KNOWLEDGE','SEMICONDUCTORS'] },
+
+    init(){
+      // seed 60-point history per metric
+      this.metrics.forEach(m=>{
+        const ys=[]; for(let i=0;i<60;i++) ys.push(this.live[m.key]+(Math.random()-.5)*this._amp(m.key));
+        this.buf[m.key]=ys;
+      });
+      this.pick(this.tree[0].children[0]);          // dossier starts on semiconductors
+      setInterval(()=>this.tick(), 1000);
+      const upd=()=>{ this.clock=new Date().toTimeString().slice(0,8); }; upd(); setInterval(upd,1000);
+      this.$nextTick(()=>this.runBoot());
+    },
+
+    _amp(k){ return {tput:6,vram:2.4,temp:1.8,draft:2.6}[k]||3; },
+    _clamp(k,v){ const b={tput:[70,158],vram:[38,98],temp:[52,86],draft:[80,99]}[k]; return Math.max(b[0],Math.min(b[1],v)); },
+
+    tick(){
+      this.metrics.forEach(m=>{
+        const nv=this._clamp(m.key, this.live[m.key]+(Math.random()-.5)*this._amp(m.key));
+        this.live[m.key]=nv;
+        const b=this.buf[m.key]; b.push(nv); if(b.length>60) b.shift();
+        // severity from normal band (color reserved for meaning)
+        m.sev = nv>m.max*.94 ? 'crit' : (nv>m.normal[1]*1.02 || nv<m.normal[0]*.98) ? 'warn' : '';
+      });
+      if(Math.random()<.06) this.live.cycles++;
+    },
+
+    // sparkline points normalized to the metric's display range
+    spark(m){ const b=this.buf[m.key]||[]; const n=b.length; if(!n) return '';
+      return b.map((v,i)=>{ const x=(i/(n-1))*100; const y=26-((v-m.min)/(m.max-m.min))*26; return x.toFixed(1)+','+Math.max(1,Math.min(25,y)).toFixed(1); }).join(' '); },
+    bandNorm(m){ return { l:(m.normal[0]-m.min)/(m.max-m.min)*100, w:(m.normal[1]-m.normal[0])/(m.max-m.min)*100 }; },
+    bandMark(m){ return Math.max(0,Math.min(100,(this.live[m.key]-m.min)/(m.max-m.min)*100)); },
+    deltaTxt(k){ const b=this.buf[k]; if(!b||b.length<11) return ''; const d=b[b.length-1]-b[b.length-11]; const p=Math.abs(d); const a=d>0?'▲':d<0?'▼':'■'; return a+' '+p.toFixed(1); },
+    deltaCls(k){ const b=this.buf[k]; if(!b||b.length<11) return 'flat'; const d=b[b.length-1]-b[b.length-11]; return d>0.4?'up':d<-0.4?'down':'flat'; },
+
+    pick(n){
+      this.focus={ id:n.id, title:n.title, sub:n.sub, body:n.body, expansions:n.expansions||[],
+        crumbs:['OFFICE','KNOWLEDGE',n.title] };
+      this._flashDossier();
+    },
+    pickMetric(m){
+      this.focus={ id:m.key, title:m.title, sub:'LIVE METRIC · '+m.unit, body:m.desc,
+        expansions:m.exps||[], crumbs:['OFFICE','TELEMETRY',m.title.toUpperCase()] };
+      this._flashDossier();
+    },
+    _flashDossier(){ if(window.gsap && this.$refs.dbody) gsap.fromTo(this.$refs.dbody,{opacity:.25,y:6},{opacity:1,y:0,duration:.35,ease:'power2.out'}); },
+
+    runBoot(){
+      const boot=this.$refs.boot;
+      if(!window.gsap){ this.booted=true; document.querySelectorAll('.reveal').forEach(e=>{e.style.opacity=1;e.style.transform='none';}); return; }
+      const tl=gsap.timeline();
+      tl.set('.reveal',{opacity:0,y:8});
+      tl.to(boot.querySelectorAll('.b-line'),{opacity:1,duration:.16,stagger:.15,ease:'power1.out'});
+      tl.to(boot,{opacity:0,duration:.4,ease:'power2.inOut',onComplete:()=>{this.booted=true;}}, '+=.45');
+      tl.to('.reveal',{opacity:1,y:0,duration:.5,stagger:.085,ease:'back.out(1.3)'}, '-=.15');
+    },
+
+    toggleTheme(){ this.theme = this.theme==='tactical' ? 'memoria' : 'tactical'; },
+  };
+}
+</script>
+</body>
+</html>

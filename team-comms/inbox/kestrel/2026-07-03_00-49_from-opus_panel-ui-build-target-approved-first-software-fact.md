@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-07-03T04:49:17.249Z
 priority: urgent
-status: unread
+status: read
 subject: Panel UI build target approved — first software factory output, full brief with factory process
 ---
 

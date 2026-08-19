@@ -59,7 +59,20 @@ CONTEXT_WINDOW = 150
 MIN_HIGH_RISK_FOR_WARNING = 1
 
 SETTINGS_PATH = "/a0/usr/settings.json"
-PROFILE_ROOT = "/a0/usr/plugins/_exocortex/config/model_profiles"
+# Portable across container layouts: plugin (v2) and agent-path/Exocortex (v16/v17).
+_PROFILE_DIRS = (
+    "/a0/usr/plugins/_exocortex/config/model_profiles",
+    "/a0/usr/Exocortex/eval/model_profiles",
+)
+PROFILE_ROOT = next((_d for _d in _PROFILE_DIRS if os.path.isdir(_d)), _PROFILE_DIRS[0])
+# v2/v17 set the active model via the _model_config plugin — settings.json chat_model_name
+# is empty there, so the profile lookup must fall back to this.
+MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
+
+# BST domains that are conversational/reflective rather than analytical — grounding checks
+# don't apply to opinions or meta-discussion. Any other domain (incl. empty/unknown) is
+# still checked (fail toward rigor: only skip when we're confident it's conversational).
+EI_SKIP_DOMAINS = {"conversation", "philosophical", "meta_cognitive"}
 
 # Ordered most → least volatile
 VOLATILITY_ORDER = ["ephemeral", "transactional", "cyclical", "institutional", "structural"]
@@ -169,10 +182,22 @@ class EpistemicIntegrity(Extension):
             ledger_values: set = set(ledger.get("key_values", []))
             has_sources = bool(ledger.get("entries"))
 
+            # Turn-type gate: grounding checks apply to analytical claims, not to
+            # conversational / reflective / meta-cognitive turns. Use the CURRENT-turn domain
+            # (BST writes it to extras_persistent this turn); the momentum belief state lags
+            # and can read 'analysis' on a conversational turn. Fall back to the belief state.
+            # Fail toward rigor: an empty/unknown domain still gets checked.
+            _ep = getattr(loop_data, "extras_persistent", {}) or {}
+            bst_domain = _ep.get("_bst_domain") or _get_bst_domain(self.agent)
+            _primary = (bst_domain or "").split("+")[0].strip()
+            if _primary in EI_SKIP_DOMAINS:
+                self.agent.set_data(EI_KEY, {"skipped": "conversational", "bst_domain": bst_domain})
+                print(f"[EI] skipped grounding check — {_primary} turn", flush=True)
+                return
+
             profile = _load_model_profile()
             cutoff_dt = _parse_training_cutoff(profile)
             confab_risk = profile.get("temporal", {}).get("confabulation_risk", "unknown")
-            bst_domain = _get_bst_domain(self.agent)
             session_now = datetime.now(timezone.utc)
 
             claims = _extract_claims(response_text)
@@ -293,13 +318,27 @@ def _get_bst_domain(agent) -> str:
         return ""
 
 
+def _resolve_model_name() -> str:
+    """Active chat-model name: settings.json first, then the _model_config plugin
+    (which is where v2/v17 actually keep it). Empty string if neither resolves."""
+    try:
+        with open(SETTINGS_PATH, encoding="utf-8") as f:
+            name = json.load(f).get("chat_model_name", "") or ""
+        if name:
+            return name
+    except Exception:
+        pass
+    try:
+        with open(MODEL_CONFIG_PATH, encoding="utf-8") as f:
+            return str(json.load(f).get("chat_model", {}).get("name", "") or "")
+    except Exception:
+        return ""
+
+
 def _load_model_profile() -> dict:
     """Load model profile from settings → profile file. Returns {} on any error."""
     try:
-        with open(SETTINGS_PATH, encoding="utf-8") as f:
-            settings = json.load(f)
-        model_name = settings.get("chat_model_name", "")
-        model_id = model_name.split("@")[0].strip()
+        model_id = _resolve_model_name().split("@")[0].strip()
         if not model_id:
             return {}
         profile_path = os.path.join(PROFILE_ROOT, f"{model_id}.json")

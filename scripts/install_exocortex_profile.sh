@@ -62,10 +62,18 @@ _exec "$CONTAINER" mkdir -p \
   "$PLUGIN_BASE/webui/backgrounds"
 
 # ── Deploy plugin manifest ────────────────────────────────────────────────────
+#
+# 2026-08-19: plugin.yaml was sourced from the stale $SCRIPT_DIR/plugin/ mirror.
+# That copy declares `name: exocortex` (the directory — and every registered route
+# — is `_exocortex`) and omits `always_enabled: true`. A fresh install would have
+# misnamed the plugin and left it disabled. It also carries version 2.0.0 against
+# the live 1.0.0, which is probably why it read as newer and went unnoticed.
+# Manifest now comes from the real tree; the other two are byte-identical in both
+# and are pointed there for consistency.
 
-docker cp "$SCRIPT_DIR/plugin/plugin.yaml"          "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
-docker cp "$SCRIPT_DIR/plugin/default_config.yaml"  "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
-docker cp "$SCRIPT_DIR/plugin/tool_domains.json"    "$CONTAINER:$PLUGIN_BASE/tool_domains.json"
+docker cp "$SCRIPT_DIR/plugins/_exocortex/plugin.yaml"          "$CONTAINER:$PLUGIN_BASE/plugin.yaml"
+docker cp "$SCRIPT_DIR/plugins/_exocortex/default_config.yaml"  "$CONTAINER:$PLUGIN_BASE/default_config.yaml"
+docker cp "$SCRIPT_DIR/plugins/_exocortex/tool_domains.json"    "$CONTAINER:$PLUGIN_BASE/tool_domains.json"
 
 # ── Model config: deploy for max_tokens + utility fallback ────────────────────
 # We deploy _model_config/config.json for two reasons:
@@ -85,7 +93,12 @@ docker cp "$MODEL_CONFIG_SRC/helpers/model_config.py"         "$MODEL_CONFIG_COD
 
 # ── Deploy webui assets (theme system) ───────────────────────────────────────
 
-WEBUI_SRC="$SCRIPT_DIR/plugin/webui"
+# 2026-08-19: repointed from the stale $SCRIPT_DIR/plugin/ mirror. Every named file
+# this block copies was older than what is live — all three .js assets plus the
+# big-shell, kaer-morhen, and shadow-moses themes. Same curated file list, current
+# source. (The remaining count difference between the trees IS deliberate curation:
+# this block ships named assets, not the whole directory.)
+WEBUI_SRC="$SCRIPT_DIR/plugins/_exocortex/webui"
 WEBUI_DEST="$CONTAINER:$PLUGIN_BASE/webui"
 
 # Alpine.js store + theme editor + artifact runtime
@@ -99,7 +112,8 @@ for f in "$WEBUI_SRC/themes/"*.json; do
 done
 
 # WebUI extension — theme picker sidebar component
-WEBUI_EXT_SRC="$SCRIPT_DIR/plugin/extensions/webui"
+# 2026-08-19: repointed — both named files here were stale in the mirror too.
+WEBUI_EXT_SRC="$SCRIPT_DIR/plugins/_exocortex/extensions/webui"
 WEBUI_EXT_DEST="$CONTAINER:$PLUGIN_BASE/extensions/webui"
 
 docker cp "$WEBUI_EXT_SRC/sidebar-bottom-wrapper-start/theme-picker.html" \
@@ -175,13 +189,26 @@ done
 echo "  Extensions: $deployed_ext deployed, $skipped_ext tombstones skipped"
 
 # ── Deploy plugin API handlers ────────────────────────────────────────────────
-# Loaded by A0 at /api/plugins/exocortex/<handler> — persistent in plugin dir.
+# Loaded by A0 at /api/plugins/_exocortex/<handler> — persistent in plugin dir.
+#
+# 2026-08-19: this block used to name two files from $SCRIPT_DIR/plugin/api — a
+# SECOND, stale copy of the tree. It shipped 2 of 6 handlers, and its copies of
+# the two it did ship were older than what was live. Running the installer would
+# have downgraded api_theme_save/upload AND left chat_retention, idle_control,
+# idle_cycle, office_feed, and diagnostics uninstalled — the idle engine and the
+# Office panel both depend on handlers that were never in the pipeline.
+# Now: copy every handler from the real tree, so a fresh install matches a
+# hand-deployed container.
 
-API_SRC="$SCRIPT_DIR/plugin/api"
+API_SRC="$SCRIPT_DIR/plugins/_exocortex/api"
 API_DEST="$CONTAINER:$PLUGIN_BASE/api"
 
-docker cp "$API_SRC/api_theme_save.py"   "$API_DEST/"
-docker cp "$API_SRC/api_theme_upload.py" "$API_DEST/"
+api_count=0
+for api_file in "$API_SRC"/*.py; do
+  [ -f "$api_file" ] || continue
+  docker cp "$api_file" "$API_DEST/" && api_count=$((api_count + 1))
+done
+echo "  API handlers: $api_count deployed from plugins/_exocortex/api"
 
 # ── Deploy tools ──────────────────────────────────────────────────────────────
 # Custom Agent Zero tools discovered automatically from plugin tools/ directory.

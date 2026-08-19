@@ -1,7 +1,11 @@
 """
 Idle Engine Control API
 =======================
-Route (auto-registered by A0's dispatch): POST /api/idle_control
+Route (auto-registered by A0's plugin dispatch): POST /api/plugins/_exocortex/idle_control
+
+(This docstring previously said /api/idle_control. That is wrong — verified live
+2026-08-19 on VekV2: POST /api/idle_control -> 404, POST /api/plugins/_exocortex/idle_control
+-> 200. Plugin API modules register under /api/plugins/<plugin>/<module>.)
 
 Actions:
   enable  — permanently enable the idle engine (sets config.json enabled: true)
@@ -39,7 +43,7 @@ _LOGFILE = "/a0/usr/workdir/workspace/office/idle_watch.log"
 
 
 class IdleControl(ApiHandler):
-    """POST /api/idle_control — enable, disable, pause, or resume the idle engine."""
+    """POST /api/plugins/_exocortex/idle_control — enable, disable, pause, resume."""
 
     @classmethod
     def get_methods(cls) -> list[str]:

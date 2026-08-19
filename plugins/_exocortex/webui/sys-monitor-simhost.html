@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYS·MONITOR — canvas simulation</title>
+<style>
+  body{margin:0;background:#0b0d12;color:#5a6472;font-family:ui-sans-serif,system-ui,sans-serif;height:100vh;overflow:hidden;}
+  .hint{padding:26px;max-width:520px;line-height:1.6;font-size:13px;}
+  .hint b{color:#8a94a4;}
+  /* simulate A0's right-canvas column: fixed narrow panel on the right */
+  .canvas-sim{position:fixed;top:0;right:0;width:420px;height:100vh;
+    border-left:1px solid #262b33;box-shadow:-10px 0 40px rgba(0,0,0,.5);overflow:hidden;}
+  [x-cloak]{display:none!important;}
+</style>
+<script type="module">
+  import { createSysMonStore } from './sys-monitor-store.js';
+  // registrar step: create the store once (Alpine available at alpine:init)
+  document.addEventListener('alpine:init', () => { Alpine.store('sysMon', createSysMonStore()); });
+  // loader step: A0's x-component injects the content fragment; Alpine hydrates it
+  document.addEventListener('alpine:initialized', async () => {
+    const host = document.getElementById('sim');
+    host.innerHTML = await (await fetch('./sys-monitor-content.html')).text();
+    setTimeout(() => Alpine.store('sysMon').start(), 60);  // canvas open() → start tick
+  });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+  <div class="hint">
+    <b>SYS·MONITOR — canvas simulation</b><br>
+    The panel on the right is the docked surface at a realistic ~420px right-canvas width,
+    rendered exactly as A0 would: registrar creates <code>$store.sysMon</code>, the
+    <code>&lt;x-component&gt;</code> injects <code>sys-monitor-content.html</code>, Alpine hydrates it.<br><br>
+    No A0 theme vars set here → the tactical-amber fallback shows (the MAGI default).
+    Docked in A0 it rides the active theme.
+  </div>
+  <div class="canvas-sim" id="sim"></div>
+</body>
+</html>

@@ -1,0 +1,239 @@
+/* ============================================================================
+   EXOCORTEX CONSOLE — redesigned System Monitor foundation
+   ----------------------------------------------------------------------------
+   Grounded in the four design briefs (see factory/panel-ui/REDESIGN_DIRECTION.md):
+     · WEBUI      — SA-level fixed zones, comparison-not-display, alert hierarchy
+     · AESTHETICS — TACTICAL/MEMORIA themes, weight contrast, 8-grid, juice
+     · INFO-ENV   — dossier register, detail-on-demand with expansion counts
+     · MECHANICS  — transform/opacity-only motion, CSS atmosphere, elevation
+
+   Native Alpine + vanilla CSS + GSAP (springs) + uPlot (sparklines).
+   Every color derives from theme vars; a theme swap re-skins with no code change.
+   ========================================================================== */
+
+/* ---- Theme primitives (body.theme-*) -------------------------------------- */
+/* TACTICAL — MGSV: amber on near-black, condensed display, warm near-white.   */
+body.theme-tactical {
+  --accent:        #f5a01e;   /* amber-500 */
+  --accent-2:      #ffc24d;   /* amber-400, hover/emphasis */
+  --ground:        #070806;   /* z-0 true background */
+  --base:          #0e100c;   /* z-1 primary surface */
+  --raised:        #15180f;   /* z-2 cards, zones (LIGHTER = higher) */
+  --float:         #1d2114;   /* z-3 popovers */
+  --text:          #ece6d6;   /* warm near-white (not cold) */
+  --text-2:        #a49e8c;   /* secondary */
+  --text-3:        #6f6a5b;   /* tertiary / metadata */
+  --border:        #34381f;
+  --ok:            #86c34f;
+  --warn:          #f0a92e;
+  --crit:          #e0503a;
+  --font-display:  "Rajdhani","Barlow Condensed",sans-serif;
+  --font-body:     "Share Tech Mono","Courier New",monospace;
+  --font-mono:     "Share Tech Mono","Courier New",monospace;
+  --scan-opacity:  .35;
+  --grain-opacity: .018;
+}
+/* MEMORIA — Bravely Default: warm gold on brown-black, serif throughout.      */
+body.theme-memoria {
+  --accent:        #c79a3e;
+  --accent-2:      #e3ba54;
+  --ground:        #140f09;
+  --base:          #1c150d;
+  --raised:        #241b10;
+  --float:         #2e2416;
+  --text:          #efe6cf;
+  --text-2:        #b6a688;
+  --text-3:        #857a5f;
+  --border:        #4a3a20;
+  --ok:            #9bad63;
+  --warn:          #d0a24a;
+  --crit:          #c15a45;
+  --font-display:  "Cinzel","Cormorant Garamond",serif;
+  --font-body:     "EB Garamond",Georgia,serif;
+  --font-mono:     "JetBrains Mono",ui-monospace,monospace;
+  --scan-opacity:  .12;
+  --grain-opacity: .026;
+}
+
+/* ---- Derived atmosphere + spacing (8-point grid) -------------------------- */
+:root {
+  --sp-2:2px; --sp-4:4px; --sp-8:8px; --sp-12:12px; --sp-16:16px;
+  --sp-24:24px; --sp-32:32px; --sp-48:48px; --sp-64:64px;
+  --dur-micro:100ms; --dur-fast:200ms; --dur-med:300ms; --dur-slow:450ms;
+  --ease-out:cubic-bezier(0,0,0,1);      /* entering */
+  --ease-std:cubic-bezier(.2,0,0,1);     /* on-screen */
+  --ease-emph:cubic-bezier(.2,0,0,1.25); /* overshoot */
+}
+.console {
+  --accent-dim:   color-mix(in srgb, var(--accent) 55%, transparent);
+  --accent-faint: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-tint:  color-mix(in srgb, var(--accent) 6%, var(--raised));
+  --hairline:     color-mix(in srgb, var(--accent) 34%, var(--border));
+  --glow:         0 0 6px color-mix(in srgb, var(--accent) 40%, transparent);
+  --clip: polygon(0 7px, 7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  color: var(--text);
+  font-family: var(--font-body);
+  letter-spacing: .01em;
+}
+.console *, .console *::before, .console *::after { box-sizing: border-box; }
+
+/* ---- Diegetic atmosphere (isolation scene; MECHANICS §11.5) ---------------- */
+/* scene-root holds blend layers; watermark/UI chrome must live OUTSIDE it.    */
+.scene-root { position: relative; isolation: isolate; min-height: 100%; background: var(--ground); }
+.scene-root > .atmos {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+}
+.atmos.scan {                                   /* scanlines — worldbuilding, not decoration */
+  opacity: var(--scan-opacity);
+  background-image: repeating-linear-gradient(0deg,
+    transparent 0 2px, rgba(0,0,0,.5) 2px 3px);
+}
+.atmos.vignette {
+  background: radial-gradient(130% 100% at 50% 0%,
+    transparent 45%, color-mix(in srgb, var(--ground) 85%, black) 100%);
+}
+.atmos.grain {                                  /* ≤2% film grain (brief spec; not the rejected 4%) */
+  opacity: var(--grain-opacity); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.atmos.wash {                                   /* faint amber top-wash so glass has substance */
+  background: radial-gradient(120% 80% at 50% -8%, var(--accent-faint), transparent 60%);
+}
+
+/* ---- Shared bits ---------------------------------------------------------- */
+.lbl   { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3); }
+.lbl-2 { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-dim); }
+.num   { font-family:var(--font-mono); font-variant-numeric: tabular-nums; }
+.frame {
+  position: relative; background: var(--raised);
+  border: 1px solid var(--hairline); clip-path: var(--clip);
+}
+.frame::after {                                 /* amber corner ticks */
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.8;
+  background:
+    linear-gradient(var(--accent),var(--accent)) 0 0/9px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) 0 0/1px 9px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) 100% 100%/9px 1px no-repeat,
+    linear-gradient(var(--accent),var(--accent)) 100% 100%/1px 9px no-repeat;
+}
+
+/* ---- Fixed SA zones (WEBUI §11.4) ----------------------------------------- */
+.zone { padding: var(--sp-12) var(--sp-16) var(--sp-16); background: var(--accent-tint); }
+.zone-hd {
+  display:flex; align-items:center; gap:var(--sp-8); margin-bottom:var(--sp-12);
+  border-bottom:1px solid var(--accent-faint); padding-bottom:var(--sp-8);
+}
+.zone-hd .tag {
+  font-size:9px; letter-spacing:.18em; color:var(--ground);
+  background:var(--accent-dim); padding:1px 6px; text-transform:uppercase;
+}
+.zone-hd h2 {
+  margin:0; font-family:var(--font-display); font-weight:600; font-size:13px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--accent); text-shadow:var(--glow);
+}
+.zone-hd .sa { margin-left:auto; font-size:9px; color:var(--text-3); letter-spacing:.14em; }
+
+/* ---- Status strip (peripheral L1 — read without reading the feed) ---------- */
+.strip { display:flex; align-items:stretch; border:1px solid var(--hairline); background:var(--base); font-size:11px; }
+.strip .cell { display:flex; align-items:center; gap:var(--sp-8); padding:var(--sp-8) var(--sp-16); border-right:1px solid var(--accent-faint); white-space:nowrap; }
+.strip .cell:last-child { border-right:0; margin-left:auto; }
+.strip .cell b { font-family:var(--font-mono); font-weight:400; color:var(--accent); text-shadow:var(--glow); }
+.dot { width:7px; height:7px; border-radius:50%; background:var(--ok); box-shadow:0 0 6px var(--ok); }
+.dot.down { background:var(--crit); box-shadow:0 0 6px var(--crit); }
+
+/* ---- Comparison metric (WEBUI §8: trend + band + delta, NOT bare value) ---- */
+.metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(184px,1fr)); gap:var(--sp-12); }
+.metric { padding:var(--sp-12); cursor:pointer;
+  transition: transform var(--dur-micro) var(--ease-std), box-shadow var(--dur-micro) var(--ease-std), border-color var(--dur-micro) var(--ease-std); }
+.metric:hover { transform: translateY(-1px); box-shadow:0 6px 18px -10px color-mix(in srgb,var(--accent) 55%,transparent); border-color:var(--accent-dim); }
+.metric.sel { border-color:var(--accent) !important; box-shadow: inset 0 0 0 1px var(--accent), 0 0 16px -5px color-mix(in srgb,var(--accent) 50%,transparent); }
+.metric .m-hd { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-8); }
+.metric .m-val { display:flex; align-items:baseline; gap:4px; margin-top:var(--sp-4); }
+.metric .m-num  { font-family:var(--font-mono); font-weight:700; font-size:27px; line-height:1; color:var(--accent); text-shadow:var(--glow); font-variant-numeric:tabular-nums; }
+.metric .m-unit { font-size:11px; color:var(--text-3); }
+.metric .m-delta { margin-left:auto; font-size:11px; font-family:var(--font-mono); align-self:center; }
+.metric .m-delta.up   { color:var(--ok); }
+.metric .m-delta.down { color:var(--crit); }
+.metric .m-delta.flat { color:var(--text-3); }
+.metric .spark { margin-top:var(--sp-8); height:26px; }
+/* normal-range band: min |‑‑‑normal‑‑‑| max with a live marker */
+.band { position:relative; height:4px; margin-top:var(--sp-8); background:color-mix(in srgb,var(--text-3) 30%,transparent); }
+.band .norm { position:absolute; top:0; bottom:0; background:color-mix(in srgb,var(--ok) 45%,transparent); }
+.band .mark { position:absolute; top:-2px; width:2px; height:8px; background:var(--accent); box-shadow:var(--glow);
+  transition: left var(--dur-slow) var(--ease-std); }
+.metric.warn .m-num, .metric.warn .band .mark { color:var(--warn); background:var(--warn); }
+.metric.crit .m-num, .metric.crit .band .mark { color:var(--crit); background:var(--crit); }
+
+/* ---- Linear gauge — TRANSFORM fill (MECHANICS §1: S-tier, not width) ------- */
+.gauge .g-hd { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:var(--sp-8); }
+.gauge .g-read { font-family:var(--font-mono); font-size:13px; color:var(--accent); }
+.g-track { height:8px; background:var(--accent-faint); border:1px solid var(--hairline); position:relative; overflow:hidden; }
+.g-fill  { position:absolute; inset:0; transform-origin:left center; transform:scaleX(var(--v,0)); will-change:transform;
+  background:repeating-linear-gradient(90deg,var(--accent) 0 3px, color-mix(in srgb,var(--accent) 55%,transparent) 3px 5px);
+  box-shadow:var(--glow); transition:transform var(--dur-slow) var(--ease-std); }
+.gauge.warn .g-fill { background:repeating-linear-gradient(90deg,var(--warn) 0 3px,color-mix(in srgb,var(--warn) 55%,transparent) 3px 5px); }
+.gauge.crit .g-fill { background:repeating-linear-gradient(90deg,var(--crit) 0 3px,color-mix(in srgb,var(--crit) 55%,transparent) 3px 5px); }
+
+/* ---- Trajectory zone (WEBUI §6 collaborator/§3 SA L3 — the designed gap) --- */
+.traj .goal { font-size:13px; color:var(--text); margin-bottom:var(--sp-12); }
+.traj .goal b { color:var(--accent); }
+.stepper { display:flex; align-items:center; gap:var(--sp-4); }
+.step { flex:1; display:flex; flex-direction:column; gap:4px; }
+.step .bar { height:3px; background:color-mix(in srgb,var(--text-3) 35%,transparent); }
+.step.done .bar { background:var(--accent-dim); }
+.step.now  .bar { background:var(--accent); box-shadow:var(--glow); }
+.step .s-lbl { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); }
+.step.now .s-lbl { color:var(--accent); }
+
+/* ---- Alert hierarchy (WEBUI §11.3 — distinct visual weight, earned only) --- */
+.alerts { display:flex; flex-direction:column; gap:var(--sp-8); }
+.alert { display:flex; align-items:flex-start; gap:var(--sp-8); padding:var(--sp-8) var(--sp-12); border-left:3px solid var(--text-3); background:var(--base); font-size:12px; }
+.alert .a-ic { font-family:var(--font-mono); }
+.alert .a-tx b { color:var(--text); } .alert .a-tx span { color:var(--text-3); }
+.alert.crit { border-left-color:var(--crit); background:color-mix(in srgb,var(--crit) 12%,var(--base)); box-shadow: -3px 0 12px -6px var(--crit); }
+.alert.crit .a-ic { color:var(--crit); }
+.alert.warn { border-left-color:var(--warn); } .alert.warn .a-ic { color:var(--warn); }
+.alert.info { border-left-color:var(--accent-dim); } .alert.info .a-ic { color:var(--accent-dim); }
+.alert.trace { border-left-color:transparent; opacity:.6; font-size:11px; padding-top:2px; padding-bottom:2px; }
+.alert.trace .a-ic { color:var(--text-3); }
+
+/* ---- Knowledge zone: tree (master) + dossier (INFO-ENV §10.4 register) ----- */
+.kcols { display:grid; grid-template-columns:236px 1fr; gap:var(--sp-12); align-items:start; }
+.tree { font-size:12.5px; padding:var(--sp-4) 0; }
+.node > .row { display:flex; align-items:center; gap:6px; padding:5px var(--sp-12); cursor:pointer; border-left:2px solid transparent; }
+.node > .row:hover { background:var(--accent-faint); }
+.node.sel > .row { background:var(--accent-faint); border-left-color:var(--accent); color:var(--accent); }
+.caret { width:9px; font-size:9px; color:var(--accent-dim); transition:transform var(--dur-micro) var(--ease-std); }
+.node.open > .row .caret { transform:rotate(90deg); }
+.children { margin-left:14px; border-left:1px solid var(--accent-faint); }
+.meta { margin-left:auto; font-size:10px; color:var(--text-3); }
+.dossier { overflow:hidden; }
+.dossier .d-hd { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-12); padding:var(--sp-12); border-bottom:1px solid var(--accent-faint); }
+.dossier .d-title { font-family:var(--font-display); font-weight:600; font-size:16px; letter-spacing:.08em; color:var(--accent); text-shadow:var(--glow); }
+.dossier .d-body { padding:var(--sp-12); font-size:12.5px; line-height:1.55; color:var(--text); }
+.dossier .d-body em { color:var(--accent); font-style:normal; }
+.dossier .expand { display:flex; flex-wrap:wrap; gap:var(--sp-8); margin-top:var(--sp-12); padding-top:var(--sp-12); border-top:1px solid var(--accent-faint); }
+.exp {                                          /* expansion chip WITH count (INFO-ENV §3 phase 3) */
+  font-family:var(--font-mono); font-size:11px; color:var(--text-2); cursor:pointer;
+  border:1px solid var(--hairline); padding:3px 9px; clip-path:var(--clip);
+  transition: color var(--dur-micro), border-color var(--dur-micro), background var(--dur-micro); }
+.exp:hover { color:var(--accent); border-color:var(--accent-dim); background:var(--accent-faint); }
+.exp b { color:var(--accent); }
+
+/* ---- Breadcrumb = case-file path (mono, structured data not prose) --------- */
+.crumbs { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; }
+.crumbs .c { color:var(--text-3); letter-spacing:.08em; text-transform:uppercase; }
+.crumbs .c.now { color:var(--accent); text-shadow:var(--glow); }
+.crumbs .sep { color:var(--accent-dim); }
+
+/* ---- Focus toggle (progressive disclosure; WEBUI §11.7) ------------------- */
+.reduced .when-dense { display:none; }
+
+/* ---- Boot overlay (diegetic init; GSAP staggers zones in over it) ---------- */
+.boot { position:fixed; inset:0; z-index:80; background:var(--ground); display:grid; place-content:center; font-family:var(--font-mono); }
+.boot .b-lines { font-size:12px; letter-spacing:.1em; color:var(--accent); line-height:1.9; }
+.boot .b-lines .ok { color:var(--ok); }
+.boot .b-lines .dim { color:var(--text-3); }
+
+/* reveal helper for the boot choreography (transform+opacity only) */
+.reveal { opacity:0; transform:translateY(8px); }

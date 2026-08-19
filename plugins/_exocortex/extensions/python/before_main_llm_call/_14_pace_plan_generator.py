@@ -204,6 +204,13 @@ class PacePlanGenerator(Extension):
             if domain == "unknown":
                 return
             if not any(d in domain for d in PACE_DOMAINS):
+                # Non-PACE turn (conversational / simple): any lingering plan is for a
+                # PREVIOUS task that's no longer active. Clear it so _23 stops injecting
+                # it as a ghost (Vek: a completed task's PACE plan still floating in
+                # context). A later PACE task regenerates a fresh plan.
+                if getattr(self.agent, "_pace_plan", None) is not None:
+                    setattr(self.agent, "_pace_plan", None)
+                    print("[PACE] cleared stale plan on non-PACE turn", flush=True)
                 return
 
             user_msg = _get_last_user_message(loop_data.history_output)

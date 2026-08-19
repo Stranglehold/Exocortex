@@ -885,6 +885,8 @@ def _load_model_profile(agent) -> dict | None:
             plugin_cfg = Path(f"/a0/usr/agents/{agent_slug}/plugins/_model_config/config.json")
             if not plugin_cfg.exists():
                 plugin_cfg = Path("/a0/usr/agents/agent0/plugins/_model_config/config.json")
+            if not plugin_cfg.exists():
+                plugin_cfg = Path("/a0/usr/plugins/_model_config/config.json")  # top-level (v2/v17)
             if plugin_cfg.exists():
                 with open(plugin_cfg) as f:
                     cfg = json.load(f)
@@ -903,10 +905,13 @@ def _load_model_profile(agent) -> dict | None:
         # Normalize: strip quantization suffix (@q4_k_m, @q8_0, etc.)
         if "@" in model_name:
             model_name = model_name.split("@")[0]
-        profile_path = Path(f"/a0/usr/plugins/_exocortex/config/model_profiles/{model_name}.json")
-        if profile_path.exists():
-            with open(profile_path) as f:
-                return json.load(f)
+        # Portable across container layouts: plugin (v2) and agent-path/Exocortex (v16/v17).
+        for _root in ("/a0/usr/plugins/_exocortex/config/model_profiles",
+                      "/a0/usr/Exocortex/eval/model_profiles"):
+            profile_path = Path(f"{_root}/{model_name}.json")
+            if profile_path.exists():
+                with open(profile_path) as f:
+                    return json.load(f)
     except Exception:
         pass
     return None

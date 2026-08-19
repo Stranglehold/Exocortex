@@ -44,7 +44,13 @@ from plugins._memory.helpers.memory import Memory
 # ── Configuration ────────────────────────────────────────────────────────────
 
 CONFIG_PATH = "/a0/usr/memory/classification_config.json"
-PROFILE_DIR = "/a0/usr/model_profiles"
+# Portable across container layouts: plugin (v2) and agent-path/Exocortex (v16/v17).
+_PROFILE_DIRS = (
+    "/a0/usr/plugins/_exocortex/config/model_profiles",
+    "/a0/usr/Exocortex/eval/model_profiles",
+)
+PROFILE_DIR = next((_d for _d in _PROFILE_DIRS if os.path.isdir(_d)), _PROFILE_DIRS[0])
+MODEL_CONFIG_PATH = "/a0/usr/plugins/_model_config/config.json"
 CO_RETRIEVAL_LOG = "/a0/usr/memory/co_retrieval_log.json"
 MAX_CO_RETRIEVAL_ENTRIES = 500
 
@@ -669,22 +675,36 @@ def _log_co_retrieval(
 
 # ── Model Profile Loading ────────────────────────────────────────────────────
 
+def _resolve_model_id() -> str:
+    """Active chat-model id: settings.json → _model_config plugin (v2/v17), @-suffix stripped."""
+    name = ""
+    try:
+        with open("/a0/usr/settings.json", encoding="utf-8") as f:
+            name = json.load(f).get("chat_model_name", "") or ""
+    except Exception:
+        pass
+    if not name:
+        try:
+            with open(MODEL_CONFIG_PATH, encoding="utf-8") as f:
+                name = str(json.load(f).get("chat_model", {}).get("name", "") or "")
+        except Exception:
+            pass
+    return name.split("@")[0].strip()
+
+
 def _load_profile_memory_section() -> dict:
-    """Load memory section from active model profile."""
+    """Load the memory section from the ACTIVE model's profile (not an arbitrary one)."""
     try:
         if not os.path.isdir(PROFILE_DIR):
             return {}
-        default = os.path.join(PROFILE_DIR, "default.json")
-        profile_path = default
-        for name in os.listdir(PROFILE_DIR):
-            if name != "default.json" and name.endswith(".json"):
-                profile_path = os.path.join(PROFILE_DIR, name)
-                break
+        model_id = _resolve_model_id()
+        profile_path = os.path.join(PROFILE_DIR, f"{model_id}.json") if model_id else ""
+        if not profile_path or not os.path.isfile(profile_path):
+            profile_path = os.path.join(PROFILE_DIR, "default.json")
         if not os.path.isfile(profile_path):
             return {}
         with open(profile_path, "r", encoding="utf-8") as f:
-            profile = json.load(f)
-        return profile.get("memory", {})
+            return json.load(f).get("memory", {})
     except Exception:
         return {}
 
