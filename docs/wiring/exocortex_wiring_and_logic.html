@@ -418,53 +418,84 @@ hr {
   </p>
   <div class="caption"><span class="status ok">refreshed 2026-08-14</span> Previously described v16/v17 with Qwen3.6-27B+MTP and DeepSeek-V4-Pro. Both of those containers are retired; see §01.</div>
 
-  <h3>Wiring — Physical Layout</h3>
+  <h3>Wiring &mdash; The Whole System On One Page</h3>
   <div class="diagram">
     <div class="mermaid">
 flowchart TB
   subgraph host["Windows Host"]
     direction TB
-    lmstudio["LM Studio :1235<br/>Qwen3.6-27B Q4_K_XL<br/>Indras-Mirror llama.cpp<br/>MTP + TurboQuant"]
-    deepseek["DeepSeek V4 Pro<br/>External API"]
-    repo["D:\Vibecode\Agent-Zero\Exocortex<br/>Source of truth — install scripts<br/>deploy from here"]
+    llama["llama.cpp :1235<br/>serves <b>qwen3.8-27b</b><br/><i>ignores the requested model<br/>name &mdash; serves what is loaded</i>"]
+    orouter["OpenRouter API<br/>deepseek-v4-flash"]
+    repo["D:\Vibecode\Agent-Zero\Exocortex<br/><b>source of truth</b>"]
+    mcp["MCP servers<br/>opus-memory (corpus + 878k-chunk library)<br/>team-inbox, arxiv, deep-wiki, KG"]
   end
 
-  subgraph v16["exocortex_v16 (Qwen)"]
+  subgraph vek["VekV2 &mdash; agent <b>Vek</b> (A0 v2.9)"]
     direction TB
-    v16_a0["run_ui (A0)<br/>:80 internal, :32793 host"]
-    v16_idle["idle_watch daemon<br/>(supervisord)"]
-    v16_state["/a0/usr/Exocortex/<br/>office/engine_state.json"]
-    v16_ext["/a0/usr/agents/agent0/<br/>extensions/python/*"]
-    v16_a0 -.reads.-> v16_ext
-    v16_idle -.reads/writes.-> v16_state
-    v16_idle -.POSTs to api_message.-> v16_a0
-    v16_a0 -.cycle context updates.-> v16_state
+    vek_a0["run_ui / A0 core<br/>/a0/helpers /a0/api /a0/plugins<br/><i>no /a0/python in v2.9</i>"]
+    vek_plug["<b>/a0/usr/plugins/_exocortex</b><br/>the whole stack, one plugin"]
+    vek_data["runtime data (outside the plugin)<br/>/a0/usr/Exocortex, /a0/usr/skills<br/>/a0/usr/memory, /a0/usr/ontology<br/>/a0/usr/workdir/workspace"]
+    vek_a0 -->|loads| vek_plug
+    vek_plug -->|reads / writes| vek_data
   end
 
-  subgraph v17["exocortex_v17 (DeepSeek)"]
+  subgraph apo["agent-zero-v2 &mdash; agent <b>Aporia</b> (A0 v2.9)"]
     direction TB
-    v17_a0["run_ui (A0)<br/>:80 internal, :32794 host"]
-    v17_idle["idle_watch daemon"]
-    v17_state["engine_state.json"]
-    v17_ext["extensions/python/*"]
-    v17_a0 -.reads.-> v17_ext
-    v17_idle -.reads/writes.-> v17_state
-    v17_idle -.POSTs.-> v17_a0
+    apo_a0["run_ui / A0 core"]
+    apo_plug["/a0/usr/plugins/_exocortex"]
+    apo_data["runtime data"]
+    apo_a0 -->|loads| apo_plug
+    apo_plug -->|reads / writes| apo_data
   end
 
-  v16_a0 -- LLM calls --> lmstudio
-  v17_a0 -- LLM calls --> deepseek
-  repo -- "install_*.sh<br/>docker cp" --> v16_ext
-  repo -- "install_*.sh<br/>docker cp" --> v17_ext
+  subgraph svc["Sidecar services"]
+    oss["oss_app :7731<br/>oss_postgres :5433"]
+    swarm["SWARMFISH V2<br/>in-plugin, SQLite"]
+  end
+
+  vek_a0 -- "chat / utility LLM" --> orouter
+  apo_a0 -- "host.docker.internal:1235" --> llama
+  vek_plug -. "oss_* tools" .-> oss
+  vek_plug -. "swarmfish_* tools" .-> swarm
+  repo == "docker cp<br/>install_all.sh" ==> vek_plug
+  repo == "docker cp" ==> apo_plug
+  mcp -. "used by Kestrel, not by the agents" .-> repo
 
   classDef container fill:#161b22,stroke:#a371f7,color:#c9d1d9
   classDef external fill:#1c2128,stroke:#58a6ff,color:#c9d1d9
   classDef repo fill:#1c2128,stroke:#d29922,color:#c9d1d9
-  class v16,v17 container
-  class lmstudio,deepseek external
+  classDef broken fill:#1c2128,stroke:#f85149,color:#c9d1d9
+  class vek,apo container
+  class llama,orouter,mcp,oss,swarm external
   class repo repo
     </div>
-    <div class="caption">Two-container architecture. v16 is GPU-collision-prone (local Qwen). v17 is API-backed (DeepSeek). Both share the same code stack deployed from the same repo.</div>
+    <div class="caption">Verified live 2026-08-18. Two containers, both A0 v2.9, each running the entire hardening stack as a <b>single plugin</b> at <code>/a0/usr/plugins/_exocortex</code> (184 files). Runtime data deliberately lives <i>outside</i> the plugin so an update cannot destroy agent state. <b>The install arrow is the weak one:</b> the pipeline still builds the A0 v1.x layout &mdash; see seam #31 and &sect;14.</div>
+  </div>
+
+  <h3>Wiring &mdash; Inside the Plugin</h3>
+  <div class="diagram">
+    <div class="mermaid">
+flowchart LR
+  subgraph plug["/a0/usr/plugins/_exocortex"]
+    direction TB
+    ext["<b>extensions/python/</b><br/>13 hook dirs, 69 extensions"]
+    webui["extensions/webui/<br/>6 injection points"]
+    tools["tools/ &mdash; 13<br/>oss, swarmfish, stack_status,<br/>artifact_create, investigation&hellip;"]
+    api["api/ &mdash; 7 handlers<br/><code>/api/plugins/_exocortex/&lt;module&gt;</code>"]
+    svcs["services/<br/>idle_watch.py, a2a_server"]
+    prompts["prompts/<br/>read fresh every turn"]
+    cfg["config/config.json"]
+  end
+  a0["A0 core"] -->|hook dispatch| ext
+  a0 -->|tool registry| tools
+  a0 -->|route dispatch| api
+  a0 -->|webui build| webui
+  svcs -->|"POST /api/plugins/_exocortex/idle_cycle"| a0
+  cfg -.->|every component reads an <code>enabled</code> flag| ext
+  classDef box fill:#161b22,stroke:#a371f7,color:#c9d1d9
+  class plug box
+    </div>
+    <div class="caption">Counts verified on VekV2, 2026-08-18. <b>Two reload rules that differ:</b> a <i>new</i> API handler module registers with no restart, a <i>changed</i> one does not (the class is cached in-process); prompt <code>.md</code> files are re-read every turn, which is what makes the <code>gate_probe</code> technique possible.</div>
   </div>
 
   <h3>Logic — Per-Turn Cognitive Flow</h3>
