@@ -172,6 +172,24 @@ LAYERS=(
   "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
   "14|Write guard + validator           |scripts/install_write_guard.sh"
   "15|Artifact system                   |scripts/install_artifact_system.sh"
+  # ── Tier 1.1 step 3: authoritative plugin deploy ────────────────────────────
+  # Runs LAST so it is the final word on plugin content. Walks
+  # plugins/_exocortex/ and reproduces it exactly at /a0/usr/plugins/_exocortex/
+  # (config/config.json merged, never clobbered).
+  #
+  # Measured 2026-08-19: 24 of the 32 steps above still write to paths A0 v2.9
+  # does not load from — 16 to /a0/python (absent in v2.9; the installer creates
+  # it), 8 to the DEC-030 profile path, 7 to plugins/exocortex without the
+  # underscore. The profile path DOES load, which is worse than dead: it
+  # resurrects extensions that were explicitly retired. Proven sufficient on a
+  # clean v2.9 container — with ONLY this tree present the stack boots, a turn
+  # completes, 11 extensions fire, and [CACHE-WARM]/[CACHE-METRICS] (retired) no
+  # longer appear.
+  #
+  # Those steps are therefore REDUNDANT for plugin content rather than
+  # mis-pointed, so retiring them is a pipeline change, not a repoint. Held for
+  # a design call rather than done unilaterally — see the step 3 letter.
+  "16|Exocortex plugin (directory walk) |scripts/install_exocortex_plugin.sh"
 )
 
 CHECK_SCRIPTS=(

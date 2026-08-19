@@ -17,6 +17,12 @@ operator_profile.json
 operator_profile_approved.json
 operator_profile_versions/
 action_boundary_config.json
+# ...but the PLUGIN copy is a shipped default (tier policies + _notes), not
+# operator state, and it is byte-identical to what runs on VekV2. The bare
+# pattern above was written for the root-level runtime copy and silently caught
+# this one too, so `git archive` omitted it and a clone-and-install produced a
+# container without it. Found by the step-3 parity gate, 2026-08-19.
+!plugins/_exocortex/config/action_boundary_config.json
 agents/
 state/
 

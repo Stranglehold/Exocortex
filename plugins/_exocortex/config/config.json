@@ -34,5 +34,12 @@
     "max_failure_captures_per_cycle": 3,
     "methodology_capture": true,
     "methodology_capture_llm": true
+  },
+  "mcp_health": {
+    "enabled": true,
+    "check_interval_seconds": 300,
+    "required_servers": [
+      "exocortex-memory"
+    ]
   }
 }
