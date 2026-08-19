@@ -70,14 +70,38 @@ HELPER_SRC="$PATCH_DIR/helpers/extract_tools.py"
 HELPER_DST="/a0/helpers/extract_tools.py"
 HELPER_PYCACHE="/a0/helpers/__pycache__"
 
-if [ -f "$HELPER_SRC" ]; then
+# ── DISABLED 2026-08-19 (Tier 1.1 step 1) — broke every turn on fresh v2.9 ──
+# Our copy is a v1.x base plus additions. Against v2.9 it DROPS six symbols the
+# core calls: extract_tool_request, is_misformatted_tool_request,
+# normalize-path helpers _parse_json_root_object, _json_root_object_starts,
+# extract_json_root_strings, _is_tool_request. Every turn returned
+#   "module 'helpers.extract_tools' has no attribute 'extract_tool_request'".
+#
+# Our two deltas re-checked against v2.9 stock:
+#   1. Stream-stop guard (DirtyJson parsing partial JSON eagerly, killing the
+#      stream after ~3 tokens) — ALREADY FIXED upstream. v2.9's
+#      extract_tool_request requires the whole content be a JSON root object
+#      (root != content -> None), so a partial object can no longer match.
+#   2. Plain-text -> response fallback (Session 054, reasoning-distilled models
+#      emitting prose instead of a tool call) — NOT fully covered. v2.9 does it in
+#      agent.py, but gated on `llm_result.mode == "responses"`. Our models run
+#      a0_api_mode: chat_completions, where plain text still falls through to the
+#      fw.msg_misformat warning. So the delta is still needed.
+#
+# It does NOT need a core patch. v2.9 marks Agent.process_tools @extension.extensible,
+# so the fallback belongs at
+#   extensions/python/_functions/agent/Agent/process_tools/start/
+# — the same convention we already use for get_tool/end and handle_exception/end.
+# Zero core modification, survives A0 updates by design, DEC-030 clean. That is
+# step 2 of the migration.
+if false; then
   _exec "$CONTAINER" mkdir -p /a0/helpers
   docker cp "$HELPER_SRC" "$CONTAINER:$HELPER_DST"
   _exec "$CONTAINER" bash -c "rm -rf '$HELPER_PYCACHE'" 2>/dev/null || true
   _exec "$CONTAINER" bash -c "/opt/venv-a0/bin/python3 -m py_compile '$HELPER_DST' && echo '[PATCH] extract_tools.py OK'"
   echo "[PATCH] helpers/extract_tools.py deployed."
 else
-  echo "[PATCH] WARNING: $HELPER_SRC not found — skipped."
+  echo "[PATCH] helpers/extract_tools.py — DISABLED (stale vs v2.9; see comment). Re-basing as a process_tools extension."
 fi
 
 # ── 1b. Python helper: provider_interface.py (max_tokens 4096→16384) ──────────

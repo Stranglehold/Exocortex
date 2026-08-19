@@ -106,7 +106,25 @@ MODEL_CONFIG_PLUGIN_DEST="$CONTAINER:/a0/usr/agents/agent0/plugins/_model_config
 MODEL_CONFIG_CODE_DEST="$CONTAINER:/a0/plugins/_model_config/helpers"
 
 docker cp "$MODEL_CONFIG_SRC/config.json"                     "$MODEL_CONFIG_PLUGIN_DEST/config.json"
-docker cp "$MODEL_CONFIG_SRC/helpers/model_config.py"         "$MODEL_CONFIG_CODE_DEST/model_config.py"
+
+# ── DISABLED 2026-08-19 (Tier 1.1 step 1) — this line BRICKED fresh v2.9 containers ──
+# It overwrote A0 core's model_config.py with our v1.18-era copy (ours 614 lines,
+# v2.9 stock 908 — a wholesale stale replacement, not a patch). Ours DROPS
+# DEFAULT_PRESET_NAME and _ensure_default_preset, which v2.9's own
+# _10_migrate_model_config startup extension calls UNCONDITIONALLY. Result: A0
+# crash-loops and the container never serves.
+#
+# Proven causal, not inferred: our file -> crash-loop; `git checkout` of stock ->
+# boots immediately. A hand-written presets.yaml also crashes on our module and is
+# accepted fine on stock.
+#
+# Opus's call: drop our version entirely, run stock. If v2.9's migration needs these
+# symbols then v2.9 manages presets correctly and our override is actively harmful.
+# If custom behaviour is needed later, add it ON TOP of v2.9's file (the PTY-patch
+# pattern: surgical addition), never as a replacement.
+#
+# Guarded by scripts/check_core_patch_staleness.py — any STALE result blocks the gate.
+# docker cp "$MODEL_CONFIG_SRC/helpers/model_config.py"       "$MODEL_CONFIG_CODE_DEST/model_config.py"
 
 # ── Deploy webui assets (theme system) ───────────────────────────────────────
 
