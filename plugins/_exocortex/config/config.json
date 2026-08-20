@@ -47,5 +47,11 @@
     "window_cycles": 50,
     "strikes_to_quarantine": 3,
     "max_entries": 500
+  },
+  "scope_expansion": {
+    "enabled": true,
+    "inject": false,
+    "min_signals": 2,
+    "log_path": "/a0/usr/workdir/workspace/office/scope_expansion_log.jsonl"
   }
 }
