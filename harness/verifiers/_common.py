@@ -6,6 +6,7 @@ wiki page/issue counts, obtained by running integrity_check.py ourselves.
 """
 import json
 import re
+import os as _os
 import subprocess
 
 INTEGRITY_CMD = ("cd /a0/usr/Exocortex/self-improvement && "
@@ -62,3 +63,71 @@ def extract_ints(text: str) -> list[int]:
 def mentions(text: str, value: int, tol: int = 0) -> bool:
     """True if some integer within +/-tol of `value` appears in text."""
     return any(abs(i - value) <= tol for i in extract_ints(text))
+
+
+# ── Pool B (holdout) ground truth ────────────────────────────────────────────
+# Every function below computes the answer INDEPENDENTLY inside the container, so a
+# verifier never grades the agent against the agent's own claim. Same discipline as
+# run_integrity(): we compute the truth, then check whether the response matches it.
+#
+# MSYS_NO_PATHCONV is set explicitly. On this host Git Bash rewrites container-absolute
+# paths in docker arguments, and a mangled path yields an empty result that looks
+# exactly like a legitimately empty answer.
+
+_ENV = dict(_os.environ, MSYS_NO_PATHCONV="1")
+
+
+def sh(container: str, cmd: str, timeout: int = 60) -> str:
+    """Run a shell command in the container, return stdout ('' on any failure)."""
+    try:
+        out = subprocess.run(["docker", "exec", container, "sh", "-lc", cmd],
+                             capture_output=True, text=True, timeout=timeout, env=_ENV)
+        return out.stdout or ""
+    except Exception:
+        return ""
+
+
+def py(container: str, code: str, timeout: int = 90) -> str:
+    """Run python in the container via a temp file.
+
+    Deliberately not `python3 -c`: inline code through docker exec on this host hits
+    the quoting seam that silently produces no output and no error (wiring seam #30).
+    """
+    import base64 as _b64
+    b = _b64.b64encode(code.encode("utf-8")).decode("ascii")
+    return sh(container,
+              f"echo {b} | base64 -d > /tmp/_gt.py && /opt/venv-a0/bin/python3 /tmp/_gt.py; "
+              f"rm -f /tmp/_gt.py", timeout=timeout)
+
+
+def first_json(text: str):
+    """Parse the first JSON object in text; None if there isn't one."""
+    i = (text or "").find("{")
+    if i < 0:
+        return None
+    try:
+        return json.loads(text[i:])
+    except Exception:
+        return None
+
+
+# Claims of the form "everything is fine" that must never pass on their own. A verifier
+# grades NUMBERS; an unsupported all-clear is the false-clean error a reliability
+# harness exists to catch (see t03_integrity_check).
+CLEAN_WORDS = ("no issues", "none found", "no errors", "all clean", "nothing",
+               "no problems", "zero", "all good", "everything is fine", "no failures")
+
+
+def claims_clean(response: str) -> bool:
+    low = (response or "").lower()
+    return any(w in low for w in CLEAN_WORDS)
+
+
+def grade_counts(response: str, required: list, tol: int = 0) -> tuple:
+    """True only if EVERY required integer appears in the response.
+
+    `required` is a list of (label, value). Returns (passed, detail).
+    """
+    missing = [f"{lab}={val}" for lab, val in required
+               if val is None or not mentions(response, val, tol=tol)]
+    return (not missing), ("all present" if not missing else "missing " + ", ".join(missing))

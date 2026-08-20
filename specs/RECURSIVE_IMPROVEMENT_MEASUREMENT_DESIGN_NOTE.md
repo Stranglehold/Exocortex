@@ -88,23 +88,30 @@ The finding that makes this urgent rather than interesting: **contamination is s
 
 | | VekV2 (Vek) | agent-zero-v2 (Aporia) |
 |---|---|---|
-| `SKILL.md` total | 117 | 99 |
-| **auto-generated skills** | **28** | **41** |
-| &nbsp;&nbsp;of which methodologies | 14 | 35 |
-| &nbsp;&nbsp;of which failure-lessons | 5 | 6 |
-| hand-authored | 89 | 58 |
+| raw `SKILL.md` (incl. archives) | 117 | 99 |
+| **live / discoverable** | **91** | **72** |
+| **auto-generated** | **28** | **41** |
+| hand-authored (live) | 63 | 31 |
+| archived under dot-dirs | 26 | 27 |
 
-**CORRECTION 2026-08-20.** The first version of this table said 49 and 86. That was
-wrong: it counted every `*.md` under `auto-generated/`, and each skill directory also
-holds a `.memory.md` recurrence ledger written by `_31_failure_lesson_capture`
-(41 of them on Aporia), plus a few supporting documents. A *skill* is a `SKILL.md`.
-The corrected auto-generated pool is **69 across both agents, not 135**.
+**On Aporia, auto-generated skills are 41 of 72 discoverable — a MAJORITY (57%) of
+everything the agent can reach.** On Vek it is 31%. That is the exposure stated as
+sharply as the data allows.
 
-The argument is unchanged — unconditional accumulation behind one of three critics is
-still the exposure — but the magnitude matters, because VaG's finding is specifically
-about pool size crossing a critical threshold. Half the pool is half the exposure, and
-reporting it twice as large as it is would have justified more urgency than the
-evidence supports.
+**Measurement history, because it took three passes to get right and each pass
+mattered:**
+1. First reported 49 / 86. Wrong — counted every `*.md`, including the `.memory.md`
+   recurrence ledger `_31` writes into each skill directory.
+2. Corrected to 28 / 41 auto-generated. That figure has held ever since; it is the
+   number the argument rests on.
+3. The *totals* were still wrong: 117 / 99 counted 26 / 27 archived files under
+   `.hardening_originals`, which A0's own `discover_skill_md_files` skips because it
+   ignores dot-directories. Live discoverable is 91 / 72.
+
+Found by grounding the Pool B verifier ground truth in the real filesystem rather
+than reusing my own earlier count. Worth recording: a wrong count propagated into a
+design note, two letters and a sequencing argument within hours — a measurement
+becoming a premise at speed.
 
 We accumulate unconditionally. Our **only** admission gate is the frontmatter validator — which maps to exactly one of VaG's three critics (structural validity) and nothing else. The paper's ablations report the three critics are **complementary and mutually non-substitutable**, each intercepting a largely disjoint class of harmful skill.
 
