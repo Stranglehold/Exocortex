@@ -88,20 +88,33 @@ The finding that makes this urgent rather than interesting: **contamination is s
 
 | | VekV2 (Vek) | agent-zero-v2 (Aporia) |
 |---|---|---|
-| `SKILL.md` on disk | 117 | 99 |
-| **auto-generated** | **49** | **86** |
-| failure-lesson skills | 11 | 12 |
-| anti-patterns | 12 | 5 |
+| `SKILL.md` total | 117 | 99 |
+| **auto-generated skills** | **28** | **41** |
+| &nbsp;&nbsp;of which methodologies | 14 | 35 |
+| &nbsp;&nbsp;of which failure-lessons | 5 | 6 |
+| hand-authored | 89 | 58 |
+
+**CORRECTION 2026-08-20.** The first version of this table said 49 and 86. That was
+wrong: it counted every `*.md` under `auto-generated/`, and each skill directory also
+holds a `.memory.md` recurrence ledger written by `_31_failure_lesson_capture`
+(41 of them on Aporia), plus a few supporting documents. A *skill* is a `SKILL.md`.
+The corrected auto-generated pool is **69 across both agents, not 135**.
+
+The argument is unchanged — unconditional accumulation behind one of three critics is
+still the exposure — but the magnitude matters, because VaG's finding is specifically
+about pool size crossing a critical threshold. Half the pool is half the exposure, and
+reporting it twice as large as it is would have justified more urgency than the
+evidence supports.
 
 We accumulate unconditionally. Our **only** admission gate is the frontmatter validator — which maps to exactly one of VaG's three critics (structural validity) and nothing else. The paper's ablations report the three critics are **complementary and mutually non-substitutable**, each intercepting a largely disjoint class of harmful skill.
 
-So we have one third of a gate, on a pool of 86 auto-generated skills, for a process the literature says is irreversible once it goes wrong.
+So we have one third of a gate, on a pool of 69 auto-generated skills across both agents, for a process the literature says is irreversible once it goes wrong.
 
 VaG's result with proper gating: 72% pass@1 with a pool roughly **5× smaller**, and the frozen pool transferred positively to four other backbones and a second benchmark without re-evolution. **Smaller and gated beats larger and unfiltered** — which is the opposite of the instinct the current capture pipeline encodes.
 
 > **DEC-CANDIDATE M2.** Skill admission becomes pre-commit and three-gated: structural validity (have it), behavioural harmlessness (build it), semantic consistency against existing skills (build it). No skill enters the surfacing pool without passing all three. Deterministic where possible; the semantic critic may call an LLM, and if so it runs at admission time only, never in the turn path.
 
-> **DEC-CANDIDATE M3.** Audit the existing 86 + 49 auto-generated skills against the three critics before building anything new on top of them. If contamination is irreversible, the pool we already have is the first thing to measure, not the last.
+> **DEC-CANDIDATE M3.** Audit the existing 41 + 28 auto-generated skills against the three critics before building anything new on top of them. If contamination is irreversible, the pool we already have is the first thing to measure, not the last.
 
 ---
 
@@ -180,7 +193,7 @@ Phase A is unaffected — quarantine, scope detector and complexity threshold st
 | SEL Phase 3 (Gain Controller) | Parameter changes start a new trend segment. The adaptive mechanism otherwise invalidates its own history. |
 | Skill capture (**live today**) | Add the two missing critics. Audit the existing pool. |
 
-**Sequencing opinion:** M2 and M3 come first, ahead of any new cycle type. We have an unconditionally accumulating skill pool of 86+49 auto-generated entries and a documented, irreversible failure mode. Building a discovery layer that feeds *more* material into an ungated pool makes the problem worse faster. Gate the intake before widening it.
+**Sequencing opinion:** M2 and M3 come first, ahead of any new cycle type. We have an unconditionally accumulating skill pool of 41+28 auto-generated entries and a documented, irreversible failure mode. Building a discovery layer that feeds *more* material into an ungated pool makes the problem worse faster. Gate the intake before widening it.
 
 ---
 
