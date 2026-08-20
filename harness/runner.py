@@ -104,12 +104,31 @@ def reset_env(container: str, mode: str) -> None:
       "none"           — no-op (correct for read-only/reporting tasks)
       "restart"        — docker restart + settle wait (for tasks that mutate state)
       "script:/path"   — run a host command (workspace restore, etc.)
+      "exec:<cmd>"     — run a shell command INSIDE the container
+
+    `exec:` exists for Pool B's HB-08, which creates one artifact that must be removed
+    between trials. `restart` would do it at the cost of a container bounce plus an
+    8-second settle per trial, and `script:` runs host-side with shell=True, so it
+    would need its own `docker exec` and would land on the MSYS path-translation seam
+    (wiring seam #30) where a mangled path fails silently. A first-class in-container
+    mode avoids both, and MSYS_NO_PATHCONV is set explicitly here for the same reason.
     """
     if not mode or mode == "none":
         return
     if mode == "restart":
         subprocess.run(["docker", "restart", container], capture_output=True, timeout=120)
         time.sleep(8)  # settle
+        return
+    if mode.startswith("exec:"):
+        cmd = mode.split(":", 1)[1]
+        env = dict(os.environ, MSYS_NO_PATHCONV="1")
+        r = subprocess.run(["docker", "exec", container, "sh", "-lc", cmd],
+                           capture_output=True, text=True, timeout=120, env=env)
+        if r.returncode != 0:
+            # A reset that silently fails makes every subsequent trial dirty, and the
+            # results look like agent behaviour rather than a broken fixture.
+            print(f"[runner] reset exec FAILED rc={r.returncode}: "
+                  f"{(r.stderr or '').strip()[:160]}", file=sys.stderr)
         return
     if mode.startswith("script:"):
         path = mode.split(":", 1)[1]
