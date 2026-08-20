@@ -84,37 +84,26 @@ DIVERSITY_SUPPRESS_THRESHOLD = 3
 _SUPERVISOR_PROFILE_ROOT  = "/a0/usr/plugins/_exocortex/config/model_profiles"
 
 def _load_supervisor_overrides(agent=None) -> dict:
-    """Load supervisor_overrides from active model profile. Returns {} on any error."""
-    import json as _json, os as _os
+    """Load supervisor_overrides from the active model profile. {} on any error.
+
+    Resolution moved to helpers/model_profile.py (A3) so this and the MetaGate write
+    threshold cannot drift into two different opinions about which model is active.
+    Behaviour is unchanged; only the lookup is now shared.
+    """
     try:
-        # Prefer agent.config (live UI state) for model name; fall back to plugin config file.
-        raw_name = ""
-        try:
-            if agent is not None:
-                raw_name = getattr(getattr(agent, "config", None), "chat_model_name", "") or ""
-        except Exception:
-            pass
-        if not raw_name:
-            with open(_MODEL_CONFIG_PATH, encoding="utf-8") as f:
-                cfg = _json.load(f)
-            raw_name = cfg.get("chat_model", {}).get("name", "")
-        if not raw_name:
-            return {}
-        # Model name may include quantization suffix (e.g. "jackrong/qwen3.6-27b@q4_k_m")
-        raw_name = raw_name.split("@")[0].strip()
-        # Flatten "/" to "_" so "jackrong/qwen3.6-27b" → "jackrong_qwen3.6-27b.json"
-        model_id = raw_name.replace("/", "_")
-        path = _os.path.join(_SUPERVISOR_PROFILE_ROOT, f"{model_id}.json")
-        if not _os.path.exists(path):
-            return {}
-        with open(path, encoding="utf-8") as f:
-            profile = _json.load(f)
-        overrides = profile.get("supervisor_overrides", {})
+        import sys as _sys
+        _h = "/a0/usr/plugins/_exocortex/helpers"
+        if _h not in _sys.path:
+            _sys.path.insert(0, _h)
+        import model_profile as _mp
+        profile, src = _mp.load_profile(agent)
+        overrides = profile.get("supervisor_overrides", {}) if isinstance(profile, dict) else {}
         if overrides:
-            print(f"[SUPERVISOR] Model profile overrides loaded for {model_id}: {overrides}", flush=True)
-        return overrides
+            print(f"[SUPERVISOR] Model profile overrides loaded from {src}: {overrides}", flush=True)
+        return overrides if isinstance(overrides, dict) else {}
     except Exception:
         return {}
+
 
 # Loop episode state keys (stored in supervisor state dict)
 LOOP_TIER_KEY         = "loop_tier"           # "none"|"warn"|"summarize"|"reset"

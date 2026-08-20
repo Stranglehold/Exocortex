@@ -177,9 +177,11 @@ class MetaReasoningGate(Extension):
        from. Only add these when: (a) the failure is deterministic above a known
        threshold (not probabilistic), AND (b) the model receives no actionable
        error from the failure (no tool output to reason about, just a retry loop).
-       The text_editor:write content size check is this category — truncation
-       above ~5000 chars always fails, and the model sees only a misformat warning
-       with no information about why.
+       The text_editor:write content size check is this category — an oversized
+       payload truncates and the model sees only a misformat warning with no
+       information about why. As of A3 the limit is complexity-keyed and sourced
+       from the active model profile (helpers/write_threshold.py) rather than a
+       flat constant: complexity predicts truncation, length alone does not.
 
     NOT appropriate for MetaGate: runtime feasibility checks that depend on state
     (path existence, disk space, import availability). Those belong in the tool
@@ -259,16 +261,27 @@ class MetaReasoningGate(Extension):
 
             # Phase 0.5: text_editor:write content size guard
             # text_editor:write embeds file content inside a JSON string field.
-            # When content exceeds ~5000 chars the response payload truncates
+            # When content exceeds the effective limit the response payload truncates
             # mid-string, producing malformed JSON that triggers a misformat loop.
             # Block early and route to Python open() which avoids this entirely.
             if tool_name in ("text_editor", "text_editor:write") and tool_args:
                 content = tool_args.get("content", "")
-                if isinstance(content, str) and len(content) > 5000:
+                # A3: the limit is complexity-keyed and sourced from the active model
+                # profile, replacing a hardcoded 5000 that applied to every model and
+                # every kind of content. The surviving finding from the JSON-reliability
+                # arc is that COMPLEXITY predicts truncation and LENGTH does not — a 20K
+                # prose payload can pass where 12K with three code fences fails.
+                # Complexity only ever LOWERS the limit, so plain prose behaves exactly
+                # as before and nothing regresses on evidence we do not have.
+                sig = self._write_limits(content)
+                if isinstance(content, str) and sig["over"]:
                     path = tool_args.get("path", "OUTPUT_PATH")
                     msg = (
                         f"text_editor:write blocked — content is {len(content):,} chars, "
-                        f"exceeds the ~5000 char JSON payload limit and will truncate. "
+                        f"over the {sig['effective_limit']:,} char limit for this content "
+                        f"(base {sig['base_limit']:,}, complexity {sig['score']}x from "
+                        f"{sig['fenced_blocks']} fenced block(s) and "
+                        f"{sig['escape_density']:.1%} escape density). It will truncate. "
                         f"Use code_execution_tool with Python open() instead:\n"
                         f"  path = '{path}'\n"
                         f"  with open(path, 'w') as f:\n"
@@ -280,7 +293,7 @@ class MetaReasoningGate(Extension):
                         self.agent.context.log.log(
                             type="warning",
                             content=f"[MetaGate-SIZE] Blocked text_editor:write "
-                                    f"({len(content):,} chars > 5000 limit)",
+                                    f"({len(content):,} chars > {sig['effective_limit']:,} limit, complexity {sig['score']}x, profile={sig['profile']})",
                         )
                     except Exception:
                         pass
@@ -362,6 +375,28 @@ class MetaReasoningGate(Extension):
                 )
             except Exception:
                 pass
+
+    def _write_limits(self, content) -> dict:
+        """A3 threshold for this content. Degrades to the historical constant.
+
+        Any failure here must not block a write: a threshold helper that raises would
+        turn a size guard into an outage. On error we fall back to the pre-A3 behaviour
+        (flat 5000) rather than to "no limit", so the original protection survives even
+        if the profile machinery does not.
+        """
+        try:
+            import write_threshold as wt
+            return wt.describe(content if isinstance(content, str) else "", self.agent)
+        except Exception as e:
+            try:
+                print(f"[MetaGate-SIZE] threshold helper unavailable, using flat 5000 "
+                      f"({type(e).__name__})", flush=True)
+            except Exception:
+                pass
+            n = len(content) if isinstance(content, str) else 0
+            return {"length": n, "base_limit": 5000, "effective_limit": 5000,
+                    "score": 1.0, "fenced_blocks": 0, "escape_density": 0.0,
+                    "profile": "fallback", "over": n > 5000}
 
     def _quarantine_gate(self, tool_name: str, tool_args: dict | None) -> None:
         """A1 enforcer. Stash the op signature, then refuse quarantined attempts.
