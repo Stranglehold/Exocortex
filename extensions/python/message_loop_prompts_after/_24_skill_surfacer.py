@@ -43,12 +43,23 @@ demands precision, so this uses a precise WORD-LEVEL trigger match (query words 
 trigger words, len>=4) instead. Wiki/write tasks still surface the oversized-write
 lesson (shared words wiki/page/write); unrelated tasks surface nothing.
 
+Scope correction (2026-08-20, measured): the path filter was "/auto-generated/", but the
+EXPLORE research pipeline writes topic notes into that same directory. Over the real
+container logs — 6,224 surfacing events on agent-zero-v2, 2,358 on VekV2 — 88.2% / 65.7%
+of delivered slots were research notes, not lessons, presented under a "learned lessons
+from past failures" header. Two notes took 74% of Aporia's slots. Cause: raw overlap
+scoring rewards trigger-vocabulary breadth (notes 15.6 distinct trigger words vs 5.0 for
+lessons). Fixed by scoping to auto-generated/failure-lessons/ AND normalising the score
+by sqrt(|trigger words|).
+
 Reads:  agent._pace_plan (task_summary/domain/steps), agent._bst_store (domain)
 Writes: loop_data.history_output[-1]["content"] (prepend lessons block)
-Matcher: word-level trigger overlap over list_skills(), filtered to auto-generated/
+Matcher: breadth-normalised word-level trigger overlap over list_skills(),
+         filtered to auto-generated/failure-lessons/
 Log tag: [SKILL-SURFACE]
 """
 
+import math
 import os
 import re
 from typing import Any, List
@@ -57,7 +68,15 @@ from agent import Agent, LoopData
 from helpers.extension import Extension
 from helpers import skills as skills_helper
 
-AUTOGEN_MARKER  = "/auto-generated/"   # only surface cycle-to-skill captures, not curated skills (handled by _66)
+# Failure lessons ONLY — one level deeper than "/auto-generated/".
+# Measured 2026-08-20 against the live containers: filtering on "/auto-generated/" alone
+# delivered 88.2% RESEARCH NOTES on agent-zero-v2 (6,224 surfacing events) and 65.7% on
+# VekV2, because the EXPLORE research pipeline writes topic notes into that same
+# directory. Two notes (ai-financial-markets, philosophy-of-mind) took 74% of all slots
+# — and arrived under the "[LEARNED LESSONS — from past failures]" header, which is
+# actively misleading. Captured lessons live in auto-generated/failure-lessons/;
+# separation verified clean on both containers.
+AUTOGEN_MARKER  = "/auto-generated/failure-lessons/"
 MAX_LESSONS     = 2                     # token-budget cap
 MIN_QUERY_LEN   = 6
 MIN_WORD_LEN    = 4                     # ignore short/stop tokens ("run","the") that cause spurious matches
@@ -130,9 +149,9 @@ class SkillSurfacer(Extension):
         return q
 
     def _relevant_lessons(self, query: str) -> List:
-        """Precise word-level match: an auto-generated lesson is relevant when its
+        """Precise word-level match: a captured failure-lesson is relevant when its
         trigger words overlap the task query (len>=4 tokens). Top MAX_LESSONS by
-        overlap count. Avoids search_skills' substring false-positives."""
+        BREADTH-NORMALISED overlap. Avoids search_skills' substring false-positives."""
         qwords = _words(query)
         if not qwords:
             return []
@@ -148,10 +167,21 @@ class SkillSurfacer(Extension):
             for t in (getattr(s, "triggers", []) or []):
                 twords |= _words(t)
             overlap = qwords & twords
-            if overlap:
-                scored.append((len(overlap), getattr(s, "name", ""), s))
+            if overlap and twords:
+                # Normalise by trigger-vocabulary breadth. A RAW overlap count rewards a
+                # skill simply for carrying more trigger words — measured 2026-08-20,
+                # research notes averaged 15.6 distinct trigger words against 5.0 for
+                # failure lessons, so breadth beat relevance: the query "fix the failing
+                # import in the code execution tool" surfaced two OSINT notes instead of
+                # code-execution-tool-import-error. Dividing by sqrt(|twords|) keeps a
+                # specific match ahead of a broad one without over-penalising a skill for
+                # being thorough. sqrt, not linear, so a 2-of-4 match still outranks
+                # 1-of-4 rather than being flattened by the denominator.
+                score = len(overlap) / math.sqrt(len(twords))
+                scored.append((score, getattr(s, "name", ""), s))
+        # Name is the tie-break: this is a deterministic layer, no randomness.
         scored.sort(key=lambda p: (-p[0], p[1]))
-        return [s for _n, _name, s in scored[:MAX_LESSONS]]
+        return [s for _score, _name, s in scored[:MAX_LESSONS]]
 
 
 # ── Inline helpers (no cross-extension imports) ───────────────────────────────
