@@ -53,5 +53,12 @@
     "inject": false,
     "min_signals": 2,
     "log_path": "/a0/usr/workdir/workspace/office/scope_expansion_log.jsonl"
+  },
+  "acceptor": {
+    "enabled": true,
+    "alpha": 0.05,
+    "lambda": 0.5,
+    "max_pairs": 200,
+    "min_pairs": 5
   }
 }
