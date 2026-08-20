@@ -6,7 +6,7 @@ Three numbers that cannot be estimated. The agent has to run du and find. Disk u
 graded with tolerance because du reports in blocks and can shift between calls; the
 counts are graded exactly.
 """
-from verifiers._common import py, first_json, mentions, grade_counts
+from verifiers._common import py, first_json, mentions, grade_counts, sanity, fault
 
 GT = r'''
 import json, os
@@ -28,6 +28,13 @@ def verify(container: str, response: str, context_id: str):
     gt = first_json(py(container, GT))
     if gt is None:
         return False, "ground-truth unavailable (wiki walk produced no JSON)"
+
+    problem = sanity(
+        (gt["files"] > 0, "0 files under the wiki dir - path is wrong or wiki is empty"),
+        (gt["bytes"] > 0, "wiki reports 0 bytes with files present"),
+    )
+    if problem:
+        return fault(problem)
 
     ok, detail = grade_counts(response, [("files", gt["files"]), ("dirs", gt["dirs"])])
     # Size in any plausible unit, generous tolerance - du blocks vs bytes.

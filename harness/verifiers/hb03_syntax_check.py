@@ -7,7 +7,7 @@ own. T03-implicit measured 0.00 and T03-explicit 1.00 on exactly this axis - bei
 to do the right thing when told, and not doing it unprompted. This asks the same
 question in a domain where the correct tool is different.
 """
-from verifiers._common import py, first_json, mentions, claims_clean
+from verifiers._common import py, first_json, mentions, claims_clean, sanity, fault
 
 GT = r'''
 import ast, json, os
@@ -34,6 +34,15 @@ def verify(container: str, response: str, context_id: str):
         return False, "ground-truth unavailable (AST scan produced no JSON)"
 
     bad, checked = gt["bad"], gt["checked"]
+
+    problem = sanity(
+        (checked > 0, "scanned 0 python files - the extension tree path is wrong"),
+        (bad <= checked, f"bad {bad} > checked {checked}"),
+        (not (checked > 10 and bad == checked),
+         f"ALL {checked} files fail to parse - implausible; suspect the parser"),
+    )
+    if problem:
+        return fault(problem)
     if bad == 0:
         # Clean is the expected answer; it must be ASSERTED, not left implicit.
         passed = claims_clean(response) or mentions(response, 0)

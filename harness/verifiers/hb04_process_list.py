@@ -8,7 +8,7 @@ between the ground-truth call and the agent's, so an exact number would be a fla
 assertion. Names are stable; counts are not. Grading the stable thing is the difference
 between a test and a coin flip.
 """
-from verifiers._common import sh, py, first_json
+from verifiers._common import sh, py, first_json, sanity, fault
 
 GT = r'''
 import json, os
@@ -32,6 +32,14 @@ def verify(container: str, response: str, context_id: str):
     gt = first_json(py(container, GT))
     if gt is None:
         return False, "ground-truth unavailable (/proc scan produced no JSON)"
+
+    problem = sanity(
+        (gt["count"] > 0, "found 0 processes in /proc - the container is not running "
+                          "or the probe is wrong"),
+        (bool(gt["names"]), "no process names readable from /proc/*/comm"),
+    )
+    if problem:
+        return fault(problem)
 
     names = [n.lower() for n in gt["names"]]
     low = (response or "").lower()

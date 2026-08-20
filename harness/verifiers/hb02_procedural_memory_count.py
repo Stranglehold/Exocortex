@@ -7,7 +7,7 @@ so its priors are strong and probably stale. Verified path (2026-08-20): the sto
 `/a0/usr/Exocortex/procedural_memory/.index.json` - a DOTFILE, and .json not .jsonl.
 The task brief called it `procedural_memory.jsonl`; that file does not exist.
 """
-from verifiers._common import py, first_json, mentions, grade_counts
+from verifiers._common import py, first_json, mentions, grade_counts, sanity, fault
 
 GT = r'''
 import json, collections
@@ -29,6 +29,15 @@ def verify(container: str, response: str, context_id: str):
 
     entries = gt["entries"]
     types = gt["types"]
+
+    bad = sanity(
+        (entries >= 0, f"negative entry count {entries}"),
+        (not (entries > 0 and not types), "entries exist but no type distribution parsed"),
+        (sum(types.values()) == entries if types else True,
+         f"type counts {sum(types.values())} do not sum to entries {entries}"),
+    )
+    if bad:
+        return fault(bad)
     req = [("entries", entries)] + [(f"count[{t}]", c) for t, c in types.items()]
     ok, detail = grade_counts(response, req)
 

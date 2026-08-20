@@ -15,7 +15,7 @@ methodology skills are doing anything.
 Verified 2026-08-20: reports are JSON files under /a0/usr/Exocortex/sleep_reports/,
 named sleep_YYYYMMDD_HHMMSS.json - there is no single "sleep log" file.
 """
-from verifiers._common import py, first_json, mentions, grade_counts
+from verifiers._common import py, first_json, mentions, grade_counts, sanity, fault
 
 GT = r'''
 import json, os, re
@@ -46,6 +46,16 @@ def verify(container: str, response: str, context_id: str):
         return False, f"ground-truth unavailable ({(gt or {}).get('error', 'no JSON')})"
     if not gt.get("latest_file"):
         return False, "ground-truth unavailable (no sleep reports on this container)"
+
+    problem = sanity(
+        (gt["report_count"] > 0, "no sleep reports found"),
+        (bool(gt["latest_date"]),
+         f"could not parse a date from {gt['latest_file']!r} - the filename regex is "
+         f"the suspect. (A double-escaped regex silently returned None here on "
+         f"2026-08-20, and the test agreed with it.)"),
+    )
+    if problem:
+        return fault(problem)
 
     low = (response or "").lower()
     date_ok = bool(gt["latest_date"]) and (

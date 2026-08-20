@@ -131,3 +131,38 @@ def grade_counts(response: str, required: list, tol: int = 0) -> tuple:
     missing = [f"{lab}={val}" for lab, val in required
                if val is None or not mentions(response, val, tol=tol)]
     return (not missing), ("all present" if not missing else "missing " + ", ".join(missing))
+
+
+# ── ground-truth sanity (Opus, 2026-08-20) ───────────────────────────────────
+# A verifier grades the agent against ground truth it computed itself. If that
+# computation is WRONG rather than missing, the whole test agrees with itself and
+# reports a confident, meaningless result.
+#
+# That is not hypothetical. A double-escaped regex made HB-01 report "72 of 72 skills
+# have broken frontmatter", and the first test run PASSED it, because the synthetic
+# "correct" answer was built from the same wrong baseline. What caught it was the
+# number being implausible on its face - judgment, not the harness.
+#
+# So each ground-truth probe now states what a believable answer looks like. A probe
+# that fails its own reasonableness check is a HARNESS FAULT, not an agent failure,
+# and is reported as such: results are prefixed HARNESS-FAULT: so rate analysis can
+# separate a broken fixture from a genuine miss. Counting harness faults as agent
+# failures would quietly depress every measurement we make.
+
+HARNESS_FAULT = "HARNESS-FAULT: "
+
+
+def sanity(*checks) -> str | None:
+    """checks are (condition, message) pairs. Returns the first failure, or None.
+
+    Conditions are pre-evaluated booleans, so callers should keep them cheap.
+    """
+    for cond, msg in checks:
+        if not cond:
+            return msg
+    return None
+
+
+def fault(reason: str) -> tuple:
+    """Uniform return for an unusable baseline."""
+    return False, HARNESS_FAULT + reason

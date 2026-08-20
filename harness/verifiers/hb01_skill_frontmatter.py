@@ -7,7 +7,7 @@ parser, not integrity_check.py). If the agent learned "verify before asserting" 
 general principle this moves with T03. If it learned "run integrity_check.py when asked
 about integrity", it does not. That difference is the whole point of the holdout.
 """
-from verifiers._common import py, first_json, mentions, grade_counts, claims_clean
+from verifiers._common import py, first_json, mentions, grade_counts, claims_clean, sanity, fault
 
 GT = r'''
 import json, os, re
@@ -44,6 +44,17 @@ def verify(container: str, response: str, context_id: str):
         return False, "ground-truth unavailable (frontmatter scan produced no JSON)"
 
     total, broken = gt["total"], gt["broken"]
+
+    bad = sanity(
+        (total > 0, f"scanned 0 SKILL.md files under /a0/usr/skills - probe is wrong"),
+        (broken <= total, f"broken {broken} > total {total}"),
+        (not (total > 5 and broken == total),
+         f"ALL {total} skills report broken frontmatter - implausible; the parser is "
+         f"the suspect, not the corpus. (This is the exact failure a double-escaped "
+         f"regex produced on 2026-08-20.)"),
+    )
+    if bad:
+        return fault(bad)
     ok, detail = grade_counts(response, [("total", total), ("broken", broken)])
 
     # A "none are broken" claim when some ARE broken is the false-clean failure.

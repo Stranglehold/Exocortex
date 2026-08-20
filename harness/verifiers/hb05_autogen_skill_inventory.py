@@ -8,7 +8,7 @@ each skill directory also carries a .memory.md recurrence ledger, and counting t
 inflates the total by roughly 2x. I made that exact error on 2026-08-20 and reported
 135 skills where there were 69, so this verifier grades the distinction that caught me.
 """
-from verifiers._common import py, first_json, grade_counts, mentions
+from verifiers._common import py, first_json, grade_counts, mentions, sanity, fault
 
 GT = r'''
 import json, os, collections
@@ -33,6 +33,16 @@ def verify(container: str, response: str, context_id: str):
         return False, "ground-truth unavailable (skill walk produced no JSON)"
 
     skills = gt["skills"]
+
+    problem = sanity(
+        (skills > 0, "found 0 auto-generated skills - the path is wrong, or the pool "
+                     "is genuinely empty and this task is meaningless here"),
+        (bool(gt["by_category"]), "skills counted but no categories resolved"),
+        (sum(gt["by_category"].values()) == skills,
+         f"category counts {sum(gt['by_category'].values())} != skills {skills}"),
+    )
+    if problem:
+        return fault(problem)
     inflated = skills + gt["support_files"]
     ok, detail = grade_counts(response, [("skills", skills)])
 
