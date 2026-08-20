@@ -1,5 +1,16 @@
+import sys
+
 from helpers.extension import Extension
 from typing import Any
+
+# A1 three-strike quarantine — ENFORCER half. The RECORDER is
+# tool_execute_after/_32_failure_fingerprint.py. Both import the same helper so
+# they cannot disagree about what "the same attempt" means; a silent mismatch
+# there would leave quarantine permanently inert while looking installed.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in sys.path:
+    sys.path.insert(0, _EXOCORTEX_HELPERS)
+
 
 # Static schema: tool_name -> {required_args, arg_aliases, runtime_aliases}
 TOOL_SCHEMAS = {
@@ -181,6 +192,20 @@ class MetaReasoningGate(Extension):
             if not tool_name:
                 return
 
+            # ── A1: three-strike quarantine ──────────────────────────────────
+            # Runs FIRST. Two jobs, in this order:
+            #   1. Stash the op signature for _32. `tool_execute_after` receives no
+            #      tool_args (verified against A0 v2.9 agent.py ~L1192), so the
+            #      recorder cannot compute this itself — it has to be handed over.
+            #      Stashed unconditionally, because a call that succeeds must still
+            #      overwrite a stale signature from a previous call.
+            #   2. Refuse an attempt already under quarantine.
+            #
+            # Refusing by raise deliberately short-circuits `tool_execute_after`,
+            # so a blocked attempt does NOT reach _32 and does NOT add a strike.
+            # Quarantine must not deepen itself by being enforced.
+            self._quarantine_gate(tool_name, tool_args)
+
             # Phase 0: Orchestration enforcement
             # If _57_orchestration_mode has activated, warn the agent when it
             # tries to execute directly instead of delegating.
@@ -337,6 +362,53 @@ class MetaReasoningGate(Extension):
                 )
             except Exception:
                 pass
+
+    def _quarantine_gate(self, tool_name: str, tool_args: dict | None) -> None:
+        """A1 enforcer. Stash the op signature, then refuse quarantined attempts.
+
+        Raises ValueError to block, matching this file's existing block mechanism.
+        Any *internal* failure here is swallowed: a broken quarantine store must
+        degrade to "no quarantine", never to "no tool calls". A gate that can wedge
+        the agent is worse than the failure loop it exists to stop.
+        """
+        try:
+            import failure_fingerprint as ff
+
+            conf = ff.cfg()
+            if not conf.get("enabled", True):
+                return
+
+            op_sig = ff.op_signature(tool_name, tool_args)
+            self.agent.set_data(ff.OP_SIG_KEY, op_sig)
+
+            entry = ff.find_quarantine(op_sig)
+        except Exception as e:
+            try:
+                print(f"[QUARANTINE] gate skipped — {type(e).__name__}: {str(e)[:100]}",
+                      flush=True)
+            except Exception:
+                pass
+            return
+
+        if not entry:
+            return
+
+        # Outside the try: this raise is the intended control flow and must not be
+        # swallowed by the handler above.
+        msg = (
+            f"[MetaGate-QUARANTINE] This exact call is quarantined after "
+            f"{entry.get('evidence', {}).get('strikes_at_quarantine', entry.get('strikes'))} "
+            f"identical failures ({entry.get('tool')}/{entry.get('error_class')}). "
+            f"Retrying it will fail the same way. Do something different: change the "
+            f"approach, the tool, or the target — or move on to another task. "
+            f"Released automatically when the gating code or model profile changes."
+        )
+        try:
+            self.agent.context.log.log(type="warning", content=msg)
+        except Exception:
+            pass
+        print(f"[QUARANTINE] BLOCKED {tool_name} fp={entry.get('fingerprint')}", flush=True)
+        raise ValueError(msg)
 
     def _fix_arg_aliases(self, tool_args: dict, schema: dict):
         """Rename wrong argument names to correct ones."""
