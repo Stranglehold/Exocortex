@@ -217,11 +217,12 @@ class PacePlanGenerator(Extension):
             if not user_msg:
                 return
 
-            # Strip our own injected blocks BEFORE the text is used as the task.
-            # This previously happened only inside _hash_message, so change detection
-            # saw clean text while task_summary was stored contaminated. Both paths
-            # now read the same stripped value.
-            msg_content = _strip_injected_blocks(_extract_message_content(user_msg))
+            # Read the task from the UNCONTAMINATED source, falling back to the
+            # stripped history scan. See _clean_task_text for why the history scan
+            # cannot be made reliable by pattern-matching alone.
+            msg_content, task_src = _clean_task_text(loop_data, user_msg)
+            if not msg_content:
+                return
             msg_hash = _hash_message(msg_content)
 
             existing = getattr(self.agent, "_pace_plan", None)
@@ -232,7 +233,8 @@ class PacePlanGenerator(Extension):
                 setattr(self.agent, "_pace_plan", plan)
                 print(
                     f"[PACE] New plan {plan['plan_id'][:8]} "
-                    f"domain={domain} steps={len(plan['steps'])}",
+                    f"domain={domain} steps={len(plan['steps'])} "
+                    f"task_src={task_src}",
                     flush=True,
                 )
             else:
@@ -453,6 +455,45 @@ def _extract_message_content(msg: dict) -> str:
     if isinstance(content, dict):
         return str(content.get("user_message", ""))
     return str(content)
+
+
+def _clean_task_text(loop_data, fallback_msg: dict | None) -> tuple[str, str]:
+    """The operator's actual task text, and which source produced it.
+
+    PRIMARY — `loop_data.user_message.content`. This is the source A0's own
+    `_63_recall_relevant_skills` reads, and it is NOT what the injectors mutate: they
+    rebind `loop_data.history_output[-1]["content"]`, a key on the assembled
+    OutputMessage dict, which does not touch the underlying message.
+
+    Verified live on VekV2, 2026-08-20, same turn, same probe:
+        history_output scan     raw_len 16,732 -> 30,516 -> 31,384  (grows every iteration)
+        loop_data.user_message  len=167, 167, 167                   (byte-identical)
+    Twelve extensions mutate that history message with
+    `block + "\\n\\n" + str(existing)` — including THIS ONE at the injection below — so
+    scanning it can never be made reliable by enumerating block patterns. Reading the
+    clean source sidesteps all twelve and is immune to any injector added later.
+
+    FALLBACK — the history scan with `_strip_injected_blocks` applied, for subordinate
+    contexts and idle cycles where `user_message` may be absent. Per Opus: the strip
+    list is no longer the gate, it is the safety net on the path already known to be
+    noisy.
+    """
+    try:
+        um = getattr(loop_data, "user_message", None)
+        if um is not None:
+            content = getattr(um, "content", None)
+            if isinstance(content, dict):
+                text = str(content.get("user_message") or "").strip()
+            else:
+                text = (um.output_text() or "").strip()
+            if text:
+                return text, "user_message"
+    except Exception:
+        pass
+
+    if fallback_msg:
+        return _strip_injected_blocks(_extract_message_content(fallback_msg)), "history"
+    return "", "none"
 
 
 # ── Injected-block removal ────────────────────────────────────────────────────

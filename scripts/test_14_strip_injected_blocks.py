@@ -93,11 +93,11 @@ def main():
     try:
         spec.loader.exec_module(m)
     except Exception as e:
-        print("could not import _14 directly (%s); extracting the helper instead" % e)
+        print("could not import _14 directly (%s); extracting the helpers instead" % e)
         import re as _re, hashlib as _hashlib, types
         src = open(MOD, encoding="utf-8").read()
-        start = src.index("# ── Injected-block removal")
-        end = src.index("def _hash_message")
+        start = src.index("def _extract_message_content")
+        end = src.index("def _load_config")
         m = types.ModuleType("_14_partial")
         m.__dict__.update({"re": _re, "hashlib": _hashlib})
         exec(compile(src[start:end], MOD, "exec"), m.__dict__)
@@ -120,6 +120,56 @@ def main():
         if bad:
             failures += 1
             print("    got: %r" % out[:200])
+
+    # ── Source selection: the clean source must win over the contaminated scan ──
+    clean_task = m._clean_task_text
+    contaminated = LESSONS_BLOCK + "\n\n" + PACE_BLOCK + "\n\n" + REASONING_BLOCK + \
+        "\n\n[BST] Domain: system_admin\n[SUPERVISOR: PROGRESS CHECK]\nkeep going\n\n" + USER_TEXT
+    fallback_msg = {"ai": False, "content": contaminated}
+
+    class _UM:
+        def __init__(self, content):
+            self.content = content
+
+        def output_text(self):
+            return self.content if isinstance(self.content, str) else ""
+
+    class _LD:
+        def __init__(self, um):
+            self.user_message = um
+
+    src_cases = [
+        ("clean source preferred over contaminated scan",
+         _LD(_UM({"user_message": USER_TEXT})), fallback_msg, USER_TEXT, "user_message"),
+        ("str content uses output_text()",
+         _LD(_UM(USER_TEXT)), fallback_msg, USER_TEXT, "user_message"),
+        ("absent user_message falls back to stripped scan",
+         _LD(None), fallback_msg, None, "history"),
+        ("empty user_message falls back",
+         _LD(_UM({"user_message": "   "})), fallback_msg, None, "history"),
+    ]
+    print()
+    for name, ld, fb, expect_exact, expect_src in src_cases:
+        text, src = clean_task(ld, fb)
+        bad = []
+        if src != expect_src:
+            bad.append("source=%s expected %s" % (src, expect_src))
+        if expect_exact is not None and text != expect_exact:
+            bad.append("text is not the operator's message verbatim")
+        if USER_TEXT not in text:
+            bad.append("LOST user text (the expensive direction)")
+        print("%-42s %s" % (name, "OK" if not bad else "FAIL: " + "; ".join(bad)))
+        if bad:
+            failures += 1
+            print("    got src=%s text=%r" % (src, text[:160]))
+
+    # The fallback path is known-noisy: assert only that the user text survives it,
+    # NOT that it is clean. Twelve writers mean the scan cannot be fully sanitised.
+    fb_text, _ = clean_task(_LD(None), fallback_msg)
+    print("%-42s %s" % ("fallback keeps user text (not clean)",
+                        "OK" if USER_TEXT in fb_text else "FAIL"))
+    if USER_TEXT not in fb_text:
+        failures += 1
 
     # Discrimination: the OLD pattern list must fail case 1, or this gate proves nothing.
     import re
