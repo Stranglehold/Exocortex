@@ -43,10 +43,20 @@ MODEL = sys.argv[1] if len(sys.argv) > 1 else "deepseek/deepseek-v4-flash"
 TRIALS = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 SIZES = [4000, 8000, 12000, 16000, 24000, 32000]
 
-# ~4 chars/token, then tripled for headroom. The cap must never be the binding
-# constraint - if it is, the trial reports HARNESS-CAP rather than a model failure.
+# The cap must never be the binding constraint - if it is, the trial reports
+# HARNESS-CAP rather than a model failure.
+#
+# MEASURED 2026-08-20, deepseek-v4-flash: the model massively OVERSHOOTS a length
+# target - asked for 4,000 chars it wrote 9,553; asked for 12,000 it wrote 30,385;
+# asked for 32,000 it wrote 85,151. That is 2.4x-2.7x. The first cap formula
+# (n/4*3 tokens) assumed the model would land near the target and cost 8 of 12 trials
+# to HARNESS-CAP. Budget for the observed overshoot, not for the request.
+OVERSHOOT = 3.0     # measured 2.4-2.7x, rounded up
+CHARS_PER_TOKEN = 3.5
+
+
 def cap_for(n):
-    return max(4000, int(n / 4 * 3))
+    return max(8000, int(n * OVERSHOOT / CHARS_PER_TOKEN))
 
 
 PROMPT = """You are an autonomous agent. Respond with ONLY a single JSON object and nothing else - no prose before or after, no markdown code fences.
