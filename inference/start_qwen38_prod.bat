@@ -37,6 +37,25 @@ setlocal enabledelayedexpansion
 ::            than tbq4_0 in total. Measure the whole footprint, not one buffer.
 ::            NEVER use tbq3_0 -- 0/4 probes, token salad, half speed.
 ::
+::            REVERTED 2026-08-21: -ctv was briefly set to q8_0 (asymmetric q4 keys /
+::            q8 values) for the ~1.5-point reasoning-benchmark gain that V-cache
+::            precision buys. It cost +1283 MiB and pushed the card to ~99% VRAM,
+::            at which point the model fell off the GPU. Measured while stuck:
+::              llama-server  71.4 CPU-seconds per 10s wall (~7 cores saturated)
+::              GPU           10% utilisation
+::              VRAM          24,194 of 24,576 MiB  (~380 MiB free)
+::            i.e. a 27B executing on CPU. A fresh 26K-token prompt produced ZERO
+::            tokens in 30 minutes; a "Say ok" / 8-token request timed out at 120s.
+::            Compression had succeeded 4x that day (last 20:57), server restarted
+::            22:47:54, first failure 22:49:43 -- and every attempt after.
+::            The table above already had the answer: q8_0 is 5488.78 TOTAL against
+::            tbq4_0's 2925.03, for 35.36 tok/s against 35.44. It buys nothing on
+::            speed and costs the headroom the card does not have. Do not re-apply
+::            without freeing VRAM elsewhere first -- and note the Windows desktop
+::            (explorer, Discord, iCUE, EdgeWebView) also holds VRAM on this card,
+::            so the usable budget is BELOW 24,576 MiB. Vision is unaffected: the
+::            mmproj runs on CPU via --no-mmproj-offload at 0 MiB VRAM.
+::
 ::   -c 150000  KV is only 16.5 KiB/token here (48 of 65 blocks are SSM and use a
 ::            FIXED 150 MiB recurrent state), so even the full 262144 training
 ::            context fits -- but it leaves <2 GB free. 150000 matches what
@@ -137,6 +156,16 @@ set PORT=1235
 :: (BST-routed effort by classified domain is the intended design for this.)
 set LLAMA_BIN=%~dp0llama-cpp-indras\build\bin\llama-server.exe
 set MODEL=D:\LMStudio\Models\unsloth\Qwen3.8-27B-GGUF\Qwen3.8-27B-Q4_K_S.gguf
+:: VISION -- Qwen3.8-27B is a native multimodal model (text + image + video).
+:: The mmproj (multimodal projector) file bridges the vision encoder to the
+:: language model. Without it, the server is text-only; with it, clients can
+:: send images via the OpenAI-compatible API (base64 image_url in messages).
+:: VRAM cost: ~885 MiB on GPU, or zero if --no-mmproj-offload is used (CPU).
+:: With --no-mmproj-offload, the projector runs on CPU — image encoding is
+:: slower but text inference is unaffected. Recommended when vision is
+:: occasional (e.g. UI screenshots) rather than every-turn.
+:: To disable vision entirely, comment out the MMPROJ line below.
+set MMPROJ=D:\LMStudio\Models\unsloth\Qwen3.8-27B-GGUF\mmproj-F16.gguf
 
 if not exist "%LLAMA_BIN%" (
     echo [ERROR] llama-server.exe not found: %LLAMA_BIN%
@@ -146,6 +175,12 @@ if not exist "%LLAMA_BIN%" (
 if not exist "%MODEL%" (
     echo [ERROR] Model not found: %MODEL%
     pause & exit /b 1
+)
+if not exist "%MMPROJ%" (
+    echo [WARN] mmproj not found: %MMPROJ%
+    echo        Vision will be DISABLED. Text-only mode.
+    echo        Download from: huggingface.co/unsloth/Qwen3.8-27B-GGUF
+    set MMPROJ=
 )
 
 :: Pre-flight: refuse to start if something already owns 1235 (almost certainly
@@ -159,22 +194,39 @@ for /f %%P in ('netstat -ano ^| findstr /r /c:"LISTENING" ^| findstr /c:":%PORT%
     pause & exit /b 1
 )
 
+:: Resolve vision status for the banner
+if defined MMPROJ (
+    set MMPROJ_STATUS=ON  (mmproj-F16, CPU offload, 0 MiB VRAM)
+) else (
+    set MMPROJ_STATUS=OFF (no mmproj found)
+)
+
 cls
 echo ============================================================
 echo   Qwen3.8-27B-Q4_K_S   ^|  PRODUCTION  ^|  RTX 3090
 echo ============================================================
 echo   Build   : llama-cpp-indras b9093
-echo   KV      : tbq4_0   (2417 KV + 508 compute = 2925 MiB total)
+echo   KV      : tbq4_0 symmetric  (2417 KV + 508 compute = 2925 MiB total)
 echo   Context : %CTX%
 echo   MTP     : off  (prefill penalty; see header)
+echo   Vision  : %MMPROJ_STATUS%
 echo   Port    : %PORT%   ^<-- ORNITH'S PORT
 echo.
 echo   *** Aporia and Hermes will now use THIS model. ***
 echo ============================================================
 echo.
 
+:: Build the mmproj flag (empty string if no mmproj, so the line is a no-op)
+if defined MMPROJ (
+    set MMPROJ_FLAG=--mmproj "%MMPROJ%"
+) else (
+    set MMPROJ_FLAG=
+)
+
 "%LLAMA_BIN%" ^
   -m "%MODEL%" ^
+  %MMPROJ_FLAG% ^
+  --no-mmproj-offload ^
   -c %CTX% ^
   -fa on ^
   -ctk tbq4_0 -ctv tbq4_0 ^
