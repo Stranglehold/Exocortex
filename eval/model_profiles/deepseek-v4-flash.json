@@ -1,0 +1,116 @@
+{
+  "profile_version": "1.0",
+  "model_id": "deepseek-v4-flash",
+  "model_family": "deepseek",
+  "evaluated_at": "2026-08-21T02:00:00+00:00",
+  "fixtures_version": "1.0.0",
+  "evaluation_summary": {
+    "overall_capability": "unknown",
+    "strongest_area": "json_tool_call_coherence",
+    "weakest_area": "unknown",
+    "recommended_prosthetic_level": "light"
+  },
+  "bst": {
+    "confidence_adjustment": 0,
+    "disabled_domains": [],
+    "enrichment_verbosity": "standard"
+  },
+  "meta_gate": {
+    "strictness": "moderate",
+    "json_repair_enabled": true,
+    "parameter_validation": true,
+    "write_size": {
+      "base_limit": 400000
+    }
+  },
+  "tool_fallback": {
+    "max_retries": 3,
+    "priority_patterns": [
+      "syntax",
+      "not_found",
+      "missing_param"
+    ],
+    "escalation_after": 5
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 2,
+    "stale_after_turns": 12,
+    "node_instruction_verbosity": "standard",
+    "inject_boundary_warnings": false
+  },
+  "pace": {
+    "primary_threshold": 2,
+    "alternate_threshold": 4,
+    "contingency_threshold": 7,
+    "emergency_threshold": 10
+  },
+  "context": {
+    "max_injection_tokens": 2000,
+    "layer_priority": [
+      "bst_enrichment",
+      "graph_node",
+      "role_profile",
+      "recalled_memories",
+      "personality"
+    ],
+    "instruction_compliance_warning_threshold": 0.6
+  },
+  "memory": {
+    "max_injected": 6,
+    "similarity_threshold": 0.7,
+    "noise_discrimination": "moderate"
+  },
+  "temporal": {
+    "training_data_cutoff": null,
+    "staleness_awareness": "unknown",
+    "confabulation_risk": "high"
+  },
+  "raw_metrics": {
+    "json_coherence_sweep": {
+      "date": "2026-08-21",
+      "grader": "helpers.extract_tools.extract_tool_request",
+      "sizes_tested": [
+        4000,
+        8000,
+        12000,
+        16000,
+        24000,
+        32000
+      ],
+      "structural_breaks": 0,
+      "largest_valid_tool_call_chars": 85151,
+      "trials_excluded_harness_cap": 8,
+      "length_overshoot_ratio_observed": [
+        2.4,
+        2.7
+      ],
+      "interpretation": "NO BREAK FOUND at any tested size - not a measured ceiling. 8 of 12 trials hit the harness max_tokens cap because the model overshoots length targets 2.4-2.7x."
+    }
+  },
+  "_provenance": {
+    "authored_by": "Kestrel, 2026-08-21",
+    "approved_by": "Opus (retire Vek's character cap immediately) + Jake",
+    "derived_from": "default.json - every section not listed in 'overrides' is inherited VERBATIM, because load_profile() replaces rather than merges and a minimal profile would silently strip them",
+    "overrides": [
+      "model_id",
+      "model_family",
+      "evaluated_at",
+      "meta_gate.write_size.base_limit",
+      "evaluation_summary.overall_capability",
+      "evaluation_summary.strongest_area",
+      "evaluation_summary.recommended_prosthetic_level",
+      "raw_metrics.json_coherence_sweep"
+    ],
+    "base_limit_derivation": "effective_limit = base_limit / complexity_score, capped at max_score=4.0. Largest observed valid emission was 85151 chars, so base_limit/4.0 must exceed it: base_limit > 340604. Set to 400000. This is a POLICY ceiling derived from measurement, NOT a measured break point.",
+    "unmeasured_for_this_model": [
+      "temporal.confabulation_risk",
+      "bst",
+      "memory",
+      "pace",
+      "context",
+      "graph_workflow",
+      "tool_fallback"
+    ],
+    "open_question": "tier vocabulary mismatch: Opus's design names three tiers (Frontier / Local Large / Local Small) but this field's existing vocabulary is full/moderate/light/targeted. 'light' is the closest honest mapping for Frontier; needs ratification before a consumer is wired."
+  }
+}
