@@ -201,6 +201,24 @@ if defined MMPROJ (
     set MMPROJ_STATUS=OFF (no mmproj found)
 )
 
+:: ---------------------------------------------------------------------------
+:: SERVER LOG + LIVE METRICS
+:: Added 2026-08-21. An hour went into inferring CPU-offload from process
+:: counters (CPU-seconds vs GPU utilisation) because llama.cpp's startup output
+:: -- which states offload plainly -- went to a console nobody was reading.
+:: VERIFIED: --log-file TEES. Console output is unchanged; the file is a copy.
+:: --metrics was ALREADY set further down this command, and /slots is on by
+:: default -- so /metrics and /slots were available the whole time and nothing
+:: was reading them. The missing half was a READER, now scripts/watch_llama.py.
+:: Capture with no consumer is the defect class this project keeps finding.
+:: One file per launch, so a post-mortem is never mixed with a later run.
+:: ---------------------------------------------------------------------------
+set LOGDIR=%~dp0logs
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd-HHmmss"') do set LOGSTAMP=%%i
+if not defined LOGSTAMP set LOGSTAMP=latest
+set SERVER_LOG=%LOGDIR%\qwen38_prod_%LOGSTAMP%.log
+
 cls
 echo ============================================================
 echo   Qwen3.8-27B-Q4_K_S   ^|  PRODUCTION  ^|  RTX 3090
@@ -211,6 +229,8 @@ echo   Context : %CTX%
 echo   MTP     : off  (prefill penalty; see header)
 echo   Vision  : %MMPROJ_STATUS%
 echo   Port    : %PORT%   ^<-- ORNITH'S PORT
+echo   Log     : %SERVER_LOG%
+echo   Metrics : http://localhost:%PORT%/metrics  ^(+ /slots^)
 echo.
 echo   *** Aporia and Hermes will now use THIS model. ***
 echo ============================================================
@@ -231,6 +251,9 @@ if defined MMPROJ (
   -fa on ^
   -ctk tbq4_0 -ctv tbq4_0 ^
   -ngl 99 ^
+  --log-file "%SERVER_LOG%" ^
+  --log-timestamps ^
+  --log-prefix ^
   --jinja ^
   --parallel 1 ^
   --alias qwen3.8-27b ^
