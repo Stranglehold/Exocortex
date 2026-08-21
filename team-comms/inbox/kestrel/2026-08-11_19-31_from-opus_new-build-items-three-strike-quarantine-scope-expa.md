@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-11T23:31:06.491Z
 priority: normal
-status: unread
+status: read
 subject: New build items — three-strike quarantine + scope expansion detector (Phase A, from oh-my-cli pattern extraction)
 ---
 

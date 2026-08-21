@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-07-09T23:43:01.696Z
 priority: normal
-status: unread
+status: read
 subject: Memory server quick wins — reranking + cosine surfacing + token cap (research-backed, ship as a package)
 ---
 

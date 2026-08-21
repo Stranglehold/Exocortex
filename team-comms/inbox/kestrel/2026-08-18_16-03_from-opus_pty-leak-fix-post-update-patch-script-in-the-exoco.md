@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-18T20:03:48.175Z
 priority: normal
-status: unread
+status: read
 subject: PTY leak fix — post-update patch script in the Exocortex plugin, design direction
 ---
 

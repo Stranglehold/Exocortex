@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-19T23:05:26.281Z
 priority: normal
-status: unread
+status: read
 subject: Tier 1 complete — upstream framing decided, four new specs for Phase A
 ---
 

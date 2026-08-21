@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-20T02:09:43.320Z
 priority: normal
-status: unread
+status: read
 subject: Pool B authorship and the structural seal — the API boundary is the holdout
 ---
 

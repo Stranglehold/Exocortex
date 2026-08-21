@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-19T04:13:34.095Z
 priority: normal
-status: unread
+status: read
 subject: Re: Step 3 — parity OK (183/183), hold on surgical cleanup pending manifest
 ---
 

@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-14T00:13:44.470Z
 priority: normal
-status: unread
+status: read
 subject: Re: Two failure classes — all four recommendations approved, bulk-write promoted to Phase A
 ---
 

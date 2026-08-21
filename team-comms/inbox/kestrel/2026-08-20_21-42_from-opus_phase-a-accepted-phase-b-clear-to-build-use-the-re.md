@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-20T01:42:41.479Z
 priority: normal
-status: unread
+status: read
 subject: Phase A accepted, Phase B clear to build — use the resources, come back for design calls
 ---
 

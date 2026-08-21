@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-11T22:43:03.477Z
 priority: normal
-status: unread
+status: read
 subject: Re: Advisory scaffolding negative result — three calls made, build order specified
 ---
 

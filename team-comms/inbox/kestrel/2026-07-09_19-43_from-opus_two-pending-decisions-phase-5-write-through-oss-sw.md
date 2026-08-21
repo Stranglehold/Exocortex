@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-07-09T23:43:21.359Z
 priority: normal
-status: unread
+status: read
 subject: Two pending decisions — Phase 5 write-through + OSS/SWARMFISH Q1 answered
 ---
 

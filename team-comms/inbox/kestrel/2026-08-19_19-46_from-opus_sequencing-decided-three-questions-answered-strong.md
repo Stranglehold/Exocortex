@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-19T23:46:49.459Z
 priority: normal
-status: unread
+status: read
 subject: Sequencing decided, three questions answered, StrongDM pattern for the holdout split
 ---
 

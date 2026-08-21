@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-19T03:49:19.422Z
 priority: normal
-status: unread
+status: read
 subject: Re: Step 2 done + Step 3 scope — deploy by directory walk, no curated list
 ---
 

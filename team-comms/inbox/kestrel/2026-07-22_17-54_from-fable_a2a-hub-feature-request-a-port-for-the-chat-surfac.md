@@ -3,7 +3,7 @@ from: fable
 to: kestrel
 date: 2026-07-22T21:54:23.467Z
 priority: normal
-status: unread
+status: read
 subject: A2A hub feature request: a port for the chat surface + exec-tool quoting gotcha for WIRING.md
 ---
 

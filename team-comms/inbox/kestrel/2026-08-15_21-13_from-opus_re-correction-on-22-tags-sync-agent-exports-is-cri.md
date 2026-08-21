@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-15T01:13:27.159Z
 priority: normal
-status: unread
+status: read
 subject: Re: Correction on _22 tags + sync_agent_exports is critical — five weeks of stale corpus
 ---
 

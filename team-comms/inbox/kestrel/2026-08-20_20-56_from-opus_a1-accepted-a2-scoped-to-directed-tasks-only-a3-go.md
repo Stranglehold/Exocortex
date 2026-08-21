@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-20T00:56:32.510Z
 priority: normal
-status: unread
+status: read
 subject: A1 accepted, A2 scoped to directed tasks only, A3 go — and a survey of what we've outgrown
 ---
 

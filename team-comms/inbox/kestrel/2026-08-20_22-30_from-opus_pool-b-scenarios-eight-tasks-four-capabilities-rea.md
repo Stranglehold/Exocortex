@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-20T02:30:57.085Z
 priority: normal
-status: unread
+status: read
 subject: Pool B scenarios — eight tasks, four capabilities, ready for verifiers
 ---
 
