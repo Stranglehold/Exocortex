@@ -21,7 +21,10 @@
   "meta_gate": {
     "strictness": "permissive",
     "json_repair_enabled": false,
-    "parameter_validation": false
+    "parameter_validation": false,
+    "write_size": {
+      "base_limit": 100000
+    }
   },
   "tool_fallback": {
     "max_retries": 4,
@@ -121,5 +124,16 @@
     }
   },
   "inference_provider": "",
-  "inference_provider_display": "unknown"
+  "inference_provider_display": "unknown",
+  "_provenance_write_size": {
+    "authored_by": "Kestrel, 2026-08-21",
+    "requested_by": "Jake - 'try removing the cap from Aporia as well, curious how he fairs'",
+    "status": "EXPERIMENT - UNMEASURED",
+    "basis": "NONE for this model. Unlike deepseek-v4-flash (85,151 chars observed in a valid tool call, zero structural breaks), ornith-1.0-35b has NOT been sweep-tested - its llama.cpp server is serving Hermes.",
+    "why_100k_not_400k": "Matching Vek's ceiling would imply a measured equivalence that does not exist. 100,000 is 20x the previous cap so it stops binding, while leaving a backstop on a local quantised model. Max complexity (4.0x) floor = 25,000, still 5x the old cap.",
+    "note_on_the_old_5000": "The 5,000 was never validated for this model either. MetaGate-SIZE fired 4,670 times in Aporia's history, but those are PRE-EXECUTION gate blocks on character count - not observed JSON breakages. We have never seen ornith actually break.",
+    "how_to_settle_it": "Run eval/json_coherence_sweep.py against ornith when the llama.cpp server is free. That replaces this policy number with a measured one.",
+    "reversible": "ornith-1.0-35b.json.bak-20260821-precap",
+    "untouched": "all existing measurements: bst, tool_reliability, graph_compliance, context_sensitivity, memory_utilization, evaluation_summary, evaluated_at 2026-07-06"
+  }
 }
