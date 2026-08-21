@@ -281,15 +281,21 @@ First validation of the v1.13-ported curated Tier 1–4 stack (14 extensions). T
 
 | Role | Model | Status |
 |------|-------|--------|
-| Supervisor | [Jackrong/Qwen3.6-27B](https://huggingface.co/jackrong/qwen3.6-27b) | **Current primary** (`Q4_K_M`). Running on the turbo3-cuda fork at 150K ctx, port 1235. Rigidity eval: SHIFT_TO_INFO, 0 load-bearing instruction domains; config_edit enrichment hurts, api_integration helps. Profile 2026-04-27. |
+| Local primary | Qwen3.8-27B (unsloth GGUF) | **Current** (`Q4_K_S`). llama-cpp-indras b9093 on port 1235, 150K ctx, all 66/66 layers on GPU. **Native multimodal** — `/v1/models` reports `["completion","multimodal"]` with the mmproj loaded on CPU (`--no-mmproj-offload`, 0 MiB VRAM). Serves `agent-zero-v2` (Aporia) and Hermes. |
+| API primary | deepseek-v4-flash | **Current** for `VekV2` (Vek), via the DeepSeek provider. Coherence sweep 2026-08-21: **zero structural breaks**, 85,151 chars in a single valid tool call. Profile `eval/model_profiles/deepseek-v4-flash.json`. |
+| Local (alt) | ornith-1.0-35b | Profiled 2026-07-06 (capability `high`). Write threshold still unmeasured — sweep pending, its server is shared with Hermes. |
+| Supervisor (prev) | [Jackrong/Qwen3.6-27B](https://huggingface.co/jackrong/qwen3.6-27b) | Previous primary (`Q4_K_M`) on turbo3-cuda. Rigidity eval: SHIFT_TO_INFO, 0 load-bearing instruction domains; config_edit enrichment hurts, api_integration helps. Profile 2026-04-27. |
 | Supervisor (prev) | [Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF](https://huggingface.co/Jackrong/Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-GGUF) | Previous primary (`@q4_k_s`, 15.01 GB) on the Indras-Mirror MTP fork — retired in the 2026-05-16 pivot to non-MTP. Full eval: ADOPT verdict 2026-05-14. |
 | Supervisor (prev) | GPT-OSS-20B | Validated against ST-003 (fabrication confirmed) |
 | Supervisor (alt) | Qwen2.5-14B-Instruct-1M | Validated, profiled |
 | Utility | Qwen3.5-4B | Fast, high JSON compliance (`@q4_k_s`) |
 
-- **GPU:** RTX 3090 (24GB VRAM)
-- **Runtime:** Agent-Zero (v1.18) in Docker container
-- **Inference:** turbo3-cuda llama.cpp fork on port 1235 — **Qwen3.6-27B Q4_K_M** (Jackrong GGUF), turbo3 KV cache (`-ctk/-ctv turbo3`), **150K context** (`-c 150000`), full GPU offload (`-ngl 99`), single slot (`--parallel 1`), flash attention (`-fa on`), thinking enabled. No draft model — non-MTP, no speculative decoding (upstream PR #20075 gap). Prefill/decode throughput TBD pending a fresh benchmark. Launch: `inference/start_turbo3_prod.bat`. *Previously:* Indras-Mirror MTP fork (53 tok/s, 130K ctx) → retired 2026-05-16 for faster prefill; LM Studio on host → retired earlier.
+- **GPU:** RTX 3090 (24GB VRAM). **The Windows desktop also holds VRAM on this card** (explorer, Discord, iCUE, EdgeWebView all appear as GPU consumers), so the usable budget is meaningfully below 24,576 MiB. Any VRAM plan needs margin for it — see the 2026-08-21 entry below.
+- **Runtime:** Agent-Zero **v2.9** in Docker. Live containers: **`VekV2`** (Vek, deepseek-v4-flash) and **`agent-zero-v2`** (Aporia, ornith-1.0-35b). *Retired:* `exocortex_v16` / `exocortex_v17` (v1.x era).
+- **Inference:** llama-cpp-indras **b9093** on port 1235 — **Qwen3.8-27B Q4_K_S** (unsloth GGUF), KV `-ctk tbq4_0 -ctv tbq4_0` (**2417.25 MiB**, symmetric), **150K context** (`-c 150000`), full GPU offload (`-ngl 99`, verified `offloaded 66/66 layers`), single slot (`--parallel 1`), flash attention (`-fa on`), `--cache-reuse 256`, reasoning budget 600. **Vision on** via `--mmproj` with `--no-mmproj-offload` (projector on CPU, 0 MiB VRAM). Launch: `inference/start_qwen38_prod.bat`.
+  - **Server logs to `inference/logs/qwen38_prod_<stamp>.log`** (one file per launch) and exposes `/metrics` + `/slots`. Read them with `python scripts/watch_llama.py`.
+  - **Do not set `-ctv q8_0`.** Tried 2026-08-21 for the ~1.5-point reasoning gain; it costs +1283 MiB, pushed the card to ~99% VRAM, and the model fell off the GPU — 71.4 CPU-seconds per 10s wall against 10% GPU utilisation, a 26K prompt producing zero tokens in 30 minutes. The in-file sweep table already had it: q8_0 totals 5488.78 MiB at 35.36 tok/s against tbq4_0's 2925.03 at 35.44.
+  - *Previously:* turbo3-cuda / Qwen3.6-27B → superseded; Indras-Mirror MTP fork (53 tok/s, 130K ctx) → retired 2026-05-16 for faster prefill; LM Studio on host → retired earlier.
 - **Vector DB:** FAISS (Agent-Zero built-in)
 - **Design Partner:** Claude Opus 4.6 (Anthropic) — architectural design, specification, essays, identity architecture
 - **Troubleshooting / design from inside Agent Zero:** Claude Opus 4.6 — frontier model running inside a separate container. Troubleshooting and design work from inside the container independent from local models. Custom system prompts replace stock Agent Zero behavioral guidance. Built the selective memorizer, expanded the BST, and un-deprecated 33 falsely deprecated knowledge base entries from inside the container.
@@ -304,7 +310,7 @@ The design/implementation split is deliberate. Architectural decisions are made 
 
 ### Prerequisites
 
-- [Agent-Zero](https://github.com/frdel/agent-zero) (v1.18) running in a Docker container
+- [Agent-Zero](https://github.com/frdel/agent-zero) (**v2.9**) running in a Docker container
 - An OpenAI-compatible inference server on a local port — a llama.cpp server (the current setup uses a turbo3-cuda fork on `:1235`) or [LM Studio](https://lmstudio.ai/) on `:1234`
 - Python 3.10+ on the host machine (for the evaluation framework)
 
