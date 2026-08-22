@@ -80,7 +80,37 @@ SERVED_NAME="${SERVED_NAME:-ornith-1.5-35b}"   # what /v1/models reports; match 
 PORT="${PORT:-1235}"          # drop-in for the existing stack, so no agent config changes
 HOST="${HOST:-0.0.0.0}"       # NOT 127.0.0.1 — containers cannot reach loopback
 CTX="${CTX:-80000}"           # matches start_ornith_prod.bat's default
-MOE_BACKEND="${MOE_BACKEND:-auto}"      # auto -> offload family, or hybrid per `ft bench bw`
+MOE_BACKEND="${MOE_BACKEND:-cpu}"       # 2026-08-22: was 'auto'. auto resolves ONLY within the
+                                        # offload family, which pins expert banks -> a hard
+                                        # D-state hang on WSL2 (44 min, zero CPU). 'cpu' at
+                                        # least fails fast and readably. See ATTEMPT_LEDGER.md.
+
+# --- CPU staging shim (2026-08-22) -------------------------------------------------
+# safetensors' device="cuda" path allocates through CUDA's PINNED machinery. On WSL2 that
+# pool is capped (~1 GiB measured) and DEGRADES with churn, so weight loading died at
+# tensor 38,903 of 38,909 on an 18.9 MB tensor with 21.81 GiB of VRAM FREE:
+#     weight.py:372 _nvfp4_parts -> f.get_tensor() -> CUDA error: out of memory
+# The shim wraps safe_open to load on CPU then .to(device) -- a plain pageable copy that
+# needs no pinning. VERIFIED: all 94,396 tensors / 21.80 GiB load clean.
+#
+# HONEST SCOPE: this fixes WEIGHT LOADING ONLY. The run then reaches phase=expert_banks
+# and fails on `cudaHostRegister failed for 0.2 GiB`, because expert banks MUST be pinned
+# (offload_cache.set_bank_sources raises NotImplementedError for any other residency).
+# That wall is not fixable from here. Set FT_CPU_STAGE=0 to disable the shim.
+FT_CPU_STAGE="${FT_CPU_STAGE:-1}"
+if [ "$FT_CPU_STAGE" = "1" ]; then
+  _shim_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pythonpath"
+  if [ -f "$_shim_dir/sitecustomize.py" ]; then
+    export FT_CPU_STAGE
+    export PYTHONPATH="$_shim_dir${PYTHONPATH:+:$PYTHONPATH}"
+    echo "  cpu-staging shim: ON  ($_shim_dir)"
+  else
+    echo "  cpu-staging shim: NOT FOUND at $_shim_dir - weight load will likely fail"
+  fi
+else
+  echo "  cpu-staging shim: OFF (FT_CPU_STAGE=$FT_CPU_STAGE)"
+fi
+# -----------------------------------------------------------------------------------
 NVFP4_BACKEND="${NVFP4_BACKEND:-auto}"  # auto -> marlin on sm80-99 (this card is sm_86)
 MEMORY_RATIO="${MEMORY_RATIO:-0.85}"    # fraction of FREE VRAM the engine may use
 
