@@ -8,7 +8,14 @@
     "overall_capability": "unknown",
     "strongest_area": "json_tool_call_coherence",
     "weakest_area": "unknown",
-    "recommended_prosthetic_level": "light"
+    "recommended_prosthetic_level": "frontier",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "API-served frontier model (Vek's chat model)",
+      "previous_value": "light",
+      "needs_ratification": false
+    }
   },
   "bst": {
     "confidence_adjustment": 0,

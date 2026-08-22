@@ -9,7 +9,14 @@
     "overall_capability": "high",
     "strongest_area": "reasoning",
     "weakest_area": "tool_json_format",
-    "recommended_prosthetic_level": "moderate"
+    "recommended_prosthetic_level": "local_large",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "27B, within Opus's 27-35B band",
+      "previous_value": "moderate",
+      "needs_ratification": false
+    }
   },
   "bst": {
     "confidence_adjustment": 0.0,
@@ -68,7 +75,9 @@
       "severity": "high",
       "description": "Outputs thinking tokens before JSON tool calls. Causes parse failures in extraction pipelines that expect bare JSON.",
       "mitigation": "Graceful catch in OSS LLM extraction. Strip thinking-token wrapping pending fix.",
-      "observed_in": ["oss_claims_extraction"]
+      "observed_in": [
+        "oss_claims_extraction"
+      ]
     },
     "cross_session_learning": "unknown",
     "in_context_learning": "high"

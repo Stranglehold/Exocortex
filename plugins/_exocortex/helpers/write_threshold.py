@@ -193,11 +193,43 @@ def resolve(agent=None) -> tuple[dict, str]:
     return conf, src
 
 
+# Models already warned about in this process, so the notice below is loud once rather
+# than on every single tool call. Flooding the log would bury the [MetaGate-SIZE] lines
+# the warning exists to explain.
+_WARNED_NO_PROFILE = set()
+
+
+def profile_sourced(src: str) -> bool:
+    """True when a model PROFILE supplied base_limit, rather than a global default."""
+    return src not in ("config", "backstop") and not src.startswith("degraded:")
+
+
 def describe(content: str, agent=None) -> dict:
     """Everything the gate needs, including where the numbers came from."""
     conf, src = resolve(agent)
     limit, sig = effective_limit(content, conf)
     sig["profile"] = src
+    sig["profile_sourced"] = profile_sourced(src)
+
+    # A model with no profile silently inheriting the global default is exactly how the
+    # old hardcoded 5,000 manufactured 357 blocked writes without anyone noticing it was
+    # a default rather than a decision. Hold the value, but never hold it quietly.
+    if not sig["profile_sourced"]:
+        try:
+            import model_profile as mp
+            model = mp.active_model_id(agent) or "<unresolved>"
+        except Exception:
+            model = "<unresolved>"
+        if model not in _WARNED_NO_PROFILE:
+            _WARNED_NO_PROFILE.add(model)
+            try:
+                print(f"[WRITE-LIMIT] No profile-sourced write limit for model "
+                      f"'{model}'. Using {src} base_limit={int(conf['base_limit']):,}. "
+                      f"This may be too restrictive — run the coherence sweep or add "
+                      f"meta_gate.write_size.base_limit to that model's profile.",
+                      flush=True)
+            except Exception:
+                pass
     sig["length"] = len(content or "")
     sig["over"] = sig["length"] > limit
     return sig

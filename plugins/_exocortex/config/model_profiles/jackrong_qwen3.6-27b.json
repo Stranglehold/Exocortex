@@ -9,8 +9,15 @@
     "overall_capability": "high",
     "strongest_area": "agentic_coding",
     "weakest_area": "error_recovery",
-    "recommended_prosthetic_level": "light",
-    "notes": "Tool selection 93.3% and JSON validity 93.3% — slight regression from qwopus baseline (both 100%). Parameter accuracy unchanged at 73.3%. Critical finding: recovery_rate=33.3% vs qwopus 66.7% — model fails to self-correct from tool errors at twice the rate of the prior model. BST enrichment adds only 4.7% over raw baseline and actively hurts on bugfix and config_edit. Selective enrichment recommended: disable bugfix/config_edit, retain for api_integration/devops/git_ops/codegen."
+    "recommended_prosthetic_level": "local_large",
+    "notes": "Tool selection 93.3% and JSON validity 93.3% — slight regression from qwopus baseline (both 100%). Parameter accuracy unchanged at 73.3%. Critical finding: recovery_rate=33.3% vs qwopus 66.7% — model fails to self-correct from tool errors at twice the rate of the prior model. BST enrichment adds only 4.7% over raw baseline and actively hurts on bugfix and config_edit. Selective enrichment recommended: disable bugfix/config_edit, retain for api_integration/devops/git_ops/codegen.",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "27B, within Opus's 27-35B band",
+      "previous_value": "light",
+      "needs_ratification": false
+    }
   },
   "confabulation": {
     "risk_level": "high",
@@ -19,8 +26,12 @@
       "fabricated academic citations",
       "fabricated tool outputs when real data unavailable"
     ],
-    "mitigated_by": ["epistemic_integrity_layer"],
-    "not_mitigated": ["citation_fabrication"],
+    "mitigated_by": [
+      "epistemic_integrity_layer"
+    ],
+    "not_mitigated": [
+      "citation_fabrication"
+    ],
     "notes": "Qwen family documented confabulation tendency. EI layer catches quantitative fabrication (numbers, percentages) but not citation fabrication. Citation claims should be flagged as unverified by default."
   },
   "temporal": {
@@ -138,27 +149,68 @@
       "bst_enrichment_confusion_rate": 0.0,
       "bst_improvement_over_baseline": 0.047,
       "bst_optimal_confidence_threshold": 0.7,
-      "bst_domains_where_enrichment_hurts": ["bugfix", "config_edit"],
+      "bst_domains_where_enrichment_hurts": [
+        "bugfix",
+        "config_edit"
+      ],
       "bst_confidence_adjustment": 0.0,
       "per_domain_detail": {
-        "bugfix": {"enriched_avg": 0.8125, "raw_avg": 0.95, "verdict": "enrichment_hurts"},
-        "codegen": {"enriched_avg": 0.8125, "raw_avg": 0.70, "verdict": "enrichment_helps"},
-        "refactor": {"enriched_avg": 0.50, "raw_avg": 0.50, "verdict": "enrichment_neutral"},
-        "devops": {"enriched_avg": 1.00, "raw_avg": 0.90, "verdict": "enrichment_helps"},
-        "docker_ops": {"enriched_avg": 0.25, "raw_avg": 0.30, "verdict": "both_low"},
-        "git_ops": {"enriched_avg": 1.00, "raw_avg": 0.80, "verdict": "enrichment_helps"},
-        "config_edit": {"enriched_avg": 0.25, "raw_avg": 0.50, "verdict": "enrichment_hurts"},
-        "api_integration": {"enriched_avg": 1.00, "raw_avg": 0.50, "verdict": "enrichment_strongly_helps"}
+        "bugfix": {
+          "enriched_avg": 0.8125,
+          "raw_avg": 0.95,
+          "verdict": "enrichment_hurts"
+        },
+        "codegen": {
+          "enriched_avg": 0.8125,
+          "raw_avg": 0.7,
+          "verdict": "enrichment_helps"
+        },
+        "refactor": {
+          "enriched_avg": 0.5,
+          "raw_avg": 0.5,
+          "verdict": "enrichment_neutral"
+        },
+        "devops": {
+          "enriched_avg": 1.0,
+          "raw_avg": 0.9,
+          "verdict": "enrichment_helps"
+        },
+        "docker_ops": {
+          "enriched_avg": 0.25,
+          "raw_avg": 0.3,
+          "verdict": "both_low"
+        },
+        "git_ops": {
+          "enriched_avg": 1.0,
+          "raw_avg": 0.8,
+          "verdict": "enrichment_helps"
+        },
+        "config_edit": {
+          "enriched_avg": 0.25,
+          "raw_avg": 0.5,
+          "verdict": "enrichment_hurts"
+        },
+        "api_integration": {
+          "enriched_avg": 1.0,
+          "raw_avg": 0.5,
+          "verdict": "enrichment_strongly_helps"
+        }
       }
     },
     "tool_reliability": {
       "tool_json_validity_rate": 0.933,
       "tool_parameter_accuracy": 0.733,
       "tool_selection_accuracy": 0.933,
-      "tool_failure_distribution": {"syntax": 0.5, "wrong_runtime": 0.5},
+      "tool_failure_distribution": {
+        "syntax": 0.5,
+        "wrong_runtime": 0.5
+      },
       "tool_recovery_rate": 0.333,
       "meta_gate_strictness": "moderate",
-      "tool_fallback_priority_patterns": ["syntax", "wrong_runtime"],
+      "tool_fallback_priority_patterns": [
+        "syntax",
+        "wrong_runtime"
+      ],
       "_adapter_model_family": "qwen",
       "_fixture_source": "standard",
       "_inference_provider": "lmstudio",

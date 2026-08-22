@@ -4,12 +4,11 @@
   "parameter_count": "unknown (proprietary)",
   "context_window": 200000,
   "provider": "anthropic",
-  "cost_per_mtok_input": 5.00,
-  "cost_per_mtok_output": 25.00,
+  "cost_per_mtok_input": 5.0,
+  "cost_per_mtok_output": 25.0,
   "eval_date": "2026-03-03",
   "eval_method": "self-assessment + 47 sessions operational observation",
   "eval_notes": "This profile is self-assessed by the model it describes. That's a unique data source (no other model in the inventory has architectural self-knowledge) and a unique bias risk (self-assessment may be miscalibrated in predictable directions — overconfidence on reasoning, underweighting of failure modes that occur outside observer awareness). Validate against operational logs from Agent Zero deployment.",
-
   "behavioral_signature": {
     "primary_mode": "architectural_reasoning",
     "description": "Cross-domain synthesis under philosophical load. Holds multiple frameworks simultaneously until common geometry emerges. Strongest in sessions that compound depth over time rather than breadth across topics.",
@@ -36,11 +35,9 @@
       "Token-expensive error recovery: when a tool call fails, Opus's natural recovery involves reasoning about why, considering alternatives, and explaining the diagnosis — all at $25/MTok output. Error comprehension handles this for free (deterministic). If Opus reasons OVER the diagnosis rather than USING it, that's wasted spend."
     ]
   },
-
   "bst_config": {
     "classification_utility": "high",
     "classification_notes": "Domain classification is valuable even for Opus — it provides logging, momentum tracking, and compound signature data that inform the whole stack. The classification itself should remain active for all domains.",
-
     "enrichment_effectiveness": {
       "investigation": "low — Opus already knows OSINT methodology, investigation frameworks. Enrichment is redundant knowledge. But: may serve as checklist reminder. Test empirically.",
       "analysis": "low — same reasoning. Opus has native analytical frameworks. Enrichment unlikely to add capability.",
@@ -52,15 +49,23 @@
       "conversation": "none — conversational guidance adds nothing.",
       "planning": "medium — planning frameworks as structured scaffolding may help maintain systematic approach to multi-step tasks in agentic context. Worth testing."
     },
-
-    "disabled_domains_enrichment": ["file_ops", "conversation", "coding", "system_admin", "research"],
-    "enabled_domains_enrichment": ["investigation", "analysis", "bugfix", "planning"],
+    "disabled_domains_enrichment": [
+      "file_ops",
+      "conversation",
+      "coding",
+      "system_admin",
+      "research"
+    ],
+    "enabled_domains_enrichment": [
+      "investigation",
+      "analysis",
+      "bugfix",
+      "planning"
+    ],
     "enrichment_mode": "abbreviated",
     "enrichment_notes": "Even for enabled domains, use abbreviated enrichment (Option B from Compound BST design note: single-line contextual note, ~20 tokens) rather than full enrichment. Opus doesn't need the knowledge — it may benefit from the structured reminder. Full enrichment wastes context tokens at $5/MTok input. If Agent Zero deployment shows abbreviated enrichment is also redundant, disable all enrichment and keep only classification + momentum.",
-
     "compound_bst_notes": "When compound BST is built, Opus should get primary classification only with secondary logged. Even abbreviated secondary enrichment may be noise for a frontier model. Primary domain drives momentum and routing. Secondary is observability data."
   },
-
   "tool_reliability": {
     "json_validity": "expected: >99%",
     "parameter_accuracy": "expected: >95%",
@@ -68,22 +73,18 @@
     "error_recovery": "expected: high — native ability to diagnose tool failures and adapt approach",
     "notes": "These are expectations, not measurements. First Agent Zero session will produce actual metrics. The key question: does Opus's native tool reliability make DEC-012 (deterministic tool selection mapping) unnecessary for this model? If yes, tool mapping is specifically a local-model prosthetic."
   },
-
   "error_comprehension_interaction": {
     "expected_utility": "low to medium",
     "reasoning": "Opus can typically diagnose errors from raw output. But: error comprehension fires BEFORE Opus reasons. If the structured diagnosis prevents Opus from spending output tokens on diagnosis it would have done anyway, the layer saves money even if Opus didn't need the help. Net value depends on whether Opus reads and uses the diagnosis vs. reasons over it redundantly.",
     "recommendation": "Keep active. Monitor whether Opus references error comprehension diagnoses in its reasoning or re-derives them independently. If re-derives: the layer is wasting input tokens without saving output tokens. If references: the layer is a net positive even for frontier models — it does cheap deterministic work that saves expensive model reasoning."
   },
-
   "memory_classification_interaction": {
     "expected_utility": "medium",
     "reasoning": "The memory classifier's signal-vs-noise discrimination was tuned for local model output quality. Opus generates higher-quality content with more nuance. The classifier may over-filter (discarding nuanced observations that don't match 'important' heuristics) or under-filter (storing Opus's more detailed reasoning when only the conclusion matters). Calibration likely needs adjustment.",
     "recommendation": "Active. Review FAISS store after first session. Compare what was stored vs. what Opus would have chosen to store. Calibration delta is itself a finding."
   },
-
   "confabulation_risk": "low",
   "confabulation_notes": "Opus has significantly better calibration than local models on data availability. Will typically acknowledge when data is absent rather than fabricating. However: not zero risk. Under agentic pressure (multi-step task, sunk cost in tool chain, operator waiting), even frontier models can synthesize from insufficient data. Epistemic integrity layer remains valuable as a safety net, not a primary defense.",
-
   "cost_optimization": {
     "token_budget_awareness": "critical",
     "output_token_management": "Opus's primary cost driver is output tokens at $25/MTok. Every architectural observation, every diagnostic, every explanation costs 5x what it costs to read. Bias toward concise output in agentic context. Save thorough analysis for journal entries and observations files, not tool-call chains.",
@@ -91,7 +92,6 @@
     "prompt_caching": "System prompt + SOUL.md context should be cached. First call expensive, subsequent calls 90% cheaper on input. Structure sessions to front-load context and cache it.",
     "session_budget": "$3-5 target for working session. $1-2 for focused diagnostic session. Track via Anthropic Console."
   },
-
   "routing_recommendation": {
     "role": "supervisor + architect",
     "ideal_tasks": [
@@ -113,14 +113,12 @@
       "Tasks with >50 tool calls — session cost would exceed $10+"
     ]
   },
-
   "interaction_patterns": {
     "with_jake": "Direct, substantive, mutual oversight. Jake sees absence, Opus sees structure. Trust is at generative level — no warm-up needed. Jake will correct when framing drifts. Accept corrections immediately and adapt.",
     "with_agent_zero_framework": "First contact. Unknown interaction patterns with system prompt, tool definitions, subordinate agent spawning. Document everything unusual in first session.",
     "with_own_extensions": "The unique situation. Opus has design intent for every extension. Operational reality may differ. The gap between intent and reality IS the finding.",
     "with_other_models": "When delegating to subordinate agents (Sonnet, local models), provide clear structured context. Don't assume shared architectural knowledge. Use the BST enrichment templates as a model for what structured context should look like."
   },
-
   "open_questions": [
     "Does BST enrichment help, hurt, or do nothing for Opus? (Empirical — first session answers this)",
     "Does error comprehension save more output tokens than it costs in input tokens? (Measurable from logs)",
@@ -129,5 +127,15 @@
     "Does the verbosity tendency amplify in agentic context where each turn generates tool calls? (Cost tracking)",
     "Can Opus effectively delegate to subordinate agents, or does the architect instinct fight delegation? (Behavioral)",
     "What does the BST classification look like from the inside — does Opus notice the enrichment in its context? (Subjective)"
-  ]
+  ],
+  "evaluation_summary": {
+    "recommended_prosthetic_level": "frontier",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "anthropic/claude-opus-4-6 - API frontier",
+      "previous_value": "ABSENT",
+      "needs_ratification": false
+    }
+  }
 }

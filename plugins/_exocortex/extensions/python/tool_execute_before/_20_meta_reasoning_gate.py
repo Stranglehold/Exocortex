@@ -312,6 +312,18 @@ class MetaReasoningGate(Extension):
                         f"For large content, write in sections using append mode:\n"
                         f"  with open(path, 'a') as f: f.write(next_section)"
                     )
+                    # A block produced by a GLOBAL DEFAULT is a different event from a
+                    # block produced by a measured per-model limit, and until now they
+                    # were indistinguishable in the record. The old hardcoded 5,000
+                    # manufactured 357 blocks across two agents precisely because nothing
+                    # ever said "this number was a fallback, not a decision about you".
+                    if not sig.get("profile_sourced", True):
+                        msg += (
+                            f"\n\nNOTE: this limit is NOT calibrated for this model — it "
+                            f"came from '{sig.get('profile')}', a global default, because "
+                            f"no profile supplies meta_gate.write_size.base_limit. The "
+                            f"limit may be far more restrictive than the model warrants."
+                        )
                     try:
                         self.agent.context.log.log(
                             type="warning",
@@ -427,7 +439,8 @@ class MetaReasoningGate(Extension):
                 pass
             return {"length": n, "base_limit": limit, "effective_limit": limit,
                     "score": 1.0, "fenced_blocks": 0, "escape_density": 0.0,
-                    "profile": f"degraded:{src}", "over": n > limit}
+                    "profile": f"degraded:{src}", "profile_sourced": False,
+                    "over": n > limit}
 
     def _quarantine_gate(self, tool_name: str, tool_args: dict | None) -> None:
         """A1 enforcer. Stash the op signature, then refuse quarantined attempts.

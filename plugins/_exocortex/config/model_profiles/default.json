@@ -8,41 +8,46 @@
     "overall_capability": "medium",
     "strongest_area": "unknown",
     "weakest_area": "unknown",
-    "recommended_prosthetic_level": "full"
+    "recommended_prosthetic_level": "local_small",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "unknown model - safest posture, was 'full'",
+      "previous_value": "full",
+      "needs_ratification": false
+    }
   },
-
   "bst": {
     "confidence_adjustment": 0,
     "disabled_domains": [],
     "enrichment_verbosity": "standard"
   },
-
   "meta_gate": {
     "strictness": "moderate",
     "json_repair_enabled": true,
     "parameter_validation": true
   },
-
   "tool_fallback": {
     "max_retries": 3,
-    "priority_patterns": ["syntax", "not_found", "missing_param"],
+    "priority_patterns": [
+      "syntax",
+      "not_found",
+      "missing_param"
+    ],
     "escalation_after": 5
   },
-
   "graph_workflow": {
     "max_retries_per_node": 2,
     "stale_after_turns": 12,
     "node_instruction_verbosity": "standard",
     "inject_boundary_warnings": false
   },
-
   "pace": {
     "primary_threshold": 2,
     "alternate_threshold": 4,
     "contingency_threshold": 7,
     "emergency_threshold": 10
   },
-
   "context": {
     "max_injection_tokens": 2000,
     "layer_priority": [
@@ -52,20 +57,17 @@
       "recalled_memories",
       "personality"
     ],
-    "instruction_compliance_warning_threshold": 0.60
+    "instruction_compliance_warning_threshold": 0.6
   },
-
   "memory": {
     "max_injected": 6,
-    "similarity_threshold": 0.70,
+    "similarity_threshold": 0.7,
     "noise_discrimination": "moderate"
   },
-
   "temporal": {
     "training_data_cutoff": null,
     "staleness_awareness": "unknown",
     "confabulation_risk": "high"
   },
-
   "raw_metrics": {}
 }

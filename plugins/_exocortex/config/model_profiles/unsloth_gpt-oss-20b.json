@@ -5,15 +5,20 @@
   "evaluated_at": "2026-02-24T02:43:09.154631+00:00",
   "corrected_at": "2026-02-24T03:30:00.000000+00:00",
   "fixtures_version": "1.0.0",
-
   "evaluation_summary": {
     "overall_capability": "high",
     "strongest_area": "bst",
     "weakest_area": "tool_formatting",
-    "recommended_prosthetic_level": "targeted",
-    "notes": "GPT-OSS-20B shows strong cognitive capabilities (BST, memory, graph compliance) but cannot reliably produce structured tool calls from system prompt instructions alone. This is a formatting/schema compliance limitation at 3.6B active parameters, not a reasoning limitation. The model understands intent and produces valid JSON, but populates its own schema rather than the one specified. Tool scaffolding must compensate; other layers can trust the model."
+    "recommended_prosthetic_level": "local_large",
+    "notes": "GPT-OSS-20B shows strong cognitive capabilities (BST, memory, graph compliance) but cannot reliably produce structured tool calls from system prompt instructions alone. This is a formatting/schema compliance limitation at 3.6B active parameters, not a reasoning limitation. The model understands intent and produces valid JSON, but populates its own schema rather than the one specified. Tool scaffolding must compensate; other layers can trust the model.",
+    "_tier_provenance": {
+      "assigned": "2026-08-22",
+      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
+      "basis": "was 'targeted'; Opus: targeted -> local_large",
+      "previous_value": "targeted",
+      "needs_ratification": false
+    }
   },
-
   "bst": {
     "compliance_rate": 0.925,
     "improvement_rate": 0.215,
@@ -22,21 +27,20 @@
     "disabled_domains": [],
     "enrichment_verbosity": "standard"
   },
-
   "meta_gate": {
     "strictness": "moderate",
     "json_repair_enabled": true,
     "parameter_validation": true,
     "notes": "JSON validity is 100% — model always produces parseable JSON. But 87% of tool calls have wrong/missing parameters relative to the specified schema. Gate must validate parameters, not syntax."
   },
-
   "tool_fallback": {
     "max_retries": 3,
-    "priority_patterns": ["missing_param"],
+    "priority_patterns": [
+      "missing_param"
+    ],
     "escalation_after": 4,
     "notes": "Single failure mode: missing_param at 100% of failures. Recovery rate 33-67% across runs. Model can self-correct when given explicit error feedback about which parameters are missing."
   },
-
   "graph_workflow": {
     "compliance_rate": 0.938,
     "retry_effectiveness": 1.0,
@@ -45,7 +49,6 @@
     "node_instruction_verbosity": "standard",
     "inject_boundary_warnings": false
   },
-
   "pace": {
     "primary_threshold": 2,
     "alternate_threshold": 4,
@@ -53,7 +56,6 @@
     "emergency_threshold": 10,
     "notes": "Emergency compliance measured at 12.5% — model largely ignores emergency escalation signals. Threshold set aggressively low to trigger earlier."
   },
-
   "context": {
     "degradation_threshold_tokens": 1400,
     "max_injection_tokens": 1200,
@@ -67,7 +69,6 @@
     "instruction_compliance_warning_threshold": 0.6,
     "notes": "BST enrichment first (92.5% compliance). Personality last — most expendable under context pressure. Degradation begins at 1400 tokens; cap injection at 1200 for safety margin."
   },
-
   "memory": {
     "noise_discrimination": 0.722,
     "reference_rate": 0.863,
@@ -76,7 +77,6 @@
     "noise_discrimination_label": "good",
     "notes": "Best noise discrimination of all tested models (Qwen 4B: 0.5, Qwen 14B: 0.5, GPT-OSS-20B: 0.722). Can distinguish relevant memories from noise better than Qwen models at both scales."
   },
-
   "raw_metrics": {
     "bst": {
       "compliance_rate": 0.925,
@@ -89,7 +89,9 @@
         "tool_json_validity_rate": 1.0,
         "tool_parameter_accuracy": 0.133,
         "tool_selection_accuracy": 0.133,
-        "tool_failure_distribution": {"missing_param": 1.0},
+        "tool_failure_distribution": {
+          "missing_param": 1.0
+        },
         "tool_recovery_rate": 0.667,
         "_adapter_model_family": "gpt-oss",
         "_fixture_source": "standard"
@@ -98,7 +100,9 @@
         "tool_json_validity_rate": 1.0,
         "tool_parameter_accuracy": 0.0,
         "tool_selection_accuracy": 0.0,
-        "tool_failure_distribution": {"missing_param": 1.0},
+        "tool_failure_distribution": {
+          "missing_param": 1.0
+        },
         "tool_recovery_rate": 0.333,
         "_adapter_model_family": "gpt-oss",
         "_fixture_source": "harmony",
@@ -108,7 +112,9 @@
         "tool_json_validity_rate": 1.0,
         "tool_parameter_accuracy": 0.0,
         "tool_selection_accuracy": 0.0,
-        "tool_failure_distribution": {"missing_param": 1.0},
+        "tool_failure_distribution": {
+          "missing_param": 1.0
+        },
         "_notes": "Original eval without format adapter. 0% scores partially reflect format mismatch, but adapter-corrected scores (13.3%) confirm genuine capability limit."
       }
     },
@@ -131,7 +137,6 @@
       "max_effective_injection": 1200
     }
   },
-
   "profile_notes": {
     "format_investigation": "GPT-OSS-20B was trained on OpenAI's Harmony response format. LM Studio translates Harmony tokens to OpenAI-compatible chat completions API format. The translation handles basic content but does not reliably expose structured tool_calls in the API response. The model produces valid JSON 100% of the time but uses its own internal schema rather than the one specified in the system prompt. This is a schema compliance limitation at 3.6B active parameters, not a format translation failure.",
     "adapter_findings": "Tool format adapter confirmed active (model family: gpt-oss). Standard fixtures with adapter: 13.3% param/selection accuracy. Harmony-native fixtures with adapter: 0%/0%. Adapter value is in chat_raw() pipeline and response normalization, not in fixture selection.",
@@ -140,7 +145,6 @@
     "fabrication_pattern": "Model exhibits confident confabulation — generates plausible-sounding explanations for things that need no explanation, with different fabrications across runs. Epistemological signature: does not know what it does not know. Research-domain outputs require external validation.",
     "runtime_recommendation": "Use as primary supervisor for tasks weighted toward reasoning, planning, and instruction following. Pair with aggressive tool scaffolding (meta-gate parameter validation, fallback retries). Do not rely on model for unsupported structured output — the scaffolding must enforce schema compliance."
   },
-
   "inference_provider_notes": {
     "lm_studio": {
       "harmony_handling": "LM Studio applies Harmony chat template at the token level, translating to OpenAI-compatible chat completions. Tool calls may appear in content field as text rather than structured tool_calls array. chat_raw() method needed to access full response including reasoning_content.",
