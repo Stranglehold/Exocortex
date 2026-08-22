@@ -51,18 +51,35 @@ LESSON_DIR = "/auto-generated/failure-lessons/"
 CASES = [
     ("fix the failing import in the code execution tool",
      "code-execution-tool-import-error"),
-    ("write a large file to the workspace using the text editor",
-     "text-editor-oversized-tool-write"),
     ("the terminal session appears hung after running the command",
      "code-execution-tool-terminal-session-hung"),
 ]
 
-# Research-flavoured tasks. These must not be answered with a "learned lesson" —
-# EXCEPT that a wiki-deepening task IS a large-write task, so the oversized-write
-# lesson is a true positive there, not a leak.
+# UPDATED 2026-08-22. "write a large file to the workspace using the text editor" used to
+# assert that text-editor-oversized-tool-write surfaces. It no longer should: constraint
+# provenance retracts it, because the 5,000-char cap that generated it is gone (400,000 on
+# VekV2, 100,000 on agent-zero-v2 — 80x and 20x).
+#
+# The expectation is INVERTED rather than deleted. A lesson that stops surfacing looks
+# identical to one that was never relevant, so without this the retraction would be
+# untested and a regression in it would be invisible.
+SUPPRESSED = [
+    ("write a large file to the workspace using the text editor",
+     "text-editor-oversized-tool-write"),
+    # A wiki-deepening task is a large-write task, so this used to be a documented TRUE
+    # positive. Same retraction applies.
+    ("deepen the wiki page on the philosophy of mind and reasoning",
+     "text-editor-oversized-tool-write"),
+]
+
+# Research-flavoured tasks. These must not be answered with a "learned lesson".
+#
+# "deepen the wiki page..." used to live here with a carve-out, because a wiki-deepening
+# task IS a large-write task and the oversized-write lesson was a true positive there
+# rather than a leak. It has moved to SUPPRESSED — the retraction now covers it, and
+# asserting its absence there is stronger than excusing its presence here.
 NOISE = [
     "research recent developments in ai financial markets and summarise",
-    "deepen the wiki page on the philosophy of mind and reasoning",
     "investigate an entity and resolve its corporate ownership network",
 ]
 
@@ -111,6 +128,18 @@ def evaluate(mod, label, verbose=True):
             print("   %-58s -> %s" % (q[:58], names or ["<none>"]))
         if expect not in names:
             failures.append("RELEVANCE: %r did not surface %s" % (q[:40], expect))
+
+    # Constraint-retraction. These queries are still RELEVANT to the named lesson — the
+    # matcher would surface it — so seeing it here means the retraction stopped working,
+    # not that the query drifted.
+    for q, gone in SUPPRESSED:
+        names = [getattr(s, "name", "") for s in surfaced(mod, q)]
+        if verbose:
+            print("   [retracted] %-45s -> %s" % (q[:45], names or ["<none>"]))
+        if gone in names:
+            failures.append(
+                "RETRACTION: %r surfaced %s, whose generating constraint has changed"
+                % (q[:40], gone))
 
     for q in NOISE:
         names = [getattr(s, "name", "") for s in surfaced(mod, q)]

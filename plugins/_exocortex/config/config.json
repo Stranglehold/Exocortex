@@ -71,5 +71,15 @@
         "moved_from": "helpers/write_threshold.py DEFAULTS on 2026-08-22"
       }
     }
+  },
+  "constraint_provenance": {
+    "enabled": true,
+    "relax_factor": 2.0,
+    "_provenance": {
+      "purpose": "suppress a captured lesson when the constraint that generated it changes",
+      "relax_factor": "a limit must relax by at least this factor before its lessons go stale; a TIGHTENED limit is never stale (the lesson is more relevant, not less)",
+      "never_deletes": "stale lessons are suppressed from surfacing and keep their file and recurrence ledger",
+      "added": "2026-08-22 (Opus Call 2)"
+    }
   }
 }

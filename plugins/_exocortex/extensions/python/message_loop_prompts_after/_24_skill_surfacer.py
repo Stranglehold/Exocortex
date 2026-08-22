@@ -160,14 +160,32 @@ class SkillSurfacer(Extension):
         except Exception:
             return []
         scored = []
+        suppressed = []
         for s in all_skills:
             if AUTOGEN_MARKER not in str(getattr(s, "path", "")):
                 continue
+
             twords: set = set()
             for t in (getattr(s, "triggers", []) or []):
                 twords |= _words(t)
             overlap = qwords & twords
             if overlap and twords:
+                # Retract lessons whose generating constraint has moved. A lesson is
+                # evidence about a system in a configuration; when the configuration
+                # changes it can be actively wrong while still surfacing with full
+                # confidence. The 5,000-char write cap produced 357 blocked writes whose
+                # lessons outlived it by weeks, until Aporia was reduced to overriding
+                # "the stale memory about text_editor being prohibited". Suppressed here,
+                # never deleted — the file and its recurrence ledger stay.
+                #
+                # Checked AFTER the relevance test on purpose: a lesson that would not
+                # have surfaced anyway needs no sidecar read and, more importantly, no log
+                # line. Checking first made every irrelevant query emit a suppression
+                # notice, which buries the ones that mean something.
+                stale, why = _constraint_stale(getattr(s, "path", ""), self.agent)
+                if stale:
+                    suppressed.append((getattr(s, "name", "?"), why))
+                    continue
                 # Normalise by trigger-vocabulary breadth. A RAW overlap count rewards a
                 # skill simply for carrying more trigger words — measured 2026-08-20,
                 # research notes averaged 15.6 distinct trigger words against 5.0 for
@@ -179,12 +197,40 @@ class SkillSurfacer(Extension):
                 # 1-of-4 rather than being flattened by the denominator.
                 score = len(overlap) / math.sqrt(len(twords))
                 scored.append((score, getattr(s, "name", ""), s))
+        # Suppression is logged even when nothing else happens this turn. A lesson that
+        # silently stops appearing is indistinguishable from one that was never relevant,
+        # and the whole point of suppressing rather than deleting is that the decision
+        # stays inspectable.
+        for name, why in suppressed:
+            print(f"[SKILL-SURFACE] suppressed '{name}' — {why}", flush=True)
+
         # Name is the tie-break: this is a deterministic layer, no randomness.
         scored.sort(key=lambda p: (-p[0], p[1]))
         return [s for _score, _name, s in scored[:MAX_LESSONS]]
 
 
 # ── Inline helpers (no cross-extension imports) ───────────────────────────────
+
+def _constraint_stale(skill_path: str, agent) -> tuple:
+    """(is_stale, reason) for a captured lesson. Fails OPEN — on any error the lesson
+    surfaces as before, because a bug in the retraction path must not silently mute the
+    agent's accumulated knowledge."""
+    try:
+        import sys
+        helpers_dir = "/a0/usr/plugins/_exocortex/helpers"
+        if helpers_dir not in sys.path:
+            sys.path.insert(0, helpers_dir)
+        import constraint_provenance as cp
+
+        if not cp.cfg().get("enabled", True):
+            return False, ""
+        sdir = cp.skill_dir_of(skill_path)
+        if not sdir:
+            return False, ""
+        return cp.staleness(cp.load(sdir), agent)
+    except Exception:
+        return False, ""
+
 
 def _words(text: str) -> set:
     return {w for w in re.split(r"[^a-z0-9_]+", (text or "").lower()) if len(w) >= MIN_WORD_LEN}

@@ -175,6 +175,19 @@ class FailureLessonCaptureHandleException(Extension):
                 f.write(self._render(slug, tool, marker, text))
             self._note(sdir, tool, marker["error_class"], first=True)
 
+            # Record the constraint state this lesson is being born under, so it can be
+            # retracted if that state later changes. A lesson is evidence about a system
+            # in a configuration; without this, raising a cap leaves behind lessons that
+            # keep teaching the old limit with full confidence. Measured: the 5,000-char
+            # cap produced 357 blocks whose lessons outlived it by weeks.
+            # Best-effort by design — never let bookkeeping block a capture.
+            try:
+                import constraint_provenance as cp
+                cp.write(sdir, cp.snapshot(self.agent, marker["error_class"]))
+            except Exception as exc:
+                print(f"[SKILL-CAPTURE] provenance snapshot skipped: "
+                      f"{type(exc).__name__}: {exc}", flush=True)
+
             setattr(self.agent, CAPTURE_COUNT_ATTR, captured + 1)
             self._bump()
             print(f"[SKILL-CAPTURE] failure-lesson written: {slug} "
