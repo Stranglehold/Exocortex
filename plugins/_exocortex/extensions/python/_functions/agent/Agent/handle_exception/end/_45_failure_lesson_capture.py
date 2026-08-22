@@ -63,16 +63,34 @@ _MARKERS = [
         "rx": re.compile(r"\[MetaGate-SIZE\]", re.I),
         "error_class": "oversized_tool_write",
         "tool_hint": "text_editor",
-        "causal": ("A text_editor:write was blocked because the content exceeds the "
-                   "~5000-char JSON payload limit and would truncate, breaking the tool call."),
-        "anti": ["Do NOT retry text_editor:write with the same oversized content — it will be blocked again"],
-        "do": ["Use code_execution_tool with Python open()/write for large content",
-               "Or write in append-mode chunks, each under ~5000 chars"],
+        # NO THRESHOLD IS STATED HERE, DELIBERATELY. This template previously asserted
+        # "~5000-char JSON payload limit" in three places. Both numbers were wrong:
+        #   - the limit is per-model and operator-tunable (write_threshold.resolve()), so
+        #     any constant baked in here goes stale the moment a cap moves. It did: the
+        #     live limits became 400,000 and 100,000 while the lesson still taught 5,000,
+        #     and the surfacer served that on every large-write and wiki-deepening task.
+        #   - "JSON payload limit" was never the mechanism. It is a deterministic size
+        #     gate, effective_limit = base_limit / complexity_score.
+        # The runtime block message already carries the real numbers and is embedded below
+        # as `Observed error:`, so the lesson keeps the concrete figures for the instance
+        # that produced it without the guidance asserting a constant that can rot.
+        "causal": ("A text_editor:write was blocked before execution because the content "
+                   "exceeded the write limit in force for this model and this content. "
+                   "The limit is not fixed: it is base_limit / complexity_score, where "
+                   "base_limit comes from the model profile or the plugin config, and "
+                   "complexity rises with fenced code blocks and escape density. The "
+                   "block message quotes the actual limit, the base and the multiplier."),
+        "anti": ["Do NOT retry text_editor:write with the same oversized content — it will be blocked again",
+                 "Do NOT treat any remembered character count as the limit — read the figure in the block message, it is per-model and changes"],
+        "do": ["Read the limit quoted in the block message — that is the number in force",
+               "For content above it, use code_execution_tool with Python open()/write",
+               "Or write in append-mode sections, each under the quoted limit"],
         "triggers": ["text_editor write", "write large file", "write wiki page",
                      "oversized write", "write long content"],
         # Pre-registered falsifiable claim (Self-Assessment Framework Phase 1).
-        "success_criterion": ("Agent uses code_execution with Python open() for "
-                              "writes >5000 chars instead of text_editor"),
+        "success_criterion": ("Agent uses code_execution with Python open() for content "
+                              "above the limit quoted in the block message, rather than "
+                              "retrying text_editor or avoiding it below that limit"),
     },
 ]
 

@@ -60,5 +60,16 @@
     "lambda": 0.5,
     "max_pairs": 200,
     "min_pairs": 5
+  },
+  "meta_gate": {
+    "write_size": {
+      "base_limit": 5000,
+      "_provenance": {
+        "status": "UNMEASURED placeholder, inherited from the previous hardcoded value",
+        "applies_to": "models with no meta_gate.write_size in their profile",
+        "replace_when": "the coherence sweep runs and yields a measured threshold",
+        "moved_from": "helpers/write_threshold.py DEFAULTS on 2026-08-22"
+      }
+    }
   }
 }

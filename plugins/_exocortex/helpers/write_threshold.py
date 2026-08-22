@@ -29,9 +29,21 @@ profile, and they should be replaced with measured values the moment a sweep exi
 Writing invented numbers into a profile as though they were measurements is precisely
 what the project's epistemic rules forbid, so the profile ships without them.
 
-PROFILE SOURCING
-----------------
-Read from the active profile's `meta_gate.write_size` section, e.g.
+SOURCING (three layers, lowest to highest)
+------------------------------------------
+    DEFAULTS below          last-resort backstop, only when the files below are unreadable
+    plugin config.json      `meta_gate.write_size` — the operator-tunable global default
+    model profile           `meta_gate.write_size` — per-model, and only where MEASURED
+
+Each layer overrides only the keys it sets, so a profile may carry `base_limit` alone
+without inheriting stale penalties, and an operator may move the global default without
+touching code or inventing a per-model measurement.
+
+`describe()` reports which layer supplied `base_limit`, not merely which profile resolved
+— those are different questions, and conflating them previously let a block report
+`profile=<id>` while the number in force came from the hardcoded backstop.
+
+Profile section shape, e.g.
 
     "meta_gate": {
       "write_size": {
@@ -42,16 +54,30 @@ Read from the active profile's `meta_gate.write_size` section, e.g.
       }
     }
 
-Absent section -> defaults below. `describe()` reports which profile actually supplied
-the numbers, so a caller can tell a per-model threshold from a silent default.
+Absent at every layer -> the backstops below.
 
 No LLM calls. Arithmetic and character counting.
 """
 
 import re
 
+# LAST-RESORT BACKSTOP ONLY — not the operator-facing default.
+#
+# `base_limit` used to live here as the single hardcoded number that decided every
+# write on every model. That literal is what produced 357 blocked writes across the two
+# live agents (Vek 249, Aporia 108 by 2026-08-22), each one captured as a failure lesson
+# that then taught the agent to avoid text_editor entirely.
+#
+# Resolution order is now, lowest to highest (see resolve()):
+#     these backstops  <  plugin config meta_gate.write_size  <  profile meta_gate.write_size
+#
+# The operator-tunable value belongs in the plugin config; a per-model MEASURED value
+# belongs in that model's profile. Values here apply only when both of those are
+# unreadable, so this is a guard against a missing file, not a policy.
 DEFAULTS = {
-    # today's hardcoded value, kept so plain prose is unaffected
+    # Backstop, held at the historical value so behaviour cannot silently change when
+    # config is absent. NOT a measurement — the coherence sweep that would calibrate it
+    # has still never been run.
     "base_limit": 5000,
     # each fenced code block tightens the limit by this fraction (UNMEASURED)
     "fence_penalty": 0.35,
@@ -102,16 +128,69 @@ def effective_limit(content: str, conf: dict | None = None) -> tuple[int, dict]:
     return limit, sig
 
 
+PLUGIN_CONFIG_PATH = "/a0/usr/plugins/_exocortex/config/config.json"
+
+
+def _section(obj, *path) -> dict:
+    """Walk a nested dict path, returning {} at the first thing that is not a dict."""
+    cur = obj
+    for key in path:
+        if not isinstance(cur, dict):
+            return {}
+        cur = cur.get(key, {})
+    return cur if isinstance(cur, dict) else {}
+
+
+def _config_write_size() -> dict:
+    """Operator-tunable `meta_gate.write_size` from the plugin config ({} if absent).
+
+    Separated from the profile lookup deliberately: a profile value is a claim about ONE
+    model and should only exist where it was measured, whereas this is the global default
+    an operator can change without editing code or inventing a per-model measurement.
+    """
+    try:
+        import json
+        with open(PLUGIN_CONFIG_PATH, encoding="utf-8") as fh:
+            return _section(json.load(fh), "meta_gate", "write_size")
+    except Exception:
+        return {}
+
+
 def resolve(agent=None) -> tuple[dict, str]:
-    """Config for the active model, and the profile id it came from."""
+    """Config for the active model, and where the numbers came from.
+
+    Layered lowest to highest: backstop DEFAULTS, then the plugin config, then the active
+    model profile. Each layer only overrides the keys it actually sets, so an operator can
+    move the global default without disturbing a measured per-model value, and a profile
+    can carry `base_limit` alone without inheriting stale penalties.
+
+    The returned source names where `base_limit` — the number the block message quotes —
+    actually came from. It used to return the resolved profile id even when that profile
+    supplied no write_size section at all, so a block could report `profile=ornith-1.0-35b`
+    while the limit in force was the hardcoded backstop. Reporting the layer that really
+    set the number is the whole point of having layers.
+    """
+    conf = dict(DEFAULTS)
+    src = "backstop"
+
+    cfg = _config_write_size()
+    if cfg:
+        conf.update(cfg)
+        if "base_limit" in cfg:
+            src = "config"
+
     try:
         import model_profile as mp
-        prof, src = mp.load_profile(agent)
-        mg = prof.get("meta_gate", {}) if isinstance(prof, dict) else {}
-        ws = mg.get("write_size", {}) if isinstance(mg, dict) else {}
-        return {**DEFAULTS, **(ws if isinstance(ws, dict) else {})}, (src or "none")
+        prof, pid = mp.load_profile(agent)
+        ws = _section(prof, "meta_gate", "write_size")
+        if ws:
+            conf.update(ws)
+            if "base_limit" in ws:
+                src = pid or "profile"
     except Exception:
-        return dict(DEFAULTS), "none"
+        pass
+
+    return conf, src
 
 
 def describe(content: str, agent=None) -> dict:

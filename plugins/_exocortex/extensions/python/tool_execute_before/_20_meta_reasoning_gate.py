@@ -11,6 +11,29 @@ _EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
 if _EXOCORTEX_HELPERS not in sys.path:
     sys.path.insert(0, _EXOCORTEX_HELPERS)
 
+_PLUGIN_CONFIG = "/a0/usr/plugins/_exocortex/config/config.json"
+
+# Absolute last resort for the write limit, used only when write_threshold cannot be
+# imported AND the plugin config cannot be read. Named rather than inlined so that
+# grepping for the number finds a declaration instead of a magic literal buried in an
+# except branch — which is how the previous 5000 stayed invisible while governing every
+# write on every model.
+_LAST_RESORT_WRITE_LIMIT = 5000
+
+
+def _backstop_limit() -> tuple[int, str]:
+    """(limit, source) for the degraded path. Never raises."""
+    try:
+        import json
+        with open(_PLUGIN_CONFIG, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        val = cfg.get("meta_gate", {}).get("write_size", {}).get("base_limit")
+        if isinstance(val, (int, float)) and val > 0:
+            return int(val), "config"
+    except Exception:
+        pass
+    return _LAST_RESORT_WRITE_LIMIT, "last-resort"
+
 
 # Static schema: tool_name -> {required_args, arg_aliases, runtime_aliases}
 TOOL_SCHEMAS = {
@@ -377,26 +400,34 @@ class MetaReasoningGate(Extension):
                 pass
 
     def _write_limits(self, content) -> dict:
-        """A3 threshold for this content. Degrades to the historical constant.
+        """A3 threshold for this content. Degrades without ever blocking on its own error.
 
         Any failure here must not block a write: a threshold helper that raises would
-        turn a size guard into an outage. On error we fall back to the pre-A3 behaviour
-        (flat 5000) rather than to "no limit", so the original protection survives even
-        if the profile machinery does not.
+        turn a size guard into an outage. So on error we still produce a limit rather
+        than "no limit", and the original protection survives the profile machinery.
+
+        The degraded path deliberately does NOT carry its own copy of the number. It used
+        to hardcode 5000 inline — a second literal beside the one in write_threshold,
+        free to drift from it, which is the defect class this codebase produces most
+        reliably. It now reads the operator-tunable plugin config, and only falls to a
+        named module constant when even that file is unreadable. `profile` reports which
+        of those actually happened, so a degraded block is never mistaken for a
+        configured one.
         """
         try:
             import write_threshold as wt
             return wt.describe(content if isinstance(content, str) else "", self.agent)
         except Exception as e:
+            n = len(content) if isinstance(content, str) else 0
+            limit, src = _backstop_limit()
             try:
-                print(f"[MetaGate-SIZE] threshold helper unavailable, using flat 5000 "
-                      f"({type(e).__name__})", flush=True)
+                print(f"[MetaGate-SIZE] threshold helper unavailable "
+                      f"({type(e).__name__}); using {src} limit {limit:,}", flush=True)
             except Exception:
                 pass
-            n = len(content) if isinstance(content, str) else 0
-            return {"length": n, "base_limit": 5000, "effective_limit": 5000,
+            return {"length": n, "base_limit": limit, "effective_limit": limit,
                     "score": 1.0, "fenced_blocks": 0, "escape_density": 0.0,
-                    "profile": "fallback", "over": n > 5000}
+                    "profile": f"degraded:{src}", "over": n > limit}
 
     def _quarantine_gate(self, tool_name: str, tool_args: dict | None) -> None:
         """A1 enforcer. Stash the op signature, then refuse quarantined attempts.
