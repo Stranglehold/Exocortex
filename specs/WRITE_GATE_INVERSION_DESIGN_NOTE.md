@@ -326,6 +326,17 @@ Confound cleared beforehand: generation is not token-capped anywhere on this sta
 `max_tokens` in the preset, no `-n`/`--n-predict` on the server, slots report
 `n_predict: -1`. A cutoff would be model behaviour, not budget.
 
+**Single-harness, deliberately.** A cross-harness arm (Hermes, same model, same server)
+was scoped and dropped — Jake's call, and the logic holds. A0 asks the model to emit its
+tool call as JSON *inside message content*, so every character must survive JSON string
+escaping in the model's own output. That is a strictly harder encoding than native
+function-calling. A second harness therefore had diagnostic value only if A0 **failed** —
+it would have separated "the model cannot do this" from "A0's encoding cannot carry it."
+A0 passed at every rung, so the arm answers a question that is no longer open. Recorded
+rather than silently skipped: the residual assumption is that Hermes is not doing
+something *harder* than JSON-in-content, which was not confirmed (it ships as a binary and
+holds no listening port, so it could not be driven from here in any case).
+
 ### Prose
 
 | target | expected | written | seconds | verdict |
@@ -349,11 +360,54 @@ shape in `scripts/write_ladder.py` renders escape-dense Python — measured **19
 density against prose's 6.5%**, a 3× difference on exactly the axis
 `escape_penalty` keys on.
 
-*Results pending at time of writing — see `D:/tmp/ladder_a0_code.json`. This is the arm
-that decides whether the complexity multiplier encodes something real or is a second
-unmeasured placeholder sitting on top of the first.* If code truncates where prose does
-not, the multiplier survives the inversion as a genuine signal and only `base_limit`
-should go. If it does not, neither number was measuring anything.
+| target | expected | written | verdict |
+|---|---|---|---|
+| 8,000 | 8,104 | 7,917 | all 62 blocks present, complete, ends cleanly at `f_62` |
+| 16,000 | 16,010 | 16,009 | 122 of 123 blocks — one dropped, complete and well-formed |
+| 32,000 | 32,103 | **no file** | see below — **not truncation** |
+
+**Neither the byte shortfalls nor the missing file are truncation.** The 8K shortfall is
+escape normalisation (the model wrote `a \ backslash` where the template asked for `a \\
+backslash`); the 16K file dropped one block. Both are *fidelity* effects on escape-dense
+content — real, but invisible to a size gate and unfixable by one.
+
+### The 32K result is the most important measurement in this note
+
+The rung "failed", and the reason is nothing the write gate models. Traced end to end:
+
+1. **The model emitted all 243 blocks.** The content string in the log is 36,735 chars,
+   contains 243 `def f_N` blocks, and terminates cleanly with `\"row 243\"\n"`.
+   **No truncation at any level.**
+2. **The payload was valid.** Extracted from the log and fed to the real parser:
+   `extract_tool_request` on the JSON alone (37,422 bytes) returns **`text_editor`**. It
+   parses.
+3. **It was rejected for prose.** `extract_tool_request` (v2.9) contains:
+   ```python
+   root = extract_json_root_string(content)
+   if root != content:
+       return None      # the tool call must be the ENTIRE message
+   ```
+   The model prefixed its call with *"I'll write out blocks 1..243. Let me go. I realize I
+   should just carefully write the entire thing."* Confirmed by construction: the same
+   JSON parses clean, and returns `None` with either a prose prefix **or** a suffix.
+4. **`is_misformatted_tool_request` returns False**, so it lands in the gap between the two
+   detectors — and on this container `_10_plaintext_response_fallback` then
+   **`wrapped 52943 chars of prose as a response tool call`**. The agent recited a 37KB
+   tool call aloud instead of writing the file. **This is §2.4's predicted collision,
+   observed in production.**
+
+**So the size correlation is real and the mechanism is not size.** Longer, harder tasks
+induce more visible deliberation; deliberation leaks prose outside the JSON; the strict
+whole-message parser rejects the entire call. A `base_limit` cannot prevent that, and a
+smaller limit makes it *more* likely by forcing more and longer reasoning about chunking.
+
+**Revised capability figure: a valid 37,422-byte tool call**, containing all requested
+content — **7.5× the retired 5,000 default**, and larger than any prose rung.
+
+**What the complexity multiplier is actually tracking.** Not truncation. On escape-dense
+content the model stays complete but loses byte-fidelity, and is likelier to narrate. If
+that is worth guarding, the guard is post-write verification (compare what landed against
+what was asked) and a prose-leak detector — neither of which is a size threshold.
 
 ## 8. Open questions for Opus
 

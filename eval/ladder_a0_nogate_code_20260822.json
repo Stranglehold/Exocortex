@@ -1,0 +1,35 @@
+[
+  {
+    "label": "A0-nogate",
+    "target": 8000,
+    "lines": 62,
+    "expected": 8104,
+    "got": 7917,
+    "seconds": 298.0,
+    "verdict": "SHORT (model wrote less; NOT truncation - the call parsed)",
+    "error": null,
+    "reply": "No byte count was reported. The tool's result was only: `/tmp/ladder_code_8000.py written 247 lines` \u2014 a line count, not a byte count."
+  },
+  {
+    "label": "A0-nogate",
+    "target": 16000,
+    "lines": 122,
+    "expected": 16010,
+    "got": 16009,
+    "seconds": 436.2,
+    "verdict": "COMPLETE",
+    "error": null,
+    "reply": "No byte count was reported by the tool \u2014 it only reported the line count: 487 lines written."
+  },
+  {
+    "label": "A0-nogate",
+    "target": 32000,
+    "lines": 243,
+    "expected": 32103,
+    "got": -1,
+    "seconds": 1800.0,
+    "verdict": "REQUEST-ERROR",
+    "error": "TimeoutError: timed out",
+    "reply": ""
+  }
+]
