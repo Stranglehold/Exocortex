@@ -5,8 +5,24 @@ from agent import Agent, LoopData
 WARN_THRESHOLD     = 0.70   # log warning at 70%
 CRITICAL_THRESHOLD = 0.85   # log critical at 85%
 
-# Keys for storing utilization in params_temporary
-# Other extensions (e.g. supervisor loop) can read these
+# Keys for storing utilization in params_temporary.
+#
+# NOTHING READS THESE. Verified 2026-08-22 by scripts/scan_severed_loops.py and confirmed
+# with a grep over the whole container: the only occurrences of either string anywhere
+# under /a0 are these two definitions. The comment here previously read "Other extensions
+# (e.g. supervisor loop) can read these" — the supervisor does not, and never has. A
+# comment naming a consumer is not a consumer, and this one made the gap invisible to
+# every reader since.
+#
+# They are also written to params_temporary, which A0 clears every iteration
+# (agent.py:404) and reads only for `log_item_generating` (agent.py:498/515) — so even a
+# future reader must run in the SAME iteration, at a later hook than
+# before_main_llm_call.
+#
+# This extension is not inert: the WARN/CRITICAL logging below is its live output. Only
+# this channel is dead. Left in place rather than deleted because wiring the supervisor to
+# consume utilization is a capability decision, not a cleanup — raised with Opus
+# 2026-08-22. If the answer is "no consumer wanted", delete these two writes.
 UTILIZATION_KEY = "context_utilization"
 TOKEN_COUNT_KEY = "context_token_count"
 
