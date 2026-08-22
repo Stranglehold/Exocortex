@@ -77,9 +77,19 @@ REM ============================================================================
 
 set LLAMA_BIN=%~dp0llama-cpp-indras\build\bin\llama-server.exe
 set MODEL=D:\LMStudio\Models\ornith-ai\Ornith-1.5-35B-A3B-GGUF\Ornith-1.5-35B-Q4_K_M.gguf
-REM  Vision projector ships alongside the weights. Kept on CPU so it costs no
-REM  VRAM, which matters here because the weights already nearly fill the card.
+REM  Vision projector ships alongside the weights. Ornith 1.5 IS multimodal and this
+REM  file is what makes image input work at all.
+REM
+REM  MMPROJ_ON_GPU (2026-08-22): originally CPU (--no-mmproj-offload) to spend zero
+REM  VRAM, on the assumption the weights would nearly fill the card. MEASURED after it
+REM  actually loaded: 18,331 MiB used of 24,576, so ~6.2 GiB was sitting free while
+REM  image encoding crawled on the CPU backend -- a verified 768x768 description took
+REM  45.9 s / 328 tok (~7 tok/s) against 50.3 tok/s on text. The projector is ~900 MiB.
+REM  Paying a large latency penalty for VRAM we were not using is the wrong trade, so
+REM  it now runs on the GPU. Set MMPROJ_ON_GPU=0 to put it back on the CPU (do that if
+REM  you raise ctx or n_cpu_moe far enough to squeeze VRAM).
 set MMPROJ=D:\LMStudio\Models\ornith-ai\Ornith-1.5-35B-A3B-GGUF\mmproj-Ornith-1.5-35B-BF16.gguf
+if "%MMPROJ_ON_GPU%"=="" set MMPROJ_ON_GPU=1
 
 set CTX=%1
 if "%CTX%"=="" set CTX=80000
@@ -115,14 +125,21 @@ for /f %%P in ('netstat -ano ^| findstr /r /c:"LISTENING" ^| findstr /c:":%PORT%
     pause & exit /b 1
 )
 
+set MMPROJ_ARG=
+set VISION_STATUS=OFF (no mmproj)
 if defined MMPROJ (
-    set MMPROJ_ARG=--mmproj "%MMPROJ%" --no-mmproj-offload
-) else (
-    set MMPROJ_ARG=
+    if "%MMPROJ_ON_GPU%"=="1" (
+        set MMPROJ_ARG=--mmproj "%MMPROJ%"
+        set VISION_STATUS=ON - projector on GPU, ~900 MiB VRAM, fast encode
+    ) else (
+        set MMPROJ_ARG=--mmproj "%MMPROJ%" --no-mmproj-offload
+        set VISION_STATUS=ON - projector on CPU, 0 MiB VRAM, slow encode
+    )
 )
 
 echo Starting Ornith-1.5-35B-A3B  engine=llama-cpp-indras (qwen35moe_mtp)
 echo   model=Ornith-1.5-35B-Q4_K_M  ctx=%CTX%  n_cpu_moe=%NCMOE%  kv=tbq4_0  port=%PORT%
+echo   vision=%VISION_STATUS%
 
 "%LLAMA_BIN%" ^
   -m "%MODEL%" ^
