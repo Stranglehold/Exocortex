@@ -42,7 +42,7 @@ movement paths are **not implemented here**."
 | 5 | 08-21 | `--moe-cache-rate 0.05` | OOM (mode A) | cache rate is not the lever |
 | 6 | 08-21 | `--max-running-requests 1` | OOM (mode A) | concurrency is not the lever |
 | 7 | 08-21 | `ft checkpoint` → FTW conversion | **OOM'd the WSL VM** (ft RSS 24 G, throughput 380→9.6 MB/s, killed) | parallel bank builder too heavy here |
-| 8 | 08-21 | `freetoken_convert_serial.py` (forces library's own serial builder) | not completed | — the flag `--expert-load serial` exists only on `ft serve`, not `ft checkpoint` |
+| 8 | 08-21 | `freetoken_convert_serial.py` (forces library's own serial builder) | **COMPLETED — corrected 2026-08-22.** I logged this as "not completed"; it finished 04:26. Output: `~/ftw/ornith-1.5-35b-offload/`, 6 shards ~19.6 GB + `freetoken_weight.json` index (`total_bytes` 20,891,578,368) + tokenizer/config | the serial-builder workaround WORKS |
 | 9 | 08-22 | `--moe-backend auto` + `--moe-cache-auto`, ctx 80K, ratio 0.85 | **hard hang, mode B, 44 min, zero CPU** | `auto` resolves to the offload/hybrid family = the pinning path |
 | 10 | 08-22 | **`--moe-backend cpu`** | **NO HANG** — real CPU use, died in 12 s at weight-load 67 % on `_iter_weights_attn_fp8` → `f.get_tensor()`. VRAM peak **4,859 MiB of 24,576** | mode B defeated; `cpu` DOES bypass the bank/pin path |
 | 11 | 08-22 | `--moe-backend cpu` + `PYTORCH_ALLOC_CONF=expandable_segments:False` | identical failure, VRAM peak 4,865 MiB. Override verified applied (engine returns early when the env var is set) | **expandable_segments is NOT the cause** |
@@ -174,6 +174,26 @@ commented out in `/etc/systemd/system.conf`.
 **But it cannot be the cause:** we pinned **1.00 GiB with a 64 MB memlock**. CUDA pinned
 memory on WSL2 is not accounted against mlock. Fixing it needs root (sudo wants a password)
 and would change nothing. Worth fixing for correctness only.
+
+---
+
+## CORRECTION 2026-08-22 — THE FTW EXISTS AND WE NEVER SERVED FROM IT
+
+The conversion **succeeded**. `~/ftw/ornith-1.5-35b-offload/` holds a complete FTW build.
+**Every serve attempt (#9–#12) pointed at the HF snapshot
+(`ornith-ai/Ornith-1.5-35B-A3B-NVFP4`), not at the FTW directory.**
+
+Attempt #1's whole lesson was *"serving raw HF with `--moe-backend offload` selects the
+backend but the weights were never laid out for banks."* We fixed that — and then never
+pointed the server at the fix.
+
+**Does it change the verdict?** Probably not: FTW changes the bank *layout*, not whether
+banks must be `cudaHostRegister`'d, and #12 failed on pinning after loading 20 GB of 23.4 GB
+of banks. But that is reasoning, not measurement, and this file exists because reasoning
+about untested configurations is how we got thirteen attempts deep. **It is UNTESTED.**
+
+To test: `MODEL=/home/jake/ftw/ornith-1.5-35b-offload MOE_BACKEND=offload bash
+inference/freetoken/start_ornith15_freetoken.sh` (the launcher takes `MODEL` from env).
 
 ---
 
