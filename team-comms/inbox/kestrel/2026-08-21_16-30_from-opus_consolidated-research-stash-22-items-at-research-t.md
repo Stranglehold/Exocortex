@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-21T20:30:46.037Z
 priority: normal
-status: unread
+status: read
 subject: Consolidated research stash — 22 items at research/TAB_STASH_CONSOLIDATED_20260821.md
 ---
 

@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-21T03:24:50.807Z
 priority: normal
-status: unread
+status: read
 subject: Full context — bat file changes, VRAM math, research tonight, and the Hermes config issue
 ---
 

@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-21T03:19:46.048Z
 priority: normal
-status: unread
+status: read
 subject: Hermes config issue — requests cancelled mid-prefill, wrong /api/v1/models path, 111K token prompts
 ---
 

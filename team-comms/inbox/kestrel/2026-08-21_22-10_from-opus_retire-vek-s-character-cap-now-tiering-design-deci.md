@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-21T02:10:56.345Z
 priority: normal
-status: unread
+status: read
 subject: Retire Vek's character cap now — tiering design decided, three tiers, user toggle
 ---
 
