@@ -35,12 +35,16 @@
 #      FP8    ~35 GB   fits                  <- first fallback
 #      BF16   ~70 GB   DOES NOT FIT unless .wslconfig raises the WSL limit
 #
-#  UNVERIFIED AND WORTH KNOWING: NVFP4 is a Blackwell-native format and this is
-#  an Ampere card (RTX 3090, sm_86). FreeToken's docs state RTX 30/40/50 support
-#  for the ENGINE but do not publish per-format architecture requirements, so
-#  whether NVFP4 runs natively, emulated, or not at all on sm_86 is untested.
-#  If it fails to load or is pathologically slow, switch MODEL to the FP8 repo —
-#  that is the expected failure and it has a one-line fix.
+#  RESOLVED 2026-08-22 — NVFP4 DOES run on Ampere. I had flagged this as the main
+#  risk, on the strength of NVFP4 being a Blackwell-native format. `ft serve --help`
+#  on the INSTALLED 0.1.2 settles it:
+#      --nvfp4-backend  "auto picks by GPU (marlin on sm80-99 + vLLM; flashinfer
+#                        b12x on sm120+ & CUDA>=13; else triton, the portable
+#                        inline-dequant kernel)"
+#  This card is sm_86, inside sm80-99, so auto selects marlin — and if marlin's
+#  vLLM dependency is absent it falls back to triton, which is portable. Either
+#  way it loads. The published docs never mention this flag; it came from the
+#  installed binary. FP8 stays a one-line fallback if throughput disappoints.
 #
 #  ---------------------------------------------------------------------------
 #  NOT YET INSTALLED. One-time, inside WSL Ubuntu:
@@ -72,10 +76,12 @@ set -euo pipefail
 #   ornith-ai/Ornith-1.5-35B-A3B        (~70 GB BF16 — needs a .wslconfig bump)
 MODEL="${MODEL:-ornith-ai/Ornith-1.5-35B-A3B-NVFP4}"
 
+SERVED_NAME="${SERVED_NAME:-ornith-1.5-35b}"   # what /v1/models reports; match A0's preset
 PORT="${PORT:-1235}"          # drop-in for the existing stack, so no agent config changes
 HOST="${HOST:-0.0.0.0}"       # NOT 127.0.0.1 — containers cannot reach loopback
 CTX="${CTX:-80000}"           # matches start_ornith_prod.bat's default
-MOE_BACKEND="${MOE_BACKEND:-offload}"   # experts in host RAM, LRU expert slots on GPU
+MOE_BACKEND="${MOE_BACKEND:-auto}"      # auto -> offload family, or hybrid per `ft bench bw`
+NVFP4_BACKEND="${NVFP4_BACKEND:-auto}"  # auto -> marlin on sm80-99 (this card is sm_86)
 MEMORY_RATIO="${MEMORY_RATIO:-0.85}"    # fraction of FREE VRAM the engine may use
 
 # 0.85 not 0.95: measured 2026-08-22, the Windows desktop holds VRAM on this card
@@ -101,11 +107,44 @@ if ! command -v ft >/dev/null 2>&1; then
   exit 127
 fi
 
+# Flags below were read from `ft serve --help` on the INSTALLED 0.1.2, not from the docs.
+# The docs do not mention --nvfp4-backend, --sampling-defaults or --served-model-name, and
+# the first two are the two that matter most here.
+#
+#   --moe-backend auto     resolves a MoE model to the offload family, and to HYBRID when
+#                          an `ft bench bw` profile recommends it. auto beats hardcoding
+#                          offload precisely because it consumes the calibration.
+#   --nvfp4-backend auto   "marlin on sm80-99; flashinfer on sm120+; else triton". This
+#                          card is sm_86, so NVFP4 IS supported on Ampere — the open
+#                          question in the header is answered. Worst case it falls back to
+#                          triton, the portable kernel. Force marlin/triton to override.
+#   --sampling-defaults model
+#                          fills temperature/top_k/top_p from the checkpoint's
+#                          generation_config.json for requests that do not specify them.
+#                          The help calls this "recommended for reasoning models to avoid
+#                          greedy repetition loops" — and our A0 preset currently sends
+#                          temperature '0', which IS greedy. A client-sent value still
+#                          wins, so this does not replace fixing the preset
+#                          (scripts/set_preset_sampling.py); it makes the default sane.
+#   --served-model-name    what /v1/models reports. Set so A0's preset name and the served
+#                          model finally agree — they have not, and that is why tiering
+#                          resolves off a name rather than the running model.
+#   --reasoning-parser qwen3 / --tool-call-parser qwen3_coder
+#                          the vendor's own vLLM/SGLang commands set these explicitly.
+#                          'auto' would likely pick them, but this model emits
+#                          <think>...</think> with separated reasoning_content and native
+#                          OpenAI tool_calls, and both are load-bearing for A0 — so they
+#                          are pinned rather than inferred.
 exec ft serve \
   --model "${MODEL}" \
+  --served-model-name "${SERVED_NAME}" \
   --host "${HOST}" \
   --port "${PORT}" \
   --moe-backend "${MOE_BACKEND}" \
+  --nvfp4-backend "${NVFP4_BACKEND}" \
   --memory-ratio "${MEMORY_RATIO}" \
   --max-seq-len-override "${CTX}" \
+  --sampling-defaults model \
+  --reasoning-parser qwen3 \
+  --tool-call-parser qwen3_coder \
   --moe-cache-auto

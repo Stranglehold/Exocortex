@@ -109,12 +109,52 @@ Two consequences for us:
    make the prose-leak class disappear on this stack, which would be a stronger argument
    for migrating than throughput alone.
 
-## 5. Open questions, in the order they should be answered
+## 5. What the installed binary told us that the docs did not
 
-1. Does NVFP4 load at all on Ampere? If not, switch `MODEL` to the FP8 repo.
+FreeToken 0.1.2 is installed (`~/freetoken-env`). `ft serve --help` on the real binary
+carries flags absent from the published docs, and two of them matter a great deal.
+
+**`--nvfp4-backend {auto,marlin,flashinfer,triton}` — resolves the Ampere question.**
+Help text: *"auto picks by GPU (marlin on sm80-99 + vLLM; flashinfer b12x on sm120+ &
+CUDA>=13; else triton, the portable inline-dequant kernel)."* This card is **sm_86**, inside
+sm80-99, so NVFP4 runs — via marlin, or triton if marlin's vLLM dependency is missing.
+**NVFP4 on Ampere was the main risk and it is not a risk.**
+
+**`--sampling-defaults {model,none}` — and a possible root cause for an open bug.**
+Help text: *"fills temperature/top_k/top_p from the checkpoint's `generation_config.json`
+(recommended for reasoning models to avoid greedy repetition loops)."*
+
+Our A0 preset sets `temperature: '0'`. That is greedy decoding, on a reasoning model, which
+is precisely the configuration that sentence warns about. Two open items in this repo may
+be downstream of it:
+
+- `KESTREL.md` seam #20, the unexplained *"Qwen mid-response token-repetition pattern"*,
+  currently attributed to one of three hypotheses (`enable_thinking` not sent,
+  context-length degradation, quantization).
+- The supervisor firing `[PS-ANALYZE] SIGNAL repeated_sentence severity=1.00` during the
+  code-shaped write ladder on 2026-08-22.
+
+**Stated as a hypothesis, not a finding** — nothing here has been tested, and the
+repetition was observed on qwen3.8-27b rather than Ornith. But "greedy decoding on a
+reasoning model causes repetition loops" is now vendor-documented behaviour, and we have
+been running greedy on reasoning models for months. It is cheap to test: raise the
+temperature and see whether the repetition signal drops.
+
+Other confirmed flags now pinned in the launcher: `--served-model-name` (so A0's preset
+name and the served model finally agree), `--reasoning-parser qwen3` and
+`--tool-call-parser qwen3_coder` (the vendor's own choices), `--moe-backend auto` (resolves
+to hybrid when an `ft bench bw` profile recommends it).
+
+Every flag the launcher passes was validated against the installed argparse.
+
+## 6. Open questions, in the order they should be answered
+
+1. ~~Does NVFP4 load on Ampere?~~ **Answered above — yes, sm_86 is in marlin's range.**
 2. Does `host.docker.internal:1235` reach a server inside the Ubuntu WSL2 distro from the
    containers? Untested, and this project has been bitten by WSL2 networking before.
 3. What does `ft bench bw` report for the CPU/GPU split? That is the calibrated basis for
    `--moe-cpu-layers`, which the launcher deliberately leaves unset.
 4. Does A0's thinking router handle separated `reasoning_content`?
 5. Does the native `tool_calls` path remove the prose-leak failure mode?
+6. Does raising temperature off 0 reduce the repetition signal? (New, from
+   `--sampling-defaults` above — and testable on the CURRENT stack without FreeToken.)
