@@ -33,4 +33,7 @@ if "%MODEL%"=="" set MODEL=ornith-ai/Ornith-1.5-35B-A3B-NVFP4
 
 echo Launching FreeToken in WSL2 (Ubuntu)  model=%MODEL%  ctx=%CTX%  port=1235
 
-wsl.exe -d Ubuntu -- bash -lc "CTX=%CTX% MODEL=%MODEL% bash /mnt/d/Vibecode/Agent-Zero/Exocortex/inference/freetoken/start_ornith15_freetoken.sh"
+REM Parsers pinned to the values Ornith's own model card uses in its vLLM/SGLang
+REM commands. Qwen3.8 has no equivalent published recommendation, so its wrapper
+REM leaves both on auto rather than borrowing these.
+wsl.exe -d Ubuntu -- bash -lc "CTX=%CTX% MODEL=%MODEL% REASONING_PARSER=qwen3 TOOL_PARSER=qwen3_coder bash /mnt/d/Vibecode/Agent-Zero/Exocortex/inference/freetoken/start_ornith15_freetoken.sh"

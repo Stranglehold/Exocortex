@@ -84,6 +84,14 @@ MOE_BACKEND="${MOE_BACKEND:-auto}"      # auto -> offload family, or hybrid per 
 NVFP4_BACKEND="${NVFP4_BACKEND:-auto}"  # auto -> marlin on sm80-99 (this card is sm_86)
 MEMORY_RATIO="${MEMORY_RATIO:-0.85}"    # fraction of FREE VRAM the engine may use
 
+# Parsers default to auto and are PINNED only where a vendor documents the choice.
+# Ornith's model card ships vLLM/SGLang commands naming reasoning-parser qwen3 and
+# tool-call-parser qwen3_coder, so its wrapper sets both. Qwen3.8 has no such published
+# recommendation on our side, so it gets auto rather than Ornith's values borrowed and
+# presented as if they were measured. auto "selects per model family".
+REASONING_PARSER="${REASONING_PARSER:-auto}"
+TOOL_PARSER="${TOOL_PARSER:-auto}"
+
 # 0.85 not 0.95: measured 2026-08-22, the Windows desktop holds VRAM on this card
 # (explorer, Discord, iCUE, EdgeWebView). A projection said 2,217 MiB free when the
 # card actually had 113. Leave headroom rather than trusting the arithmetic.
@@ -129,12 +137,15 @@ fi
 #   --served-model-name    what /v1/models reports. Set so A0's preset name and the served
 #                          model finally agree — they have not, and that is why tiering
 #                          resolves off a name rather than the running model.
-#   --reasoning-parser qwen3 / --tool-call-parser qwen3_coder
-#                          the vendor's own vLLM/SGLang commands set these explicitly.
-#                          'auto' would likely pick them, but this model emits
-#                          <think>...</think> with separated reasoning_content and native
-#                          OpenAI tool_calls, and both are load-bearing for A0 — so they
-#                          are pinned rather than inferred.
+#   --reasoning-parser / --tool-call-parser
+#                          default 'auto', PINNED by the wrapper only where a vendor
+#                          documents the choice. Ornith's card names qwen3 and qwen3_coder
+#                          in its own vLLM/SGLang commands, so start_ornith15_freetoken.bat
+#                          sets both; start_qwen38_freetoken.bat leaves them on auto rather
+#                          than borrowing Ornith's values and presenting them as if they
+#                          were measured for a different model. Both matter for A0: this
+#                          family emits <think>...</think> with separated
+#                          reasoning_content and native OpenAI tool_calls.
 exec ft serve \
   --model "${MODEL}" \
   --served-model-name "${SERVED_NAME}" \
@@ -145,6 +156,6 @@ exec ft serve \
   --memory-ratio "${MEMORY_RATIO}" \
   --max-seq-len-override "${CTX}" \
   --sampling-defaults model \
-  --reasoning-parser qwen3 \
-  --tool-call-parser qwen3_coder \
+  --reasoning-parser "${REASONING_PARSER}" \
+  --tool-call-parser "${TOOL_PARSER}" \
   --moe-cache-auto
