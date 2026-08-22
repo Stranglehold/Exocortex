@@ -8,7 +8,8 @@
     "overall_capability": "unknown",
     "strongest_area": "unknown",
     "weakest_area": "unknown",
-    "recommended_prosthetic_level": "full"
+    "recommended_prosthetic_level": "light",
+    "_drift_note": "Was 'full' here and 'light' in eval/model_profiles - same model, two answers. Reconciled to 'light' 2026-08-22 per Opus. NOTE: this tree is NOT runtime-authoritative and deliberately retains the retired full/moderate/light/targeted vocabulary; the live tier for this model is local_large in plugins/_exocortex/config/model_profiles/."
   },
   "bst": {
     "confidence_adjustment": 0,

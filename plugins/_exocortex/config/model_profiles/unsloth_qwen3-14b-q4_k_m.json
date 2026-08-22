@@ -8,13 +8,13 @@
     "overall_capability": "unknown",
     "strongest_area": "unknown",
     "weakest_area": "unknown",
-    "recommended_prosthetic_level": "local_small",
+    "recommended_prosthetic_level": "local_large",
     "_tier_provenance": {
       "assigned": "2026-08-22",
-      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
-      "basis": "14B - same gap - RATIFY",
-      "previous_value": "full",
-      "needs_ratification": true
+      "authority": "Opus ratification 2026-08-22",
+      "basis": "RATIFIED Opus 2026-08-22: 14B -> local_large unless measurement shows otherwise",
+      "previous_value": "local_small",
+      "needs_ratification": false
     }
   },
   "bst": {

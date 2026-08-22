@@ -9,13 +9,13 @@
     "overall_capability": "medium",
     "strongest_area": "analysis",
     "weakest_area": "tool_reliability",
-    "recommended_prosthetic_level": "local_large",
+    "recommended_prosthetic_level": "local_small",
     "_tier_provenance": {
       "assigned": "2026-08-22",
-      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
-      "basis": "35B TOTAL but 3B ACTIVE (MoE); L7 failure observed - RATIFY",
-      "previous_value": "moderate",
-      "needs_ratification": true
+      "authority": "Opus ratification 2026-08-22",
+      "basis": "RATIFIED Opus 2026-08-22: 3B ACTIVE + L7 failure; behaviour trumps parameter count",
+      "previous_value": "local_large",
+      "needs_ratification": false
     }
   },
   "bst": {

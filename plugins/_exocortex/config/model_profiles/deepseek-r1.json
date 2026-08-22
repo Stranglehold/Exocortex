@@ -9,12 +9,12 @@
     "overall_capability": "medium",
     "strongest_area": "bst",
     "weakest_area": "tool_reliability",
-    "recommended_prosthetic_level": "local_small",
+    "recommended_prosthetic_level": "local_large",
     "_tier_provenance": {
       "assigned": "2026-08-22",
-      "authority": "Opus Call 1 (three-tier design, Jake's toggle)",
-      "basis": "size not derivable from model_id; capability 'medium' - RATIFY",
-      "previous_value": "moderate",
+      "authority": "Opus ratification 2026-08-22",
+      "basis": "Opus said frontier/API - PREMISE WRONG, this is the open-weight R1 distill (14B class). Applied his 14B rule instead. Counter-evidence: capability=medium and confabulation drops under constrained prompts, which argues local_small - RATIFY",
+      "previous_value": "local_small",
       "needs_ratification": true
     }
   },
