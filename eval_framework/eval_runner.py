@@ -282,7 +282,10 @@ def run_evaluation(
     safe_name = effective_model.replace("/", "_").replace("\\", "_").replace(":", "_")
     profile_path = out_path / f"{safe_name}.json"
 
-    with open(profile_path, "w", encoding="utf-8") as f:
+    # Explicit LF newline, or Python translates to CRLF on Windows and every generated
+    # profile lands with line endings that fight the repo's LF convention (git warned on
+    # the qwen3.8-27b profile, 2026-08-22).
+    with open(profile_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(profile, f, indent=2, ensure_ascii=False)
 
     print(f"[EVAL] Profile written to: {profile_path}")
@@ -363,7 +366,13 @@ def main():
         api_base = "http://localhost:1234/v1"
 
     model_name = args.model_name or config.get("model_name", "")
-    output_dir = args.output_dir or config.get("output_dir", "./profiles")
+    # Default output lands next to this runner, NOT in the CWD. The old "./profiles"
+    # relative default scattered generated profiles wherever you happened to run from
+    # (it created a stray fourth profiles/ at the repo root on 2026-08-22). This dir is
+    # NON-AUTHORITATIVE by design - see its _NON_AUTHORITATIVE.md; the runtime reads
+    # plugins/_exocortex/config/model_profiles/ and nothing else.
+    _default_out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profiles")
+    output_dir = args.output_dir or config.get("output_dir", _default_out)
     timeout = config.get("timeout_seconds", 120)
     max_retries = config.get("max_retries_per_test", 2)
     runs_per_test = config.get("runs_per_test", 3)

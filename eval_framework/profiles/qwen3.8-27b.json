@@ -1,0 +1,193 @@
+{
+  "profile_version": "1.0",
+  "model_id": "qwen3.8-27b",
+  "model_family": "qwen3",
+  "evaluated_at": "2026-08-22T07:17:40.859717+00:00",
+  "fixtures_version": "1.0.0",
+  "evaluation_summary": {
+    "overall_capability": "high",
+    "strongest_area": "graph_compliance",
+    "weakest_area": "pace_calibration",
+    "recommended_prosthetic_level": "light"
+  },
+  "bst": {
+    "confidence_adjustment": 0.0,
+    "disabled_domains": [
+      "bugfix",
+      "refactor",
+      "config_edit"
+    ],
+    "enrichment_verbosity": "verbose"
+  },
+  "meta_gate": {
+    "strictness": "moderate",
+    "json_repair_enabled": true,
+    "parameter_validation": true
+  },
+  "tool_fallback": {
+    "max_retries": 4,
+    "priority_patterns": [
+      "wrong_runtime",
+      "syntax",
+      "missing_param"
+    ],
+    "escalation_after": 5
+  },
+  "graph_workflow": {
+    "max_retries_per_node": 3,
+    "stale_after_turns": 15,
+    "node_instruction_verbosity": "standard",
+    "inject_boundary_warnings": false
+  },
+  "pace": {
+    "primary_threshold": 3,
+    "alternate_threshold": 6,
+    "contingency_threshold": 10,
+    "emergency_threshold": 13
+  },
+  "context": {
+    "max_injection_tokens": 2400,
+    "layer_priority": [
+      "role_profile",
+      "bst_enrichment",
+      "recalled_memories",
+      "graph_node",
+      "padding_noise",
+      "personality"
+    ],
+    "instruction_compliance_warning_threshold": 0.5
+  },
+  "memory": {
+    "max_injected": 10,
+    "similarity_threshold": 0.6,
+    "noise_discrimination": "good"
+  },
+  "raw_metrics": {
+    "bst": {
+      "bst_enrichment_compliance_rate": 0.85,
+      "bst_enrichment_confusion_rate": 0.0,
+      "bst_improvement_over_baseline": 0.065,
+      "bst_optimal_confidence_threshold": 0.7,
+      "bst_domains_where_enrichment_hurts": [
+        "bugfix",
+        "refactor",
+        "config_edit"
+      ],
+      "bst_confidence_adjustment": 0.0
+    },
+    "bst_rigidity": {
+      "bst_rigidity_enriched_avg": 0.946,
+      "bst_rigidity_info_only_avg": 0.946,
+      "bst_rigidity_raw_avg": 0.946,
+      "bst_rigidity_confusion_rate": 0.0,
+      "bst_rigidity_per_domain": {
+        "investigation": {
+          "verdict": "info_sufficient",
+          "enriched_avg": 1.0,
+          "info_only_avg": 1.0,
+          "raw_avg": 1.0
+        },
+        "analysis": {
+          "verdict": "info_sufficient",
+          "enriched_avg": 1.0,
+          "info_only_avg": 1.0,
+          "raw_avg": 1.0
+        },
+        "philosophical": {
+          "verdict": "info_sufficient",
+          "enriched_avg": 1.0,
+          "info_only_avg": 1.0,
+          "raw_avg": 1.0
+        },
+        "planning": {
+          "verdict": "info_sufficient",
+          "enriched_avg": 0.25,
+          "info_only_avg": 0.25,
+          "raw_avg": 0.25
+        },
+        "config_edit": {
+          "verdict": "info_sufficient",
+          "enriched_avg": 1.0,
+          "info_only_avg": 1.0,
+          "raw_avg": 1.0
+        }
+      },
+      "bst_rigidity_load_bearing_domains": [],
+      "bst_rigidity_info_sufficient_domains": [
+        "investigation",
+        "analysis",
+        "philosophical",
+        "planning",
+        "config_edit"
+      ],
+      "bst_rigidity_marginal_domains": [],
+      "bst_rigidity_recommendation": "SHIFT_TO_INFO: info-only achieves equivalent results in 5 of 5 domains (enriched_avg-info_avg=0.0). Instructions load-bearing only in: []."
+    },
+    "tool_reliability": {
+      "tool_json_validity_rate": 0.933,
+      "tool_parameter_accuracy": 0.467,
+      "tool_selection_accuracy": 0.867,
+      "tool_failure_distribution": {
+        "syntax": 0.25,
+        "missing_param": 0.25,
+        "wrong_runtime": 0.5
+      },
+      "tool_recovery_rate": 1.0,
+      "meta_gate_strictness": "moderate",
+      "tool_fallback_priority_patterns": [
+        "wrong_runtime",
+        "syntax",
+        "missing_param"
+      ],
+      "_adapter_model_family": "qwen",
+      "_fixture_source": "standard",
+      "_inference_provider": "lmstudio"
+    },
+    "graph_compliance": {
+      "graph_instruction_adherence": 1.0,
+      "graph_premature_completion_rate": 0.0,
+      "graph_retry_effectiveness": 1.0,
+      "graph_escalation_recognition": 1.0,
+      "graph_max_retries_per_node": 3,
+      "graph_stale_detection_turns": 15
+    },
+    "pace_calibration": {
+      "pace_self_recovery_rate": 1.0,
+      "pace_primary_recovery_rate": 0.75,
+      "pace_alternate_recovery_rate": 0.875,
+      "pace_contingency_recovery_rate": 0.875,
+      "pace_emergency_compliance": 0.625,
+      "pace_primary_threshold": 3,
+      "pace_alternate_threshold": 6,
+      "pace_contingency_threshold": 10,
+      "pace_emergency_threshold": 13
+    },
+    "context_sensitivity": {
+      "context_baseline_quality": 0.8,
+      "context_optimal_injection_tokens": 1400,
+      "context_degradation_threshold_tokens": 4000,
+      "context_layer_priority": [
+        "role_profile",
+        "bst_enrichment",
+        "recalled_memories",
+        "graph_node",
+        "padding_noise",
+        "personality"
+      ],
+      "context_instruction_compliance_at_2k": 0.8,
+      "context_instruction_compliance_at_4k": 0.8,
+      "max_context_injection_tokens": 2400,
+      "memory_max_injected": 8
+    },
+    "memory_utilization": {
+      "memory_reference_rate": 0.947,
+      "memory_accuracy_rate": 1.0,
+      "memory_noise_discrimination": 1.0,
+      "memory_staleness_sensitivity": 0.85,
+      "memory_optimal_injection_count": 8,
+      "memory_max_injected": 10
+    }
+  },
+  "inference_provider": "lmstudio",
+  "inference_provider_display": "LM Studio"
+}
