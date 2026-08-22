@@ -47,6 +47,9 @@ movement paths are **not implemented here**."
 | 10 | 08-22 | **`--moe-backend cpu`** | **NO HANG** — real CPU use, died in 12 s at weight-load 67 % on `_iter_weights_attn_fp8` → `f.get_tensor()`. VRAM peak **4,859 MiB of 24,576** | mode B defeated; `cpu` DOES bypass the bank/pin path |
 | 11 | 08-22 | `--moe-backend cpu` + `PYTORCH_ALLOC_CONF=expandable_segments:False` | identical failure, VRAM peak 4,865 MiB. Override verified applied (engine returns early when the env var is set) | **expandable_segments is NOT the cause** |
 
+| 12 | 08-22 | `--moe-backend cpu` + **CPU-staging shim** (`sitecustomize` wraps `safetensors.safe_open`, loads to CPU then `.to(device)`) | **weight load SOLVED** — got all the way to `phase=expert_banks`, RAM 13→35 G, then `RuntimeError: cudaHostRegister failed for 0.2 GiB`. Clean error, RAM released, no VM OOM | staging path fixed; bank pinning is the real wall |
+| 13 | 08-22 | `--moe-backend fused`, ctx 8192, ratio 0.95, shim on | `ValueError: nvfp4 experts require --moe-backend offload or cpu, got 'fused'` | **closes the backend search space — only offload/cpu exist for nvfp4, and both pin** |
+
 **Every attempt 1–9 used a backend in the offload/hybrid family.** `auto` documents itself
 (launcher `.sh` line 122) as resolving "a MoE model to the offload family, and to HYBRID."
 So all nine attempts are the *same* path, and mode B says that path cannot work here.
@@ -171,6 +174,39 @@ commented out in `/etc/systemd/system.conf`.
 **But it cannot be the cause:** we pinned **1.00 GiB with a 64 MB memlock**. CUDA pinned
 memory on WSL2 is not accounted against mlock. Fixing it needs root (sudo wants a password)
 and would change nothing. Worth fixing for correctness only.
+
+---
+
+## VERDICT 2026-08-22 — CLOSED. Every path ends in an explicit engine error.
+
+```
+fused    -> ValueError: nvfp4 experts require --moe-backend offload or cpu
+offload  -> pins expert banks -> cudaHostRegister fails (WSL2 ~1 GiB, needs 16.9)
+cpu      -> same bank pinning -> cudaHostRegister failed for 0.2 GiB
+```
+And swallowing the pin failure does not help — `offload_cache.set_bank_sources` explicitly:
+```python
+if any(r != HostResidency.PINNED.value for r in residency):
+    raise NotImplementedError("non-pinned host bank layers need platform-specific
+        movement paths that are not implemented; only pinned layers are served")
+```
+The pageable movement paths genuinely do not exist. Going further is not a workaround, it is
+implementing FreeToken's missing WSL/WDDM support. **Stop here.**
+
+## WHAT WAS ACTUALLY SOLVED (keep this — it is reusable)
+
+`inference/freetoken/sitecustomize_cpu_stage.py` — wraps `safetensors.safe_open` so tensors
+load to CPU and then `.to(device)`, using a plain pageable cudaMemcpy instead of safetensors'
+pinned CUDA path. Enabled with `FT_CPU_STAGE=1` + `PYTHONPATH`. **Verified end to end:**
+
+```
+before: FAILED at #38,903 of 38,909 (visual.merger) / after skipping vision, at lm_head
+after : ALL SHARDS LOADED OK — 94,396 tensors, 21.80 GiB
+```
+
+This is the fix for the *weight-loading* half and it works. It is worth keeping for native
+Linux, another engine hitting the same wall, or a future FreeToken that implements pageable
+banks. It does not and cannot fix expert-bank pinning.
 
 ---
 
