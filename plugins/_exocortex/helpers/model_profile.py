@@ -98,6 +98,49 @@ def _name_from_presets() -> str:
     return ""
 
 
+def active_api_base() -> str:
+    """The active chat model's api_base, resolved the v2.9 way.
+
+    Added 2026-08-21. `_28_backend_standby` hardcoded
+    `/a0/usr/agents/agent0/plugins/_model_config/config.json` with NO fallback — a path
+    that does not exist on v2.9 — so `_get_health_urls()` returned [] and the backend
+    health check had nothing to probe. It was doubly inert: even at the correct path it
+    read `chat_model.api_base`, and v2.9's config.json is `{"model_preset": "..."}`.
+    The real api_base lives in presets.yaml alongside the model name, which is the same
+    schema move that made the whole profile system inert until it was fixed.
+
+    Mirrors _name_from_presets() deliberately: same file, same selected-then-any
+    fallback, so the two cannot disagree about which preset is active.
+
+    Returns "" when unresolvable. A cloud provider legitimately has an EMPTY api_base
+    (deepseek, openrouter), so "" means "no local endpoint to health-check" rather than
+    "lookup failed" — callers should treat it as a skip, not an error.
+    """
+    try:
+        with open(MODEL_CONFIG_PATH, encoding="utf-8") as fh:
+            selected = (json.load(fh) or {}).get("model_preset") or ""
+    except Exception:
+        selected = ""
+    try:
+        import yaml
+        with open(PRESETS_PATH, encoding="utf-8") as fh:
+            presets = yaml.safe_load(fh) or []
+    except Exception:
+        return ""
+    if not isinstance(presets, list):
+        return ""
+    for want_selected in (True, False):
+        for p in presets:
+            if not isinstance(p, dict):
+                continue
+            if want_selected and selected and p.get("name") != selected:
+                continue
+            chat = p.get("chat") if isinstance(p.get("chat"), dict) else {}
+            if chat.get("name"):
+                return str(chat.get("api_base") or "")
+    return ""
+
+
 def load_profile(agent=None) -> tuple[dict, str]:
     """Return (profile_dict, source_id).
 

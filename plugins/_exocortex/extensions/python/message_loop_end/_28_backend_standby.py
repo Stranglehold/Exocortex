@@ -86,12 +86,39 @@ def _is_backend_down(exc_str: str) -> bool:
 # ── Health check ──────────────────────────────────────────────────────────────
 
 def _get_health_urls() -> list[str]:
-    """Derive health check URLs from the agent's model config api_base."""
+    """Derive health check URLs from the agent's model config api_base.
+
+    FIXED 2026-08-21 (found by the extension survey's "does it still resolve?" pass).
+    This read MODEL_CONFIG_PATH — a hardcoded /a0/usr/agents/agent0/... path with NO
+    fallback, which does not exist on A0 v2.9 — so it always raised, always returned [],
+    and the backend health check had NOTHING to probe. Doubly inert: even at the correct
+    path it read `chat_model.api_base`, and v2.9's config.json is just
+    {"model_preset": "..."}; the api_base moved to presets.yaml. Same schema change that
+    made the whole model-profile system inert.
+
+    Now resolves through helpers/model_profile.active_api_base(), which mirrors the
+    model-name resolution so the two cannot disagree about the active preset. The old
+    path is kept as a fallback for v1.x layouts rather than deleted.
+    """
+    api_base = ""
     try:
-        with open(MODEL_CONFIG_PATH, "r") as f:
-            cfg = json.load(f)
-        api_base = cfg.get("chat_model", {}).get("api_base", "")
+        import sys
+        if "/a0/usr/plugins/_exocortex/helpers" not in sys.path:
+            sys.path.insert(0, "/a0/usr/plugins/_exocortex/helpers")
+        import model_profile as _mp
+        api_base = _mp.active_api_base() or ""
+    except Exception:
+        api_base = ""
+
+    try:
         if not api_base:
+            # v1.x layout fallback — harmless when the file is absent.
+            with open(MODEL_CONFIG_PATH, "r") as f:
+                cfg = json.load(f)
+            api_base = cfg.get("chat_model", {}).get("api_base", "")
+        if not api_base:
+            # A cloud provider has no local endpoint. Nothing to health-check is a
+            # legitimate state, not a failure.
             return []
         # Strip /v1 suffix if present, then build candidate endpoints
         base = api_base.rstrip("/")
