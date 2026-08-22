@@ -46,7 +46,12 @@ Log tag: [PLAINTEXT-FB]
 """
 
 import json
+import sys
 from typing import Any
+
+_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _HELPERS not in sys.path:
+    sys.path.insert(0, _HELPERS)
 
 from helpers.extension import Extension
 
@@ -54,6 +59,11 @@ try:
     from helpers import extract_tools
 except Exception:  # pragma: no cover - core layout changed
     extract_tools = None  # type: ignore[assignment]
+
+try:
+    import prose_leak as pl
+except Exception:  # pragma: no cover - helper missing
+    pl = None  # type: ignore[assignment]
 
 LOG_PREFIX = "[PLAINTEXT-FB]"
 
@@ -95,6 +105,26 @@ class PlaintextResponseFallback(Extension):
             if extract_tools.is_misformatted_tool_request(msg):
                 self._log("misformatted tool request — leaving for the misformat nudge")
                 return
+
+            # A VALID tool call that the model wrapped in prose. _05_prose_leak_detector
+            # claims this case and nudges for a clean re-send.
+            #
+            # Without this check _10 wins it, because its condition — non-empty, not a
+            # valid whole-message call, not misformatted — is a strict SUPERSET of the
+            # leak signature. Measured 2026-08-22: "wrapped 52943 chars of prose as a
+            # response tool call", i.e. the agent recited a valid 37KB text_editor call
+            # aloud instead of writing the file. Strictly worse than any other outcome
+            # available, which is why this file was held back from the live containers.
+            #
+            # HANDLED_KEY is imported, never retyped. Two literals here would be two
+            # notions of the handoff, free to drift, and the failure would be silent.
+            if pl is not None:
+                try:
+                    if self.agent.get_data(pl.HANDLED_KEY):
+                        self._log("prose-wrapped valid tool call — deferring to _05")
+                        return
+                except Exception:
+                    pass
 
             wrapped = json.dumps(
                 {"tool_name": "response", "tool_args": {"text": stripped}},
