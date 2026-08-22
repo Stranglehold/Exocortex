@@ -85,9 +85,19 @@ MEMORY_RATIO="${MEMORY_RATIO:-0.85}"    # fraction of FREE VRAM the engine may u
 echo "FreeToken | model=${MODEL}"
 echo "          | ${HOST}:${PORT}  ctx=${CTX}  moe-backend=${MOE_BACKEND}  memory-ratio=${MEMORY_RATIO}"
 
+# FreeToken lives in a venv rather than --system, so the install is reversible with
+# `rm -rf ~/freetoken-env` and cannot break the distro's python. Activate it here so the
+# launcher works from a plain `wsl bash -lc` with no prior activation.
+FT_VENV="${FT_VENV:-$HOME/freetoken-env}"
+if [ -f "${FT_VENV}/bin/activate" ]; then
+  # shellcheck disable=SC1091
+  source "${FT_VENV}/bin/activate"
+fi
+
 if ! command -v ft >/dev/null 2>&1; then
-  echo "ERROR: 'ft' not found. Install first, inside WSL Ubuntu:" >&2
-  echo "         uv pip install --system \"freetoken[accel]\"" >&2
+  echo "ERROR: 'ft' not found (looked in ${FT_VENV} and PATH). Install inside WSL Ubuntu:" >&2
+  echo "         uv venv ~/freetoken-env --python 3.12" >&2
+  echo "         source ~/freetoken-env/bin/activate && uv pip install \"freetoken[accel]\"" >&2
   exit 127
 fi
 
