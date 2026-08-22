@@ -21,6 +21,23 @@ _PLUGIN_CONFIG = "/a0/usr/plugins/_exocortex/config/config.json"
 _LAST_RESORT_WRITE_LIMIT = 5000
 
 
+def _enforce_write_size() -> bool:
+    """Whether the write-size threshold VETOES a write, or merely observes it.
+
+    Default False — enforcement was retired 2026-08-22. Defaults to False on an
+    unreadable config too: a config read failure must not silently resurrect a gate that
+    manufactured 357 failures, and the observation path loses nothing if it runs when it
+    need not.
+    """
+    try:
+        import json
+        with open(_PLUGIN_CONFIG, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        return bool(cfg.get("meta_gate", {}).get("write_size", {}).get("enforce", False))
+    except Exception:
+        return False
+
+
 def _backstop_limit() -> tuple[int, str]:
     """(limit, source) for the degraded path. Never raises."""
     try:
@@ -297,6 +314,46 @@ class MetaReasoningGate(Extension):
                 # Complexity only ever LOWERS the limit, so plain prose behaves exactly
                 # as before and nothing regresses on evidence we do not have.
                 sig = self._write_limits(content)
+
+                # ENFORCEMENT RETIRED 2026-08-22 (Opus Q1, Jake approved).
+                #
+                # The threshold is still COMPUTED — it is just no longer a veto. That
+                # distinction is the whole point: raising base_limit to something
+                # non-binding would make sig["over"] permanently False and destroy the
+                # signal, whereas observing keeps producing exactly the data that decides
+                # whether enforcement ever earns its way back.
+                #
+                # Why it was retired, all measured 2026-08-22:
+                #   - it blocked 5,314-14,394 chars in practice (n=25) against a valid
+                #     37,422-char tool call the model produced unaided — roughly a QUARTER
+                #     of proven capability
+                #   - the 357 blocks it manufactured became lessons teaching both agents
+                #     to avoid text_editor, which outlived the cap
+                #   - it could not prevent the failure that actually occurs at size, which
+                #     is prose leakage against v2.9's whole-message parser (see
+                #     _05_prose_leak_detector) — and a SMALLER limit makes that MORE
+                #     likely, by forcing the model to reason aloud about chunking
+                #   - none of its numbers were ever measured; the calibrating sweep was
+                #     specified and never run
+                #
+                # Reversible from config alone, no code change: set
+                # meta_gate.write_size.enforce = true.
+                if isinstance(content, str) and sig["over"] and not _enforce_write_size():
+                    try:
+                        import write_threshold as wt
+                        wt.record_observation(sig, self.agent, tool_args.get("path", ""))
+                    except Exception:
+                        pass
+                    try:
+                        print(f"[MetaGate-SIZE] observed (NOT blocked, enforcement "
+                              f"retired): {len(content):,} chars over the "
+                              f"{sig['effective_limit']:,} limit "
+                              f"(base {sig['base_limit']:,}, complexity {sig['score']}x, "
+                              f"profile={sig['profile']})", flush=True)
+                    except Exception:
+                        pass
+                    sig = dict(sig, over=False)
+
                 if isinstance(content, str) and sig["over"]:
                     path = tool_args.get("path", "OUTPUT_PATH")
                     msg = (

@@ -237,3 +237,48 @@ def describe(content: str, agent=None) -> dict:
     sig["length"] = len(content or "")
     sig["over"] = sig["length"] > limit
     return sig
+
+
+# ── observation ledger ────────────────────────────────────────────────────────
+
+OBSERVATION_LEDGER = "/a0/usr/plugins/_exocortex/state/write_size_observations.jsonl"
+
+# A record is only useful if someone can tell an observation from a block, so every line
+# carries `enforced: false`. When enforcement is off these are writes that WOULD have been
+# vetoed and were not — which is precisely the population the coherence sweep was
+# specified to measure and never did. Pair a line here with whether the turn actually
+# succeeded and you have the calibration, gathered from production instead of a benchmark.
+
+
+def record_observation(sig: dict, agent=None, path: str = "") -> bool:
+    """Append one would-have-blocked write. Best-effort; never raises into the gate."""
+    try:
+        import json as _json
+        import os as _os
+        import time as _time
+
+        _os.makedirs(_os.path.dirname(OBSERVATION_LEDGER), exist_ok=True)
+        row = {
+            "at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+            "enforced": False,
+            "length": sig.get("length"),
+            "effective_limit": sig.get("effective_limit"),
+            "base_limit": sig.get("base_limit"),
+            "score": sig.get("score"),
+            "fenced_blocks": sig.get("fenced_blocks"),
+            "escape_density": sig.get("escape_density"),
+            "profile": sig.get("profile"),
+            "profile_sourced": sig.get("profile_sourced"),
+            "path": (path or "")[-120:],
+        }
+        try:
+            import model_profile as _mp
+            row["model_id"] = _mp.active_model_id(agent) or ""
+        except Exception:
+            row["model_id"] = ""
+
+        with open(OBSERVATION_LEDGER, "a", encoding="utf-8") as fh:
+            fh.write(_json.dumps(row) + "\n")
+        return True
+    except Exception:
+        return False
