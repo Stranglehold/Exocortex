@@ -315,6 +315,46 @@ else is changed, not assumed from this note.
 
 ---
 
+## 7a. MEASUREMENT — the ladder, run 2026-08-22
+
+Arm: `exo_installtest`, A0 v2.9 + Exocortex, repointed to `:1235` serving **qwen3.8-27b**,
+`base_limit` raised to 100,000,000 so the size branch cannot fire. Same JSON-in-content
+tool channel as production. Model **generates** every character; no `§§include`, no
+`code_execution`, single `text_editor` write per rung.
+
+Confound cleared beforehand: generation is not token-capped anywhere on this stack — no
+`max_tokens` in the preset, no `-n`/`--n-predict` on the server, slots report
+`n_predict: -1`. A cutoff would be model behaviour, not budget.
+
+### Prose
+
+| target | expected | written | seconds | verdict |
+|---|---|---|---|---|
+| 2,000 | 2,061 | **2,061** | 122 | exact |
+| 8,000 | 8,133 | **8,133** | 163 | exact |
+| 16,000 | 16,016 | **16,016** | 302 | exact |
+| 32,000 | 32,001 | **32,001** | 409 | exact |
+
+**Exact byte match at every rung. No truncation at any size tested.**
+
+Set against the gate's real behaviour on the same model family — 25 blocks ranging
+**5,314 to 14,394** characters — every one of those blocks was below a capability the
+model has now demonstrated four to six times over.
+
+### Code (higher escape density) — the gate's own central claim
+
+`_20` asserts *"COMPLEXITY predicts truncation and LENGTH does not — a 20K prose payload
+can pass where 12K with three code fences fails."* Prose cannot test that. The `code`
+shape in `scripts/write_ladder.py` renders escape-dense Python — measured **19.9% escape
+density against prose's 6.5%**, a 3× difference on exactly the axis
+`escape_penalty` keys on.
+
+*Results pending at time of writing — see `D:/tmp/ladder_a0_code.json`. This is the arm
+that decides whether the complexity multiplier encodes something real or is a second
+unmeasured placeholder sitting on top of the first.* If code truncates where prose does
+not, the multiplier survives the inversion as a genuine signal and only `base_limit`
+should go. If it does not, neither number was measuring anything.
+
 ## 8. Open questions for Opus
 
 1. **Ratify or reject the inversion.** This partially unwinds A3, which you approved. The
@@ -350,7 +390,43 @@ recalled:
 - The mislabel-as-response branch — `/a0/agent.py:1128-1129`
 - `_10_plaintext_response_fallback.py` absent from both containers — `find /a0`
 
-*Not verified, stated as unknown:* whether any local model has demonstrably emitted a
->5,000-char tool call directly. The 40K test does not show this — the model emitted 92
-characters and `_03` expanded the payload inside the container. That gap is the reason
-§3.2 exists.
+### 9.1 RESOLVED 2026-08-22 — the model had already proven it, in the log
+
+The original version of this note recorded as *unknown* whether any local model had
+directly emitted a >5,000-char tool call. It had. The evidence was in the container log
+the whole time.
+
+On 2026-08-21, after the `§§include` attempt returned 94 bytes, Aporia reasoned:
+
+> *"re-emitting 106 lines of near-identical text is low-risk (it's repetitive, I'm unlikely
+> to drop a line). Let me do it. I'll write to written_prose_20000_v2.txt and verify byte
+> count + tail + sha against the ground truth."*
+
+She then did exactly that. Verified:
+
+| check | result |
+|---|---|
+| bytes written | **20,374** |
+| md5 vs ground truth | `bae7db6a4e6311e057a5494aecf0def3` — **identical** |
+| tool calls used | **one** `text_editor` / `action: write` — not chunked, not appended |
+| `§§include` involved | **no** — only 2 INCLUDE-03 events exist and both are from 2026-08-22 |
+
+So **qwen3.8-27b emitted 20,374 characters through A0's JSON-in-content channel in a
+single call, byte-perfect.**
+
+Against that, the gate's actual blocked payloads (n=25, excluding the deliberate 120,010
+probes) ranged **5,314 to 14,394 characters**. Every single block was below demonstrated
+capability — the threshold sat at roughly a quarter of what the model had already proven.
+
+This is the strongest available argument for the inversion, and it is worth naming how it
+was obtained: not by running the sweep, but by reading what the system had already
+recorded about itself. The measurement existed; nothing consumed it.
+
+**Caveat, stated because it is the one thing this does not settle.** The 20,374-char
+payload was *prose* — repetitive, low escape density, no fenced blocks. That is the
+easiest case for JSON-in-content, and it is precisely the case the complexity multiplier
+was designed to distinguish from. `gt_code_20000.txt` (20,286 bytes) and
+`gt_code_40000.txt` (40,464 bytes) already exist in the container and have never been
+tested. **Code-shaped payloads at these sizes remain genuinely unknown**, and the ladder in
+`scripts/write_ladder.py` should be extended to cover them before the size branch is
+retired rather than merely relaxed.

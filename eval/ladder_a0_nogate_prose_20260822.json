@@ -1,0 +1,35 @@
+[
+  {
+    "label": "A0-nogate",
+    "target": 8000,
+    "lines": 59,
+    "expected": 8133,
+    "got": 8133,
+    "seconds": 163.2,
+    "verdict": "COMPLETE",
+    "error": null,
+    "reply": "No byte count was reported. The write returned only the line count: `/tmp/ladder_8000.txt written 59 lines`."
+  },
+  {
+    "label": "A0-nogate",
+    "target": 16000,
+    "lines": 116,
+    "expected": 16016,
+    "got": 16016,
+    "seconds": 302.2,
+    "verdict": "COMPLETE",
+    "error": null,
+    "reply": "The tool result did not report a byte count \u2014 it reported only the line count (\"written 116 lines\"), so there is no byte count to relay. If you want the actual size, I can run `wc -c /tmp/ladder_16000.txt`."
+  },
+  {
+    "label": "A0-nogate",
+    "target": 32000,
+    "lines": 231,
+    "expected": 32001,
+    "got": 32001,
+    "seconds": 408.5,
+    "verdict": "COMPLETE",
+    "error": null,
+    "reply": "The tool did not report a byte count. It reported: `/tmp/ladder_32000.txt written 231 lines`."
+  }
+]
