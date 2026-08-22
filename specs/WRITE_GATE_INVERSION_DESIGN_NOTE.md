@@ -141,19 +141,59 @@ design depends on holds empirically and not merely by argument. The thoughts-lea
 the one that matters: it is claimed by `is_misformatted_tool_request` and correctly
 ignored by the truncation signature.
 
-### 2.3 What A0 currently does with a truncated tool call — the real bug
+### 2.3 What A0 currently does with a truncated tool call
 
-`agent.py:1128-1129` takes the branch where `extract_tool_request(...) is None` **and**
-`is_misformatted_tool_request(...)` is False, and treats the content as an ordinary text
-response.
+**CORRECTED 2026-08-22, after this note was first sent.** The original text claimed a
+truncated tool call is silently mislabelled as an ordinary text response. That is wrong
+for our configuration, and the correction matters enough to state plainly rather than
+quietly edit.
 
-**So a truncated tool call is currently mislabelled as the agent choosing to talk instead
-of act.** No error, no retry, no signal. The turn simply produces prose. That is worse
-than a block, and it is invisible in the record — which is very likely part of why
-truncation has never been measured: it does not announce itself.
+The branch at `agent.py:1123-1135` is gated on `llm_result.mode == "responses"`:
 
-`_10_plaintext_response_fallback.py` addresses the adjacent case and **is not deployed to
-either live container** (verified 2026-08-22, `find /a0` returns nothing on both).
+```python
+if (
+    llm_result.mode == "responses"
+    and isinstance(message, str) and bool(message.strip())
+    and extract_tools.extract_tool_request(message) is None
+    and not extract_tools.is_misformatted_tool_request(message)
+):
+    return await self._execute_tool_request(tool_name="response", ...)
+return await self.process_tools(message)
+```
+
+Our preset sets `a0_api_mode: chat_completions`, so **that branch never fires for us.** A
+truncated payload falls through to `process_tools`, finds no tool request, and produces
+the `fw.msg_misformat.md` warning. The model is nudged; it is not silent.
+
+**The defect is real but different, and sharper.** The nudge says the output was
+*misformatted*. It was *truncated*. Those need opposite remedies — misformat means "fix
+your JSON", truncation means "the payload was too long for one call, use `§§include` or
+write in sections". The model receives a diagnosis pointing at the wrong fix, and every
+retry re-runs the same too-long emission. That is a plausible mechanism for the repeated
+`oversized_tool_write` recurrences and it is exactly what a truncation-specific detector
+would fix.
+
+### 2.4 `_10_plaintext_response_fallback` COLLIDES with the detector — do not co-deploy naively
+
+**CORRECTED 2026-08-22.** The original note recommended deploying `_10` alongside the
+detector to "close both halves of the parse boundary". That recommendation was wrong.
+
+`_10` fires at `process_tools/start` when the message is non-empty, is **not** a valid
+tool request, and is **not** misformatted — and rewrites it into an explicit `response`
+tool call. A truncated payload satisfies all three conditions exactly.
+
+So deploying `_10` as-is would convert a truncated 30K write into **the agent reading a
+cut-off JSON fragment aloud to the user**. That is strictly worse than today's misformat
+warning, and its absence from both live containers is currently protective by accident.
+
+This is the same hook-ordering hazard as `_03` before `_20`: two components claiming the
+same condition. The constraint is therefore:
+
+> **The truncation detector must run before `_10` and must claim the truncation case, so
+> `_10` only ever sees genuine prose.**
+
+`_10` remains correct for the case it was built for — a reasoning-distilled model
+answering in prose. It simply must not be the component that handles a severed payload.
 
 ---
 
@@ -287,9 +327,12 @@ else is changed, not assumed from this note.
 3. **Does this compose with, or replace, the general constraint-provenance from Call 2?**
    If the size constraint goes away, the lessons it generated should be retracted by that
    mechanism rather than hand-edited. They may be the same build.
-4. **Should `_10_plaintext_response_fallback.py` deploy as part of this?** It is not on
-   either container and it handles the adjacent misformat case. Deploying it and the
-   detector together would close both halves of the parse boundary at once.
+4. **`_10_plaintext_response_fallback.py` — REVISED, see §2.4.** My original answer here
+   was "deploy it alongside the detector". That was wrong: `_10`'s firing condition is a
+   superset of the truncation signature, so it would turn a severed payload into the agent
+   reciting a cut-off JSON fragment. If it deploys, the detector must run first and claim
+   the truncation case. The safer sequence is detector first, `_10` afterwards and only
+   once the ordering is enforced.
 
 ---
 

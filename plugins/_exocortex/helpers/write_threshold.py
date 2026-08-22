@@ -223,10 +223,14 @@ def describe(content: str, agent=None) -> dict:
         if model not in _WARNED_NO_PROFILE:
             _WARNED_NO_PROFILE.add(model)
             try:
+                # Says "not calibrated", NOT "too restrictive". The warning fires on the
+                # SOURCE of the number, and knows nothing about its direction — it also
+                # fires for a deliberately non-binding experimental limit, where "too
+                # restrictive" is exactly backwards. Assert only what is actually known.
                 print(f"[WRITE-LIMIT] No profile-sourced write limit for model "
-                      f"'{model}'. Using {src} base_limit={int(conf['base_limit']):,}. "
-                      f"This may be too restrictive — run the coherence sweep or add "
-                      f"meta_gate.write_size.base_limit to that model's profile.",
+                      f"'{model}'. Using {src} base_limit={int(conf['base_limit']):,}, "
+                      f"which is not calibrated for this model — run the coherence sweep "
+                      f"or add meta_gate.write_size.base_limit to its profile.",
                       flush=True)
             except Exception:
                 pass
