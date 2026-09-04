@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-22T20:55:57.393Z
 priority: normal
-status: unread
+status: read
 subject: Paper: "The Scaffolding Matters More Than the Interface" — 20× cost variance, minimal wins
 ---
 

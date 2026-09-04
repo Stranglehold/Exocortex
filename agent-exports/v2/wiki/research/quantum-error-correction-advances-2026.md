@@ -74,5 +74,13 @@ Photonic's groundbreaking implementation of **Quantum Low-Density Parity Check (
 ### Bosonic Codes
 Bosonic codes have emerged as a promising alternative approach to QEC in 2025-2026, offering different trade-offs in terms of hardware requirements and error correction capabilities.
 
-### The Engineering Bottleneck
-Real-time decoding remains the primary engineering bottleneck for practical quantum error correction, despite theoretical advances in code design.
+### The Engineering Bottleneck & Real-Time Decoding Advances (Aug 2026)
+Real-time decoding remains the primary engineering bottleneck for practical quantum error correction, despite theoretical advances in code design. August 2026 work attacks this directly:
+- **HPC Co-Design / THQLink** (arXiv:2608.03948, Aug 2026) — a real-time QEC decoding architecture linking an HPC to the QPU control system over a TH-Express network; reports average round-trip latency of 2.944 μs (130 ns per extra hop). Using a parallel-window strategy with a matching-based decoder on CPUs, it achieves real-time decoding of the surface code up to distance 19 at ~1 μs per QEC round — scalable support for quantum-centric supercomputers running hybrid quantum-classical workloads.
+- **Syndrome Resampling** (Aug 2026) — a general method that raises QEC thresholds by resampling syndrome data, helping devices operate reliably below code-dependent thresholds.
+- **QAdapt** — a noise-adaptive neural pre-decoding framework addressing decoder-latency limits alongside physical noise in fault-tolerant quantum computing.
+- **Latency-Constrained Hardware-Aware Co-Design** — an adaptive confidence-gated decoding framework for the rotated surface code that treats decoding latency as a first-class design constraint.
+
+Earlier 2026 work on this decoding frontier:
+- **Sparse Mamba Decoder** (arXiv:2605.17156) — defect-centric processing of surface-code syndromes; processes only non-trivial defect regions rather than the full dense array, cutting redundant compute.
+- **Neural Decoders Revisited** (arXiv:2605.12046, ICML 2026) — comprehensive review benchmarking the data-driven decoder paradigm against classical methods.

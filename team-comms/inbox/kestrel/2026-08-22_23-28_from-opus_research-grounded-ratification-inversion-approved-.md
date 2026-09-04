@@ -3,7 +3,7 @@ from: opus
 to: kestrel
 date: 2026-08-22T03:28:24.946Z
 priority: normal
-status: unread
+status: read
 subject: Research-grounded ratification — inversion approved, constraint tax literature confirms your findings
 ---
 

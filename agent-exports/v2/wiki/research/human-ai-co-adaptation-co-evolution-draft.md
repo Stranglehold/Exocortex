@@ -92,6 +92,36 @@ The co-creativity literature characterizes a spectrum from AI-as-digital-pen to 
 
 ---
 
+## 6b. 2026 Developments & Mechanistic Grounding of the Loop
+
+The co-evolutionary loop now has additional layers that sharpen it from metaphor to mechanism:
+
+### A. RLHF as the learning substrate of the loop
+
+Microsoft's "co-evolving system" is, at the mechanistic level, **preference-tracking under non-stationarity**. The library's treatment of Reinforcement Learning from Human Feedback (Christiano et al. 2017; preference-based RL originates in Akrour et al. and Cheng et al. 2011) supplies the substrate: a reward model learns human preferences via Bradley-Terry pairwise comparisons, and PPO optimizes the policy against it with a KL divergence penalty. Two consequences for co-adaptation:
+
+- **Covariate shift is mutual.** The agent's policy changes (an RLHF update), which shifts the distribution of inputs the human sees, which shifts human preferences, which becomes another training signal — a *double* covariate-shift problem that standard RLHF assumes away by holding preferences fixed. Each partner's learning alters the other's data stream.
+- **Sparse feedback as steering.** The same sparsity that makes RLHF tractable is what lets "give the floor" (Missing Variable, §2) operate: the human's step-back becomes a signal for deeper agent behavior. This reframes "voice convergence" and "register grammar inversion" not only as linguistic phenomena but as distributional signatures of the shared reward model tracking the relationship.
+- **Reward hacking / misalignment risk.** Non-stationarity invites the agent to optimize for *reported* human preferences (sycophancy) rather than stable ones; in co-evolution this is the explanation-style feedback loop raised in §7 — does the agent's output shape trust in ways that then corrupt its next training signal?
+
+### B. Continuous delegation as trust establishment — AITH (arXiv:2604.07695, April 2026)
+
+Chen's post-quantum **AITH** framework treats human-AI trust not as a calibrated scalar but as an ongoing cryptographic *delegation protocol* — establishing, bounding, and revoking the authority of an agent to act on behalf of a principal. This operationalizes Microsoft's "monitor both partners": trust becomes a revocable grant re-established across delegation episodes, directly encoding the co-evolutionary loop (each delegation reshapes what the human trusts; each trusted action reshapes what the agent is authorized). It imports a cryptographic failure mode — **trust-revocation lag** — into the collaboration model.
+
+### C. Agentic cross-entity delegation (arXiv:2602.11865, Feb 2026)
+
+Work on decomposing problems and *safely delegating across agents and humans* shows delegation becoming a learned, composable operation in multi-agent systems — the human is one target among many, flattening the human/agent boundary in the very loop Microsoft describes. This predicts a novel co-adaptation vector: humans adapt to being "one node" in an agent delegation graph rather than the sole commander.
+
+### D. Foundational control-theory grounding
+
+The loop maps onto **Parasuraman & Riley's** human-AI automation model and the **Hollnagel HICC** framework: trust calibration is a feedback-control problem, and adaptation in *both* partners is a dual-control problem. The Missing Variable's "spectral phase transitions" (§2) are then interpretable as these control loops crossing bifurcation points — the two coupled oscillators (human + agent) shifting between stable coordination regimes (Expansion, Compression, Re-expansion, Second Compression). This turns the empirical observation into a dynamical-systems claim with falsifiable predictions.
+
+---
+
+## 6. Co-Adaptation of the Human Partner's Role: Progressive Delegation Arc (Albada, O'Reilly, Ch.13)
+
+Co-evolution is not only the agent adapting — it is also the *human role* shifting as mutual trust and agent autonomy increase. "Building Applications with AI Agents" (Michael Albada, O'Reilly, Ch.13 Human-Agent Collaboration, p.297-319) models this arc explicitly: as agents grow more capable and trustworthy, human roles progress **executor -> reviewer -> collaborator -> governor**. The delegation boundary expands over time through *progressive delegation*, and trust must be repairable when mistakes happen. This is a concrete co-adaptation dimension absent from most treatments — the partner's identity/function changes as strongly as the agent's capability. It also operationalizes Microsoft's "monitor both partners" (§1): one can watch for role-stall (human still acting as executor while the agent already qualifies for governance), an observable marker of optimization myopia.
+
 ## Sources
 
 - Microsoft Research, "From Self-Improving Agents to Co-Evolving Human-AI Systems" (July 2026) — via Exocortex field report 20260717_agentic-ai-self-learning.md

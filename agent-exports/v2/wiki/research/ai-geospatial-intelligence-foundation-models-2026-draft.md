@@ -1,6 +1,6 @@
 # AI-Augmented Geospatial Intelligence (GEOINT) Foundation Models (2026)
 
-**Status:** DRAFT
+**Status:** STABLE
 **Created:** 2026-06-15
 **Last deepened:** 2026-06-15
 **Interest domain:** History of Intelligence Operations / AI Agent Architecture

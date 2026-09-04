@@ -1,0 +1,6462 @@
+{
+ "generated": "2026-09-03T21:28:51Z",
+ "container_paths": {
+  "plugin": "/a0/usr/plugins/_exocortex/extensions/python",
+  "core": [
+   "/a0/extensions/python",
+   "/a0/plugins"
+  ]
+ },
+ "counts": {
+  "extensions_total": 243,
+  "plugin": 76,
+  "core": 167,
+  "hooks": 46,
+  "undetectable": 180,
+  "error_only": 8,
+  "paths_missing": 20
+ },
+ "state_keys": {
+  "written": 60,
+  "read": 74,
+  "severed_write_no_read": [
+   "_backend_poll_task",
+   "_epistemic_integrity",
+   "_mcp_degraded",
+   "_mcp_health",
+   "_recall_memories_iter",
+   "_recall_memories_task"
+  ],
+  "read_never_written": [
+   "__bst_belief_state__",
+   "_bst_store",
+   "_heartbeat_last_history_len",
+   "_heartbeat_turn_count",
+   "_injection_token_counts",
+   "_orch_state",
+   "_org_active_role",
+   "_org_htn_allowed_plans",
+   "_sig_guardian_history",
+   "_step_budget_count",
+   "_supervisor_model_overrides",
+   "_tool_prompt_kwargs",
+   "_wm_state",
+   "_working_memory",
+   "config",
+   "context",
+   "history",
+   "last_tool_call",
+   "lifetime_hours",
+   "loop_data"
+  ]
+ },
+ "webui": {
+  "root": "/a0/webui",
+  "tokens": {
+   "defined": 74,
+   "read_somewhere": 72,
+   "defined_never_read_candidates": [
+    "--color-highlight-light",
+    "--font-family-monospace"
+   ],
+   "read_never_defined": [
+    "--bg-color",
+    "--chat-max-width",
+    "--color-bg",
+    "--color-bg-light",
+    "--color-bg-primary",
+    "--color-bg-secondary",
+    "--color-bg-tertiary",
+    "--color-danger",
+    "--color-error",
+    "--color-error-bg",
+    "--color-info",
+    "--color-success",
+    "--color-surface",
+    "--color-text-primary",
+    "--color-text-secondary",
+    "--color-warning",
+    "--color-warning-bg",
+    "--font-size-larger",
+    "--font-size-medium",
+    "--font-size-sm",
+    "--header-panel-collapsed-width",
+    "--header-panel-expanded-width",
+    "--resource-color",
+    "--resource-value",
+    "--right-canvas-border",
+    "--right-canvas-chrome",
+    "--right-canvas-surface",
+    "--step-accent",
+    "--welcome-banner-accent"
+   ],
+   "pairs_dark_light": 17
+  },
+  "extension_points": {
+   "_sidebar-quick-actions-main-start": {
+    "kind": "provider-only",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_memory",
+      "files": [
+       "memory-entry.html"
+      ]
+     }
+    ]
+   },
+   "apply_snapshot_before": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_goal",
+      "files": [
+       "refresh-goal.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_model_config",
+      "files": [
+       "refresh-switcher.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_time_travel",
+      "files": [
+       "refresh-time-travel.js"
+      ]
+     }
+    ]
+   },
+   "chat-input-bottom-actions-end": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/usr/plugins/camofox_browser",
+      "files": [
+       "camofox-browser-btn.html"
+      ]
+     }
+    ]
+   },
+   "chat-input-bottom-actions-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_chat_compaction",
+      "files": [
+       "compact-button.html"
+      ]
+     }
+    ]
+   },
+   "chat-input-box-end": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_whisper_stt",
+      "files": [
+       "microphone-button.html"
+      ]
+     }
+    ]
+   },
+   "chat-input-box-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_commands",
+      "files": [
+       "commands-menu.html"
+      ]
+     }
+    ]
+   },
+   "chat-input-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "chat-input-progress-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "chat-input-progress-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_agent_editor",
+      "files": [
+       "agent-ready-note.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_goal",
+      "files": [
+       "goal-strip.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_model_config",
+      "files": [
+       "model-switcher.html"
+      ]
+     }
+    ]
+   },
+   "chat-input-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "chat-nav-after": {
+    "kind": "html",
+    "providers": []
+   },
+   "chat-top-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "chat-top-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "chats-header-controls": {
+    "kind": "html",
+    "providers": []
+   },
+   "close_modal_before": {
+    "kind": "js",
+    "providers": []
+   },
+   "confirm_dialog_after_render": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_scan",
+      "files": [
+       "add-plugin-hub-scan-action.js"
+      ]
+     }
+    ]
+   },
+   "fetch_api_call_after": {
+    "kind": "js",
+    "providers": []
+   },
+   "fetch_api_call_before": {
+    "kind": "js",
+    "providers": []
+   },
+   "get_message_handler": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_code_execution",
+      "files": [
+       "code-exe-handler.js"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "artifact-handler.js"
+      ]
+     }
+    ]
+   },
+   "get_tool_message_handler": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_browser",
+      "files": [
+       "browser-tool-handler.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_office",
+      "files": [
+       "office-artifact-handler.js"
+      ]
+     }
+    ]
+   },
+   "initFw_end": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_agent_editor",
+      "files": [
+       "agent-editor.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_discovery",
+      "files": [
+       "auto-modal.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_skills",
+      "files": [
+       "skills-menu-injector.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_whats_new",
+      "files": [
+       "whats-new.js"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "artifact-panel-init.js"
+      ]
+     }
+    ]
+   },
+   "initFw_start": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "anim-throttle.js",
+       "artifact-panel-init.js"
+      ]
+     }
+    ]
+   },
+   "install-git-actions": {
+    "kind": "provider-only",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_validator",
+      "files": [
+       "validate-button.html"
+      ]
+     }
+    ]
+   },
+   "install-zip-actions": {
+    "kind": "provider-only",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_validator",
+      "files": [
+       "validate-button.html"
+      ]
+     }
+    ]
+   },
+   "json_api_call_after": {
+    "kind": "js",
+    "providers": []
+   },
+   "json_api_call_before": {
+    "kind": "js",
+    "providers": []
+   },
+   "json_api_call_error": {
+    "kind": "js",
+    "providers": []
+   },
+   "lib": {
+    "kind": "provider-only",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_office",
+      "files": [
+       "document-actions.js"
+      ]
+     }
+    ]
+   },
+   "modal_content_loaded": {
+    "kind": "js",
+    "providers": []
+   },
+   "onboarding-success-end": {
+    "kind": "provider-only",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_discovery",
+      "files": [
+       "discovery-cards.html"
+      ]
+     }
+    ]
+   },
+   "open_modal_before": {
+    "kind": "js",
+    "providers": []
+   },
+   "page-head": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_kokoro_tts",
+      "files": [
+       "runtime.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_whisper_stt",
+      "files": [
+       "runtime.html"
+      ]
+     }
+    ]
+   },
+   "plugins-list-dropdown-end": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_installer",
+      "files": [
+       "plugin-hub-button.html"
+      ]
+     }
+    ]
+   },
+   "plugins-list-dropdown-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "plugins-list-header-buttons": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_installer",
+      "files": [
+       "install-buttons.html"
+      ]
+     }
+    ]
+   },
+   "plugins_list_after_load": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_plugin_installer",
+      "files": [
+       "annotate-plugin-hub-links.js"
+      ]
+     }
+    ]
+   },
+   "right-canvas-empty-state": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-panels": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_browser",
+      "files": [
+       "browser-panel.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_desktop",
+      "files": [
+       "desktop-panel.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_editor",
+      "files": [
+       "editor-panel.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_time_travel",
+      "files": [
+       "time-travel-panel.html"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "exo-ops-panel.html",
+       "sys-monitor-panel.html",
+       "workshop-panel.html"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/obsidian",
+      "files": [
+       "obsidian-panel.html"
+      ]
+     }
+    ]
+   },
+   "right-canvas-shell-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-shell-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-tabs-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-tabs-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-toolbar-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "right-canvas-toolbar-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_desktop",
+      "files": [
+       "desktop-new-menu.html"
+      ]
+     }
+    ]
+   },
+   "right_canvas_register_surfaces": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_browser",
+      "files": [
+       "register-browser.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_desktop",
+      "files": [
+       "register-desktop.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_editor",
+      "files": [
+       "register-editor.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_time_travel",
+      "files": [
+       "register-time-travel.js"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "register-exo-ops.js",
+       "register-sys-monitor.js",
+       "register-workshop.js"
+      ]
+     },
+     {
+      "plugin": "/a0/usr/plugins/obsidian",
+      "files": [
+       "register-obsidian.js"
+      ]
+     }
+    ]
+   },
+   "send_message_before": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_commands",
+      "files": [
+       "_10_resolve_slash_command.js"
+      ]
+     }
+    ]
+   },
+   "set_messages_after_loop": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_browser",
+      "files": [
+       "auto-open-browser-results.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_chat_branching",
+      "files": [
+       "inject-branch-buttons.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_editor",
+      "files": [
+       "sync-text-editor-results.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_office",
+      "files": [
+       "auto-open-document-results.js",
+       "document-response-file-cards.js"
+      ]
+     }
+    ]
+   },
+   "set_messages_before_loop": {
+    "kind": "js",
+    "providers": []
+   },
+   "sidebar-bottom-wrapper-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-bottom-wrapper-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/usr/plugins/_exocortex",
+      "files": [
+       "theme-picker.html"
+      ]
+     }
+    ]
+   },
+   "sidebar-chats-list-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-chats-list-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-quick-actions-dropdown-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-quick-actions-dropdown-start": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_memory",
+      "files": [
+       "memory-entry.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_time_travel",
+      "files": [
+       "time-travel-entry.html"
+      ]
+     }
+    ]
+   },
+   "sidebar-quick-actions-main-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-quick-actions-main-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-row-actions-menu": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_chat_naming",
+      "files": [
+       "rename.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_pin_to_top",
+      "files": [
+       "pin-to-top.html"
+      ]
+     }
+    ]
+   },
+   "sidebar-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-tasks-list-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-tasks-list-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-top-wrapper-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "sidebar-top-wrapper-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "surfaces_register": {
+    "kind": "js",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_browser",
+      "files": [
+       "register-browser.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_desktop",
+      "files": [
+       "register-desktop.js"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_editor",
+      "files": [
+       "register-editor.js"
+      ]
+     }
+    ]
+   },
+   "sync-status-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "voice-settings-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "voice-settings-main": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_kokoro_tts",
+      "files": [
+       "kokoro-card.html"
+      ]
+     },
+     {
+      "plugin": "/a0/plugins/_whisper_stt",
+      "files": [
+       "whisper-card.html"
+      ]
+     }
+    ]
+   },
+   "voice-settings-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "webui_ws_push": {
+    "kind": "js",
+    "providers": []
+   },
+   "welcome-actions-end": {
+    "kind": "html",
+    "providers": [
+     {
+      "plugin": "/a0/plugins/_discovery",
+      "files": [
+       "discovery-cards.html"
+      ]
+     }
+    ]
+   },
+   "welcome-actions-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "welcome-banners-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "welcome-banners-start": {
+    "kind": "html",
+    "providers": []
+   },
+   "welcome-screen-end": {
+    "kind": "html",
+    "providers": []
+   },
+   "welcome-screen-start": {
+    "kind": "html",
+    "providers": []
+   }
+  },
+  "plugin_ui_parts": [
+   {
+    "plugin": "/a0/plugins/_agent_editor",
+    "files": [
+     "agent-editor-store.js",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_browser",
+    "files": [
+     "browser-config-store.js",
+     "browser-panel.html",
+     "browser-store.js",
+     "config.html",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_chat_compaction",
+    "files": [
+     "compact-modal.html",
+     "compact-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_chat_naming",
+    "files": [
+     "chat-naming-store.js",
+     "config.html",
+     "rename.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_code_execution",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_commands",
+    "files": [
+     "commands-slash-store.js",
+     "commands-store.js",
+     "editor.html",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_desktop",
+    "files": [
+     "desktop-panel.html",
+     "desktop-store.js",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_discovery",
+    "files": [
+     "discovery-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_document_query",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_editor",
+    "files": [
+     "editor-panel.html",
+     "editor-preview.js",
+     "editor-store.js",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_email_integration",
+    "files": [
+     "config.html",
+     "email-config-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_error_retry",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_goal",
+    "files": [
+     "goal-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_infection_check",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_kokoro_tts",
+    "files": [
+     "config.html",
+     "kokoro-tts-store.js",
+     "main.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_memory",
+    "files": [
+     "config.html",
+     "main.html",
+     "memory-dashboard-store.js",
+     "memory-dashboard.html",
+     "memory-detail-modal.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_migrate_agents",
+    "files": [
+     "main.html",
+     "migrate-agents-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_model_config",
+    "files": [
+     "api-keys-mixin.js",
+     "api-keys.html",
+     "config.html",
+     "main.html",
+     "model-config-store.js",
+     "model-field.html",
+     "models-summary.html",
+     "preset-overview.html",
+     "switcher-mixin.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_oauth",
+    "files": [
+     "config.html",
+     "oauth-config-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_office",
+    "files": [
+     "main.html",
+     "office-panel.html",
+     "office-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_onboarding",
+    "files": [
+     "onboarding-providers.js",
+     "onboarding-store.js",
+     "onboarding.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_orchestrator",
+    "files": [
+     "config.html",
+     "orchestrator-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_pin_to_top",
+    "files": [
+     "pin-to-top-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_plugin_installer",
+    "files": [
+     "install-detail.html",
+     "install-git.html",
+     "install-index.html",
+     "install-shared.css",
+     "install-zip.html",
+     "main.html",
+     "pluginInstallStore.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_plugin_scan",
+    "files": [
+     "main.html",
+     "plugin-scan-store.js",
+     "plugin-scan.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_plugin_validator",
+    "files": [
+     "main.html",
+     "plugin-validator-store.js",
+     "plugin-validator.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_promptinclude",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_skills",
+    "files": [
+     "config-store.js",
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_telegram_integration",
+    "files": [
+     "config.html",
+     "telegram-config-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_text_editor",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_time_travel",
+    "files": [
+     "config.html",
+     "main.html",
+     "time-travel-panel.html",
+     "time-travel-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_whats_new",
+    "files": [
+     "main.html",
+     "whats-new-slides.js",
+     "whats-new-store.js",
+     "whats-new.html"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_whatsapp_integration",
+    "files": [
+     "config.html",
+     "whatsapp-config-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/plugins/_whisper_stt",
+    "files": [
+     "config.html",
+     "main.html",
+     "whisper-stt-store.js",
+     "whisper-stt.css"
+    ]
+   },
+   {
+    "plugin": "/a0/usr/plugins/_exocortex",
+    "files": [
+     "artifact-panel.css",
+     "artifact-panel.js",
+     "exo-artifact.js",
+     "exo-ops-content.html",
+     "sys-monitor-content.html",
+     "sys-monitor-store.js",
+     "theme-editor.js",
+     "theme-store.js"
+    ]
+   },
+   {
+    "plugin": "/a0/usr/plugins/agentevolver_self_improvement",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/usr/plugins/autodream",
+    "files": [
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/usr/plugins/camofox_browser",
+    "files": [
+     "camofox-store.js",
+     "camofox-viewer-panel.js",
+     "config.html"
+    ]
+   },
+   {
+    "plugin": "/a0/usr/plugins/obsidian",
+    "files": [
+     "obsidian-panel.html",
+     "obsidian-store.js",
+     "obsidian-surface.html"
+    ]
+   }
+  ],
+  "weight": {
+   "js_files": 78,
+   "js_bytes": 1604805,
+   "js_largest": [
+    [
+     "js/transformers@3.0.2.js",
+     748496
+    ],
+    [
+     "js/messages.js",
+     108386
+    ],
+    [
+     "components/modals/file-browser/file-browser-store.js",
+     51221
+    ],
+    [
+     "components/settings/mcp/client/mcp-servers-store.js",
+     36060
+    ],
+    [
+     "components/settings/developer/websocket-test-store.js",
+     33283
+    ],
+    [
+     "components/modals/scheduler/scheduler-store.js",
+     32967
+    ]
+   ],
+   "css_bytes": 127491
+  },
+  "behaviour": {
+   "message_window_page_size": 60,
+   "message_window_max_expr": "DEFAULT_PAGE_SIZE * 2",
+   "smooth_stream": "false  // smooth render disabled, not reliable yet !isMassRender(), // stream smoothly if",
+   "local_patch_markers_in_messages_js": 9
+  },
+  "limits": [
+   "token reads via getPropertyValue()/string-building are invisible to the var(--x) regex: zero-read tokens are candidates, not dead",
+   "extension points named through a variable are missed",
+   "vendor/, node_modules/, public/ excluded from reads"
+  ]
+ },
+ "flags": {
+  "root": "/a0/usr/plugins/_exocortex/extensions/python",
+  "counts": {
+   "extensions": 72,
+   "with_cfg_get_idiom": 24,
+   "defaults_only": 2,
+   "other_guard": 0,
+   "none": 46,
+   "injectors": 27,
+   "injectors_without_flag": 16
+  },
+  "convention_claim": "CLAUDE.md: every component reads an `enabled` flag, skips if missing or false",
+  "convention_measured": "24 of 72 use the cfg.get idiom; 46 read no flag at all",
+  "injectors_without_flag": [
+   "_00_idle_watch_bootstrap.py",
+   "_01_a2a_server_bootstrap.py",
+   "_01_backend_standby_gate.py",
+   "_10_session_init.py",
+   "_11_belief_state_tracker.py",
+   "_12_completion_tracker.py",
+   "_12_proactive_supervisor_inject.py",
+   "_13_reasoning_state.py",
+   "_14_situational_orientation.py",
+   "_15_htn_plan_selector.py",
+   "_17_library_catalog.py",
+   "_20_context_watchdog.py",
+   "_60_sleep_activity.py",
+   "_22_reasoning_state_injector.py",
+   "_55_memory_relevance_filter.py",
+   "_15_exocortex_stack.py"
+  ],
+  "extensions": [
+   {
+    "hook": "before_main_llm_call",
+    "file": "_00_idle_watch_bootstrap.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_01_a2a_server_bootstrap.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_01_backend_standby_gate.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_02_mcp_health.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_10_session_init.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_11_belief_state_tracker.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_12_completion_tracker.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_12_proactive_supervisor_inject.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_13_reasoning_state.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_14_pace_plan_generator.py",
+    "injector": true,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_14_situational_orientation.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_15_htn_plan_selector.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_15_karpathy_rules.py",
+    "injector": true,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_16_scope_expansion_detector.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_17_library_catalog.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_20_context_watchdog.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "before_main_llm_call",
+    "file": "_60_sleep_activity.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "error_format",
+    "file": "_20_structured_retry.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "error_format",
+    "file": "_30_failure_tracker.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "hist_add_before",
+    "file": "_11_working_memory.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_end",
+    "file": "_28_backend_standby.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_end",
+    "file": "_29_stuck_delivery.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_end",
+    "file": "_48_task_tracker.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_end",
+    "file": "_49_reasoning_state_update.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_end",
+    "file": "_50_supervisor_loop.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_08_step_budget_tracker.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_09_methodology_tracker.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_10_strategy_advisor.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_21_constraint_heartbeat.py",
+    "injector": true,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_22_reasoning_state_injector.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_24_skill_surfacer.py",
+    "injector": true,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_55_memory_relevance_filter.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_56_memory_enhancement.py",
+    "injector": true,
+    "enabled_refs": 6,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "message_loop_prompts_after",
+    "file": "_71_model_identity_verify.py",
+    "injector": true,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_25_epistemic_integrity.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_52_selective_memorizer.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_53_insight_capture.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_55_memory_classifier.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_57_memory_maintenance.py",
+    "injector": false,
+    "enabled_refs": 6,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_58_methodology_capture.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "defaults-only",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_59_ontology_maintenance.py",
+    "injector": false,
+    "enabled_refs": 4,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "monologue_end",
+    "file": "_80_chat_retention.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "reasoning_stream",
+    "file": "_12_proactive_supervisor_stream.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "reasoning_stream_end",
+    "file": "_11_thinking_token_logger.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "reasoning_stream_end",
+    "file": "_12_proactive_supervisor_logger.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "response_stream_chunk",
+    "file": "_21_plain_text_response.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "response_stream_end",
+    "file": "_20_clear_generating_content.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "system_prompt",
+    "file": "_15_exocortex_stack.py",
+    "injector": true,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_20_error_comprehension.py",
+    "injector": false,
+    "enabled_refs": 3,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_20_reset_failure_counter.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_22_response_finalizer.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_25_evidence_ledger_recorder.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_26_write_validator.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_27_code_quality_gate.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_28_inline_truncation_detector.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_28_output_compressor.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_30_tool_fallback_logger.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_31_failure_lesson_capture.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "defaults-only",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_32_failure_fingerprint.py",
+    "injector": false,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_32_tool_call_tracker.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_33_methodology_finalizer.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_34_skill_write_normalizer.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_60_sleep_trigger.py",
+    "injector": false,
+    "enabled_refs": 5,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_after",
+    "file": "_70_idle_trigger.py",
+    "injector": false,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_02_tool_signature_guardian.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_03_include_alias_expander.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_15_action_boundary.py",
+    "injector": false,
+    "enabled_refs": 2,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_16_py_write_guard.py",
+    "injector": false,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_17_py_write_tracker.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_20_meta_reasoning_gate.py",
+    "injector": false,
+    "enabled_refs": 1,
+    "shape": "cfg-get",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_25_write_guard.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   },
+   {
+    "hook": "tool_execute_before",
+    "file": "_30_tool_fallback_advisor.py",
+    "injector": false,
+    "enabled_refs": 0,
+    "shape": "none",
+    "config_key": null
+   }
+  ],
+  "limits": [
+   "string matching on source; a flag read through an unknown helper is 'other-guard' or missed",
+   "a flag read but never acted on looks the same as one that is",
+   "'injector' is by hook folder, not by proof of injection"
+  ]
+ },
+ "hooks": {
+  "_commands": [
+   {
+    "file": "__init__.py",
+    "hook": "_commands",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_commands/__init__.py",
+    "lines": 2,
+    "purpose": "Commands plugin package.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "_goal": [
+   {
+    "file": "__init__.py",
+    "hook": "_goal",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_goal/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "_pin_to_top": [
+   {
+    "file": "__init__.py",
+    "hook": "_pin_to_top",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_pin_to_top/__init__.py",
+    "lines": 2,
+    "purpose": "Built-in sidebar pinning plugin.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "_skills": [
+   {
+    "file": "__init__.py",
+    "hook": "_skills",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_skills/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "adapters": [
+   {
+    "file": "__init__.py",
+    "hook": "adapters",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_orchestrator/helpers/adapters/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "agent_init": [
+   {
+    "file": "_10_initial_message.py",
+    "hook": "agent_init",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/agent_init/_10_initial_message.py",
+    "lines": 45,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_load_profile_settings.py",
+    "hook": "agent_init",
+    "order": 15,
+    "kind": "core",
+    "path": "/a0/extensions/python/agent_init/_15_load_profile_settings.py",
+    "lines": 54,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "api": [
+   {
+    "file": "__init__.py",
+    "hook": "api",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_orchestrator/api/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "api",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_chat_naming/api/__init__.py",
+    "lines": 2,
+    "purpose": "Chat naming API handlers.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "api",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_pin_to_top/api/__init__.py",
+    "lines": 2,
+    "purpose": "API handlers for the pin-to-top plugin.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "api",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_goal/api/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "api",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/api/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "banners": [
+   {
+    "file": "_10_unsecured_connection.py",
+    "hook": "banners",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/banners/_10_unsecured_connection.py",
+    "lines": 64,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_missing_api_key.py",
+    "hook": "banners",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/banners/_20_missing_api_key.py",
+    "lines": 29,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_system_resources.py",
+    "hook": "banners",
+    "order": 30,
+    "kind": "core",
+    "path": "/a0/extensions/python/banners/_30_system_resources.py",
+    "lines": 152,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "before_main_llm_call": [
+   {
+    "file": "_00_idle_watch_bootstrap.py",
+    "hook": "before_main_llm_call",
+    "order": 0,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_00_idle_watch_bootstrap.py",
+    "lines": 126,
+    "purpose": "Idle Watch Bootstrap \u2014 Daemon Launcher (clone-and-go)",
+    "tags": [
+     "IDLE-BOOT"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/services/idle_watch.py",
+     "/a0/usr/workdir/workspace/office",
+     "/a0/usr/workdir/workspace/office/.idle_watch.pid",
+     "/a0/usr/workdir/workspace/office/idle_watch.log"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_01_a2a_server_bootstrap.py",
+    "hook": "before_main_llm_call",
+    "order": 1,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_01_a2a_server_bootstrap.py",
+    "lines": 155,
+    "purpose": "A2A Server Bootstrap \u2014 Daemon Launcher (clone-and-go)",
+    "tags": [
+     "A2A-BOOT"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [
+     "/a0/usr/organizations",
+     "/a0/usr/organizations/a2a_config.json",
+     "/a0/usr/plugins/_exocortex/services",
+     "/a0/usr/plugins/_exocortex/services/a2a_server",
+     "/a0/usr/workdir/workspace/office",
+     "/a0/usr/workdir/workspace/office/.a2a_server.pid",
+     "/a0/usr/workdir/workspace/office/a2a_server.log"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_01_backend_standby_gate.py",
+    "hook": "before_main_llm_call",
+    "order": 1,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_01_backend_standby_gate.py",
+    "lines": 47,
+    "purpose": "Backend Standby Gate \u2014 Exocortex Infrastructure Recovery",
+    "tags": [
+     "BACKEND-GATE"
+    ],
+    "writes": [],
+    "reads": [
+     "_backend_standby"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_02_mcp_health.py",
+    "hook": "before_main_llm_call",
+    "order": 2,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_02_mcp_health.py",
+    "lines": 189,
+    "purpose": "MCP Health \u2014 connection-state diagnostic",
+    "tags": [
+     "MCP-HEALTH"
+    ],
+    "writes": [
+     "_mcp_degraded",
+     "_mcp_health",
+     "_mcp_health_last_check"
+    ],
+    "reads": [
+     "_mcp_health_last_check"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_log_for_stream.py",
+    "hook": "before_main_llm_call",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/before_main_llm_call/_10_log_for_stream.py",
+    "lines": 33,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_session_init.py",
+    "hook": "before_main_llm_call",
+    "order": 10,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_10_session_init.py",
+    "lines": 211,
+    "purpose": "Session Init \u2014 Staging Tier Reader",
+    "tags": [
+     "SESSION-INIT"
+    ],
+    "writes": [
+     "_session_init_done"
+    ],
+    "reads": [
+     "_session_init_done"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/staging.jsonl"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_11_belief_state_tracker.py",
+    "hook": "before_main_llm_call",
+    "order": 11,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_11_belief_state_tracker.py",
+    "lines": 1935,
+    "purpose": "Belief State Tracker -- Agent-Zero Translation Layer v3",
+    "tags": [
+     "BELIEF_KEY",
+     "BST",
+     "INSTRUCTION",
+     "TOKEN-COUNT"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store",
+     "_injection_token_counts",
+     "_layer_signals",
+     "_working_memory",
+     "config"
+    ],
+    "n_prints": 4,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/eval/model_profiles",
+     "/a0/usr/agents/agent0/plugins/_model_config/config.json",
+     "/a0/usr/plugins/_exocortex/config/model_profiles",
+     "/a0/usr/plugins/_exocortex/helpers",
+     "/a0/usr/plugins/_model_config/config.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/eval/model_profiles",
+     "/a0/usr/agents/agent0/plugins/_model_config/config.json"
+    ]
+   },
+   {
+    "file": "_12_completion_tracker.py",
+    "hook": "before_main_llm_call",
+    "order": 12,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_12_completion_tracker.py",
+    "lines": 331,
+    "purpose": "Completion State Tracker \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "COMPLETION",
+     "COMPLETION_KEY",
+     "DONE",
+     "STATUS"
+    ],
+    "writes": [],
+    "reads": [
+     "_injection_token_counts"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_12_proactive_supervisor_inject.py",
+    "hook": "before_main_llm_call",
+    "order": 12,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_12_proactive_supervisor_inject.py",
+    "lines": 221,
+    "purpose": "Proactive Reasoning Supervisor \u2014 Injection Hook",
+    "tags": [
+     "PS-AFFECT-INJECT",
+     "PS-INJECT"
+    ],
+    "writes": [
+     "_affect_intervention",
+     "_ps_fired",
+     "_ps_signal"
+    ],
+    "reads": [
+     "_affect_intervention",
+     "_ps_fired",
+     "_ps_signal"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_13_reasoning_state.py",
+    "hook": "before_main_llm_call",
+    "order": 13,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_13_reasoning_state.py",
+    "lines": 192,
+    "purpose": "Reasoning State Injector \u2014 Orientation Stack Wave 2",
+    "tags": [
+     "REASON-INJ"
+    ],
+    "writes": [
+     "_reasoning_state"
+    ],
+    "reads": [
+     "_reasoning_state"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/staging.jsonl"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_14_pace_plan_generator.py",
+    "hook": "before_main_llm_call",
+    "order": 14,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_14_pace_plan_generator.py",
+    "lines": 620,
+    "purpose": "PACE Plan Generator \u2014 Per-Task Execution Blueprint",
+    "tags": [
+     "PACE"
+    ],
+    "writes": [
+     "_org_pace_level",
+     "_pace_advance_tier",
+     "_pace_new_task",
+     "_pace_plan"
+    ],
+    "reads": [
+     "_bst_store",
+     "_pace_advance_tier",
+     "_pace_new_task",
+     "_pace_plan",
+     "config"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_14_situational_orientation.py",
+    "hook": "before_main_llm_call",
+    "order": 14,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_14_situational_orientation.py",
+    "lines": 393,
+    "purpose": "Situational Orientation Protocol \u2014 Orientation Stack Wave 2",
+    "tags": [
+     "ORIENT"
+    ],
+    "writes": [
+     "_layer_signals",
+     "_orient_last_hist_len",
+     "_orient_last_trigger"
+    ],
+    "reads": [
+     "_error_diagnosis",
+     "_layer_signals",
+     "_orient_last_hist_len",
+     "_orient_last_trigger",
+     "_reasoning_state",
+     "_task_tracker"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/staging.jsonl"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_htn_plan_selector.py",
+    "hook": "before_main_llm_call",
+    "order": 15,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_15_htn_plan_selector.py",
+    "lines": 776,
+    "purpose": "Graph Workflow Engine \u2014 Agent-Zero Cognitive Architecture",
+    "tags": [
+     "DONE",
+     "FAILED",
+     "HTN",
+     "PENDING"
+    ],
+    "writes": [
+     "_htn_state",
+     "_org_pace_level"
+    ],
+    "reads": [
+     "_bst_store",
+     "_htn_state",
+     "_org_htn_allowed_plans"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_karpathy_rules.py",
+    "hook": "before_main_llm_call",
+    "order": 15,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_15_karpathy_rules.py",
+    "lines": 136,
+    "purpose": "Karpathy Coding Rules \u2014 BST-Gated Quality Injection",
+    "tags": [
+     "KARP",
+     "TOKEN-COUNT"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store",
+     "_injection_token_counts",
+     "config"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_16_scope_expansion_detector.py",
+    "hook": "before_main_llm_call",
+    "order": 16,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_16_scope_expansion_detector.py",
+    "lines": 210,
+    "purpose": "_16_scope_expansion_detector.py \u2014 A2, OBSERVE-ONLY by default",
+    "tags": [
+     "SCOPE",
+     "SCOPE-EXP"
+    ],
+    "writes": [],
+    "reads": [
+     "_pace_plan"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/plugins/_exocortex/helpers",
+     "/a0/usr/workdir/workspace/office/engine_state.json",
+     "/a0/usr/workdir/workspace/office/scope_expansion_log.jsonl"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_17_library_catalog.py",
+    "hook": "before_main_llm_call",
+    "order": 17,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_17_library_catalog.py",
+    "lines": 120,
+    "purpose": "_17_library_catalog.py \u2014 Exocortex Library Catalog Injection  v2.0",
+    "tags": [
+     "LIB-CAT",
+     "LIBRARY"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/workdir/library/catalog.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_context_watchdog.py",
+    "hook": "before_main_llm_call",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_20_context_watchdog.py",
+    "lines": 88,
+    "purpose": "",
+    "tags": [
+     "TOKEN_COUNT_KEY",
+     "UTILIZATION_KEY"
+    ],
+    "writes": [],
+    "reads": [
+     "context_window_size"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_60_sleep_activity.py",
+    "hook": "before_main_llm_call",
+    "order": 60,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_60_sleep_activity.py",
+    "lines": 33,
+    "purpose": "Sleep Activity \u2014 Idle timer reset on LLM call start",
+    "tags": [],
+    "writes": [
+     "_sleep_last_activity"
+    ],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "embedding_model_changed": [
+   {
+    "file": "_10_memory_reload.py",
+    "hook": "embedding_model_changed",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/embedding_model_changed/_10_memory_reload.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "end": [
+   {
+    "file": "_10_log_plain_responses.py",
+    "hook": "end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/agent/Agent/hist_add_ai_response/end/_10_log_plain_responses.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "loop_data"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_model_config.py",
+    "hook": "end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/_functions/helpers/projects/load_project_extended_data/end/_10_model_config.py",
+    "lines": 15,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_multi_tool_resolver.py",
+    "hook": "end",
+    "order": 10,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/_functions/agent/Agent/get_tool/end/_10_multi_tool_resolver.py",
+    "lines": 130,
+    "purpose": "Multi-Tool File Resolver",
+    "tags": [
+     "A-Z",
+     "TOOL-ROUTE"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_register_watchdogs.py",
+    "hook": "end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/__main__/init_a0/end/_10_register_watchdogs.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_oauth_account_dummy_key.py",
+    "hook": "end",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_oauth/extensions/python/_functions/models/get_api_key/end/_20_oauth_account_dummy_key.py",
+    "lines": 37,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_register_watchdog.py",
+    "hook": "end",
+    "order": 30,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/_functions/run_ui/init_a0/end/_30_register_watchdog.py",
+    "lines": 10,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_register_watchdog.py",
+    "hook": "end",
+    "order": 30,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/_functions/__main__/init_a0/end/_30_register_watchdog.py",
+    "lines": 10,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_40_handle_intervention_exception.py",
+    "hook": "end",
+    "order": 40,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/agent/Agent/handle_exception/end/_40_handle_intervention_exception.py",
+    "lines": 22,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_45_failure_lesson_capture.py",
+    "hook": "end",
+    "order": 45,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/_functions/agent/Agent/handle_exception/end/_45_failure_lesson_capture.py",
+    "lines": 264,
+    "purpose": "Failure-Lesson Capture (handle_exception) \u2014 Cycle-to-Skill Pipeline, Path A",
+    "tags": [
+     "MetaGate-SIZE",
+     "SKILL-CAPTURE"
+    ],
+    "writes": [
+     "_skills_captured_this_cycle"
+    ],
+    "reads": [
+     "_skills_captured_this_cycle"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/skills/auto-generated/failure-lessons",
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ]
+   },
+   {
+    "file": "_50_handle_repairable_exception.py",
+    "hook": "end",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/agent/Agent/handle_exception/end/_50_handle_repairable_exception.py",
+    "lines": 26,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_70_include_remote_tool_stubs.py",
+    "hook": "end",
+    "order": 70,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/extensions/python/_functions/_11_tools_prompt/build_prompt/end/_70_include_remote_tool_stubs.py",
+    "lines": 55,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "context"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_80_retry_critical_exception.py",
+    "hook": "end",
+    "order": 80,
+    "kind": "core",
+    "path": "/a0/plugins/_error_retry/extensions/python/_functions/agent/Agent/handle_exception/end/_80_retry_critical_exception.py",
+    "lines": 107,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_85_telegram_error.py",
+    "hook": "end",
+    "order": 85,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/_functions/agent/Agent/handle_exception/end/_85_telegram_error.py",
+    "lines": 44,
+    "purpose": "",
+    "tags": [
+     "CTX_TG_ERROR_SENT"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_90_handle_critical_exception.py",
+    "hook": "end",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/agent/Agent/handle_exception/end/_90_handle_critical_exception.py",
+    "lines": 44,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_90_stop_unusable_response_loop.py",
+    "hook": "end",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/_functions/agent/Agent/hist_add_warning/end/_90_stop_unusable_response_loop.py",
+    "lines": 56,
+    "purpose": "",
+    "tags": [
+     "STATE_KEY"
+    ],
+    "writes": [],
+    "reads": [
+     "loop_data"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "error_format": [
+   {
+    "file": "_10_mask_errors.py",
+    "hook": "error_format",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/error_format/_10_mask_errors.py",
+    "lines": 21,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_structured_retry.py",
+    "hook": "error_format",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/error_format/_20_structured_retry.py",
+    "lines": 50,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_failure_tracker.py",
+    "hook": "error_format",
+    "order": 30,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/error_format/_30_failure_tracker.py",
+    "lines": 97,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "_failure_tracker"
+    ],
+    "reads": [
+     "_failure_tracker"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "helpers": [
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_promptinclude/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_agent_editor/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_plugin_scan/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_kokoro_tts/helpers/__init__.py",
+    "lines": 4,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_orchestrator/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_chat_naming/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "Chat naming helpers.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_pin_to_top/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "Persistence helpers for the pin-to-top plugin.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_document_query/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_skills/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_text_editor/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_commands/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "Helpers for the commands plugin.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_email_integration/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_oauth/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "OAuth Connections plugin helpers.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_plugin_installer/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_migrate_agents/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "Migrate Agents conversion helpers.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_whisper_stt/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_plugin_validator/helpers/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_code_execution/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "helpers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/helpers/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "hist_add_before": [
+   {
+    "file": "_10_mask_content.py",
+    "hook": "hist_add_before",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/hist_add_before/_10_mask_content.py",
+    "lines": 36,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_11_working_memory.py",
+    "hook": "hist_add_before",
+    "order": 11,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/hist_add_before/_11_working_memory.py",
+    "lines": 457,
+    "purpose": "Working Memory Buffer \u2014 Agent-Zero Hardening Layer",
+    "tags": [],
+    "writes": [
+     "_wm_api_sigs"
+    ],
+    "reads": [
+     "_wm_api_sigs",
+     "_working_memory"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/agent.py"
+    ],
+    "paths_missing": []
+   }
+  ],
+  "hist_add_tool_result": [
+   {
+    "file": "_90_save_tool_call_file.py",
+    "hook": "hist_add_tool_result",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/hist_add_tool_result/_90_save_tool_call_file.py",
+    "lines": 45,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "job_loop": [
+   {
+    "file": "_10_email_poll.py",
+    "hook": "job_loop",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_email_integration/extensions/python/job_loop/_10_email_poll.py",
+    "lines": 104,
+    "purpose": "Per-handler email poll loop with configurable seconds/cron intervals.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_telegram_bot.py",
+    "hook": "job_loop",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/job_loop/_10_telegram_bot.py",
+    "lines": 131,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_wa_poll.py",
+    "hook": "job_loop",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/extensions/python/job_loop/_10_wa_poll.py",
+    "lines": 122,
+    "purpose": "WhatsApp poll loop \u2014 start bridge and poll for incoming messages.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_cleanup_expired_api_chats.py",
+    "hook": "job_loop",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/extensions/python/job_loop/_20_cleanup_expired_api_chats.py",
+    "lines": 64,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "lifetime_hours"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_retention.py",
+    "hook": "job_loop",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/job_loop/_50_retention.py",
+    "lines": 40,
+    "purpose": "Throttled Time Travel retention sweep (see helpers/retention.py).",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_trim_cache.py",
+    "hook": "job_loop",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/extensions/python/job_loop/_50_trim_cache.py",
+    "lines": 10,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "message_loop_end": [
+   {
+    "file": "_10_organize_history.py",
+    "hook": "message_loop_end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_end/_10_organize_history.py",
+    "lines": 31,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "_organize_history_task"
+    ],
+    "reads": [
+     "_organize_history_task"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_28_backend_standby.py",
+    "hook": "message_loop_end",
+    "order": 28,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_end/_28_backend_standby.py",
+    "lines": 280,
+    "purpose": "Backend Standby Recovery \u2014 Exocortex Infrastructure Recovery",
+    "tags": [
+     "BACKEND-STANDBY"
+    ],
+    "writes": [
+     "_backend_failure_count",
+     "_backend_poll_task",
+     "_backend_standby"
+    ],
+    "reads": [
+     "_backend_failure_count",
+     "_backend_standby"
+    ],
+    "n_prints": 8,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/agents/agent0/plugins/_model_config/config.json",
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": [
+     "/a0/usr/agents/agent0/plugins/_model_config/config.json"
+    ]
+   },
+   {
+    "file": "_29_stuck_delivery.py",
+    "hook": "message_loop_end",
+    "order": 29,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_end/_29_stuck_delivery.py",
+    "lines": 121,
+    "purpose": "Stuck Delivery Recovery \u2014 Exocortex Cognitive Recovery",
+    "tags": [
+     "STUCK-DELIVERY"
+    ],
+    "writes": [
+     "_delivery_repetition_count",
+     "_suppress_surgery_this_turn"
+    ],
+    "reads": [
+     "_delivery_repetition_count"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_48_task_tracker.py",
+    "hook": "message_loop_end",
+    "order": 48,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_end/_48_task_tracker.py",
+    "lines": 372,
+    "purpose": "Task Completion Tracker \u2014 Orientation Stack Wave 2",
+    "tags": [
+     "TASK-TRACK"
+    ],
+    "writes": [
+     "_layer_signals",
+     "_task_tracker"
+    ],
+    "reads": [
+     "_layer_signals",
+     "_task_tracker"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/task_tracker.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_49_reasoning_state_update.py",
+    "hook": "message_loop_end",
+    "order": 49,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_end/_49_reasoning_state_update.py",
+    "lines": 528,
+    "purpose": "Reasoning State Persistence \u2014 Orientation Stack Wave 2",
+    "tags": [
+     "REASON-STATE"
+    ],
+    "writes": [
+     "_reasoning_state",
+     "_rs_last_hist_len"
+    ],
+    "reads": [
+     "_reasoning_state",
+     "_rs_last_hist_len"
+    ],
+    "n_prints": 5,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/staging.jsonl"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_supervisor_loop.py",
+    "hook": "message_loop_end",
+    "order": 50,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_end/_50_supervisor_loop.py",
+    "lines": 2345,
+    "purpose": "Supervisor Loop \u2014 Agent-Zero Cognitive Architecture",
+    "tags": [
+     "COMPLETION_STALL_KEY",
+     "LOOP_RESET_DONE_KEY",
+     "LOOP_START_IDX_KEY",
+     "LOOP_SURGERY_DONE_KEY"
+    ],
+    "writes": [
+     "_layer_signals",
+     "_loop_active",
+     "_loop_start_cycle",
+     "_p4_decision_log",
+     "_pace_advance_tier",
+     "_pace_new_task",
+     "_post_surgery_tool",
+     "_post_surgery_turn",
+     "_success_episode_buffer",
+     "_success_profile_store",
+     "_supervisor_state",
+     "_supervisor_warned",
+     "_suppress_surgery_this_turn",
+     "context_window_size"
+    ],
+    "reads": [
+     "_action_gate_active",
+     "_bst_store",
+     "_error_diagnosis",
+     "_evidence_ledger",
+     "_htn_state",
+     "_layer_signals",
+     "_loop_start_cycle",
+     "_memory_staging_buffer",
+     "_org_active_role",
+     "_org_pace_level",
+     "_p4_decision_log",
+     "_post_surgery_tool",
+     "_post_surgery_turn",
+     "_ps_fired",
+     "_success_episode_buffer",
+     "_success_profile_store",
+     "_supervisor_model_overrides",
+     "_supervisor_state",
+     "_suppress_surgery_this_turn",
+     "_tool_failures",
+     "_tool_output_tracker",
+     "_wm_state",
+     "config",
+     "context_window_size"
+    ],
+    "n_prints": 6,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/staging.jsonl",
+     "/a0/usr/plugins/_exocortex/config/model_profiles",
+     "/a0/usr/plugins/_exocortex/extensions/python/before_main_llm_call/_14_pace_plan_generator.py",
+     "/a0/usr/plugins/_exocortex/helpers",
+     "/a0/usr/plugins/_model_config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_90_save_chat.py",
+    "hook": "message_loop_end",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_end/_90_save_chat.py",
+    "lines": 16,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "message_loop_prompts_after": [
+   {
+    "file": "_08_step_budget_tracker.py",
+    "hook": "message_loop_prompts_after",
+    "order": 8,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_08_step_budget_tracker.py",
+    "lines": 142,
+    "purpose": "Step Budget Tracker \u2014 Progressive Turn-Count Awareness Injection",
+    "tags": [
+     "STEP-BUDGET",
+     "TURN-BUDGET"
+    ],
+    "writes": [],
+    "reads": [
+     "_step_budget_count"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_09_methodology_tracker.py",
+    "hook": "message_loop_prompts_after",
+    "order": 9,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_09_methodology_tracker.py",
+    "lines": 213,
+    "purpose": "Methodology Tracker \u2014 Automatic Per-Cycle Execution Instrumentation",
+    "tags": [
+     "METHOD-TRACK"
+    ],
+    "writes": [
+     "_methodology_cycle_data"
+    ],
+    "reads": [
+     "_affect_state",
+     "_methodology_cycle_data",
+     "_pace_plan"
+    ],
+    "n_prints": 4,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/workdir/methodology_tracker.jsonl",
+     "/a0/usr/workdir/workspace/office/engine_state.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_strategy_advisor.py",
+    "hook": "message_loop_prompts_after",
+    "order": 10,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_10_strategy_advisor.py",
+    "lines": 229,
+    "purpose": "Strategy Advisor \u2014 Methodology-Aware Strategy Recommendation",
+    "tags": [
+     "STRATEGY"
+    ],
+    "writes": [],
+    "reads": [
+     "_affect_state"
+    ],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/config.json",
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/workdir/methodology_tracker.jsonl",
+     "/a0/usr/workdir/workspace/office/engine_state.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/config.json"
+    ]
+   },
+   {
+    "file": "_21_constraint_heartbeat.py",
+    "hook": "message_loop_prompts_after",
+    "order": 21,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_21_constraint_heartbeat.py",
+    "lines": 190,
+    "purpose": "Constraint Heartbeat \u2014 Periodic Constraint + Epistemic Principle Re-injection",
+    "tags": [
+     "HEARTBEAT"
+    ],
+    "writes": [],
+    "reads": [
+     "_heartbeat_last_history_len",
+     "_heartbeat_turn_count"
+    ],
+    "n_prints": 4,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_22_reasoning_state_injector.py",
+    "hook": "message_loop_prompts_after",
+    "order": 22,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_22_reasoning_state_injector.py",
+    "lines": 155,
+    "purpose": "Reasoning State Injector \u2014 Working-Hook Pair to _13",
+    "tags": [
+     "REASON-INJ-22"
+    ],
+    "writes": [],
+    "reads": [
+     "_reasoning_state"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_24_skill_surfacer.py",
+    "hook": "message_loop_prompts_after",
+    "order": 24,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_24_skill_surfacer.py",
+    "lines": 295,
+    "purpose": "Skill Surfacer \u2014 proactive failure-lesson surfacing (closes capture\u2192consumption)",
+    "tags": [
+     "SKILL-SURFACE"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store",
+     "_pace_plan"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_include_goal.py",
+    "hook": "message_loop_prompts_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_goal/extensions/python/message_loop_prompts_after/_50_include_goal.py",
+    "lines": 29,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_recall_memories.py",
+    "hook": "message_loop_prompts_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/message_loop_prompts_after/_50_recall_memories.py",
+    "lines": 230,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "_recall_memories_iter",
+     "_recall_memories_task"
+    ],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_include_desktop_state.py",
+    "hook": "message_loop_prompts_after",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_desktop/extensions/python/message_loop_prompts_after/_55_include_desktop_state.py",
+    "lines": 20,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "context"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_include_editor_open_files.py",
+    "hook": "message_loop_prompts_after",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/message_loop_prompts_after/_55_include_editor_open_files.py",
+    "lines": 22,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_include_office_canvas_context.py",
+    "hook": "message_loop_prompts_after",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_office/extensions/python/message_loop_prompts_after/_55_include_office_canvas_context.py",
+    "lines": 10,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_memory_relevance_filter.py",
+    "hook": "message_loop_prompts_after",
+    "order": 55,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_55_memory_relevance_filter.py",
+    "lines": 375,
+    "purpose": "Memory Relevance Filter \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "LIN_KEY",
+     "MEM-FILTER"
+    ],
+    "writes": [],
+    "reads": [
+     "_org_active_role"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/memory/classification_config.json",
+     "/a0/usr/organizations/roles"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_56_memory_enhancement.py",
+    "hook": "message_loop_prompts_after",
+    "order": 56,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_56_memory_enhancement.py",
+    "lines": 726,
+    "purpose": "Memory Enhancement \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "CONCEPT",
+     "LIN_KEY",
+     "MEM-ENHANCE"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store",
+     "_memory_maintenance_counter",
+     "_org_active_role"
+    ],
+    "n_prints": 9,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/eval/model_profiles",
+     "/a0/usr/memory/classification_config.json",
+     "/a0/usr/memory/co_retrieval_log.json",
+     "/a0/usr/organizations/roles",
+     "/a0/usr/plugins/_exocortex/config/model_profiles",
+     "/a0/usr/plugins/_model_config/config.json",
+     "/a0/usr/settings.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/eval/model_profiles"
+    ]
+   },
+   {
+    "file": "_60_include_current_datetime.py",
+    "hook": "message_loop_prompts_after",
+    "order": 60,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_60_include_current_datetime.py",
+    "lines": 20,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_63_recall_relevant_skills.py",
+    "hook": "message_loop_prompts_after",
+    "order": 63,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_63_recall_relevant_skills.py",
+    "lines": 46,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_65_include_loaded_skills.py",
+    "hook": "message_loop_prompts_after",
+    "order": 65,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_65_include_loaded_skills.py",
+    "lines": 79,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_70_include_agent_info.py",
+    "hook": "message_loop_prompts_after",
+    "order": 70,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_70_include_agent_info.py",
+    "lines": 28,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_71_model_identity_verify.py",
+    "hook": "message_loop_prompts_after",
+    "order": 71,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/message_loop_prompts_after/_71_model_identity_verify.py",
+    "lines": 202,
+    "purpose": "Report the model that is ACTUALLY serving, not the one the preset names.",
+    "tags": [
+     "MODEL-ID-71"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_72_include_parallel_jobs.py",
+    "hook": "message_loop_prompts_after",
+    "order": 72,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_72_include_parallel_jobs.py",
+    "lines": 14,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_75_include_workdir_extras.py",
+    "hook": "message_loop_prompts_after",
+    "order": 75,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_after/_75_include_workdir_extras.py",
+    "lines": 97,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_76_include_remote_file_structure.py",
+    "hook": "message_loop_prompts_after",
+    "order": 76,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/extensions/python/message_loop_prompts_after/_76_include_remote_file_structure.py",
+    "lines": 41,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_91_recall_wait.py",
+    "hook": "message_loop_prompts_after",
+    "order": 91,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/message_loop_prompts_after/_91_recall_wait.py",
+    "lines": 31,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "message_loop_prompts_before": [
+   {
+    "file": "_90_organize_history_wait.py",
+    "hook": "message_loop_prompts_before",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_prompts_before/_90_organize_history_wait.py",
+    "lines": 68,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "message_loop_start": [
+   {
+    "file": "_10_iteration_no.py",
+    "hook": "message_loop_start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/message_loop_start/_10_iteration_no.py",
+    "lines": 17,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "iteration_no"
+    ],
+    "reads": [
+     "iteration_no"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_45_telegram_draft_start.py",
+    "hook": "message_loop_start",
+    "order": 45,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/message_loop_start/_45_telegram_draft_start.py",
+    "lines": 19,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "monologue_end": [
+   {
+    "file": "_25_epistemic_integrity.py",
+    "hook": "monologue_end",
+    "order": 25,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_25_epistemic_integrity.py",
+    "lines": 517,
+    "purpose": "Epistemic Integrity Layer \u2014 Truth Audit on Model Output",
+    "tags": [
+     "BMTbmt"
+    ],
+    "writes": [
+     "_ei_last_verdict",
+     "_epistemic_integrity"
+    ],
+    "reads": [
+     "_bst_store",
+     "_evidence_ledger",
+     "_step_budget_count"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/eval/model_profiles",
+     "/a0/usr/plugins/_exocortex/config/model_profiles",
+     "/a0/usr/plugins/_model_config/config.json",
+     "/a0/usr/settings.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/eval/model_profiles"
+    ]
+   },
+   {
+    "file": "_50_memorize_fragments.py",
+    "hook": "monologue_end",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/monologue_end/_50_memorize_fragments.py",
+    "lines": 227,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_51_memorize_solutions.py",
+    "hook": "monologue_end",
+    "order": 51,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/monologue_end/_51_memorize_solutions.py",
+    "lines": 218,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_52_selective_memorizer.py",
+    "hook": "monologue_end",
+    "order": 52,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_52_selective_memorizer.py",
+    "lines": 325,
+    "purpose": "Selective Memorizer \u2014 Agent-Zero Memory Creation Layer",
+    "tags": [
+     "OutputMessage"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_53_insight_capture.py",
+    "hook": "monologue_end",
+    "order": 53,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_53_insight_capture.py",
+    "lines": 255,
+    "purpose": "Conversational Insight Capture \u2014 Agent-Zero Cognitive Architecture",
+    "tags": [
+     "INSIGHT"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_memory_classifier.py",
+    "hook": "monologue_end",
+    "order": 55,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_55_memory_classifier.py",
+    "lines": 724,
+    "purpose": "Memory Classification Engine \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "CLS_KEY",
+     "LIN_KEY",
+     "MEM-CLASS"
+    ],
+    "writes": [
+     "_memory_conflict_log",
+     "_memory_health",
+     "_memory_maintenance_counter",
+     "_memory_staging_buffer"
+    ],
+    "reads": [
+     "_bst_store",
+     "_loop_active",
+     "_memory_conflict_log",
+     "_memory_health",
+     "_memory_maintenance_counter",
+     "_memory_staging_buffer",
+     "_org_active_role",
+     "history"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/memory/classification_config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_57_memory_maintenance.py",
+    "hook": "monologue_end",
+    "order": 57,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_57_memory_maintenance.py",
+    "lines": 705,
+    "purpose": "Memory Maintenance \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "CLS_KEY",
+     "LIN_KEY",
+     "MEM-MAINT"
+    ],
+    "writes": [
+     "_memory_maint_57_counter"
+    ],
+    "reads": [
+     "_memory_maint_57_counter"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/memory/classification_config.json",
+     "/a0/usr/memory/co_retrieval_log.json",
+     "/a0/usr/ontology",
+     "/a0/usr/plugins/_exocortex/config/ontology_config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_58_methodology_capture.py",
+    "hook": "monologue_end",
+    "order": 58,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_58_methodology_capture.py",
+    "lines": 326,
+    "purpose": "Methodology Capture (monologue_end) \u2014 Cycle-to-Skill Pipeline, Path B",
+    "tags": [
+     "SKILL-CAPTURE"
+    ],
+    "writes": [
+     "_methodology_capture_inflight"
+    ],
+    "reads": [
+     "_methodology_capture_inflight"
+    ],
+    "n_prints": 5,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/config.json",
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/skills/auto-generated/methodologies",
+     "/a0/usr/workdir/workspace/field-reports",
+     "/a0/usr/workdir/workspace/office/methodology_last_processed.json",
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/config.json",
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ]
+   },
+   {
+    "file": "_59_ontology_maintenance.py",
+    "hook": "monologue_end",
+    "order": 59,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_59_ontology_maintenance.py",
+    "lines": 319,
+    "purpose": "Ontology Maintenance \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "ONT-MAINT"
+    ],
+    "writes": [
+     "_ontology_maint_59_counter"
+    ],
+    "reads": [
+     "_ontology_maint_59_counter"
+    ],
+    "n_prints": 14,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/memory/co_retrieval_log.json",
+     "/a0/usr/ontology",
+     "/a0/usr/plugins/_exocortex/helpers/ontology"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_80_chat_retention.py",
+    "hook": "monologue_end",
+    "order": 80,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/monologue_end/_80_chat_retention.py",
+    "lines": 74,
+    "purpose": "Chat Retention trigger (monologue_end, _80_)",
+    "tags": [
+     "CHAT-RETENTION"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex",
+     "/a0/usr/Exocortex/config.json",
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/config.json"
+    ]
+   },
+   {
+    "file": "_90_wa_typing_cleanup.py",
+    "hook": "monologue_end",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/extensions/python/monologue_end/_90_wa_typing_cleanup.py",
+    "lines": 34,
+    "purpose": "",
+    "tags": [
+     "CTX_WA_TYPING_ACTIVE"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_90_waiting_for_input_msg.py",
+    "hook": "monologue_end",
+    "order": 90,
+    "kind": "core",
+    "path": "/a0/extensions/python/monologue_end/_90_waiting_for_input_msg.py",
+    "lines": 13,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "monologue_start": [
+   {
+    "file": "_10_memory_init.py",
+    "hook": "monologue_start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/monologue_start/_10_memory_init.py",
+    "lines": 15,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_60_rename_chat.py",
+    "hook": "monologue_start",
+    "order": 60,
+    "kind": "core",
+    "path": "/a0/plugins/_chat_naming/extensions/python/monologue_start/_60_rename_chat.py",
+    "lines": 78,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "parsers": [
+   {
+    "file": "__init__.py",
+    "hook": "parsers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_document_query/helpers/parsers/__init__.py",
+    "lines": 44,
+    "purpose": "Document parser registry.",
+    "tags": [
+     "BaseParser"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "process_chain_end": [
+   {
+    "file": "_50_process_queue.py",
+    "hook": "process_chain_end",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/extensions/python/process_chain_end/_50_process_queue.py",
+    "lines": 40,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_email_reply.py",
+    "hook": "process_chain_end",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_email_integration/extensions/python/process_chain_end/_55_email_reply.py",
+    "lines": 79,
+    "purpose": "Auto-send email reply when agent responds in an email session.",
+    "tags": [
+     "CTX_SEND_FAILURES"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_telegram_reply.py",
+    "hook": "process_chain_end",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/process_chain_end/_55_telegram_reply.py",
+    "lines": 104,
+    "purpose": "",
+    "tags": [
+     "CTX_SEND_FAILURES"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_55_wa_reply.py",
+    "hook": "process_chain_end",
+    "order": 55,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/extensions/python/process_chain_end/_55_wa_reply.py",
+    "lines": 81,
+    "purpose": "Auto-send WhatsApp reply when agent responds in a WhatsApp session.",
+    "tags": [
+     "CTX_SEND_FAILURES"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "providers": [
+   {
+    "file": "__init__.py",
+    "hook": "providers",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_oauth/helpers/providers/__init__.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "reasoning_stream": [
+   {
+    "file": "_10_log_from_stream.py",
+    "hook": "reasoning_stream",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/reasoning_stream/_10_log_from_stream.py",
+    "lines": 35,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_12_proactive_supervisor_stream.py",
+    "hook": "reasoning_stream",
+    "order": 12,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/reasoning_stream/_12_proactive_supervisor_stream.py",
+    "lines": 46,
+    "purpose": "Proactive Reasoning Supervisor \u2014 Buffer Hook",
+    "tags": [
+     "PS-BUF"
+    ],
+    "writes": [
+     "_ps_rs_buf"
+    ],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "reasoning_stream_chunk": [
+   {
+    "file": "_10_mask_stream.py",
+    "hook": "reasoning_stream_chunk",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/reasoning_stream_chunk/_10_mask_stream.py",
+    "lines": 42,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_infection_collect.py",
+    "hook": "reasoning_stream_chunk",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_infection_check/extensions/python/reasoning_stream_chunk/_50_infection_collect.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "reasoning_stream_end": [
+   {
+    "file": "_10_mask_end.py",
+    "hook": "reasoning_stream_end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/reasoning_stream_end/_10_mask_end.py",
+    "lines": 28,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_11_thinking_token_logger.py",
+    "hook": "reasoning_stream_end",
+    "order": 11,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/reasoning_stream_end/_11_thinking_token_logger.py",
+    "lines": 159,
+    "purpose": "Thinking Token Logger \u2014 Agent-Zero Exocortex",
+    "tags": [
+     "THINK-LOG"
+    ],
+    "writes": [],
+    "reads": [
+     "_bst_store",
+     "_ps_rs_buf"
+    ],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/think_log.jsonl",
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/think_log.jsonl"
+    ]
+   },
+   {
+    "file": "_12_proactive_supervisor_logger.py",
+    "hook": "reasoning_stream_end",
+    "order": 12,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/reasoning_stream_end/_12_proactive_supervisor_logger.py",
+    "lines": 639,
+    "purpose": "Proactive Reasoning Supervisor \u2014 Analysis Hook",
+    "tags": [
+     "PS-AFFECT",
+     "PS-AFFECT-INTERVENE",
+     "PS-ANALYZE"
+    ],
+    "writes": [
+     "_affect_intervention",
+     "_affect_state",
+     "_ps_fired",
+     "_ps_rs_buf",
+     "_ps_signal"
+    ],
+    "reads": [
+     "_bst_store",
+     "_ei_last_verdict",
+     "_failure_tracker",
+     "_pace_plan",
+     "_ps_rs_buf",
+     "_step_budget_count"
+    ],
+    "n_prints": 5,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/Exocortex/behavioral_traces.jsonl",
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   }
+  ],
+  "response_stream": [
+   {
+    "file": "_10_log_from_stream.py",
+    "hook": "response_stream",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream/_10_log_from_stream.py",
+    "lines": 75,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_replace_include_alias.py",
+    "hook": "response_stream",
+    "order": 15,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream/_15_replace_include_alias.py",
+    "lines": 32,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_live_response.py",
+    "hook": "response_stream",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream/_20_live_response.py",
+    "lines": 52,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_45_telegram_draft_response.py",
+    "hook": "response_stream",
+    "order": 45,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/response_stream/_45_telegram_draft_response.py",
+    "lines": 31,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_infection_analyze.py",
+    "hook": "response_stream",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_infection_check/extensions/python/response_stream/_50_infection_analyze.py",
+    "lines": 16,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "response_stream_chunk": [
+   {
+    "file": "_10_mask_stream.py",
+    "hook": "response_stream_chunk",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream_chunk/_10_mask_stream.py",
+    "lines": 44,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_21_plain_text_response.py",
+    "hook": "response_stream_chunk",
+    "order": 21,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/response_stream_chunk/_21_plain_text_response.py",
+    "lines": 158,
+    "purpose": "Plain Text Response Display",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_infection_collect.py",
+    "hook": "response_stream_chunk",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_infection_check/extensions/python/response_stream_chunk/_50_infection_collect.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "response_stream_end": [
+   {
+    "file": "_10_mask_end.py",
+    "hook": "response_stream_end",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream_end/_10_mask_end.py",
+    "lines": 29,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_log_from_stream_end.py",
+    "hook": "response_stream_end",
+    "order": 15,
+    "kind": "core",
+    "path": "/a0/extensions/python/response_stream_end/_15_log_from_stream_end.py",
+    "lines": 31,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_clear_generating_content.py",
+    "hook": "response_stream_end",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/response_stream_end/_20_clear_generating_content.py",
+    "lines": 33,
+    "purpose": "Clear Generating Content \u2014 Raw JSON Display Fix",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_infection_analyze.py",
+    "hook": "response_stream_end",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_infection_check/extensions/python/response_stream_end/_50_infection_analyze.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "start": [
+   {
+    "file": "_05_prose_leak_detector.py",
+    "hook": "start",
+    "order": 5,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/_functions/agent/Agent/process_tools/start/_05_prose_leak_detector.py",
+    "lines": 109,
+    "purpose": "Prose Leak Detector",
+    "tags": [
+     "PLAINTEXT-FB",
+     "PROSE-LEAK"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_cleanup_browser_runtime.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/_functions/agent/AgentContext/reset/start/_10_cleanup_browser_runtime.py",
+    "lines": 12,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_cleanup_browser_runtime.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/_functions/agent/AgentContext/remove/start/_10_cleanup_browser_runtime.py",
+    "lines": 11,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_model_config.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/_functions/agent/Agent/get_chat_model/start/_10_model_config.py",
+    "lines": 9,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_model_config.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/_functions/agent/Agent/get_embedding_model/start/_10_model_config.py",
+    "lines": 9,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_model_config.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/_functions/agent/Agent/get_utility_model/start/_10_model_config.py",
+    "lines": 9,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_model_config.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/_functions/helpers/projects/save_project_extended_data/start/_10_model_config.py",
+    "lines": 13,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_plaintext_response_fallback.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/_functions/agent/Agent/process_tools/start/_10_plaintext_response_fallback.py",
+    "lines": 168,
+    "purpose": "Plain-Text Response Fallback",
+    "tags": [
+     "PLAINTEXT-FB"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_reset_critical_exception_counter.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_error_retry/extensions/python/_functions/agent/Agent/monologue/start/_10_reset_critical_exception_counter.py",
+    "lines": 18,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_resolve_slash_command.py",
+    "hook": "start",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_commands/extensions/python/_functions/agent/AgentContext/_process_chain/start/_10_resolve_slash_command.py",
+    "lines": 60,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "startup_migration": [
+   {
+    "file": "_10_migrate_model_config.py",
+    "hook": "startup_migration",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/startup_migration/_10_migrate_model_config.py",
+    "lines": 396,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_self_update_manager.py",
+    "hook": "startup_migration",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/startup_migration/_10_self_update_manager.py",
+    "lines": 147,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/docker/run/fs/exe/self_update_manager.py"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_bootstrap_model_presets.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_model_config/extensions/python/startup_migration/_20_bootstrap_model_presets.py",
+    "lines": 78,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_browser_playwright_cache.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/startup_migration/_20_browser_playwright_cache.py",
+    "lines": 46,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_desktop_routes.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_desktop/extensions/python/startup_migration/_20_desktop_routes.py",
+    "lines": 50,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_document_query_runtime.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_document_query/extensions/python/startup_migration/_20_document_query_runtime.py",
+    "lines": 13,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_migrate_legacy_commands.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_commands/extensions/python/startup_migration/_20_migrate_legacy_commands.py",
+    "lines": 125,
+    "purpose": "",
+    "tags": [
+     "Path"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_oauth_routes.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_oauth/extensions/python/startup_migration/_20_oauth_routes.py",
+    "lines": 10,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_office_routes.py",
+    "hook": "startup_migration",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_office/extensions/python/startup_migration/_20_office_routes.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "system_prompt": [
+   {
+    "file": "_09_text_editor_config.py",
+    "hook": "system_prompt",
+    "order": 9,
+    "kind": "core",
+    "path": "/a0/plugins/_text_editor/extensions/python/system_prompt/_09_text_editor_config.py",
+    "lines": 24,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_main_prompt.py",
+    "hook": "system_prompt",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_10_main_prompt.py",
+    "lines": 24,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_11_tools_prompt.py",
+    "hook": "system_prompt",
+    "order": 11,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_11_tools_prompt.py",
+    "lines": 61,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "_tool_prompt_kwargs"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_12_mcp_prompt.py",
+    "hook": "system_prompt",
+    "order": 12,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_12_mcp_prompt.py",
+    "lines": 34,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_13_secrets_prompt.py",
+    "hook": "system_prompt",
+    "order": 13,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_13_secrets_prompt.py",
+    "lines": 36,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_13_skills_prompt.py",
+    "hook": "system_prompt",
+    "order": 13,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_13_skills_prompt.py",
+    "lines": 41,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_14_project_prompt.py",
+    "hook": "system_prompt",
+    "order": 14,
+    "kind": "core",
+    "path": "/a0/extensions/python/system_prompt/_14_project_prompt.py",
+    "lines": 49,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_exocortex_stack.py",
+    "hook": "system_prompt",
+    "order": 15,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/system_prompt/_15_exocortex_stack.py",
+    "lines": 71,
+    "purpose": "Exocortex Stack Context \u2014 System Prompt Injection",
+    "tags": [
+     "SYS-EXOCORTEX"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_16_promptinclude.py",
+    "hook": "system_prompt",
+    "order": 16,
+    "kind": "core",
+    "path": "/a0/plugins/_promptinclude/extensions/python/system_prompt/_16_promptinclude.py",
+    "lines": 88,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_behaviour_prompt.py",
+    "hook": "system_prompt",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_memory/extensions/python/system_prompt/_20_behaviour_prompt.py",
+    "lines": 31,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_browser_context.py",
+    "hook": "system_prompt",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/system_prompt/_20_browser_context.py",
+    "lines": 60,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_email_context.py",
+    "hook": "system_prompt",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_email_integration/extensions/python/system_prompt/_20_email_context.py",
+    "lines": 43,
+    "purpose": "Inject email conversation context into system prompt for email sessions.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_telegram_context.py",
+    "hook": "system_prompt",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/system_prompt/_20_telegram_context.py",
+    "lines": 49,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_wa_context.py",
+    "hook": "system_prompt",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/extensions/python/system_prompt/_20_wa_context.py",
+    "lines": 33,
+    "purpose": "Inject WhatsApp conversation context into system prompt.",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "text_editor_patch_after": [
+   {
+    "file": "_40_sync_open_sessions.py",
+    "hook": "text_editor_patch_after",
+    "order": 40,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/text_editor_patch_after/_40_sync_open_sessions.py",
+    "lines": 15,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_snapshot.py",
+    "hook": "text_editor_patch_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/text_editor_patch_after/_50_snapshot.py",
+    "lines": 19,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "text_editor_write_after": [
+   {
+    "file": "_40_sync_open_sessions.py",
+    "hook": "text_editor_write_after",
+    "order": 40,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/text_editor_write_after/_40_sync_open_sessions.py",
+    "lines": 15,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_snapshot.py",
+    "hook": "text_editor_write_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/text_editor_write_after/_50_snapshot.py",
+    "lines": 18,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "tool_execute_after": [
+   {
+    "file": "_10_mask_secrets.py",
+    "hook": "tool_execute_after",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/tool_execute_after/_10_mask_secrets.py",
+    "lines": 16,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_error_comprehension.py",
+    "hook": "tool_execute_after",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_20_error_comprehension.py",
+    "lines": 348,
+    "purpose": "Error Comprehension \u2014 Agent-Zero Hardening Layer",
+    "tags": [
+     "ERROR-DX"
+    ],
+    "writes": [
+     "_error_diagnosis"
+    ],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/memory/classification_config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_reset_failure_counter.py",
+    "hook": "tool_execute_after",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_20_reset_failure_counter.py",
+    "lines": 26,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "_failure_tracker"
+    ],
+    "reads": [
+     "_failure_tracker"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_22_response_finalizer.py",
+    "hook": "tool_execute_after",
+    "order": 22,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_22_response_finalizer.py",
+    "lines": 53,
+    "purpose": "Response Finalizer \u2014 Display Correctness Fix",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_25_evidence_ledger_recorder.py",
+    "hook": "tool_execute_after",
+    "order": 25,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_25_evidence_ledger_recorder.py",
+    "lines": 157,
+    "purpose": "Evidence Ledger Recorder \u2014 Epistemic Integrity Layer",
+    "tags": [
+     "BMTbmt"
+    ],
+    "writes": [
+     "_evidence_ledger",
+     "_memory_staging_buffer"
+    ],
+    "reads": [
+     "_evidence_ledger",
+     "_loop_active",
+     "_memory_staging_buffer"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_26_write_validator.py",
+    "hook": "tool_execute_after",
+    "order": 26,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_26_write_validator.py",
+    "lines": 212,
+    "purpose": "Write Validator \u2014 Post-execution syntax + truncation check for text_editor writes",
+    "tags": [
+     "WRITE-VAL"
+    ],
+    "writes": [
+     "_write_guard"
+    ],
+    "reads": [
+     "_write_guard"
+    ],
+    "n_prints": 5,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_27_code_quality_gate.py",
+    "hook": "tool_execute_after",
+    "order": 27,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_27_code_quality_gate.py",
+    "lines": 175,
+    "purpose": "Code Quality Gate \u2014 Post-Execution Checks",
+    "tags": [
+     "CODE-GATE",
+     "Path"
+    ],
+    "writes": [
+     "_pending_py_check"
+    ],
+    "reads": [
+     "_pending_py_check"
+    ],
+    "n_prints": 5,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/workdir",
+     "/a0/usr/workdir/framework_tests",
+     "/a0/usr/workdir/phase4",
+     "/a0/usr/workdir/phase5"
+    ],
+    "paths_missing": [
+     "/a0/usr/workdir/framework_tests",
+     "/a0/usr/workdir/phase4",
+     "/a0/usr/workdir/phase5"
+    ]
+   },
+   {
+    "file": "_28_inline_truncation_detector.py",
+    "hook": "tool_execute_after",
+    "order": 28,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_28_inline_truncation_detector.py",
+    "lines": 76,
+    "purpose": "Inline Truncation Detector \u2014 code_execution_tool incomplete input attribution fix",
+    "tags": [
+     "INLINE-TRUNC"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 2,
+    "error_only_prints": true,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_28_output_compressor.py",
+    "hook": "tool_execute_after",
+    "order": 28,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_28_output_compressor.py",
+    "lines": 260,
+    "purpose": "Tool Output Compressor \u2014 Agent-Zero Exocortex",
+    "tags": [
+     "OUT-COMPRESS"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_tool_fallback_logger.py",
+    "hook": "tool_execute_after",
+    "order": 30,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_30_tool_fallback_logger.py",
+    "lines": 154,
+    "purpose": "",
+    "tags": [],
+    "writes": [
+     "_failure_tracker",
+     "_success_episode_buffer",
+     "_supervisor_warned",
+     "_tool_failures",
+     "_tool_output_tracker"
+    ],
+    "reads": [
+     "_bst_store",
+     "_error_diagnosis",
+     "_failure_tracker",
+     "_success_episode_buffer",
+     "_tool_failures",
+     "_tool_output_tracker"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_31_failure_lesson_capture.py",
+    "hook": "tool_execute_after",
+    "order": 31,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_31_failure_lesson_capture.py",
+    "lines": 202,
+    "purpose": "Failure-Lesson Capture \u2014 Cycle-to-Skill Pipeline, Path A (deterministic)",
+    "tags": [
+     "SKILL-CAPTURE"
+    ],
+    "writes": [
+     "_skills_captured_this_cycle"
+    ],
+    "reads": [
+     "_error_diagnosis",
+     "_skills_captured_this_cycle"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/skills/auto-generated/failure-lessons",
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ],
+    "paths_missing": [
+     "/a0/usr/workdir/workspace/office/skills_captured_pending.json"
+    ]
+   },
+   {
+    "file": "_32_failure_fingerprint.py",
+    "hook": "tool_execute_after",
+    "order": 32,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_32_failure_fingerprint.py",
+    "lines": 163,
+    "purpose": "_32_failure_fingerprint.py \u2014 A1 three-strike quarantine, RECORDER half",
+    "tags": [
+     "QUARANTINE"
+    ],
+    "writes": [],
+    "reads": [
+     "__bst_belief_state__",
+     "_error_diagnosis"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_32_tool_call_tracker.py",
+    "hook": "tool_execute_after",
+    "order": 32,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_32_tool_call_tracker.py",
+    "lines": 58,
+    "purpose": "Tool Call Tracker \u2014 Companion to _09_methodology_tracker",
+    "tags": [
+     "TOOL-TRACK"
+    ],
+    "writes": [],
+    "reads": [
+     "_error_diagnosis"
+    ],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_33_methodology_finalizer.py",
+    "hook": "tool_execute_after",
+    "order": 33,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_33_methodology_finalizer.py",
+    "lines": 51,
+    "purpose": "Methodology Finalizer \u2014 flushes the per-cycle record on cycle completion",
+    "tags": [
+     "METHOD-FINAL"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": true,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_34_skill_write_normalizer.py",
+    "hook": "tool_execute_after",
+    "order": 34,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_34_skill_write_normalizer.py",
+    "lines": 129,
+    "purpose": "Skill-Write Normalizer (write-time trigger)",
+    "tags": [
+     "SKILL-NORMALIZE"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/skills",
+     "/a0/usr/Exocortex/scripts",
+     "/a0/usr/agents/agent0/skills",
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/skills",
+     "/a0/usr/workdir/workspace/scripts"
+    ],
+    "paths_missing": [
+     "/a0/usr/Exocortex/scripts",
+     "/a0/usr/agents/agent0/skills",
+     "/a0/usr/workdir/workspace/scripts"
+    ]
+   },
+   {
+    "file": "_50_code_execution_snapshot.py",
+    "hook": "tool_execute_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/tool_execute_after/_50_code_execution_snapshot.py",
+    "lines": 28,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "loop_data"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_email_response.py",
+    "hook": "tool_execute_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_email_integration/extensions/python/tool_execute_after/_50_email_response.py",
+    "lines": 61,
+    "purpose": "Intercept response tool in email sessions for attachments and break_loop.",
+    "tags": [
+     "CTX_EMAIL_ATTACHMENTS"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_telegram_response.py",
+    "hook": "tool_execute_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/tool_execute_after/_50_telegram_response.py",
+    "lines": 81,
+    "purpose": "",
+    "tags": [
+     "CTX_TG_ATTACHMENTS",
+     "CTX_TG_KEYBOARD"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_wa_response.py",
+    "hook": "tool_execute_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_whatsapp_integration/extensions/python/tool_execute_after/_50_wa_response.py",
+    "lines": 65,
+    "purpose": "Intercept response tool in WhatsApp sessions for attachments and break_loop.",
+    "tags": [
+     "CTX_WA_ATTACHMENTS",
+     "CTX_WA_REPLY_TO"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_60_sleep_trigger.py",
+    "hook": "tool_execute_after",
+    "order": 60,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_60_sleep_trigger.py",
+    "lines": 292,
+    "purpose": "Sleep Trigger \u2014 Agent-Zero Sleep Consolidation",
+    "tags": [
+     "SLEEP"
+    ],
+    "writes": [
+     "_sleep_last_activity"
+    ],
+    "reads": [
+     "_sleep_last_activity"
+    ],
+    "n_prints": 16,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/sleep_config.json",
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_70_idle_trigger.py",
+    "hook": "tool_execute_after",
+    "order": 70,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_after/_70_idle_trigger.py",
+    "lines": 200,
+    "purpose": "Idle Time Engine \u2014 Trigger (Sensor)",
+    "tags": [
+     "IDLE"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 1,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/plugins/_exocortex/helpers",
+     "/a0/usr/workdir/workspace/office",
+     "/a0/usr/workdir/workspace/office/engine_state.json",
+     "/a0/usr/workdir/workspace/office/status.json"
+    ],
+    "paths_missing": []
+   }
+  ],
+  "tool_execute_before": [
+   {
+    "file": "_02_tool_signature_guardian.py",
+    "hook": "tool_execute_before",
+    "order": 2,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_02_tool_signature_guardian.py",
+    "lines": 129,
+    "purpose": "Tool Signature Guardian \u2014 First-Line Loop Detection via Signature Hashing",
+    "tags": [
+     "SIG-GUARDIAN"
+    ],
+    "writes": [],
+    "reads": [
+     "_sig_guardian_history"
+    ],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_03_include_alias_expander.py",
+    "hook": "tool_execute_before",
+    "order": 3,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_03_include_alias_expander.py",
+    "lines": 160,
+    "purpose": "Include Alias Expander \u2014 make `\u00a7\u00a7include(path)` actually reach the executed tool",
+    "tags": [
+     "INCLUDE-03"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_enforce_tool_policy.py",
+    "hook": "tool_execute_before",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/plugins/_tool_access/extensions/python/tool_execute_before/_10_enforce_tool_policy.py",
+    "lines": 9,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_replace_last_tool_output.py",
+    "hook": "tool_execute_before",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/tool_execute_before/_10_replace_last_tool_output.py",
+    "lines": 37,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [
+     "last_tool_call"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_10_unmask_secrets.py",
+    "hook": "tool_execute_before",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/tool_execute_before/_10_unmask_secrets.py",
+    "lines": 22,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_15_action_boundary.py",
+    "hook": "tool_execute_before",
+    "order": 15,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_15_action_boundary.py",
+    "lines": 535,
+    "purpose": "Action Boundary Classification \u2014 Exocortex Pre-Execution Gate",
+    "tags": [
+     "ACTION-AUDIT",
+     "ACTION-GATE",
+     "ACTION-LOG",
+     "ACTION-NOTICE"
+    ],
+    "writes": [
+     "_action_gate_active"
+    ],
+    "reads": [],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/...",
+     "/a0/agents/",
+     "/a0/helpers/",
+     "/a0/python/",
+     "/a0/tools/",
+     "/a0/usr/agents/",
+     "/a0/usr/logs/action_audit.jsonl",
+     "/a0/usr/plugins/",
+     "/a0/usr/plugins/_exocortex/config/action_boundary_config.json"
+    ],
+    "paths_missing": [
+     "/a0/...",
+     "/a0/python/"
+    ]
+   },
+   {
+    "file": "_16_py_write_guard.py",
+    "hook": "tool_execute_before",
+    "order": 16,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_16_py_write_guard.py",
+    "lines": 146,
+    "purpose": "PyWrite Guard \u2014 Mechanical Block on .py File Writes",
+    "tags": [
+     "PYWRITE-GUARD"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_17_py_write_tracker.py",
+    "hook": "tool_execute_before",
+    "order": 17,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_17_py_write_tracker.py",
+    "lines": 65,
+    "purpose": "Python Write Tracker \u2014 Code Quality Pre-check",
+    "tags": [
+     "PY-TRACK"
+    ],
+    "writes": [
+     "_pending_py_check"
+    ],
+    "reads": [],
+    "n_prints": 2,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_block_parallel_recursion.py",
+    "hook": "tool_execute_before",
+    "order": 20,
+    "kind": "core",
+    "path": "/a0/extensions/python/tool_execute_before/_20_block_parallel_recursion.py",
+    "lines": 16,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_20_meta_reasoning_gate.py",
+    "hook": "tool_execute_before",
+    "order": 20,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py",
+    "lines": 644,
+    "purpose": "",
+    "tags": [
+     "MetaGate",
+     "MetaGate-QUARANTINE",
+     "MetaGate-SIZE",
+     "ORCH-GATE"
+    ],
+    "writes": [],
+    "reads": [
+     "_orch_state"
+    ],
+    "n_prints": 4,
+    "error_only_prints": true,
+    "paths": [
+     "/a0/usr/plugins/_exocortex/config/config.json",
+     "/a0/usr/plugins/_exocortex/helpers"
+    ],
+    "paths_missing": []
+   },
+   {
+    "file": "_25_write_guard.py",
+    "hook": "tool_execute_before",
+    "order": 25,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_25_write_guard.py",
+    "lines": 90,
+    "purpose": "Write Guard \u2014 Pre-execution backup for text_editor writes",
+    "tags": [
+     "WRITE-GUARD"
+    ],
+    "writes": [
+     "_write_guard"
+    ],
+    "reads": [],
+    "n_prints": 3,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_30_tool_fallback_advisor.py",
+    "hook": "tool_execute_before",
+    "order": 30,
+    "kind": "plugin",
+    "path": "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_30_tool_fallback_advisor.py",
+    "lines": 117,
+    "purpose": "",
+    "tags": [
+     "Fallback"
+    ],
+    "writes": [],
+    "reads": [
+     "_error_diagnosis",
+     "_supervisor_warned",
+     "_tool_failures"
+    ],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_45_telegram_draft_tool.py",
+    "hook": "tool_execute_before",
+    "order": 45,
+    "kind": "core",
+    "path": "/a0/plugins/_telegram_integration/extensions/python/tool_execute_before/_45_telegram_draft_tool.py",
+    "lines": 25,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_infection_check.py",
+    "hook": "tool_execute_before",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_infection_check/extensions/python/tool_execute_before/_50_infection_check.py",
+    "lines": 12,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "tools": [
+   {
+    "file": "__init__.py",
+    "hook": "tools",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_goal/tools/__init__.py",
+    "lines": 2,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "__init__.py",
+    "hook": "tools",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/tools/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "user_message_ui": [
+   {
+    "file": "_10_update_check.py",
+    "hook": "user_message_ui",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/user_message_ui/_10_update_check.py",
+    "lines": 124,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "util_model_call_before": [
+   {
+    "file": "_10_mask_secrets.py",
+    "hook": "util_model_call_before",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/util_model_call_before/_10_mask_secrets.py",
+    "lines": 20,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "v1": [
+   {
+    "file": "__init__.py",
+    "hook": "v1",
+    "order": null,
+    "kind": "core",
+    "path": "/a0/plugins/_a0_connector/api/v1/__init__.py",
+    "lines": 1,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "webui_ws_connect": [
+   {
+    "file": "_10_state_sync.py",
+    "hook": "webui_ws_connect",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/webui_ws_connect/_10_state_sync.py",
+    "lines": 16,
+    "purpose": "",
+    "tags": [
+     "WebuiHandler"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "webui_ws_disconnect": [
+   {
+    "file": "_10_state_sync.py",
+    "hook": "webui_ws_disconnect",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/webui_ws_disconnect/_10_state_sync.py",
+    "lines": 14,
+    "purpose": "",
+    "tags": [
+     "WebuiHandler"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_browser.py",
+    "hook": "webui_ws_disconnect",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/webui_ws_disconnect/_50_browser.py",
+    "lines": 25,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_editor.py",
+    "hook": "webui_ws_disconnect",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/webui_ws_disconnect/_50_editor.py",
+    "lines": 25,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_office.py",
+    "hook": "webui_ws_disconnect",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_office/extensions/python/webui_ws_disconnect/_50_office.py",
+    "lines": 25,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "webui_ws_event": [
+   {
+    "file": "_10_state_sync.py",
+    "hook": "webui_ws_event",
+    "order": 10,
+    "kind": "core",
+    "path": "/a0/extensions/python/webui_ws_event/_10_state_sync.py",
+    "lines": 67,
+    "purpose": "",
+    "tags": [
+     "WebuiHandler"
+    ],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_browser.py",
+    "hook": "webui_ws_event",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_browser/extensions/python/webui_ws_event/_50_browser.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_editor.py",
+    "hook": "webui_ws_event",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/webui_ws_event/_50_editor.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_office.py",
+    "hook": "webui_ws_event",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_office/extensions/python/webui_ws_event/_50_office.py",
+    "lines": 48,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ],
+  "workdir_file_mutation_after": [
+   {
+    "file": "_40_sync_open_sessions.py",
+    "hook": "workdir_file_mutation_after",
+    "order": 40,
+    "kind": "core",
+    "path": "/a0/plugins/_editor/extensions/python/workdir_file_mutation_after/_40_sync_open_sessions.py",
+    "lines": 18,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   },
+   {
+    "file": "_50_snapshot.py",
+    "hook": "workdir_file_mutation_after",
+    "order": 50,
+    "kind": "core",
+    "path": "/a0/plugins/_time_travel/extensions/python/workdir_file_mutation_after/_50_snapshot.py",
+    "lines": 29,
+    "purpose": "",
+    "tags": [],
+    "writes": [],
+    "reads": [],
+    "n_prints": 0,
+    "error_only_prints": false,
+    "paths": [],
+    "paths_missing": []
+   }
+  ]
+ }
+}

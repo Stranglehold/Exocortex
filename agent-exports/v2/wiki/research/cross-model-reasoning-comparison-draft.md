@@ -10,6 +10,10 @@ Topic: The Nature of Reasoning
 
 This page explores how different AI model architectures approach reasoning and problem-solving differently. While all modern LLMs are trained on similar data, their architectural choices (transformer variants, training objectives, inference-time compute strategies) lead to fundamentally different reasoning behaviors.
 
+## Distinct Scope (vs. the CoT / Test-Time-Compute Page)
+
+The in-house page `reasoning-models-chain-of-thought` already covers chain-of-thought mechanics and test-time-compute scaling (verified: DeepSeek-R1 2501.12948, Test-Time Compute Scaling Survey 2408.03314, Thinking-Optimal Scaling 2502.18080 NeurIPS 2025, o3 ARC-AGI results Jan 2026). This page is NOT a duplicate — its distinct contribution is the **architectural taxonomy**: *which underlying model family produces which reasoning behavior*. CoT/test-time-compute are implementation techniques that any sufficiently-large transformer can host; this page explains why the same technique behaves differently across autoregressive transformers, Mixture-of-Experts (MoE), state-space (Mamba) models, and latent-reasoning architectures.
+
 ## Key Architectural Variants
 
 ### Standard Autoregressive Transformers
