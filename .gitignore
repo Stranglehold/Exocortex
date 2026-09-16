@@ -46,3 +46,9 @@ harness/results/
 *.bak-*
 *.bak
 *.lnk
+
+# Hidden-launcher logs for the scheduled tasks (run_hidden.vbs, 2026-09-12): agent sync + reindex, agent backup
+scripts/logs/
+
+# Operational snapshots (.bak files, theme archives): not version history and not the archive of retired components (Jake, 2026-09-16)
+backups/

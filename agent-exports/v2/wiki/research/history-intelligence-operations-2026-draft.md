@@ -646,6 +646,33 @@ This page covers the historical evolution of intelligence operations from WWII t
 - Adversarial use of open sources
 - Privacy and civil liberties considerations
 
+## Structured Analytic Techniques & Analytical Judgment
+
+### The Heuer Framework (Psychology of Intelligence Analysis, CIA 1999)
+
+The single most durable lesson from historical intelligence operations is that **analysis is not merely technical but psychological**. Richards J. Heuer's *Psychology of Intelligence Analysis* established that the same cognitive mechanisms which make analysts effective also produce systematic errors.
+
+**Why structured techniques matter**: Analysts routinely fail because of how the human mind processes uncertainty — they prematurely commit to hypotheses, seek confirming evidence, and misjudge probabilities. Structured analytic techniques (SATs) are deliberately designed countermeasures, not decorative checklists.
+
+**Key Heuer findings grounded in corpus research:**
+- **Hypothesis-Oriented Analysis**: All analysis is hypothesis-oriented; the mind matches information against a hypothesized pattern to decide meaning rather than building up from data alone. The goal is to *test* hypotheses against evidence, not to confirm them.
+- **The ATH/HOW Framework** (Analysis Competing Hypotheses / How They Open Up Worlds): per prior corpus field reports, the ATH-HOW pairing addresses both evaluation and generative phases — first opening the analyst to competing hypotheses that explain how the world works before narrowing. This directly counters premature commitment bias.
+- **Four Decision-Making Biases Heuer identified**: (1) premature problem-closure (jumping to conclusions); (2) anchoring and insufficient adjustment from initial estimates; (3) premature hypothesis-commitment blocking consideration of alternatives; (4) demand characteristics causing the analyst to see what analysis expects. The remedy is deliberately generating multiple explanations.
+- **Cognitive biases in LLMs** (arXiv 2410.15413): Heuer's framework maps onto modern LLM failure modes — chain-of-thought reasoning can surface and correct hallucination, giving structured techniques renewed importance as AI-augmented analysis becomes standard.
+
+### Techniques Applied to Modern Analysis
+
+- **ACH (Analysis of Competing Hypotheses)**: Evaluate each hypothesis against *all* evidence simultaneously rather than confirming one; ranks hypotheses by which is most diagnostic. Used alongside Red Team Analysis and Devils' Advocacy to institutionalize competing explanations.
+- **Key Assumptions Check**: Identify and stress-test the core assumptions underwriting an analysis — where intelligence operations fail most often is in shared but unstated assumptions.
+- **Indicators Development** (Heuer's *Intelligence Analysis for Today's World*): build indicator lists to detect deception and surprise; ties directly to counterintelligence and deception detection (see Cross-Domain Connections).
+
+## 2026 Developments in AI-Augmented Intelligence Operations
+
+- **SIGINT-OSINT Convergence** ("The Ukraine Crucible," per corpus field report, SIGINT Evolution Thread #4): modern combined arms of intelligence now fuse SIGINT with OSINT in real time — signal intercepts triangulated against open-source social media and commercial data. This marks the historical shift from discipline-siloed collection to integrated, all-source exploitation.
+- **SIGINT Pipeline Architecture as OSINT Design Model** (corpus field report): the classic SIGINT workflow — collect → process → exploit → analyze → disseminate — has become a design template for OSINT pipelines and data-aggregation/entity-resolution systems.
+- **All-Source / Multi-INT Fusion Taxonomy**: per grounded reference, intelligence rests on defined disciplines (SIGINT/COMINT/MASINT/FISINT, TECHINT, MEDINT, HUMINT, IMINT) producing *all-source intelligence*; 2026 developments center on AI/ML automating the fusion layer (anomaly detection, NLP entity extraction, graph analytics for relationship mapping).
+- **Counterintelligence & Deception Detection**: structured techniques increasingly deployed against adversarial OSINT use — disinformation campaigns, opsec failures, and social engineering are now treated as first-class intelligence problems alongside technical collection.
+
 ## Cross-Domain Connections
 
 - Entity resolution in intelligence analysis

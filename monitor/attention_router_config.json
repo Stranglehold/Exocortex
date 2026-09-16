@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "agents": [
+    {"name": "aporia", "container": "agent-zero-v2",
+     "journal": "/a0/usr/workdir/workspace/self-improvement/journal.jsonl"},
+    {"name": "vek", "container": "VekV2",
+     "journal": "/a0/usr/workdir/workspace/self-improvement/journal.jsonl"}
+  ],
+  "window_hours": 24
+}

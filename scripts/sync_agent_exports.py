@@ -33,9 +33,14 @@ SAFETY (2026-08-19, Tier 1.2):
 
 COST NOTE: reindex() is a FULL rebuild (re-embeds ~43k chunks on the shared 3090),
 so this script reindexes ONLY when the synced content actually changed. Schedule it
-at a modest cadence (Windows Task Scheduler), e.g. every 6h:
+at a modest cadence (Windows Task Scheduler), e.g. every 6h. Since 2026-09-12 the
+task runs through the hidden launcher (no console window; output appended to
+scripts\\logs\\ExocortexAgentSync.log; exit code passed through, 3 = Docker off):
   schtasks /Create /TN "ExocortexAgentSync" /SC HOURLY /MO 6 /TR ^
-    "\"D:\\Vibecode\\docker-mcp-server\\.venv-opus-memory\\Scripts\\python.exe\" \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\sync_agent_exports.py\""
+    "wscript.exe //B //Nologo \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\run_hidden.vbs\" ^
+     \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\logs\\ExocortexAgentSync.log\" ^
+     \"D:\\Vibecode\\docker-mcp-server\\.venv-opus-memory\\Scripts\\python.exe\" ^
+     \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\sync_agent_exports.py\""
 Incremental (append-only) indexing on the server would remove the full-rebuild cost
 — flagged to Opus as the long-term memory-server improvement.
 """
@@ -46,6 +51,8 @@ import os
 import shutil
 import subprocess
 import sys
+
+from docker_probe import daemon_reachable, EXIT_DEFERRED   # beside this file in scripts/
 
 EXPORT_ROOT = r"D:\Vibecode\Agent-Zero\Exocortex\agent-exports"
 CONTAINER_WORKSPACE = "/a0/usr/workdir/workspace"
@@ -214,10 +221,19 @@ def main():
     targets = {args.agent: AGENTS[args.agent]} if args.agent else AGENTS
     os.makedirs(EXPORT_ROOT, exist_ok=True)
 
+    # 2026-09-13 (Jake): `docker inspect` fails the same way for "daemon not running" and "no such container",
+    # so with Docker Desktop OFF (Jake turns it off to game) every agent read as "not found — skipped", the
+    # signature came out unchanged, and the run exited 0 looking clean. Now: say so, touch nothing, exit 3.
+    ok, detail = daemon_reachable()
+    if not ok:
+        print(f"DOCKER DAEMON NOT REACHABLE ({detail})")
+        print("  sync DEFERRED: no files copied, no reindex, state not advanced; the next scheduled run retries.")
+        sys.exit(EXIT_DEFERRED)
+
     total = 0
     for name, container in targets.items():
         if not container_exists(container):
-            print(f"  [{name}] container {container} not found — skipped")
+            print(f"  [{name}] container {container} not found (daemon reachable) — skipped")
             continue
         n = sync_agent(name, container)
         total += n

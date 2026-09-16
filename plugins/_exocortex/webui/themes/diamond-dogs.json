@@ -34,7 +34,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/metal-gear-solid-v-the-phantom-pain-map.jpg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/metal-gear-solid-v-the-phantom-pain-map.jpg",
     "opacity": 0.68,
     "blur": 0,
     "blend_mode": "normal",
@@ -61,7 +61,7 @@
     },
     "watermark": {
       "enabled": true,
-      "src": "/themes/assets/metal-gear-solid-v-the-phantom-pain-development.jpg",
+      "src": "/usr/plugins/_exocortex/webui/themes/assets/metal-gear-solid-v-the-phantom-pain-development.jpg",
       "opacity": 0,
       "position": "center",
       "size": "45%"

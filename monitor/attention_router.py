@@ -45,6 +45,12 @@ import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 
+# 2026-09-13 (Jake): the daemon probe lives beside the scheduled scripts. `docker exec` fails the same way for
+# "Docker Desktop is off" (Jake turns it off to game) and "this container is stopped", and read_journal() returns []
+# for both, so a run that observed nothing delivered "0 need attention, 0 notable": calm, when the truth was unseen.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts"))
+from docker_probe import daemon_reachable, EXIT_DEFERRED  # noqa: E402
+
 # ── Configuration (explicit defaults; optional JSON override beside this file) ──
 
 DEFAULT_CONFIG = {
@@ -82,8 +88,19 @@ def load_config() -> dict:
 
 # ── Reading the live journal off each container ──
 
-def read_journal(container: str, path: str) -> list[dict]:
-    """docker exec cat the journal; return parsed entries (skip bad lines)."""
+JOURNAL_UNAVAILABLE: dict[str, str] = {}   # container -> reason, filled when read_journal() returns None
+
+
+def read_journal(container: str, path: str):
+    """docker exec cat the journal; return parsed entries (skip bad lines).
+
+    Returns None, not [], when the journal could not be read (container absent or stopped, exec failed):
+    an unread journal and an empty window are different facts, and the digest must render them differently
+    (Opus's ruling, 2026-09-13). History, from the log (Kestrel's count): of 89 runs from 2026-06-14 to
+    2026-09-12, 70 logged "journal unavailable", the first on 2026-06-16, and 65 of those went on to deliver a
+    "0 need attention, 0 notable" digest. The log said it plainly; the delivered message contradicted the log,
+    and only the message is read. The reason is kept in JOURNAL_UNAVAILABLE for the digest; the stderr line
+    stays for the log."""
     try:
         out = subprocess.run(
             ["docker", "exec", container, "cat", path],
@@ -92,12 +109,18 @@ def read_journal(container: str, path: str) -> list[dict]:
     except Exception as exc:
         print(f"[attention-router] {container}: docker exec failed: {exc}",
               file=sys.stderr)
-        return []
+        JOURNAL_UNAVAILABLE[container] = f"docker exec failed: {type(exc).__name__}"
+        return None
     if out.returncode != 0:
-        # Container down or file absent — not fatal, just no signals here.
+        # Container down or file absent: NOT "no signals"; the journal was not read at all.
+        err = (out.stderr or "").strip().splitlines()
         print(f"[attention-router] {container}: journal unavailable "
               f"(rc={out.returncode})", file=sys.stderr)
-        return []
+        # 160, not 80: the daemon's "container <64-hex-id> is not running" is ~100 chars and the useful words are at
+        # the end (the first live digest, 2026-09-14, cut it mid-id).
+        JOURNAL_UNAVAILABLE[container] = (f"journal unavailable, rc={out.returncode}"
+                                          + (f": {err[-1][:160]}" if err else ""))
+        return None
     entries = []
     for line in out.stdout.splitlines():
         line = line.strip()
@@ -261,8 +284,13 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
     summary_rows = []
     routine_lines = []
     total_high = total_notable = 0
+    unverified = []   # (agent, reason): journal not read; rendered as such, never as zeros
 
     for agent, data in per_agent.items():
+        if data.get("unverified"):
+            unverified.append((agent, data["unverified"]))
+            summary_rows.append(f"| {agent} | UNVERIFIED | – | – | – | – | {data['unverified']} |")
+            continue
         win = data["in_window"]
         counts = {"high": 0, "notable": 0, "routine": 0}
         type_counts = {}
@@ -315,9 +343,19 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
     lines.append(f"**Agents:** {', '.join(per_agent.keys())}")
     lines.append("")
 
+    if unverified:
+        lines.append(f"⚠️ **UNVERIFIED: {len(unverified)} agent(s) could not be read** — "
+                     + "; ".join(f"{a}: {r}" for a, r in unverified)
+                     + ". Their rows below carry no counts; nothing is known about them for this window.")
+        lines.append("")
+
     if not high and not notable:
-        lines.append("✅ **Nothing needs your attention.** No high or notable "
-                     "signals in window. Per-agent activity below.")
+        if unverified:
+            lines.append("⚠️ **Nothing to report from the agents that could be read.** "
+                         "That is not the same as a quiet day for the unverified one(s).")
+        else:
+            lines.append("✅ **Nothing needs your attention.** No high or notable "
+                         "signals in window. Per-agent activity below.")
         lines.append("")
     else:
         lines.append(f"### 🔴 Needs attention ({len(high)})")
@@ -357,7 +395,7 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
 
     if total_high:
         prio = "urgent"
-    elif total_notable:
+    elif total_notable or unverified:
         prio = "normal"
     else:
         prio = "fyi"
@@ -365,6 +403,8 @@ def build_digest(per_agent: dict, window_desc: str, amax: int):
     n_agents = len(per_agent)
     subject = (f"Daily digest — {total_high} need attention, "
                f"{total_notable} notable across {n_agents} agents")
+    if unverified:
+        subject += f", {len(unverified)} unverified"
     return subject, body, prio
 
 
@@ -440,37 +480,68 @@ def main():
         print("[attention-router] disabled in config; exiting.")
         return 0
 
+    # Daemon down: deliver ignorance as a finding, never as a quiet day. Exit 3 (DEFERRED) so the scheduler's
+    # Last Run Result says the journals were not read; the digest itself says so in its subject.
+    ok, detail = daemon_reachable()
+    if not ok:
+        now = datetime.now(timezone.utc)
+        subject = "Daily digest — UNVERIFIED: Docker daemon not running, no journals read"
+        body = (
+            f"**UNVERIFIED.** At {now.strftime('%Y-%m-%d %H:%M UTC')} the Docker daemon was not reachable "
+            f"({detail}), so no agent journal could be read and nothing is known about the agents for this "
+            "window. This is not a quiet day; it is an unobserved one. Docker Desktop off is a normal state on "
+            "this machine. The next scheduled run reads the journals if the daemon is up by then."
+        )
+        if args.stdout:
+            print(f"SUBJECT: {subject}\nPRIORITY: normal\n\n{body}")
+            return EXIT_DEFERRED
+        dest = deliver_to_inbox(subject, body, "normal", cfg, args.dry_run)
+        if not args.dry_run:
+            print(f"[attention-router] delivered UNVERIFIED digest (daemon down): {dest}")
+        return EXIT_DEFERRED
+
     hours = args.hours if args.hours is not None else cfg["window_hours"]
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=hours)
+
+    # The window description does not depend on any agent; computing it here means a run where every
+    # agent is unverified still has one (it used to be set inside the loop).
+    if args.since_cycles is not None:
+        window_desc = f"last {args.since_cycles} cycles per agent"
+    else:
+        window_desc = (f"last {hours:g}h "
+                       f"({since.strftime('%Y-%m-%d %H:%M')} → "
+                       f"{now.strftime('%Y-%m-%d %H:%M')} UTC)")
 
     per_agent = {}
     for agent in cfg["agents"]:
         name = agent["name"]
         entries = read_journal(agent["container"], agent["journal"])
+        if entries is None:
+            per_agent[name] = {"in_window": [], "all": [],
+                               "unverified": JOURNAL_UNAVAILABLE.get(agent["container"], "journal unavailable")}
+            continue
         entries = [e for e in entries if parse_ts(e) is not None]
         entries.sort(key=lambda e: parse_ts(e))
         if args.since_cycles is not None:
             in_window = entries[-args.since_cycles:]
-            window_desc = f"last {args.since_cycles} cycles per agent"
         else:
             in_window = [e for e in entries if parse_ts(e) >= since]
-            window_desc = (f"last {hours:g}h "
-                           f"({since.strftime('%Y-%m-%d %H:%M')} → "
-                           f"{now.strftime('%Y-%m-%d %H:%M')} UTC)")
         per_agent[name] = {"in_window": in_window, "all": entries}
 
     subject, body, priority = build_digest(per_agent, window_desc,
                                             cfg["activity_max_chars"])
+    # Exit 3 (DEFERRED/UNVERIFIED) when any agent's journal was not read, so the scheduler's result says so too.
+    rc = EXIT_DEFERRED if any(d.get("unverified") for d in per_agent.values()) else 0
 
     if args.stdout:
         print(f"SUBJECT: {subject}\nPRIORITY: {priority}\n\n{body}")
-        return 0
+        return rc
 
     dest = deliver_to_inbox(subject, body, priority, cfg, args.dry_run)
     if not args.dry_run:
         print(f"[attention-router] delivered ({priority}): {dest}")
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

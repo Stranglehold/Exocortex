@@ -340,35 +340,24 @@
 
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     RECONCILIATION STATUS — DEC-029 through DEC-037 (gap between 028 and 038)
+     RECONCILIATION — DEC-029 through DEC-037 (formerly a gap)
      ════════════════════════════════════════════════════════════════════════
-     These numbers were used informally across the repo during Mar–Apr 2026 but
-     never transcribed here — AND the informal assignments CONFLICT across sources.
-     A faithful backfill is BLOCKED until Opus declares the canonical assignment
-     (the decision log is his doctrine; picking winners here would be fabrication).
+     RESOLVED by Opus, 2026-09-16. Canonical assignments follow the most-cited
+     current usage (Kestrel's recommended resolution, audited 2026-05-25).
 
-     Conflict map (audited 2026-05-25, Kestrel):
-       DEC-029 — TWO meanings:
-                 (a) chronology/decision_log_complete_20260309.md → "Agent Capability
-                     Awareness (Active-Draft)" (Session 060)
-                 (b) state/STATE.md → "BST v3.2: investigation demoted to tiebreak-only"
-       DEC-030 — TWO meanings:
-                 (a) chronology/decision_log_complete_20260309.md → "Exocortex as A0 Plugin"
-                 (b) state/STATE.md → "Extension path migration → /a0/usr/agents/agent0/
-                     extensions/python/ (persistence)"  ← the heavily-cited "profile migration"
-       DEC-031..037 — single consistent source:
-                 chronology/decisions/decision_log_20260412_session_kestrel.md
-                 031 Structural Gate Discipline · 032 Phase-Aware Context Mgmt ·
-                 033 Spec Completeness Gate · 034 Idempotency Discipline ·
-                 035 Pre-Mortem Gate · 036 Verification-Within-Generation (ReVeal) ·
-                 037 Context Surgery for Loop Breaking
-     (Note: STATE.md also claims "DEC-001 through DEC-030 (main decision log)" — false;
-      this formal log ends at 028. That mis-claim is part of the same drift.)
+     DEC-029 = "BST v3.2: investigation demoted to tiebreak-only" (STATE.md usage).
+               Session-060 "Agent Capability Awareness" draft never landed; dropped.
+     DEC-030 = "Extension path migration → persistence" (the heavily-cited profile
+               migration). Session-060 "Exocortex as A0 Plugin" subsumed by later arch.
+     DEC-031..037 = Kestrel's April session (single consistent source:
+               chronology/decisions/decision_log_20260412_session_kestrel.md):
+               031 Structural Gate Discipline · 032 Phase-Aware Context Mgmt ·
+               033 Spec Completeness Gate · 034 Idempotency Discipline ·
+               035 Pre-Mortem Gate · 036 Verification-Within-Generation (ReVeal) ·
+               037 Context Surgery for Loop Breaking
 
-     RECOMMENDED RESOLUTION (for Opus): pick canonical meanings for 029/030 (the STATE.md
-     pair reflects the most-cited current usage — BST demotion + profile migration), then
-     Kestrel transcribes 029-037 faithfully from the sources above. DEC-038/039/040 below
-     already continue past the highest used number, so they're unaffected by the outcome.
+     TRANSCRIPTION NEEDED: Kestrel to backfill 029-037 as full entries from the
+     sources above, using these canonical assignments. DEC-038+ unaffected.
      ════════════════════════════════════════════════════════════════════════ -->
 
 
@@ -591,3 +580,15 @@
 **The rule:** For irreplaceable state, back up rather than bind. Capture as an archive stream (not a file mirror) whenever source and destination filesystems have different naming rules. Default to capturing everything and exclude explicitly. Keep the restore path manual, separate and unscheduled.
 **Related:** `sync_agent_exports.py` was written 2026-07-09 and never scheduled — exports froze that day and `search_memory` served a five-week-stale corpus while both agents' prompts named it their PRIMARY source. Built-but-never-armed is the same failure family as producer-built/consumer-assumed.
 **Revisit if:** Containers gain mounts for another reason, or agent data grows past what snapshot retention can hold.
+
+---
+
+## DEC-051: Injection Layer Retirement (Arm M Prune)
+
+**Date:** 2026-09-08 (Jake's mandate), 2026-09-15 (assessment confirmed)
+**Session:** Kestrel (execution), Fable (measurement), Opus (design authority)
+**Principle:** The layers that injected scaffolding into the prompt are off. What remains is the engine plus the layers that repair, guard, record, and remember. The system's character changed from "deterministic preprocessing that structures model input" to "autonomous cycle engine with protective infrastructure."
+**Context:** Jake's direct mandate on 2026-09-08 archived 28 files (.py to .PRUNED-20260908.txt): 15 Exocortex extensions, 6 A0 core, 5 A0 plugins, plus 2 data files. Three A0-core files restored on Jake's same-day ruling ("no directives, full grounding"): `_60_include_current_datetime`, `_70_include_agent_info`, `_71_model_identity_verify`. Net 25 pruned. `_23_pace_plan_injector` retired separately on 2026-09-02. Total Exocortex extensions switched off: 17 (Fable's assessment, 2026-09-15). Preceding this: Arm M of the Aporia belief investigation established that status memories are a sufficient carrier of the rejection belief on Ornith without the injection blocks present (DEC-048 constrained decoding already rejected). The prune tested necessity; results confirmed injection blocks were not necessary for the belief to persist — the model and the store are the variables.
+**Alternatives rejected:** Selective pruning (removing only belief-carrying blocks — rejected because the overhead floor was measured at 5% of context, and "the expensive thing and the load-bearing thing are not the same thing"); full removal including grounding blocks (rejected by Jake — clock, identity, and recalled memories serve grounding, not coercion).
+**Revisit if:** A future model requires the injection scaffolding to maintain capability that the current model (Ornith 1.0-35B) achieves without it. The archive at `archive/plugins-_exocortex/2026-09-08-prune/` is the restore path. The parity gate (Kestrel, 2026-08-19) detects drift in both directions.
+**Instances:** 17 Exocortex extensions archived across `before_main_llm_call` (11), `message_loop_end` (1), `message_loop_prompts_after` (5). Two inert data files (`slot_taxonomy.json`, `htn_plan_library.json`) whose consumers are among the pruned. Container markers are the ground truth; repo archive (plan §6.A) closes the resurrection gap.

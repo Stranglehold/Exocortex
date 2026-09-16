@@ -34,7 +34,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/nierautomata-loading.jpg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/nierautomata-loading.jpg",
     "opacity": 0.65,
     "blur": 0,
     "blend_mode": "normal",

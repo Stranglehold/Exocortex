@@ -51,7 +51,7 @@ class IdleControl(ApiHandler):
 
     @classmethod
     def requires_auth(cls) -> bool:
-        return False
+        return True
 
     async def process(self, input: dict, request: Request) -> dict | Response:
         action = (input.get("action") or "").strip().lower()
@@ -62,25 +62,36 @@ class IdleControl(ApiHandler):
             # below). Then ensure the daemon is actually running — clicking enable
             # must START the engine, not just set a flag nothing reads.
             _update_config_enabled(True)
-            _write_file(_CONTROL_PATH, {"paused_until": 0, "armed_at": time.time()})
+            # Arm WITHOUT clearing a pause. Enable and pause are different questions — "is the
+            # engine switched on" and "is it held right now" — and the old wholesale write
+            # answered the second by erasing it. Anyone who wants to run now calls resume.
+            ok = _merge_control(armed_at=time.time())
             spawned = False
             if not _daemon_alive():
                 spawned = _spawn_daemon()
             _write_file(_STATUS_PATH, {"state": "idle", "label": "Available"})
+            held = _read_control().get("paused_until", 0) or 0
+            paused = held > time.time()
+            if paused:
+                _write_file(_STATUS_PATH, {"state": "paused", "label": "Paused"})
             return {
+                "success": ok,
                 "status": "enabled",
                 "enabled": True,
                 "daemon_alive": _daemon_alive(),
                 "daemon_spawned": spawned,
+                "paused_until": datetime.fromtimestamp(held, tz=timezone.utc).isoformat() if paused else None,
+                "note": ("enabled, but a pause is still in force until the time above — "
+                         "call resume to run now") if paused else "",
             }
 
         elif action == "disable":
             # Clear the arm marker so a later daemon start won't treat a stale
             # arm as intent to run.
             _update_config_enabled(False)
-            _write_file(_CONTROL_PATH, {"paused_until": 0, "armed_at": 0})
+            ok = _merge_control(armed_at=0)   # zeroed deliberately: a stale arm must not read as intent
             _write_file(_STATUS_PATH, {"state": "disabled", "label": "Disabled"})
-            return {"status": "disabled", "enabled": False}
+            return {"success": ok, "status": "disabled", "enabled": False}
 
         elif action == "pause":
             duration = int(input.get("duration_seconds", 3600))
@@ -89,22 +100,27 @@ class IdleControl(ApiHandler):
             paused_until_iso = datetime.fromtimestamp(
                 paused_until, tz=timezone.utc
             ).isoformat()
-            _write_file(_CONTROL_PATH, {"paused_until": paused_until})
+            reason = (input.get("reason") or "").strip() or None
+            ok = _merge_control(paused_until=paused_until, pause_reason=reason)
             _write_file(_STATUS_PATH, {
                 "state": "paused",
                 "label": "Paused",
                 "paused_until": paused_until_iso,
             })
             return {
-                "status": "paused",
-                "paused_until": paused_until_iso,
+                "success": ok,
+                "status": "paused" if ok else "FAILED",
+                "paused_until": paused_until_iso if ok else None,
                 "duration_seconds": duration,
+                "pause_reason": reason,
+                "note": "" if ok else "the control file could not be written — nothing changed",
             }
 
         elif action == "resume":
-            _write_file(_CONTROL_PATH, {"paused_until": 0})
+            ok = _merge_control(paused_until=0, pause_reason=None)
             _write_file(_STATUS_PATH, {"state": "idle", "label": "Available"})
-            return {"status": "resumed"}
+            return {"success": ok, "status": "resumed" if ok else "FAILED",
+                    "note": "" if ok else "the control file could not be written — nothing changed"}
 
         else:
             return {
@@ -129,16 +145,53 @@ def _update_config_enabled(enabled: bool) -> None:
         pass
 
 
-def _write_file(path: str, data: dict) -> None:
-    """Atomically write a JSON file."""
+def _write_file(path: str, data: dict) -> bool:
+    """Atomically write a JSON file. RETURNS whether it worked.
+
+    This used to be `except Exception: pass`, so a failed write returned HTTP 200 with
+    status "paused" and nothing on disk — the endpoint reporting a pause that did not
+    exist. A control that can lie about whether it acted is worse than one that cannot act
+    (Kestrel, 2026-09-14)."""
     try:
         os.makedirs(_OFFICE_DIR, exist_ok=True)
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f)
         os.replace(tmp, path)
+        return True
+    except Exception as e:
+        print(f"[IDLE-CONTROL] write FAILED {path}: {e}", flush=True)
+        return False
+
+
+def _read_control() -> dict:
+    try:
+        with open(_CONTROL_PATH, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
     except Exception:
-        pass
+        return {}
+
+
+def _merge_control(**updates) -> bool:
+    """READ-MERGE-WRITE. control.json is shared: paused_until belongs to pause/resume and
+    armed_at belongs to enable/disable, and every action used to write the whole file, so
+    each silently destroyed the other's key.
+
+    Two real failures came from that on 2026-09-14. `enable` wrote {paused_until: 0,...},
+    so the daemon-restart sequence silently un-paused an engine that was deliberately held
+    — 578 was one poll from firing into a saturated GPU. And `pause` dropped armed_at,
+    which _disable_cycles_on_start reads to honour a recent arm, so pausing quietly removed
+    the arm's protection and the next daemon start force-disabled.
+
+    Pass only the keys you mean to change. A key you do not name survives."""
+    cur = _read_control()
+    for k, v in updates.items():
+        if v is None:
+            cur.pop(k, None)
+        else:
+            cur[k] = v
+    return _write_file(_CONTROL_PATH, cur)
 
 
 def _daemon_alive() -> bool:

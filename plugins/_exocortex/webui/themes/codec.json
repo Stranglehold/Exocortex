@@ -34,7 +34,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/mgs-delta-radio-screen.jpg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/mgs-delta-radio-screen.jpg",
     "opacity": 0.55,
     "blur": 5,
     "blend_mode": "normal",
@@ -61,7 +61,7 @@
     },
     "watermark": {
       "enabled": false,
-      "src": "/themes/assets/FOX_logo_webp.png",
+      "src": "/usr/plugins/_exocortex/webui/themes/assets/FOX_logo_webp.png",
       "opacity": 0.08,
       "position": "center",
       "size": "30%"

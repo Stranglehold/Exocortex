@@ -107,7 +107,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/mgs-delta-radio-screen.jpg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/mgs-delta-radio-screen.jpg",
     "opacity": 0.84,
     "blur": 4,
     "blend_mode": "normal",
@@ -134,7 +134,7 @@
     },
     "watermark": {
       "enabled": true,
-      "src": "/themes/assets/FOX_logo_webp-removebg-preview.png",
+      "src": "/usr/plugins/_exocortex/webui/themes/assets/FOX_logo_webp-removebg-preview.png",
       "opacity": 0.18,
       "position": "top right",
       "size": "11%"
@@ -148,6 +148,6 @@
   "sounds": {
     "enabled": true,
     "volume": 0.25,
-    "codec_connect": "/themes/assets/sounds/codec.wav"
+    "codec_connect": "/usr/plugins/_exocortex/webui/themes/assets/sounds/codec.wav"
   }
 }

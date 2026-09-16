@@ -34,7 +34,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/kaer-morhen-bg.svg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/kaer-morhen-bg.svg",
     "opacity": 0.4,
     "blur": 0,
     "blend_mode": "normal",
@@ -61,7 +61,7 @@
     },
     "watermark": {
       "enabled": true,
-      "src": "/themes/assets/wolf-medallion.svg",
+      "src": "/usr/plugins/_exocortex/webui/themes/assets/wolf-medallion.svg",
       "opacity": 0.06,
       "position": "center",
       "size": "40%"

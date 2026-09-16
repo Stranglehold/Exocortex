@@ -43,7 +43,53 @@ Supervisory Control and Data Acquisition (SCADA) and Industrial Control Systems 
 - Digital twins for ICS security testing
 - Blockchain for ICS integrity verification (emerging)
 
-## References
+## 2026 Developments and Production Reality
+
+**Grounding: arXiv (this cycle) + shared Exocopus corpus (42 matches) + book library (CompTIA SY0-501 SCADA/ICS §; NIST ICS security program pp.424-430).**
+
+### Anomaly Detection Research Frontiers (arXiv, 2026)
+
+The anomaly-detection work the page referenced lacked arXiv grounding in prior cycles; current corpus and library material now supply specific 2026 sources:
+
+- **Spatio-Temporal Attention GNN for ICS Anomaly Detection** (arXiv:2603.10676, Mar 2026) — graph-neural attention over process-variable flows; closes the gap between static-graph fraud detection and temporal community evolution in SCADA.
+- **CINDI: Conditional Imputation & Noisy Data Integrity with Flows** (arXiv:2603.11745, Mar 2026) — directly addresses the "process data quality" open question on this page; imputes missing/missing-corrupted ICS signals before classifier.
+- **Spatio-Temporal Grid Intelligence: Hybrid GNN-LSTM** (arXiv:2603.20488, Mar 2026) — fusion model mirroring the page's Multi-feature hybrid approach finding (ACM Aug 2025).
+- **Distributed Digital Twin-Based Anomaly Detection for VSC Wind Power** (arXiv:2604.03123, Apr 2026) — extends digital-twin ICS security testing to wind farm SCADA.
+- **SmartGuard Energy Intelligence System for Electricity Theft Detection** (arXiv:2604.03344, Apr 2026).
+- **Dimensionality-Aware Anomaly Detection in Learned Representations** (arXiv:2605.02715, May 2026) — addresses the "model generalization across protocols" open question.
+- **Latency-Aware DL Benchmark for Real-Time Cyber-Physical Attack Classification** (arXiv:2605.17256, May 2026) — directly engages the deterministic-timing barrier in OT.
+- Prior work: tensor-decomposition grid AD (2310.08650); distributed semantic-rules IDS for SCADA smart grids (2412.07917); hierarchical online IDS for SCADA networks (1611.09418).
+
+### Adversarial Threats to ICS Anomaly Detection
+
+The page's adversarial-robustness open question is now active in the corpus:
+
+- **JSMA on ICS** (arXiv 2505.03120) — adversarial samples generated against ICS anomaly detection; generalization across attack types validated.
+- **Edge ML ensemble vulnerability** (Springer 2026, DDDDAS) — adversaries alter input data to evade DDDAS-based ICS security; confirms the open question is real and unresolved.
+- **Nature 2026** — IIoT-enabled SCADA non-local attention deep learning for robust cyberattack detection proposes a defensive counterpoint.
+
+### Production Reality Consensus (Corpus)
+
+A critical epistemic finding from the shared corpus (verified May 2026):
+
+- **No production consensus exists for AI-driven real-time threat detection in operational environments.** ML-based SCADA anomaly detection remains predominantly research/pilot-stage. Darktrace is one of few vendors claiming production behavioral-baselining deployment; others (CyberSentry deep-learning classifier) remain research prototypes.
+- Deterministic timing requirements in OT create a structural barrier to ML-based real-time decision-making; industry consensus recommends AI *monitor, not control* separation from direct control systems.
+- The gap between AD research capability and OT deployment readiness is itself the central vulnerability surface — deterministic gaps are more valuable than model accuracy.
+
+### Threat Actor Activity (2026)
+
+- **CISA AA26-097A** (Apr 2026) — Iranian-affiliated cyber actors exploit programmable logic controllers; extends prior CISA advisories on Ukraine/Iran pro-Russia ICS manipulation to broader verticals.
+- Dragos OT/ICS Cybersecurity Year in Review (2026) provides the current operational posture baseline.
+
+### Honest Open Questions (retained from prior cycles, now scoped)
+
+1. Direct-measurement study isolating blocking quality vs CCMS-style cluster metrics remains unaddressed for ICS anomaly detection.
+2. On resource-constrained OT hardware without GPU availability — the page's original open question, now confirmed as the dominant deployment barrier by corpus consensus.
+3. Blockchain-for-ICS-integrity verification (emerging) remains under-explored.
+
+### Additional Sources Added This Cycle
+
+arXiv 2310.08650 · 2412.07917 · 1611.09418 · 2603.10676 · 2603.11745 · 2603.20488 · 2604.03123 · 2604.03344 · 2605.02715 · 2605.17256 · 2505.03120 · CompTIA Security+ SY0-501 SCADA/ICS § (pp.361) · Packt Industrial Cybersecurity, NIST ICS security program pp.424-430
 - [NERC CIP Standards](https://www.nerc.com/pa/Stand/Pages/Default.aspx)
 - [IEC 62351 Series](https://www.iec.ch/publications-and-standardisation)
 - [NIST ICS Security](https://www.nist.gov/programs-projects/industrial-control-systems-ics)

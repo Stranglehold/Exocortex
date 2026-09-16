@@ -1,4 +1,28 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# ==============================================================================
+# RETIRED 2026-09-14 - DO NOT ADD BACK TO install_all.sh
+# ==============================================================================
+# Every path this script writes is one A0 v2.9 does not load from. It docker cp'd
+# four files into A0 CORE, and all four destinations are absent on v2.9:
+#
+#   patches/webui/js/theme-editor.js       -> /a0/webui/js/theme-editor.js
+#   patches/webui/js/themes.js             -> /a0/webui/js/themes.js
+#   patches/python/api/api_theme_save.py   -> /a0/python/api/api_theme_save.py
+#   patches/python/api/api_theme_upload.py -> /a0/python/api/api_theme_upload.py
+#
+# The theme system moved into the plugin tree; this step did not follow. What runs
+# is /a0/usr/plugins/_exocortex/api/api_theme_save.py and api_theme_upload.py, and
+# there is no themes.js anywhere in the container at any path.
+#
+# It never FAILED, which is why nothing reported it: docker cp to a path nobody
+# loads from exits 0, so this produced orphans rather than errors on every fresh
+# install since the move. Same cause as the ten steps retired 2026-08-19.
+#
+# Archive + full reasoning: backups/theme-editor-install-archive-20260914/
+# To revive: repoint all four destinations at the plugin tree AND reconcile the
+# patches/ sources to the deployed versions first - the plugin api_theme_upload.py
+# is AHEAD of the patches copy, not merely differently addressed.
+# ==============================================================================
 # install_theme_editor.sh — Deploy the visual theme editor to Agent Zero
 # Files deployed:
 #   /a0/webui/js/theme-editor.js          (new modal editor)

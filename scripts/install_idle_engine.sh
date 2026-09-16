@@ -25,8 +25,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 EXT_DEST="/a0/usr/agents/agent0/extensions/python/tool_execute_after"
 EXOCORTEX_DEST="/a0/usr/Exocortex"
-API_DEST="/a0/api"
-WEBUI_DEST="/a0/webui"
+# -- ORPHANED 2026-09-15: kept only so this file reads in one piece. Both point at A0
+# CORE folders and NOTHING in this script uses them any more -- the three steps that did
+# were retired on Jake's ruling (see the RETIRED block further down for why). Do NOT
+# reach for either when adding a step: a handler installed to /a0/api is served at
+# /api/<name>, a SECOND URL beside the plugin pair, which is how an unauthenticated copy
+# of the engine's control surface came to exist. Plugin destinations only.
+API_DEST="/a0/api"          # retired destination - do not use
+WEBUI_DEST="/a0/webui"      # retired destination - do not use
 # -- REPOINTED 2026-08-19 (Tier 1.1) -----------------------------------------
 # Was /a0/usr/plugins/exocortex (NO underscore) - the wrong plugin name, so every
 # webui asset landed in a directory A0 never reads. These files also ship in the
@@ -228,26 +234,43 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "interests.md" \
         "${CONTAINER}"
 
-    # ── API handler ──
-    install_file \
-        "${REPO_DIR}/patches/api/office_feed.py" \
-        "${API_DEST}/office_feed.py" \
-        "office_feed.py" \
-        "${CONTAINER}"
-
-    # ── Control API handler ──
-    install_file \
-        "${REPO_DIR}/patches/api/idle_control.py" \
-        "${API_DEST}/idle_control.py" \
-        "idle_control.py" \
-        "${CONTAINER}"
-
-    # ── Office panel HTML ──
-    install_file \
-        "${REPO_DIR}/patches/webui/office.html" \
-        "${WEBUI_DEST}/office.html" \
-        "office.html" \
-        "${CONTAINER}"
+    # ── RETIRED 2026-09-15 on Jake's ruling: the API_DEST and WEBUI_DEST steps ──
+    # Three steps removed here: patches/api/office_feed.py and patches/api/idle_control.py
+    # to ${API_DEST} (/a0/api, the CORE api folder), and patches/webui/office.html to
+    # ${WEBUI_DEST} (/a0/webui, core webui).
+    #
+    # WHY, and it is not tidiness. Core serves /a0/api/<name>.py at /api/<name>, which is a
+    # DIFFERENT URL from the plugin pair at /api/plugins/_exocortex/<name>. So these steps
+    # installed a SECOND copy of the engine's read and control surface at a second set of
+    # URLs. On 2026-09-15 the patches/ copies had drifted stale against the live plugin tree
+    #   patches/api/idle_control.py  3614b365   plugin/live  39a7b204
+    #   patches/api/office_feed.py   1e5601fb   plugin/live  0430f843
+    # and — the part that mattered — both stale copies still carried requires_auth -> False,
+    # which in A0 also disables CSRF (requires_csrf defaults to requires_auth). The plugin
+    # pair was fixed to True the same night; a run of this script would have stood an
+    # UNAUTHENTICATED pair back up at the core URLs beside the fixed one.
+    #
+    # Two control surfaces at two URLs is worse than one even when both are authenticated:
+    # disabling one does not disable the other, and a later fix to the plugin pair silently
+    # never reaches the core pair. That drift is exactly what produced this finding. Syncing
+    # the copies would have re-armed the mechanism rather than removed it, so the destination
+    # goes instead.
+    #
+    # Verified before removal (2026-09-15, agent-zero-v2): /a0/api/office_feed.py and
+    # /a0/api/idle_control.py ABSENT; GET /api/office_feed and /api/idle_control both 404;
+    # /a0/webui/office.html ABSENT. Nothing on a live container depended on these steps.
+    # No install script references install_idle_engine.sh, so no routine install ran them.
+    #
+    # The live read/control surface is the PLUGIN pair, installed by the plugin tree, at
+    #   /api/plugins/_exocortex/office_feed      (GET)
+    #   /api/plugins/_exocortex/idle_control     (POST)
+    # The stale patches/api copies remain on disk as an ordinary tidy-up, to be archived with
+    # the step 13 retirement (install_theme_editor.sh) rather than edited in place.
+    #
+    # The interests.md step ABOVE is deliberately KEPT: install_file_if_missing into
+    # ${EXOCORTEX_DEST}, which is a LIVE runtime directory (behavioral_traces.jsonl,
+    # staging.jsonl, sleep_reports/ all written the same day). This script is mixed, not
+    # retired — do not generalise this removal into retiring the whole installer.
 
     # ── Right-canvas tab: surface registrar ──
     install_file \

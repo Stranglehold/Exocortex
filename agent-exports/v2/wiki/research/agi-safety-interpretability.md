@@ -2,8 +2,9 @@
 
 **Status: STABLE**
 **Created: 2026-05-19**
-**Last Updated: 2026-05-19**
-**Primary Sources: 8 verified**
+**Last Updated: 2026-09-15**
+**Deepened: 2026-09-15 (BUILD idle cycle)**
+**Primary Sources: 8 verified + 4 new arXiv sources added 2026-09-15**
 
 ---
 
@@ -31,6 +32,23 @@ Mechanistic interpretability (MI) and AI alignment research landscape as of mid-
 
 ### International AI Safety Report 2026
 - 100+ independent experts, 30+ countries, EU and OECD participation. Scientific assessment of GAI capabilities and risks for policymaking.
+
+### Sparse Autoencoders as Production Safety Instrumentation
+**This is the single most important 2026 development and was absent from this page's May baseline.** Mechanistic interpretability moved from post-hoc auditing to real-time safety instrumentation, driven by sparse autoencoder (SAE) maturation:
+- **SAEs are production-ready**: MIT thesis (Kantamneni 2025) validates SAE feature recovery for mathematical-reasoning circuits in LLMs, establishing causal ground truth for interpretability claims rather than correlational speculation. ICLR 2026 confirmed this with hierarchical tracing for automated sparse-circuit discovery.
+- **Sparsity scales with model size**: OpenAI's GPT-4-scale SAE work shows feature sparsity *increases* with model size — larger models are more interpretable, not less. This inverts the traditional "bigger = blacker box" assumption that undergirded AI-safety alarmism.
+- **arXiv 2510.02917 (ICLR 2026)**: first application of SAEs to code-generation circuits; cross-layer transcoders replace manual MLP reverse-engineering — a scaling lever as circuit discovery is automated rather than hand-curated.
+- **arXiv 2606.06333 (Jun 2026)**: Subspace-Aware Sparse Autoencoders demonstrate the standard SAE assumption of one-dimensional latent features mismatches the multi-dimensional structure of real circuits; introduces feature splitting via two distinct mechanisms, with a subspace-aware formulation that provably reduces spurious splitting.
+- **arXiv 2509.03738 (Sep 2025)**: Sparse Autoencoder Neural Operators operate directly in infinite-dimensional function spaces and were applied to vision data where spatial structure is inherent, bridging mechanistic interpretability with neural-operator theory.
+- **arXiv 2512.10805 (Dec 2025)**: Interpretable and Steerable Concept Bottleneck SAEs improve interpretability +32.1% and steerability +14.5% across LVLMs and image-generation tasks, demonstrating practical safety-instrumentation capability rather than pure diagnosis.
+- **The funding gap**: safety research trails capability spend at roughly $180–200M versus tens of billions for capabilities; whether this narrows is the open strategic question beneath all interpretability claims.
+
+### Scalable Oversight Developments
+Alignment shifted from outer alignment (specifying correct objectives) to inner alignment (ensuring trained models actually optimize those objectives); scalable oversight is the 2026 frontier as models approach or exceed human judgment:
+- **OpenAI Preparedness Framework (Beta)** operationalizes safety evaluation before deployment: internal/external tests for disallowed-content generation, jailbreak robustness, hallucination, bias, and catastrophic risks, plus red-teaming and third-party audits feeding a categorical risk classification — the design pattern for responsible frontier development.
+- **SPCT self-critique alignment** (library grounding) folds internal critique of responses against safety principles directly into the reward signal, enabling autonomous alignment without proportional external classifiers.
+- **Scalable alignment via small-model data**: aligning large models on feedback derived from smaller, more controllable models (rather than human RLHF at every scale) is the mechanism making oversight cost sub-linear with capability.
+- **Hierarchical / constitutional AI 2.0**: layered value specifications provide lightweight safety evaluation and steerability without full causal oversight — a pragmatic stopgap as long as it can be verified not to produce "safetywashing".
 
 ## Cross-Domain Connections
 - **Privacy & Cryptography**: ZK proofs could complement MI by allowing verification of alignment properties without revealing model internals. ZK-ML verification (in wiki) intersects here.

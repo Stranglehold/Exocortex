@@ -159,7 +159,6 @@ LAYERS=(
   "11|SWARMFISH V2 plugin (committee)   |services/swarmfish_plugin/install.sh"
   "12|Idle engine + idle_watch daemon   |scripts/install_idle_engine.sh"
   "12|SearXNG academic-engine config    |services/searxng/install.sh"
-  "13|Theme system (presets + editor)   |scripts/install_theme_editor.sh"
   "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
   "15|Artifact system                   |scripts/install_artifact_system.sh"
   # ── Authoritative plugin deploy (Tier 1.1) ──────────────────────────────────
@@ -173,6 +172,19 @@ LAYERS=(
   #   install_error_comprehension · install_meta_gate · install_supervisor_loop
   #   install_graph_engine · install_metacognitive_injection · install_write_guard
   #   install_memory_classification
+#
+# ONE MORE WAS RETIRED on 2026-09-14, same cause, one layer later:
+#   install_theme_editor  (was step 13, "Theme system (presets + editor)")
+# It docker cp'd four files to A0 CORE paths -- /a0/webui/js/theme-editor.js,
+# /a0/webui/js/themes.js, /a0/python/api/api_theme_save.py, api_theme_upload.py --
+# and ALL FOUR destinations are absent on v2.9. The theme system moved into the
+# plugin tree; the install step did not follow. The copies that actually run are
+# /a0/usr/plugins/_exocortex/api/api_theme_save.py and api_theme_upload.py.
+#
+# It did not FAIL, and that is the point: an install step writing into a moved
+# subsystem's OLD location produces orphans, not errors, so nothing reported it.
+# The script and its four patches sources are archived under
+# backups/theme-editor-install-archive-20260914/ with the reasoning.
   # The files remain in the repo with a retirement header so nobody recreates them.
   # Measured by scripts/audit_install_writes.sh, not assumed.
   "16|Exocortex plugin (directory walk) |scripts/install_exocortex_plugin.sh"

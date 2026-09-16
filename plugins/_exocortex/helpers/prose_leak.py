@@ -89,12 +89,40 @@ def read_msg(data: dict) -> tuple[Any, str, int]:
     return None, "", -1
 
 
-def find_leaked_call(msg: Any) -> dict | None:
-    """Return {'root', 'surrounding', 'tool_name'} if msg is a prose-wrapped VALID call.
+def survey_leaked_calls(msg: Any) -> dict | None:
+    """Return EVERY tool-request root in msg, with where the prose sits around them.
 
-    None when: not a string, empty, already a valid whole-message call, a genuinely
-    misformatted call (A0's own case — leave it the misformat nudge), no tool-shaped root
-    present at all (genuine prose — leave it to _10), or too much surrounding prose.
+    Opus's ruling, 2026-09-04. The previous form returned the FIRST valid root and a
+    single `surrounding` scalar, which destroyed the two facts a caller needs to decide
+    anything:
+
+      * how many tool calls leaked (it returned one of possibly several)
+      * whether the prose came BEFORE the call or AFTER it
+
+    Prose-after is the describe side of the describe-versus-emit line. A model that writes
+    JSON and then keeps talking about it is more likely to be explaining a call than
+    issuing one, and that is precisely the case v2.9's strict parser exists to refuse. A
+    scalar `len(content) - len(root)` cannot tell the two apart, so a caller acting on it
+    would be guessing on the one distinction that matters.
+
+    Returns None on the same conditions as before: not a string, empty, already a valid
+    whole-message call, a genuinely misformatted call (A0's own nudge owns that), no
+    tool-shaped root at all (genuine prose — _10's case), or more surrounding prose than
+    MAX_SURROUNDING_CHARS.
+
+    Otherwise:
+        {
+          "calls":       [{"root", "tool_name", "start", "end"}, ...]  in document order
+          "prose":       [{"position", "chars"}, ...]   position is "before-first",
+                         "between-N-and-N+1", or "after-last"
+          "surrounding": total prose chars outside the calls
+          "unambiguous": exactly one call AND nothing but whitespace after it
+        }
+
+    `unambiguous` is the only field a caller should gate execution on. It is deliberately
+    strict — one call, prose before it only — because that is the shape we have evidence
+    for (16 of 18 production cases resolved on a single nudge) and the ambiguous remainder
+    is small enough to keep nudging.
     """
     if extract_tools is None or not isinstance(msg, str):
         return None
@@ -111,12 +139,15 @@ def find_leaked_call(msg: Any) -> dict | None:
     if extract_tools.is_misformatted_tool_request(content):
         return None
 
-    # Is there a tool-shaped root hiding inside?
     try:
         roots = extract_tools.extract_json_root_strings(content)
     except Exception:
         return None
 
+    # Locate every tool-shaped root, in document order, with offsets. `find` runs from a
+    # cursor so two identical roots resolve to two distinct positions rather than one.
+    calls: list[dict] = []
+    cursor = 0
     for root in roots:
         try:
             parsed = extract_tools._parse_json_root_object(root)
@@ -125,12 +156,12 @@ def find_leaked_call(msg: Any) -> dict | None:
         if parsed is None or not extract_tools._is_tool_request(parsed):
             continue
 
-        surrounding = len(content) - len(root)
-        if surrounding <= 0:
-            # root == content would have parsed above; treat as nothing to do.
-            return None
-        if surrounding > MAX_SURROUNDING_CHARS:
-            return None
+        start = content.find(root, cursor)
+        if start < 0:                      # not a literal substring — cannot place it
+            start = content.find(root)
+        if start < 0:
+            continue
+        cursor = start + len(root)
 
         tool_name = ""
         try:
@@ -138,9 +169,67 @@ def find_leaked_call(msg: Any) -> dict | None:
         except Exception:
             pass
 
-        return {"root": root, "surrounding": surrounding, "tool_name": tool_name}
+        calls.append({"root": root, "tool_name": tool_name, "start": start, "end": cursor})
 
-    return None
+    if not calls:
+        return None
+
+    calls.sort(key=lambda c: c["start"])
+
+    # Prose segments, named by where they sit relative to the calls.
+    prose: list[dict] = []
+    gap = content[: calls[0]["start"]]
+    if gap.strip():
+        prose.append({"position": "before-first", "chars": len(gap)})
+    for i in range(len(calls) - 1):
+        gap = content[calls[i]["end"] : calls[i + 1]["start"]]
+        if gap.strip():
+            prose.append({"position": f"between-{i}-and-{i+1}", "chars": len(gap)})
+    trailing = content[calls[-1]["end"] :]
+    if trailing.strip():
+        prose.append({"position": "after-last", "chars": len(trailing)})
+
+    surrounding = len(content) - sum(len(c["root"]) for c in calls)
+    if surrounding <= 0:
+        # A single root equal to the whole message would have parsed above.
+        return None
+    if surrounding > MAX_SURROUNDING_CHARS:
+        return None
+
+    unambiguous = len(calls) == 1 and not trailing.strip()
+
+    return {
+        "calls": calls,
+        "prose": prose,
+        "surrounding": surrounding,
+        "unambiguous": unambiguous,
+    }
+
+
+def find_leaked_call(msg: Any) -> dict | None:
+    """Back-compatible single-call view. `_05` and `_10` keep working unchanged.
+
+    Kept deliberately rather than changing the signature in place: both extensions import
+    from this module, and a silent contract change between them is the defect class the
+    header of this file warns about. Callers that need the whole picture — and any caller
+    contemplating execution rather than a nudge — must use `survey_leaked_calls`.
+    """
+    survey = survey_leaked_calls(msg)
+    if not survey:
+        return None
+    first = survey["calls"][0]
+    # `surrounding` is recomputed the OLD way on purpose: len(content) - len(FIRST root),
+    # which counts any second call as prose. The survey's figure subtracts every root and
+    # is the more honest number, but it is SMALLER in the multi-call case, and this value
+    # gates MAX_SURROUNDING_CHARS in `_05`. Handing back the better number would make the
+    # detector nudge on messages it previously refused — a behaviour change smuggled in
+    # under the word "back-compatible". Identical means identical.
+    content = msg.strip() if isinstance(msg, str) else ""
+    return {
+        "root": first["root"],
+        "surrounding": len(content) - len(first["root"]),
+        "tool_name": first["tool_name"],
+    }
 
 
 def nudge_text(hit: dict) -> str:

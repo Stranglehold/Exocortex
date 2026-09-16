@@ -29,6 +29,10 @@ SAFETY MODEL (structural, not promised)
    `docker inspect` (status), `docker exec` running `find`/`sha256sum`/`tar -c`
    (all read-only), and nothing else. There is deliberately NO code path here that
    writes into a container: no `docker cp` inward, no `rm`, no redirection.
+   (Plus one daemon probe, `docker version`, via docker_probe.py — 2026-09-13: with
+   Docker Desktop OFF, which Jake does to game, every agent read as "container not
+   found — skipped" and the run exited 0, so a backup that did nothing looked clean.
+   Now the run says DEFERRED, touches no state, and exits 3.)
 2. RESTORE LIVES ELSEWHERE. Restoring is the dangerous direction, so it is a separate
    script that is never scheduled, requires an explicit target, and defaults to a
    throwaway container. Most data-loss incidents are a restore firing unexpectedly.
@@ -67,6 +71,8 @@ import os
 import shutil
 import subprocess
 import sys
+
+from docker_probe import daemon_reachable, EXIT_DEFERRED   # beside this file in scripts/
 
 DEFAULT_DEST = r"D:\Vibecode\Agent-Zero\_agent_backups"
 
@@ -164,7 +170,7 @@ def capture_tar(container, out_path, file_list=None, include_secrets=False):
 def backup_agent(label, container, dest, include_secrets, dry_run, force_full):
     print(f"\n=== {label} ({container}) ===", flush=True)
     if _run(["docker", "inspect", "-f", "{{.State.Status}}", container]).returncode != 0:
-        print("  container not found — skipped")
+        print("  container not found (daemon reachable) — skipped")
         return None
 
     root = os.path.join(dest, label)
@@ -266,6 +272,13 @@ def main():
     print(f"backup root: {a.dest}")
     if not a.include_secrets:
         print("secrets (.env) EXCLUDED — pass --include-secrets to capture API keys")
+
+    ok, detail = daemon_reachable()
+    if not ok:
+        print(f"DOCKER DAEMON NOT REACHABLE ({detail})")
+        print("  backup DEFERRED: nothing captured, no state touched; the next scheduled run retries. "
+              "Docker Desktop off is a normal state here (Jake turns it off to game).")
+        sys.exit(EXIT_DEFERRED)
 
     results = [r for r in (backup_agent(k, v, a.dest, a.include_secrets, a.dry_run, a.full)
                            for k, v in chosen.items()) if r]

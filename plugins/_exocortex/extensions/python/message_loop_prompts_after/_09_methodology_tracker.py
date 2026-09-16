@@ -197,6 +197,13 @@ def finalize(agent, outcome: str = None, artifacts: list = None):
     data["tool_success_rate"] = round(data["tool_ok"] / total, 3) if total else None
     data["unique_tools"] = sorted(set(t["tool"] for t in data.get("tools", [])))
     data["tools_summary"] = data["unique_tools"]
+    # Per-tool CALL COUNTS, kept before the pop. unique_tools is a presence list:
+    # it says memory_save was reached, never how many times. Every counter in the
+    # cycle record measured 1-or-0 for that reason (2026-09-09 sweep), so nothing
+    # could be compared across cycles. This is the one field that makes the
+    # memories_saved split possible, and it is unrecoverable once "tools" is popped.
+    data["tool_counts"] = {n: sum(1 for t in data.get("tools", []) if t.get("tool") == n)
+                           for n in data["unique_tools"]}
     data.pop("tools", None)             # don't store every individual call
     data.pop("_cycle_start_id", None)   # internal boundary key
 

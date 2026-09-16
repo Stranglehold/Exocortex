@@ -34,7 +34,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/big-shell-bg.svg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/big-shell-bg.svg",
     "opacity": 0.5,
     "blur": 0,
     "blend_mode": "normal",

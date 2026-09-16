@@ -67,6 +67,20 @@ class IdleCycle(ApiHandler):
             context = AgentContext(config=config, type=AgentContextType.USER)
             AgentContext.use(context.id)
             context.set_data("lifetime_hours", input.get("lifetime_hours", 24))
+            # Attendedness marker, read by _07_recovery_gate as its PRIMARY signal.
+            # Set here, in-process, BEFORE communicate() starts the DeferredTask, so
+            # there is no file, no daemon and no window between firing and recording.
+            # engine_state.json cannot serve: idle_watch fires first and writes second,
+            # so a failed write leaves the previous cycle's id behind and the gate then
+            # fails OPEN on exactly the unattended turn it exists for.
+            #
+            # A DICT, never a boolean. Step 0 needs this key to carry the minted cycle
+            # id; shipping it as True would force either a rename (severed consumer) or
+            # a dict tested against a boolean. _07 tests PRESENCE of the key.
+            context.set_data("idle_cycle", {
+                "cycle_id": input.get("cycle_id"),
+                "fired_at": datetime.now(timezone.utc).isoformat(),
+            })
             context.last_message = datetime.now(timezone.utc)
             context.communicate(UserMessage(message=message))  # starts DeferredTask; returns now
             return {"context_id": context.id, "running": context.is_running()}

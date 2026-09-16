@@ -52,7 +52,7 @@
   },
   "background": {
     "type": "image",
-    "src": "/themes/assets/shadow-moses-bg.svg",
+    "src": "/usr/plugins/_exocortex/webui/themes/assets/shadow-moses-bg.svg",
     "opacity": 0.5,
     "blur": 0,
     "blend_mode": "normal",

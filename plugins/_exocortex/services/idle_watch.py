@@ -47,15 +47,21 @@ _STATE_PATH   = "/a0/usr/workdir/workspace/office/engine_state.json"
 _LOCK_PATH    = "/a0/usr/workdir/workspace/office/.idle_engine.lock"
 _PROMPT_PATH  = "/a0/usr/plugins/_exocortex/prompts/idle_activation.md"
 _SIGNAL_PATH  = "/a0/usr/workdir/workspace/office/cycle_result.json"
+_ENDINGS_PATH = "/a0/usr/workdir/workspace/office/cycle_endings.jsonl"
+_MODEL_STATE_PATH = "/a0/usr/workdir/workspace/office/model_state.json"
+_LMSTUDIO_HOST = "host.docker.internal"
+_LMSTUDIO_PORT = 1234
+_MODEL_REFRESH_EVERY = 60   # s — the daemon refreshes; office_feed only ever READS the file
+_MODEL_FETCH_DEADLINE = 2   # s — hard cap; a slow model server must not stall the daemon
 
 _ACTIVATION_SENTINEL = "## IDLE-TIME CYCLE ACTIVATED"
-_STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20}
+_STEP_BUDGETS        = {"MAINTAIN": 15, "BUILD": 30, "EXPLORE": 20, "SYNTHESIZE": 25}
 _POLL_INTERVAL       = 60   # seconds between polls
 _STARTUP_GRACE       = 30   # seconds to wait on boot before first poll (A0 startup time)
 MAX_TOTAL_CYCLES     = 100000   # effectively unlimited — Jake explicit on 2026-05-16 ("no cap or limit"). Counter still tracks for observability; cap is just very far away.
-_CYCLE_HUNG_CAP      = 3600 # s — hard wall-clock backstop: a RUNNING cycle older than this is reaped even if still heartbeating (absurdly long-lived)
+_CYCLE_HUNG_CAP      = 10800 # s — hard wall-clock backstop: a RUNNING cycle older than this is reaped even if still heartbeating (absurdly long-lived)
 _REAP_GRACE          = 120  # s — a just-fired task can read not-running for a beat before it spins up; hold this grace before treating not-running as "gone" so we never clear our own brand-new cycle
-_CYCLE_STALL_CAP     = 900  # s — (C) a RUNNING cycle with NO heartbeat progress (no tool call) for this long is a hung/degenerate generation → reap fast. Set well above any legit monologue_end (sleep/memory consolidation) so it never false-reaps slow-but-progressing work
+_CYCLE_STALL_CAP     = 1800 # s — (C) a RUNNING cycle with NO heartbeat progress (no tool call) for this long is a hung/degenerate generation → reap fast. Set well above any legit monologue_end (sleep/memory consolidation) so it never false-reaps slow-but-progressing work
 
 # ── Cache Warmer (v2.1 — Opus spec + measured corrections, 2026-05-18) ────────
 # Principle: don't replicate A0's prompt — send a trivial request THROUGH A0 so
@@ -110,9 +116,47 @@ def _disable_cycles_on_start() -> None:
         print(f"[IDLE-WATCH] disable-on-start error: {e}", flush=True)
 
 
+def _stamp_caps() -> None:
+    """Publish the watcher's OWN caps into engine_state so the pane reads the real values.
+    now_zone duplicates these as module defaults; a duplicated constant that drifts makes a
+    pane state the wrong next action AS FACT, which is worse than showing nothing."""
+    try:
+        st = _read_state()
+        st["caps"] = {"stall_s": _CYCLE_STALL_CAP, "hung_s": _CYCLE_HUNG_CAP}
+        _write_state(st)
+    except Exception as e:
+        print(f"[IDLE-WATCH] caps stamp FAILED: {e}", flush=True)
+
+
+def _startup_reconcile() -> None:
+    """A cycle the daemon was tracking when it went down has no row anywhere today, so the
+    denominator silently loses it. Decide by the AUTHORITATIVE check — ask A0 whether that
+    context is still running — not by comparing its age to the container's. A daemon
+    restart is far more common than a container restart, and on 2026-09-14 18:23 a daemon
+    handover with a LIVE cycle was correctly resumed; an age comparison would have
+    mislabelled that healthy handover as a loss and missed the case where it really died."""
+    try:
+        st = _read_state()
+        ctx = st.get("cycle_context_id", "")
+        if not (st.get("cycle_active") and ctx):
+            return
+        if _cycle_running(ctx):
+            print(f"[IDLE-WATCH] Startup: cycle {ctx} still running — keeping it tracked.", flush=True)
+            return
+        print(f"[IDLE-WATCH] Startup: tracked cycle {ctx} is gone — recording lost_to_restart.", flush=True)
+        _clear_cycle_slot(st, "lost_to_restart",
+                          "tracked across a daemon restart; context not running at startup")
+    except Exception as e:
+        print(f"[IDLE-WATCH] startup reconcile FAILED: {e}", flush=True)
+
+
 def main() -> None:
     print("[IDLE-WATCH] Daemon started.", flush=True)
     _disable_cycles_on_start()   # cost-safety: never auto-resume paid cycles on restart
+    _stamp_caps()
+    _startup_reconcile()
+    _refresh_model_state()
+    _last_model_refresh = time.time()
     time.sleep(_STARTUP_GRACE)
     print("[IDLE-WATCH] Starting poll loop.", flush=True)
     while True:
@@ -120,6 +164,12 @@ def main() -> None:
             _poll_once()
         except Exception as e:
             print(f"[IDLE-WATCH] Poll error: {e}", flush=True)
+        try:
+            if time.time() - _last_model_refresh >= _MODEL_REFRESH_EVERY:
+                _refresh_model_state()
+                _last_model_refresh = time.time()
+        except Exception as e:
+            print(f"[IDLE-WATCH] model refresh error: {e}", flush=True)
         time.sleep(_POLL_INTERVAL)
 
 
@@ -163,10 +213,86 @@ def _poll_once() -> None:
         })
 
 
-def _clear_cycle_slot(state: dict) -> None:
+def _utc_now_iso() -> str:
+    """The clock at the moment of writing. Never derived from the cadence of events —
+    a timestamp inferred from when something else happened is a guess wearing a format."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _write_ending(event: str, **fields) -> None:
+    """Append one line to cycle_endings.jsonl, fsynced. Never raises into the caller:
+    a ledger that can crash the daemon it observes is worse than no ledger. A failure
+    to write is printed, so the gap is visible rather than silent."""
+    try:
+        row = {"at": _utc_now_iso(), "event": event}
+        row.update({k: v for k, v in fields.items() if v is not None})
+        os.makedirs(os.path.dirname(_ENDINGS_PATH), exist_ok=True)
+        with open(_ENDINGS_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+    except Exception as e:
+        print(f"[IDLE-WATCH] endings write FAILED ({event}): {e}", flush=True)
+
+
+def _refresh_model_state() -> None:
+    """One GET to LM Studio, hard 2 s deadline, written to a file the endpoint reads.
+    The pane must never fetch this inline: the model server is slowest under exactly the
+    conditions the pane exists to display, so an inline fetch hangs when it matters most
+    (2026-09-14: 752 s of GPU spent on a search whose client had given up at 20 s)."""
+    row = {"fetched_at": _utc_now_iso(), "loaded": [], "state": "unverified", "reason": ""}
+    try:
+        conn = http.client.HTTPConnection(_LMSTUDIO_HOST, _LMSTUDIO_PORT,
+                                          timeout=_MODEL_FETCH_DEADLINE)
+        conn.request("GET", "/api/v0/models")
+        resp = conn.getresponse()
+        raw = resp.read()
+        conn.close()
+        if resp.status != 200:
+            row["reason"] = f"HTTP {resp.status}"
+        else:
+            data = json.loads(raw)
+            items = data.get("data", data if isinstance(data, list) else [])
+            loaded = []
+            for m in items:
+                if not isinstance(m, dict):
+                    continue
+                if m.get("state") in (None, "loaded") or m.get("loaded"):
+                    loaded.append({"id": m.get("id"), "ctx": m.get("loaded_context_length")
+                                   or m.get("max_context_length"), "state": m.get("state")})
+            row["loaded"] = loaded
+            row["state"] = "ok"
+    except Exception as e:
+        row["reason"] = f"{type(e).__name__}: {e}"
+    try:
+        tmp = _MODEL_STATE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(row, fh, indent=2)
+        os.replace(tmp, _MODEL_STATE_PATH)
+    except Exception as e:
+        print(f"[IDLE-WATCH] model_state write FAILED: {e}", flush=True)
+
+
+def _clear_cycle_slot(state: dict, outcome: str, reason: str = "") -> None:
     """Resolve the current cycle slot: deassert the in-progress flag, clear the
     tracked context, stamp completion, and charge one cycle against the blast-radius
-    cap. Written under the daemon lock (the caller holds it)."""
+    cap. Written under the daemon lock (the caller holds it).
+
+    `outcome` is REQUIRED (contract §6.1). Every ending funnels through here, so this is
+    the one place the ledger cannot be missed — and a future path that forgets the
+    argument fails loudly with a TypeError rather than quietly writing no row."""
+    # Capture BEFORE the clear: the first act below blanks cycle_context_id, and a ledger
+    # row assembled after it would record the absence of what it exists to record.
+    _now   = time.time()
+    _ctx   = state.get("cycle_context_id", "") or None
+    _cyc   = state.get("cycle_count")
+    _type  = state.get("last_cycle_type") or None
+    _start = state.get("last_cycle_start", 0) or 0
+    _hb    = max(state.get("cycle_heartbeat", 0) or 0, _start)
+    _write_ending("ended", cycle=_cyc, context_id=_ctx, type=_type, outcome=outcome,
+                  reason=(reason or None),
+                  elapsed_s=(int(_now - _start) if _start else None),
+                  heartbeat_age_s=(int(_now - _hb) if _hb else None))
     state["cycle_context_id"]         = ""
     state["cycle_active"]             = False
     state["cycle_completed_ts"]       = time.time()
@@ -237,17 +363,18 @@ def _atomic_check_and_fire(config: dict) -> bool:
                     # (C) Fast watchdog: alive but no tool-call progress for too long — a
                     # hung/degenerate generation (or a stuck await). The cap sits well above
                     # any legit monologue_end, so this never fires on slow-but-progressing work.
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} stalled {stall/60:.0f}min "
-                          "(no progress — hung generation) — reaping.", flush=True)
+                    _msg = (f"stalled {stall/60:.0f}min "
+                            "(no progress — hung generation) — reaping.")
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
                     _reset_cycle(prev_ctx)
-                    _clear_cycle_slot(state)
+                    _clear_cycle_slot(state, "reaped_stalled", _msg)
                     # fall through → fire fresh
                 elif age > _CYCLE_HUNG_CAP:
                     # Hard backstop: heartbeating but absurdly long-lived.
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} exceeded hard cap "
-                          f">{_CYCLE_HUNG_CAP // 60}min — reaping.", flush=True)
+                    _msg = f"exceeded hard cap >{_CYCLE_HUNG_CAP // 60}min — reaping."
+                    print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
                     _reset_cycle(prev_ctx)
-                    _clear_cycle_slot(state)
+                    _clear_cycle_slot(state, "reaped_hung", _msg)
                     # fall through
                 else:
                     # (B) Running and making progress → NEVER fire over it. This branch is
@@ -265,24 +392,29 @@ def _atomic_check_and_fire(config: dict) -> bool:
                 sig = _read_cycle_signal()
                 _sr = bool(sig and (float(sig.get("completed_ts", 0) or 0) >= state.get("last_cycle_start", 0)
                                     or sig.get("context_id") == prev_ctx))
+                # One call site, three outcomes — so the outcome is captured here and passed,
+                # rather than inferred inside the slot-clear where the evidence is already gone.
                 if _sr:
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} finished (self-reported) — slot free.", flush=True)
+                    _out, _msg = "completed", "finished (self-reported) — slot free."
                 elif _cycle_completed(prev_ctx):
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} finished (response written) — slot free.", flush=True)
+                    _out, _msg = "completed", "finished (response written) — slot free."
                 else:
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} ended without completing "
-                          "(died / reaped) — slot free.", flush=True)
-                _clear_cycle_slot(state)
+                    _out, _msg = "died", "ended without completing (died / reaped) — slot free."
+                print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
+                _clear_cycle_slot(state, _out, _msg)
                 # fall through → fire fresh
         elif prev_ctx:
             # cycle_active already false but a ctx id lingers. Nothing should clear the
             # flag out of band now that _70 doesn't, but if a lingering ctx is somehow
             # still alive, reap it (defense-in-depth — never leave a live zombie), then
             # normalise the slot.
-            if _cycle_running(prev_ctx):
+            _orphan = _cycle_running(prev_ctx)
+            if _orphan:
                 print(f"[IDLE-WATCH] Orphaned live cycle {prev_ctx} — reaping, not abandoning.", flush=True)
                 _reset_cycle(prev_ctx)
-            _clear_cycle_slot(state)
+            _clear_cycle_slot(state, "orphan_reaped" if _orphan else "died",
+                              "orphaned live cycle — reaped" if _orphan
+                              else "lingering context, not running — slot normalised")
 
         # Guard: blast radius cap
         max_total = config.get("max_total_cycles", MAX_TOTAL_CYCLES)
@@ -351,7 +483,7 @@ def _atomic_check_and_fire(config: dict) -> bool:
         state["last_cycle_type"] = cycle_type
         if cycle_type == "MAINTAIN":
             state["consecutive_maintain_count"] = pre_consec_maintain + 1
-        elif cycle_type == "BUILD":
+        elif cycle_type in ("BUILD", "SYNTHESIZE"):   # a SYNTHESIZE counts toward the explore cap
             state["build_cycle_count"] = pre_build_count + 1
         _write_state(state)
 
@@ -364,6 +496,8 @@ def _atomic_check_and_fire(config: dict) -> bool:
             state["cycle_context_id"] = ctx_id
             _write_state(state)
             print(f"[IDLE-WATCH] Cycle #{state['cycle_count']} fired → context {ctx_id}.", flush=True)
+            _write_ending("fired", cycle=state.get("cycle_count"), context_id=ctx_id,
+                          type=cycle_type, budget=max_steps)
             return True
 
         # Fire failed — clear cycle_active + context id
@@ -378,6 +512,8 @@ def _atomic_check_and_fire(config: dict) -> bool:
             state["cold_start_grace"]           = False
         else:
             print("[IDLE-WATCH] Fire failed — skipped, no budget consumed.", flush=True)
+        _write_ending("ended", cycle=pre_cycle_count + 1, context_id=None, type=cycle_type,
+                      outcome="fire_failed", reason="the fire call returned no context id")
         _write_state(state)
         return False
 
@@ -703,15 +839,37 @@ def _is_stale_cycle(state: dict, now: float) -> bool:
     return False
 
 
+_SYNTH_CONFIG_WARNED = None   # (synthesize_after_builds, explore_time_cap_cycles) last warned about, or None
+
+
 def _select_cycle_type(state: dict, config: dict) -> str:
     maintain_count     = state.get("consecutive_maintain_count", 0)
     build_count        = state.get("build_cycle_count", 0)
     maintain_threshold = config.get("maintain_cooldown_threshold", 3)
     explore_time_cap   = config.get("explore_time_cap_cycles", 5)
+    # SYNTHESIZE (step 0 of the synthesis ladder, 2026-09-14): fires once per rotation when build_cycle_count
+    # reaches `synthesize_after_builds`; it counts as a build toward the explore cap, so with 1 / 5 / 4 the
+    # rotation is MAINTAIN, BUILD x4, SYNTHESIZE, EXPLORE. Default 0 = never, so this code is inert until the
+    # config key is set; the key is the switch and its removal is the revert.
+    synthesize_after   = int(config.get("synthesize_after_builds", 0) or 0)
+    global _SYNTH_CONFIG_WARNED
+    if synthesize_after and synthesize_after >= explore_time_cap:
+        # The explore-cap branch below wins first, so this configuration can never reach SYNTHESIZE. Say so rather
+        # than fail silently (Kestrel's review, 2026-09-14); the cap key is usually absent from config and defaulting,
+        # which is exactly when nobody would see it. Once per distinct bad pair, not once per poll: the log has no
+        # timestamps and a repeated line reads as an event count to whoever greps it later.
+        if _SYNTH_CONFIG_WARNED != (synthesize_after, explore_time_cap):
+            _SYNTH_CONFIG_WARNED = (synthesize_after, explore_time_cap)
+            print(f"[IDLE-WATCH] CONFIG: synthesize_after_builds={synthesize_after} >= explore_time_cap_cycles="
+                  f"{explore_time_cap}; SYNTHESIZE can never fire with these values.", flush=True)
+    else:
+        _SYNTH_CONFIG_WARNED = None
     if maintain_count < maintain_threshold:
         return "MAINTAIN"
     elif build_count >= explore_time_cap:
         return "EXPLORE"
+    elif synthesize_after and build_count >= synthesize_after and state.get("last_cycle_type") != "SYNTHESIZE":
+        return "SYNTHESIZE"   # >= not ==: a skipped counter value must not drop the rotation's synthesis silently
     else:
         return "BUILD"
 

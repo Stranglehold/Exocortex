@@ -2,8 +2,8 @@
 
 Status: STABLE
 Created: 2026-05-16
-Last Deepened: 2026-05-16
-Related: autonomous-coding-agents, speculative-decoding, ai-agent-trust-infrastructure, trajectory-to-skill
+Last Deepened: 2026-09-14
+Related: autonomous-coding-agents, self-improving-agent-patterns-2026-draft, autonomous-self-improving-agents, speculative-decoding, ai-agent-trust-infrastructure, trajectory-to-skill
 
 ## Overview
 Self-improving agents that modify their own behavior, prompts, or capabilities through autonomous iteration. Covers trajectory-to-skill capture, GEPA-style prompt evolution, temperature escalation, and nightly LoRA fine-tuning.
@@ -66,11 +66,26 @@ Self-improving agents that modify their own behavior, prompts, or capabilities t
 3. **Temperature**: Needs upper bound (max 1.2 typical) and cooldown mechanism
 4. **LoRA fine-tuning**: Catastrophic forgetting risk; needs periodic re-evaluation
 
+## Deepening (2026-09-14)
+This cycle adds a self-improvement safety & evaluation axis to close the earlier mechanics-only coverage. Grounded in shared Exocortex corpus (TRAJECTORY_TO_SKILL_SPEC, MEMORY_ARCHITECTURE_DESIGN_NOTE) and stable 2025-2026 agent-method knowledge; no fabricated arXiv IDs.
+
+### A. Self-Improvement Safety & Evaluation
+- **Gated improvement**: a proposed change is applied only after it passes regression/benchmark gates. Mirrors RLHF reward-modeling: an evaluator (human or judge) scores each candidate before acceptance.
+- **Canonical failure mode**: unbounded self-editing without gates leads to catastrophic overfitting and reward hacking. The evaluate-before-accept loop is the core safety primitive, not optional polish.
+- **Two regimes, two risks**: prompt-level change (GEPA-style inference-time search, no parameter update) vs weight-level change (nightly LoRA fine-tuning of prior outputs). Weight-level carries catastrophic-forgetting risk and requires periodic re-evaluation; recommended cadence is evaluate-before-finetune.
+
+### B. Skill Curation as Self-Improvement
+- Trajectory-to-skill capture formalizes self-improvement as curated skill libraries rather than ad-hoc prompts — aligns with the shared Exocortex trajectory-to-skill spec and Complementary Learning Systems consolidation patterns (sleep consolidation mirrors offline policy improvement).
+
+### C. LLM-as-Judge Iteration
+- Widely-reported 2025-2026 practice uses an internal judge to score candidate prompt/behavior variants during iterative refinement; this is the same mechanism underlying GEPA's Pareto-aware selection but applied at the behavioral level.
+
 ## Cross-Domain Connections
 - **FPGA inference**: Hardware acceleration for self-improvement loops (sub-ms latency)
-- **Entity resolution**: Agent self-model as entity across iterations
-- **Privacy**: Self-modifying agents reveal internal state through behavior changes
-- **Memory architecture**: Complementary learning systems mirror consolidation patterns
+- **Entity resolution**: Agent self-model as entity across iterations (longitudinal tracking of a changing agent identity)
+- **Privacy**: Self-modifying agents reveal internal state through behavior changes — the improvement loop is itself an information-exposure channel
+- **Memory architecture**: Complementary learning systems mirror consolidation patterns; offline skill curation parallels sleep-driven consolidation
+- **Adversarial ML**: Self-improving agents are a self-directed adversarial surface; prompt evolution doubles as attack-hardening, and gated self-editing models how defense must be evaluated against the agent's own improvements
 
 ## Sources
 - Robeyns & Szummer (2025). "A Self-Improving Coding Agent." arXiv:2504.15228
