@@ -22,14 +22,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.request
 
 REPO_DEFAULT = "agent0ai/agent-zero"
-SECURITY_KEYWORDS = (
-    "security", "cve", "xss", "vulnerab", "sanitiz", "injection", "exploit",
-    "csrf", "rce", "auth bypass", "privilege", "sandbox escape", "ssrf",
+# Descriptive terms / stems — substring match is fine.
+SECURITY_SUBSTRINGS = (
+    "security", "vulnerab", "sanitiz", "injection", "exploit", "privilege esc",
+    "auth bypass", "sandbox escape",
 )
+# Acronyms — MUST be word-bounded, else "rce" matches "resou(rce)", "ssrf"/"csrf"
+# match unrelated tokens, etc. (caught v1.17/v1.18 false-flagging on "resource").
+SECURITY_ACRONYMS = ("cve", "xss", "rce", "csrf", "ssrf", "lfi", "rfi")
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -134,7 +139,9 @@ def main():
             body = (rel.get("body") or "").lower()
         except Exception:
             body = ""
-        hits = sorted({k for k in SECURITY_KEYWORDS if k in body})
+        hits = {k for k in SECURITY_SUBSTRINGS if k in body}
+        hits |= {k for k in SECURITY_ACRONYMS if re.search(rf"\b{k}\b", body)}
+        hits = sorted(hits)
         if hits:
             security_pending = True
             print(f"  {tag}: SECURITY-RELEVANT — keywords: {', '.join(hits)}")
