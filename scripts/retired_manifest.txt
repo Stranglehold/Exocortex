@@ -1,0 +1,58 @@
+# RETIRED — files that are deliberately in the repo and deliberately NOT deployed.
+#
+# Read by scripts/verify_plugin_parity.py. One path per line, relative to plugins/_exocortex/.
+# Blank lines and #-comments ignored. Trailing inline comments after "  #" are stripped.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The parity gate defines MISSING as "in repo, absent from the container -> the installer did not
+# deploy it". For these files that reading is inverted: they are absent ON PURPOSE, and acting on
+# the report would resurrect them. On 2026-09-18 the gate read PARITY FAIL with 26 MISSING, 18 of
+# which were these. A gate whose category names the wrong action is worse than a silent one,
+# because it recruits the reader into undoing the thing it should protect.
+#
+# The category is NOT an exemption. Retired-and-absent is expected and passes; retired-and-PRESENT
+# is a HARD FAIL. That second half is what makes this an instrument rather than a mute button —
+# resurrection is now detectable, which it previously was not, including after an A0 upgrade or a
+# clone-and-install into a fresh container.
+#
+# ADDING TO THIS FILE is how a retirement is recorded. The audit's later retirements and the
+# archive step extend it here; the instrument itself never needs editing.
+# REMOVING a line means "this may deploy again" — that is un-retiring, and it is Jake's call.
+#
+# Ratified: Jake 2026-09-15 ("we should probably archive whatever we've turned off since this is
+# currently working, along with updating the readme"), recorded as DEC-051. Manifest authorised
+# 2026-09-19 01:49Z. Set named in Fable/studies/2026-09-15-what-exocortex-is.md §3.
+#
+# A path here that exists in neither the repo nor the container is reported as informational,
+# not as a failure: that is the end state after the archive step removes the repo copy.
+
+# ---------------------------------------------------------------------------------------------
+# Arm M injection prune — 17 files, 2026-09-08.
+# Snapshot of the pre-prune tree kept in the container at
+# extensions.bak-prune-20260908-214547/ (76 files, not tracked in the repo).
+# ---------------------------------------------------------------------------------------------
+extensions/python/before_main_llm_call/_10_session_init.py
+extensions/python/before_main_llm_call/_11_belief_state_tracker.py
+extensions/python/before_main_llm_call/_12_completion_tracker.py
+extensions/python/before_main_llm_call/_12_proactive_supervisor_inject.py
+extensions/python/before_main_llm_call/_13_reasoning_state.py
+extensions/python/before_main_llm_call/_14_pace_plan_generator.py
+extensions/python/before_main_llm_call/_14_situational_orientation.py
+extensions/python/before_main_llm_call/_15_htn_plan_selector.py
+extensions/python/before_main_llm_call/_15_karpathy_rules.py
+extensions/python/before_main_llm_call/_16_scope_expansion_detector.py
+extensions/python/before_main_llm_call/_17_library_catalog.py
+extensions/python/message_loop_end/_49_reasoning_state_update.py
+extensions/python/message_loop_prompts_after/_08_step_budget_tracker.py
+extensions/python/message_loop_prompts_after/_10_strategy_advisor.py
+extensions/python/message_loop_prompts_after/_21_constraint_heartbeat.py
+extensions/python/message_loop_prompts_after/_22_reasoning_state_injector.py
+extensions/python/message_loop_prompts_after/_24_skill_surfacer.py
+
+# ---------------------------------------------------------------------------------------------
+# PACE retirement — 1 file, 2026-09-02, separate from Arm M.
+# The container holds it renamed to _23_pace_plan_injector.RETIRED-20260902.txt; the repo still
+# carries the .py. Counted here because the repo copy is what a fresh install would deploy.
+# ---------------------------------------------------------------------------------------------
+extensions/python/message_loop_prompts_after/_23_pace_plan_injector.py
