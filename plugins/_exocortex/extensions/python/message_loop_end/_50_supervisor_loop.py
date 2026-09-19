@@ -1787,10 +1787,11 @@ def _inject_stall(agent, ctx: dict, role: dict, state: dict):
     pace_action = _get_pace_task_action(agent, "alternate")
     if pace_action:
         msg += f"\n[PACE] Your plan's Alternate approach: {pace_action}"
-        try:
-            agent.set_data("_pace_advance_tier", True)
-        except Exception:
-            pass
+        # `_pace_advance_tier` was SET here until 2026-09-19. RETIRED on Opus's ruling:
+        # its only readers were `_14_pace_plan_generator` (PRUNED 2026-09-08) and
+        # `_23_pace_plan_injector` (RETIRED 2026-09-02). Writing it made this path read
+        # as functional while it was inert -- a misleading map, not just wasted cycles.
+        # If PACE returns it returns as a new design, not by reconnecting this wire.
 
     _emit(agent, msg, ANOMALY_STALL, state)
 
@@ -1978,7 +1979,8 @@ def _inject_pace_contingent(agent, role: dict, ctx: dict, state: dict):
     Inject PACE contingent-level guidance.
     Uses task-level PACE plan (specific action for current step) when available;
     falls back to role-level description from org dispatcher.
-    Also sets _pace_advance_tier so the plan generator escalates next turn.
+    (Until 2026-09-19 it also set `_pace_advance_tier` for the plan generator. That
+    reader is PRUNED; the write is retired. This injects guidance and nothing else.)
     """
     task_action = _get_pace_task_action(agent, "contingency")
     if task_action:
@@ -2005,11 +2007,7 @@ def _inject_pace_contingent(agent, role: dict, ctx: dict, state: dict):
             f"[SUPERVISOR] PACE level is CONTINGENT — your current approach has failed repeatedly.{hint} "
             f"Try a fundamentally different method or ask the user for guidance."
         )
-    # Signal PACE tier advance to plan generator
-    try:
-        agent.set_data("_pace_advance_tier", True)
-    except Exception:
-        pass
+    # PACE tier-advance signal RETIRED 2026-09-19 -- see the note at the stall path.
     _emit(agent, msg, ANOMALY_PACE, state)
 
 
@@ -2017,7 +2015,8 @@ def _inject_pace_emergency(agent, role: dict, ctx: dict, state: dict):
     """
     Inject PACE emergency-level guidance. Always fires (no cooldown).
     Uses task-level PACE plan when available; falls back to role-level description.
-    Also sets _pace_advance_tier and clears _pace_new_task for next plan cycle.
+    (Until 2026-09-19 it also set `_pace_advance_tier` / `_pace_new_task`. Both readers
+    are gone; the writes are retired. This injects guidance and nothing else.)
     """
     task_action = _get_pace_task_action(agent, "emergency")
     if task_action:
@@ -2044,12 +2043,7 @@ def _inject_pace_emergency(agent, role: dict, ctx: dict, state: dict):
             f"[SUPERVISOR] PACE level is EMERGENCY — stop all work immediately.{hint} "
             f"Preserve any partial results and report what you've accomplished and where you're stuck."
         )
-    # Signal tier advance + mark plan for reset on next task start
-    try:
-        agent.set_data("_pace_advance_tier", True)
-        agent.set_data("_pace_new_task", True)  # Emergency = task cycle complete
-    except Exception:
-        pass
+    # PACE tier-advance + new-task signals RETIRED 2026-09-19 -- see the note at the stall path.
     # Emergency is exempt from cooldown — always inject
     try:
         agent.hist_add_warning(msg)

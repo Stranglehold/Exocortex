@@ -85,6 +85,7 @@ html[data-exo-room] .office .of-bg, html[data-exo-room] .office .of-scan, html[d
 .of-crumb .sep { color:var(--pk-muted); margin:0 6px; }
 .of-tele { display:flex; gap:12px; color:var(--pk-muted); letter-spacing:.1em; font-size:9px; white-space:nowrap; }
 .of-tele b { color:var(--pk-text); font-weight:400; margin-left:4px; }
+.of-tele .of-tele-warn, .of-tele .of-tele-warn b { color:var(--pk-warn); } /* a poll failed; the reading shown is older than the clock */
 
 /* the cassette's header band: the running cycle, with the caps as tick rulers (MAP's NORTH ruler) */
 .of-cass { flex-shrink:0; padding:8px 12px 10px; border-bottom:1px solid var(--pk-hairline);
@@ -397,14 +398,40 @@ html[data-exo-room] .office .of-bg, html[data-exo-room] .office .of-scan, html[d
       body.querySelectorAll('.of-page').forEach(el => el.classList.toggle('cur', el.getAttribute('data-page') === p));
     }
 
-    async function load() {
-      try {
-        const r = await fetch(FEED); if (!r.ok) throw new Error('HTTP ' + r.status);
-        render(await r.json());
-      } catch (err) {
-        cass.innerHTML = `<div class="of-cass-h"><span class="big">feed</span><span class="ctx">unverified</span></div>`;
-        body.innerHTML = `<div class="of-empty">could not read ${esc(FEED)} · ${esc(err)}</div>`;
+    // ── transport: retry once, and never blank a good reading ─────────────────────────────────────────────────
+    // 2026-09-19 (Jake's report): the pane occasionally showed "HTTP 400 could not read". The 400 was not A0's; it was
+    // uvicorn answering "Invalid HTTP request received" when the browser's request headers for `localhost` (cookies from
+    // every local app share that host) grew past h11's 16 KiB incomplete-event limit: 43 rejections in the container
+    // log that day. One poll lost that way must not blank the pane. So: retry once after a pause, and if the retry
+    // also fails keep the last good reading on screen with the failure and the reading's time named beside it. Same
+    // rule as the envelopes: nothing is omitted, and a value shown without its age is a lie. fetchFeed takes its fetch
+    // and sleep as arguments so the harness can drive it without a DOM.
+    async function fetchFeed(fetchFn, url, opts) {
+      const attempts = (opts && opts.attempts) || 2, delayMs = (opts && opts.delayMs) != null ? opts.delayMs : 1500;
+      const sleep = (opts && opts.sleep) || (ms => new Promise(r => setTimeout(r, ms)));
+      let error = null;
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          const r = await fetchFn(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+          return { ok: true, data: await r.json(), attempts: i };
+        } catch (err) { error = err; if (i < attempts) await sleep(delayMs); }
       }
+      return { ok: false, error, attempts };
+    }
+    let fails = 0;
+    async function load() {
+      const res = await fetchFeed(fetch, FEED, { attempts: 2, delayMs: 1500 });
+      if (res.ok) { fails = 0; render(res.data); return; }
+      fails += 1;
+      const when = hms(new Date().toISOString());
+      if (last) {
+        // keep the last good reading; say what failed, when, and how old what is shown is
+        render(last, true);
+        tele.innerHTML += `<span class="of-tele-warn">feed <b>${esc(res.error)}</b> at <b>${esc(when)}</b> · showing <b>${esc(hms(last.generated_at))}</b> · <b>${fails}</b> failed poll${fails > 1 ? 's' : ''} in a row</span>`;
+        return;
+      }
+      cass.innerHTML = `<div class="of-cass-h"><span class="big">feed</span><span class="ctx">unverified</span></div>`;
+      body.innerHTML = `<div class="of-empty">could not read ${esc(FEED)} · ${esc(res.error)} · ${res.attempts} attempts · ${esc(when)} · no earlier reading to show</div>`;
     }
 
     async function control(action) {

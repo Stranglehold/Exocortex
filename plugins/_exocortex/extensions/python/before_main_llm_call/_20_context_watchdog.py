@@ -5,26 +5,27 @@ from agent import Agent, LoopData
 WARN_THRESHOLD     = 0.70   # log warning at 70%
 CRITICAL_THRESHOLD = 0.85   # log critical at 85%
 
-# Keys for storing utilization in params_temporary.
+# THE TWO params_temporary WRITES ARE RETIRED (2026-09-19, Opus's ruling).
 #
-# NOTHING READS THESE. Verified 2026-08-22 by scripts/scan_severed_loops.py and confirmed
-# with a grep over the whole container: the only occurrences of either string anywhere
-# under /a0 are these two definitions. The comment here previously read "Other extensions
-# (e.g. supervisor loop) can read these" — the supervisor does not, and never has. A
-# comment naming a consumer is not a consumer, and this one made the gap invisible to
-# every reader since.
+# This block used to define UTILIZATION_KEY / TOKEN_COUNT_KEY and the execute() body wrote
+# both into loop_data.params_temporary. Nothing ever read them: verified 2026-08-22 by
+# scripts/scan_severed_loops.py, re-verified 2026-09-19 with a grep over the whole
+# container -- the only occurrences of either string anywhere under /a0 were these two
+# definitions, and all 89 params_temporary references ask for one named key
+# (log_item_generating / log_item_response), never iterating the dict.
 #
-# They are also written to params_temporary, which A0 clears every iteration
-# (agent.py:404) and reads only for `log_item_generating` (agent.py:498/515) — so even a
-# future reader must run in the SAME iteration, at a later hook than
-# before_main_llm_call.
+# The question "wire a consumer, or delete the writes?" was raised with Opus on
+# 2026-08-22 and this file recorded that if the answer came back 'no consumer wanted',
+# the writes should go. It came back on 2026-09-19: build the consumer FIRST if context
+# utilization becomes useful, then add the writes. Dead writes stay dead until someone
+# has a reason to read them.
 #
-# This extension is not inert: the WARN/CRITICAL logging below is its live output. Only
-# this channel is dead. Left in place rather than deleted because wiring the supervisor to
-# consume utilization is a capability decision, not a cleanup — raised with Opus
-# 2026-08-22. If the answer is "no consumer wanted", delete these two writes.
-UTILIZATION_KEY = "context_utilization"
-TOKEN_COUNT_KEY = "context_token_count"
+# KEPT ON THE RECORD because it is the defect this file already caught once: the comment
+# here originally read "Other extensions (e.g. supervisor loop) can read these". The
+# supervisor did not, and never had. A COMMENT NAMING A CONSUMER IS NOT A CONSUMER, and
+# that one made the gap invisible to every reader for months.
+#
+# The watchdog itself is NOT retired -- the WARN/CRITICAL logging below is live output.
 
 
 class ContextWatchdog(Extension):
@@ -62,10 +63,6 @@ class ContextWatchdog(Extension):
             return  # Can't determine window size — skip rather than use wrong number
 
         utilization = total_tokens / window_size
-
-        # Store for other extensions to read this iteration
-        loop_data.params_temporary[UTILIZATION_KEY] = utilization
-        loop_data.params_temporary[TOKEN_COUNT_KEY] = total_tokens
 
         if utilization >= CRITICAL_THRESHOLD:
             msg = (

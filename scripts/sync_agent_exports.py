@@ -17,17 +17,17 @@ Flags:
   --no-reindex     copy files only; don't trigger a reindex
   --force-reindex  reindex even if nothing changed since last sync
   --agent NAME     sync a single agent (v2|v16|v17)
-  --ignore-vram    reindex even when free VRAM is under the safety floor
+  --ignore-health  refresh even when the embedder probe says it cannot serve
 
 SAFETY (2026-08-19, Tier 1.2):
   * The file copy is STAGE-VERIFY-SWAP, not delete-then-copy. A failed `docker cp`
     used to leave the export tree already deleted — and agent-exports/ has never
     been tracked in git. On a 6-hourly timer that was four chances a day to destroy
     an agent's accumulated wiki permanently.
-  * The reindex is VRAM-GATED. A full re-embed is a ~12 minute CUDA job over ~43k
+  * The refresh is HEALTH-GATED. It re-embeds only what changed (~12 min over ~43k
     chunks; the local LLM holds ~22 GB of the 24 GB card while loaded. Unattended,
     that would fire straight into Jake's inference server at an arbitrary hour.
-    Below MIN_REINDEX_FREE_VRAM_MIB the reindex DEFERS and the state signature is
+    When the embedder probe fails the refresh DEFERS and the state signature is
     deliberately NOT advanced, so the pending content is retried next run instead
     of being marked 'unchanged' and never indexed.
 
@@ -49,7 +49,9 @@ import hashlib
 import json
 import os
 import shutil
+import datetime
 import subprocess
+import time
 import sys
 
 from docker_probe import daemon_reachable, EXIT_DEFERRED   # beside this file in scripts/
@@ -167,55 +169,309 @@ def tree_signature(root):
     return h.hexdigest()
 
 
-# A full reindex re-embeds ~43k chunks on the SHARED 3090 and takes ~12 minutes.
-# The local LLM (qwen3.8-27b) occupies ~22 GB of the 24 GB card while loaded, and
-# this script is meant to run unattended on a timer — so without a guard it would
-# eventually fire a 12-minute CUDA job straight into Jake's inference server at some
-# arbitrary hour. Measured 2026-08-19: 2187 MiB free with the model up.
-MIN_REINDEX_FREE_VRAM_MIB = 6000
+# WHY A HEALTH PROBE AND NOT A VRAM NUMBER (changed 2026-09-19)
+# ------------------------------------------------------------
+# This used to defer unless >= 6000 MiB of VRAM was free, because `reindex_now()`
+# re-embeds ALL ~43k chunks and the local LLM holds ~22 GB of the 24 GB card. The
+# guard did its job too well: 22 deferrals in three days, last completed rebuild
+# 2026-09-14, so her 09-16 and 09-18 work sat on disk unsearchable BY HER.
+#
+# Two things changed. We now call `refresh_now` (= `reindex(reuse=True)`): a chunk id
+# is the sha256 of its content and parent, so unchanged text keeps its vector and the
+# GPU work is proportional to what actually changed, not to the corpus. And we gate on
+# whether the embedder can SERVE rather than on free VRAM, which was only ever a proxy
+# for it — the proxy is what deferred 22 times while the embedder was fine.
+#
+# THE PROBE ASKS THE SERVER, NOT LM STUDIO, AND THAT IS DELIBERATE. On 2026-09-19 the
+# server's own CUDA context died in a long-lived process: `index_status` still answered,
+# LM Studio was healthy, and every `search_memory` returned "CUDA error: unknown error"
+# for twelve hours. A probe of LM Studio would have reported all-clear and fired a
+# refresh into a broken embedder. A probe that exercises the real embedding path catches
+# it, and keeps working across the backend switch rather than needing to be rewritten
+# for it.
+EMBED_PROBE_QUERY = "health probe"
 
 
-def _free_vram_mib():
-    """Free VRAM in MiB, or None if it cannot be determined (then don't block)."""
+def embedder_healthy(base_url=None, timeout=25):
+    """Can the server embed RIGHT NOW? -> (ok: bool, why: str).
+
+    Exercises the query-embedding path end to end with a trivial search. Returns False
+    with a reason rather than raising, so the caller can defer cleanly. Never returns
+    True on an error it did not understand: unknown failure is unhealthy.
+    """
+    url = base_url or MCP_URL
     try:
-        r = subprocess.run(
-            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=15,
-        )
-        if r.returncode != 0:
-            return None
-        return min(int(v.strip()) for v in r.stdout.split() if v.strip().isdigit())
+        import asyncio
+        from fastmcp import Client
+
+        async def _go():
+            async with Client(url) as client:
+                # top_k, NOT limit (server signature: search_memory(query, top_k, client,
+                # pointers_only)). pointers_only keeps it cheap; `client` names the probe in
+                # the query log so it is not counted as an anonymous real search.
+                return await client.call_tool(
+                    "search_memory",
+                    {"query": EMBED_PROBE_QUERY, "top_k": 1,
+                     "client": "sync-health-probe", "pointers_only": True})
+
+        out = asyncio.run(asyncio.wait_for(_go(), timeout=timeout))
+        data = getattr(out, "data", out)
+        text = str(data)
+        # The embed path can fail while the call itself succeeds — the CUDA outage
+        # returned a normal payload whose content was an error string.
+        low = text.lower()
+        for bad in ("cuda error", "error calling tool", "failed to embed", "out of memory"):
+            if bad in low:
+                return False, f"server answered but the embed path is broken: {bad}"
+        return True, "embed path answered"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+
+
+# ─────────────────────────── THE IDLE GATE (2026-09-19, Opus's ruling) ────────────────────
+# The hourly task is the CHECK interval, not the RUN interval. A refresh that starts while
+# the agent is mid-cycle costs her memory recall for its whole duration: measured tonight,
+# one CUDA refresh = 60+ minutes of zero recall and 90+ minutes of server unavailability,
+# because LM Studio serves her chat model AND the embedder off one card.
+#
+# PREMISE CORRECTION, stated because the ruling was written on the other assumption: the
+# engine state is NOT mirrored into agent-exports. SUBDIRS is ["wiki", "field-reports"] and
+# there is no engine_state.json anywhere under the export tree -- verified 2026-09-19. So we
+# read it from the container, which this script already talks to.
+ENGINE_STATE = "/a0/usr/workdir/workspace/office/engine_state.json"
+# A heartbeat older than this means the flag is lying. On 2026-08-03 a cycle carried
+# is_running=true for FIVE DAYS; `cycle_active` alone would have deferred the refresh
+# forever. The flag is a claim; the heartbeat is the evidence.
+HEARTBEAT_STALE_S = int(os.environ.get("SYNC_HEARTBEAT_STALE_S", "300"))
+
+
+# A deferral that nobody can see is the failure this whole gate is supposed to prevent, one
+# level up: the `embedder_healthy` probe I nearly shipped would have deferred FOREVER and
+# reported nothing. So every consecutive deferral is counted in a sidecar and printed. The
+# signature is still not advanced -- that part is load-bearing and untouched.
+DEFER_FILE = os.path.join(EXPORT_ROOT, ".sync_deferrals.json")
+
+
+def note_deferral(reason):
+    """-> (count, since). Never raises: a bookkeeping failure must not fail the run."""
+    try:
+        d = json.load(open(DEFER_FILE)) if os.path.exists(DEFER_FILE) else {}
     except Exception:
-        return None
+        d = {}
+    n = int(d.get("count", 0)) + 1
+    since = d.get("since") or datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
+    try:
+        json.dump({"count": n, "since": since, "last_reason": reason}, open(DEFER_FILE, "w"))
+    except Exception:
+        pass
+    return n, since
 
 
-def trigger_reindex():
-    """Call the server's reindex_now MCP tool (uses its in-process lock + background thread)."""
+def clear_deferrals():
+    try:
+        if os.path.exists(DEFER_FILE):
+            os.remove(DEFER_FILE)
+    except Exception:
+        pass
+
+
+def refresh_progress():
+    """-> a short human phrase, or "". Best-effort: a bookkeeping read must never fail a run.
+
+    Opus's point, and it is the right one: "deferred because a refresh is 73% through" is
+    actionable where "deferral #4" is only a number. Needs the server-side progress counter
+    (candidate `opus-memory-server.py.candidate-throttle-20260919`); with an older server the
+    key is absent and this stays silent rather than guessing.
+    """
+    try:
+        import asyncio
+        from fastmcp import Client
+
+        async def _go():
+            async with Client(MCP_URL) as c:
+                return await c.call_tool("index_status", {})
+
+        d = getattr(asyncio.run(_go()), "data", None) or {}
+        if not d.get("reindex_running"):
+            return ""
+        pr = d.get("reindex_progress") or {}
+        if pr.get("pct") is not None:
+            return "a corpus refresh is %.0f%% through (%s/%s, %s)" % (
+                pr["pct"], pr.get("done"), pr.get("total"), pr.get("phase"))
+        return "a corpus refresh is running (started %s, no progress counter on this server)" % (
+            d.get("reindex_started"))
+    except Exception:
+        return ""
+
+
+# The daemon's own completion signal. Written by `cycle_close.py` at the real close; removed
+# by `idle_watch.py` immediately before it fires the next cycle.
+CYCLE_SIGNAL = "/a0/usr/workdir/workspace/office/cycle_result.json"
+
+
+def _cycle_closed(container, state):
+    """-> (closed, why). Is the daemon sitting in its post-close idle wait?
+
+    THE CONTENT CHECK IS LOAD-BEARING, NOT BELT-AND-BRACES, and this is the whole reason the
+    function exists rather than an `os.path.exists`. The daemon consumes the signal with:
+
+        if _read_cycle_signal():      # truthiness
+            os.remove(_SIGNAL_PATH)
+
+    and `_read_cycle_signal()` swallows every exception and returns {} — so a MALFORMED or
+    empty cycle_result.json is never consumed and **lingers forever**. Treating mere presence
+    as "closed" would then pass on every run, permanently, while she generates: fail-open into
+    a live cycle, which is strictly worse than the over-blocking it replaces.
+
+    Currency is therefore required, and a stale file fails it: a leftover from cycle N-1 has
+    `completed_ts` BELOW the new `last_cycle_start`, and a `context_id` that no longer matches.
+    An unparseable one yields neither field and reads as absent, falling through to the
+    heartbeat branch. Safe both ways — but only because this check is mandatory.
+    """
+    r = _run(["docker", "exec", container, "cat", CYCLE_SIGNAL])
+    if r.returncode != 0:
+        return False, ""                      # absent is the normal in-flight case, not an error
+    try:
+        sig = json.loads(r.stdout)
+    except Exception:
+        # Corrupt: the daemon will never consume it, so it will sit there forever. Read it as
+        # absent rather than as closed, and say so — a file that cannot be parsed is not
+        # evidence of anything.
+        return False, ""
+    if not isinstance(sig, dict) or not sig:
+        return False, ""
+
+    started = state.get("last_cycle_start")
+    done = sig.get("completed_ts")
+    fresh = isinstance(done, (int, float)) and isinstance(started, (int, float)) \
+        and done >= started
+    # `context_id` comes from os.environ["A0_CHAT_ID"] and may be "". Two empty strings must
+    # not count as a match, or an env-less close would satisfy every future comparison.
+    ctx = sig.get("context_id") or ""
+    same_ctx = bool(ctx) and ctx == (state.get("cycle_context_id") or "")
+    if not (fresh or same_ctx):
+        return False, ""
+    return True, ("cycle %s closed at %s; the daemon is in its post-close idle wait "
+                  "(matched on %s)" % (
+                      state.get("cycle_count"),
+                      datetime.datetime.fromtimestamp(
+                          done, datetime.timezone.utc).strftime("%H:%M:%SZ")
+                      if isinstance(done, (int, float)) else "?",
+                      "completed_ts" if fresh else "context_id"))
+
+
+def engine_busy(container, timeout=15):
+    """-> (busy, why). busy is True / False / None, and **None is not False**.
+
+    None means "could not determine", which must never be spent as "idle" -- that is the
+    failure this codebase makes most often, a check reporting ignorance as success.
+    """
+    st = _run(["docker", "inspect", "-f", "{{.State.Running}}", container])
+    if st.returncode != 0:
+        return None, "docker inspect failed: %s" % (st.stderr or "").strip()[:80]
+    if st.stdout.strip() != "true":
+        return False, "container not running — it has no engine to be mid-cycle"
+
+    r = _run(["docker", "exec", container, "cat", ENGINE_STATE])
+    if r.returncode != 0:
+        return None, "could not read %s: %s" % (ENGINE_STATE, (r.stderr or "").strip()[:60])
+    try:
+        d = json.loads(r.stdout)
+    except Exception as e:
+        return None, "engine_state.json is not JSON: %s" % type(e).__name__
+
+    # STATE 4 (Opus, 2026-09-19): the engine is off. Nothing will start a cycle, so pass.
+    if not d.get("cycle_active"):
+        return False, "cycle_active=false — the engine is off (last %s, count %s)" % (
+            d.get("last_cycle_type"), d.get("cycle_count"))
+
+    # STATE 1: the daemon's OWN completion signal. `cycle_close.py` writes cycle_result.json
+    # at the real close; `idle_watch.py` removes it just before firing the next cycle. So its
+    # presence-and-currency IS the daemon's "closed, idle-waiting" state — the 1800s window
+    # after each close during which `cycle_active` stays true with a FROZEN heartbeat and she
+    # is NOT generating. Reading that as busy is what made the first version of this gate
+    # block in the best window available (measured 2026-09-19, Fable).
+    sig_ok, sig_why = _cycle_closed(container, d)
+    if sig_ok:
+        return False, sig_why
+
+    hb = d.get("cycle_heartbeat")
+    if not isinstance(hb, (int, float)):
+        return None, "cycle_active=true but no usable cycle_heartbeat"
+    age = time.time() - hb
+    if age > HEARTBEAT_STALE_S:
+        # UNKNOWN, deliberately -- NOT idle. A stale heartbeat under an active flag has two
+        # causes that look identical from here: a dead cycle (2026-08-03: is_running=true for
+        # five days), or a LIVE cycle blocked on something slow. Tonight it was the second --
+        # her turn was stuck on the dead embedder and the heartbeat sat 638s old while she was
+        # genuinely mid-work. Calling that idle starts a refresh on top of the thing already
+        # blocking her. Calling it busy is safe but must never be SILENT, hence the deferral
+        # counter: the failure this replaces is a permanent deferral nobody could see.
+        return None, ("cycle_active=true but heartbeat is %.0fs stale (> %ds) — cannot tell a "
+                      "dead cycle from a blocked one" % (age, HEARTBEAT_STALE_S))
+    return True, "cycle %s (%s) active, heartbeat %.0fs old" % (
+        d.get("cycle_count"), d.get("last_cycle_type"), age)
+
+
+def any_engine_busy(containers):
+    """-> (block, why). Blocks on busy AND on unknown; unknown is never spent as idle."""
+    unknown = []
+    for name, c in containers.items():
+        busy, why = engine_busy(c)
+        if busy is True:
+            return True, "[%s] %s" % (name, why)
+        if busy is None:
+            unknown.append("[%s] %s" % (name, why))
+    if unknown:
+        return True, "UNDETERMINED — " + "; ".join(unknown)
+    return False, "all engines idle"
+
+
+def trigger_refresh():
+    """Call the server's refresh_now MCP tool — incremental; unchanged chunks keep
+    their vectors. Uses the server's in-process lock + background thread."""
     try:
         import asyncio
         from fastmcp import Client
 
         async def _go():
             async with Client(MCP_URL) as client:
-                return await client.call_tool("reindex_now", {})
+                return await client.call_tool("refresh_now", {})
 
         res = asyncio.run(_go())
-        print(f"  reindex triggered: {getattr(res, 'data', res)}")
+        data = getattr(res, "data", res)
+        # `refresh_now` REFUSES while another reindex holds the lock and reports that
+        # refusal as a NORMAL successful call (opus-memory-server.py:1723-1725,
+        # `{"status": "already_running", ...}`). Measured against the live server
+        # 2026-09-19 08:46Z, mid-reindex: the old code printed "refresh triggered" and
+        # returned True. Treat a refusal as not-accepted, or this run's content is
+        # recorded as indexed when nothing indexed it.
+        if isinstance(data, dict) and data.get("status") == "already_running":
+            print(f"  refresh NOT accepted: a reindex started {data.get('started')} still "
+                  f"holds the lock. Files are synced; this run's content is NOT indexed.")
+            return False
+        print(f"  refresh triggered: {data}")
         return True
     except Exception as e:
-        print(f"  reindex trigger FAILED ({e}). Files are synced; reindex manually "
-              f"(reindex_now via MCP) to make them searchable.")
+        print(f"  refresh trigger FAILED ({e}). Files are synced but NOT searchable; "
+              f"run refresh_now via MCP to index them.")
         return False
 
 
 def main():
     ap = argparse.ArgumentParser(description="Sync agent workspaces to the shared corpus + reindex.")
     ap.add_argument("--no-reindex", action="store_true")
+    ap.add_argument("--ignore-health", action="store_true",
+                    help="refresh even when the embedder probe says it cannot serve")
     ap.add_argument("--force-reindex", action="store_true")
+    ap.add_argument("--ignore-idle", action="store_true",
+                    help="refresh even while the agent is mid-cycle (costs her recall)")
     ap.add_argument("--agent", choices=list(AGENTS))
-    ap.add_argument("--ignore-vram", action="store_true",
-                    help="reindex even when free VRAM is below the safety floor "
-                         "(the local LLM is probably loaded — use deliberately)")
+    # Retained as a hidden alias so an existing habit keeps working and means the
+    # analogous thing; the VRAM floor itself is gone.
+    ap.add_argument("--ignore-vram", action="store_true", dest="ignore_health",
+                    help=argparse.SUPPRESS)
     args = ap.parse_args()
 
     targets = {args.agent: AGENTS[args.agent]} if args.agent else AGENTS
@@ -250,22 +506,61 @@ def main():
     if args.no_reindex:
         print("  --no-reindex: files synced, reindex skipped")
     elif changed or args.force_reindex:
-        free = _free_vram_mib()
-        if free is not None and free < MIN_REINDEX_FREE_VRAM_MIB and not args.ignore_vram:
-            print(f"  content changed BUT only {free} MiB VRAM free "
-                  f"(need {MIN_REINDEX_FREE_VRAM_MIB}) -> reindex DEFERRED")
-            print("  the local LLM is loaded; a full re-embed would fight it for the card.")
-            print("  files are synced and safe; the next run reindexes once the card frees up.")
+        if args.ignore_idle:
+            blocked, bwhy = False, "skipped (--ignore-idle)"
+        else:
+            blocked, bwhy = any_engine_busy(targets)
+        if blocked:
+            print("  content changed BUT the agent is mid-cycle -> refresh DEFERRED")
+            print("  engine: %s" % bwhy)
+            n, since = note_deferral(bwhy)
+            rp = refresh_progress()
+            if rp:
+                print("  also: %s" % rp)
+            print("  files are synced and safe; the next hourly CHECK retries when she is idle.")
+            if n > 1:
+                print("  ** consecutive deferral #%d, first at %s — if this keeps climbing the"
+                      " gate is stuck, not patient **" % (n, since))
+            # Same reasoning as the health gate below: do NOT record the new signature, or
+            # the deferred content looks unchanged next run and is never indexed.
+            wrote_state = False
+            ok = None
+        else:
+            ok, why = embedder_healthy()
+        if ok is None:
+            pass
+        elif not ok and not args.ignore_health:
+            print(f"  content changed BUT the embedder cannot serve -> refresh DEFERRED")
+            print(f"  probe: {why}")
+            print("  files are synced and safe; the next run refreshes once it recovers.")
             # Do NOT record the new signature — otherwise the deferred content would
             # look 'unchanged' next run and never get indexed at all.
             wrote_state = False
         else:
-            if free is not None:
-                print(f"  content {'changed' if changed else 'unchanged (forced)'} "
-                      f"({free} MiB VRAM free) -> reindexing")
+            state = "changed" if changed else "unchanged (forced)"
+            print(f"  content {state} ({why}) -> refreshing")
+            # Guard the OTHER arm of the same failure. The health-probe branch ten lines
+            # up already refuses to advance the signature when it defers, for the reason
+            # stated there: deferred content that looks 'unchanged' next run is never
+            # indexed at all. A refresh that never started -- or was REFUSED because a
+            # reindex already held the lock -- has the same consequence and was unguarded.
+            #
+            # Precisely: the content is not lost. `reindex(reuse=True)` re-walks the whole
+            # corpus, so the NEXT successful refresh picks it up. What it is, is invisible
+            # for an unbounded window -- until something else changes the signature and a
+            # refresh succeeds -- while the run reports success, so nobody looks.
+            #
+            # BOUND, so the next reader does not over-trust this line: it catches "the
+            # refresh never STARTED" (MCP unreachable, tool errored). It cannot catch
+            # "the refresh started and then DIED" -- refresh_now runs on a background
+            # thread and returns immediately. Measured 2026-09-19: this state file was
+            # written at 08:00:15Z, ONE SECOND after a refresh that was still running
+            # forty minutes later. For that case the server already exposes
+            # `reindex_last_result` through index_status; nothing reads it yet.
+            if trigger_refresh():
+                clear_deferrals()
             else:
-                print(f"  content {'changed' if changed else 'unchanged (forced)'} -> reindexing")
-            trigger_reindex()
+                wrote_state = False
     else:
         print("  content unchanged since last sync -> reindex skipped (no GPU churn)")
 

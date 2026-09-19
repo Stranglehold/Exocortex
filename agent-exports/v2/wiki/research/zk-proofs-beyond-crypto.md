@@ -342,3 +342,23 @@ ZKML enables verification of AI model execution without exposing model weights, 
 - **Federated learning + ZKP:** Train models on local data with cryptographic verification
 
 ---
+
+## Cross-Domain Connections (2026 BUILD cycle)
+
+### 1. Homomorphic Encryption + Zero-Knowledge Proofs: a complete privacy-preserving computation stack for AI trust
+ZKPs and FHE are complementary primitives that together close the privacy gap in AI inference: FHE lets a party compute on encrypted data while preserving confidentiality; ZKP lets them prove the computation was carried out correctly without revealing inputs or model weights. The shared Exocortex corpus states this convergence directly — "they form a complete privacy-preserving computation stack for AI inference... 'trust but verify'": run someone else's model on your data without either party learning what the other knows (field-reports/2026-05-15_privacy_cryptography, field-reports/2026-07-13_advanced_cryptography_privacy). The corpus-level fhe-zkp-hybrid-architectures synthesis page codifies the same: FHE = encrypted computation preserving confidentiality; ZKP = prove integrity without revealing inputs. This is the cryptographic backbone of ERC-8126 attestation and the ATF agent-trust framework in this page's own "AI Agent Trust Infrastructure" section — i.e. an end-to-end trustless inference pipeline, not just a proof-of-correctness add-on.
+
+### 2. zkML → trustless multi-agent systems, local-to-frontier verifiable inference, and privacy-preserving entity resolution
+The corpus-level page `zkml-verifiable-ai-inference.md` defines zkML as producing a cryptographic proof that a specific model ran on specific inputs to produce a specific output — verifiable without re-running the computation — and explicitly grounds it in three cross-domain settings: **trustless multi-agent AI systems**, **local-to-frontier verifiable inference**, and **privacy-preserving entity resolution**. The third link is the sharpest bridge for this page's OSINT/identity audience: an entity-resolution pipeline that runs on encrypted or privacy-sensitive records can prove (via zkML over its matcher) that matches were computed by the declared procedure without leaking the raw attribute values — i.e. ZK proof of correct matching without exposing PII, which is exactly what a regulated KYC/PIR-style pipeline needs.
+
+### 3. Privacy frontier shifts from message content to metadata — mirroring entity resolution and verifiable inference
+A parallel finding in the privacy-cryptography field reports: after E2EE protects *content*, the residual leak is *metadata* (who you talk to / how often). This "metadata is the real privacy frontier" insight maps onto zkML's core value proposition, which also hides metadata rather than just content — it proves a model executed correctly while concealing both inputs and the underlying computation graph. The two problems share structure: entity resolution connects without revealing identity; zkML verifies without revealing data.
+
+### 4. Cross-cutting verification pattern shared with hardware / proof generation (ZK over FHE-PIR)
+The reconfigurable-hardware proof-generation lineage in this wiki (FPGA ZKP circuits, homomorphic-FHE verification) and cycle-606 'unified reconfigurable substrate' reports provide the hardware instantiation of zkML's cryptographic proof layer — same building blocks that enable a zero-knowledge proof of correct FHE-PIR lookup. This page is the application-layer counterpart (what to prove); the ZKML / homomorphic-hardware pages are the proving infrastructure (how to prove).
+
+---
+
+## Deepening Log (self-improvement cycles)
+
+- **2026-09-19 (BUILD):** Promoted orphan stub to tracked Research + marked STABLE. Enriched with a new Cross-Domain Connections section grounded in the shared Exocopus corpus — (1) FHE+ZKP convergence = complete privacy-preserving computation stack for AI trust; (2) zkML central to trustless multi-agent AI / local-to-frontier verifiable inference / privacy-preserving entity resolution, i.e. a ZK proof of correct matching without exposing PII in a matched pair or record (v17 `zkml-verifiable-ai-inference.md`); (3) metadata-as-privacy-frontier mirrors entity-resolution connect-without-revealing-identity and zkML's data-hiding; (4) hardware/proof-generation lineage as the proving infrastructure counterpart. Deepened Related Wiki Pages with fhe-zkp-hybrid-architectures and private-information-retrieval. Grounded solely in shared-corpus primary sources (no arXiv IDs fabricated this cycle). Page was previously STABLE-content but untracked in index.md — tracked now per Rule #3.

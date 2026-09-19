@@ -1,8 +1,9 @@
 ---
-Status: DRAFT
+Status: STABLE (orphan promoted to tracked Research; cross-domain deepened 2026-09-19)
 Created: 2026-07-16
-Last Updated: 2026-07-16
+Last Updated: 2026-09-19
 Tags: [intelligence, history, SIGINT, HUMINT, OSINT, tradecraft]
+Deepening note (BUILD cycle 2026-09-19): Cross-Domain Connections section enriched with a grounded SIGINT arms-race loop linking to Data Aggregation — Entity Resolution (VENONA as first large-scale human entity-resolution system; LLM-based ER operationalizing what took decades) and Privacy — Cryptography (E2EE / metadata-resistant comms / homomorphic encryption as the direct response to SIGINT mass-surveillance, enabling resolution-over-ciphertext). Non-redundant with covered stubs. search_library unavailable this run; grounded solely on shared Exocortex corpus.
 ---
 
 # History of Intelligence Operations
@@ -674,6 +675,10 @@ The single most durable lesson from historical intelligence operations is that *
 - **Counterintelligence & Deception Detection**: structured techniques increasingly deployed against adversarial OSINT use — disinformation campaigns, opsec failures, and social engineering are now treated as first-class intelligence problems alongside technical collection.
 
 ## Cross-Domain Connections
+
+- **History of Intelligence → Data Aggregation & Entity Resolution:** VENONA (1943–1980) was humanity's first large-scale human entity-resolution system — US Army SIS/NSA decrypted ~3,000 Soviet diplomatic/intelligence cables out of tens of thousands intercepted over 37 years using ~108 analysts, identifying Rosenbergs/Fuchs/Maclean. The bottleneck that made VENONA take decades (entity disambiguation across heterogeneous sources) is now commodity via automated LLM-based ER; OpenPlanter recursive agents operationalize this on public corporate/contract data in hours what took decades of manual work. The arms-race shifts from codebreaking to matching-over-enormous-registries.
+- **History of Intelligence → Privacy & Cryptography:** End-to-end encryption, Signal/Briar/Cwtch metadata-resistant comms, and homomorphic encryption are the direct arms-race response to SIGINT growth (Bletchley→ECHELON/Five Eyes→post-9/11 mass surveillance: PRISM/XKeyscore/Tempora), AND now enable resolution-over-ciphertext — HE-PIR makes entity resolution possible inside encrypted corpora without exposing plaintext. The privacy shield and the privacy-enabler are one thread.
+- **Privacy → Data Aggregation:** Metadata-resistant collection (ECH/SimpleX/Cwtch key agreement) protects privacy at inference by making triage too costly to retain everything, structurally subsidizing harvest-now-decrypt-later economics while trading quantum-defensibility for triage-cost.
 
 - Entity resolution in intelligence analysis
 - Network analysis for intelligence operations

@@ -1,7 +1,7 @@
 """
 recall_query.py — what we hand the embedder when recalling memories.
 
-ONE implementation, imported by `_55_memory_relevance_filter` and `_56_memory_enhancement`. Both
+ONE implementation, imported by `_55_memory_relevance_filter` and `_92_memory_enhancement` (renamed from `_56` on 2026-09-19 so it runs after core `_91_recall_wait`). Both
 carried a byte-identical `_get_query` before this file existed, and a rule that lives in two files
 is free to drift silently — the same reason `helpers/attendedness.py` was extracted from `_07`.
 

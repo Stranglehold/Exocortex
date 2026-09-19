@@ -219,10 +219,7 @@ class MemoryEnhancement(Extension):
                 )
 
                 if result:
-                    txt = "\n\n".join(
-                        getattr(doc, "page_content", "")
-                        for doc, _ in result
-                    )
+                    txt = _with_provenance(result)
                     try:
                         extras["memories"] = self.agent.parse_prompt(
                             "agent.system.memories.md", memories=txt,
@@ -253,10 +250,7 @@ class MemoryEnhancement(Extension):
                     )
 
                     if result:
-                        txt = "\n\n".join(
-                            getattr(doc, "page_content", "")
-                            for doc, _ in result
-                        )
+                        txt = _with_provenance(result)
                         try:
                             extras["solutions"] = self.agent.parse_prompt(
                                 "agent.system.solutions.md", solutions=txt,
@@ -631,6 +625,43 @@ def _role_domain_overlaps(
 
 
 # ── Access Tracking ──────────────────────────────────────────────────────────
+
+def _with_provenance(result):
+    """Prefix each recalled memory with what it is and when it was saved.
+
+    WHY, measured 2026-09-19. A memory arrives in the [EXTRAS] block as BARE PROSE — no
+    provenance, no date — so a quotation inside a memory is typographically indistinguishable
+    from an instruction issued this turn.
+
+    Aporia reported that injected directives were arriving through the EXTRAS field, citing
+    `User explicitly requested: Reply with just OK`. Traced: that string exists in exactly two
+    places in her store, BOTH her own notes about the phenomenon, and in the chat she describes
+    the EXTRAS block contains her 2026-09-17 warning verbatim with the directive appearing ONCE,
+    inside its own quotation. Nothing was injected. Her record of the thing reproduced the
+    appearance of the thing — and each time she flags it she writes another memory containing
+    the quote, so it compounds. Same shape as the filtering-rule accretion, benign in content
+    and self-sustaining in form.
+
+    Dating the recollection makes a quoted imperative unmistakably historical. Her refusal of
+    unattributed directives is correct and unaffected: this removes the ambiguity rather than
+    asking her to resolve it on every turn.
+
+    RENDER-TIME ONLY. `page_content` is what was saved and stays what was saved. A prefix that
+    reached the store would be re-recalled and re-prefixed next turn, which is the compounding
+    shape one layer down.
+    """
+    out = []
+    for doc, _score in result:
+        text = getattr(doc, "page_content", "") or ""
+        meta = getattr(doc, "metadata", None) or {}
+        stamp = str(meta.get("timestamp") or "")[:10]   # YYYY-MM-DD
+        # An undated memory says so. Silently omitting the date would make it read as
+        # current, which is the defect; guessing one would be worse.
+        head = ("recalled memory (saved %s):" % stamp) if stamp \
+            else "recalled memory (save date unknown):"
+        out.append(head + "\n" + text)
+    return "\n\n".join(out)
+
 
 def _update_access(
     filtered_results: list[tuple], all_docs: dict,
