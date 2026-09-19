@@ -34,12 +34,31 @@ import json
 import math
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from typing import Any
 
 from agent import Agent, LoopData
 from helpers.extension import Extension
 from plugins._memory.helpers.memory import Memory
+
+# The plugin's own helpers are NOT importable as `plugins._exocortex.*`: the plugin lives at
+# /a0/usr/plugins/_exocortex/, while `/a0/plugins/` (which is what `import plugins` resolves to)
+# holds only A0's core plugins. Verified in her venv 2026-09-17 — `plugins._exocortex` is a
+# ModuleNotFoundError there, though it imports fine from the repo tree, which is exactly how a
+# package-path import passes a control and then does nothing in production.
+#
+# So: put the helpers directory on sys.path and import the module by its bare name. Identical to
+# _07_recovery_gate.py:100-102 and _10_plaintext_response_fallback.py, which is where this pattern
+# already lived while this file failed to use it.
+_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _HELPERS not in sys.path:
+    sys.path.insert(0, _HELPERS)
+
+try:
+    import recall_query
+except Exception:  # pragma: no cover - helper missing
+    recall_query = None  # type: ignore[assignment]
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -177,7 +196,7 @@ class MemoryEnhancement(Extension):
                 self.agent, "_memory_maintenance_counter", 0
             )
 
-            query = _get_query(loop_data)
+            query = _get_query(self.agent, loop_data, config)
             if not query:
                 print("[MEM-ENHANCE] No user message found, skipping", flush=True)
                 return
@@ -555,16 +574,40 @@ def _get_bst_domain(agent) -> str:
 
 # ── Query Extraction ─────────────────────────────────────────────────────────
 
-def _get_query(loop_data) -> str:
-    """Extract search query from loop data."""
-    if hasattr(loop_data, "user_message") and loop_data.user_message:
-        try:
-            if hasattr(loop_data.user_message, "output_text"):
-                return loop_data.user_message.output_text()
-            return str(loop_data.user_message)
-        except Exception:
-            pass
-    return ""
+def _get_query(agent, loop_data, config=None) -> str:
+    """The text handed to the embedder. Delegates to the shared rule.
+
+    Was: `loop_data.user_message.output_text()`, unbounded. Measured 2026-09-16 — that overflowed
+    nomic-embed-v1.5's 2,048-token ceiling on 919 of 2,882 embedding requests, EVERY truncated one
+    a recall query, and on an idle cycle it was the same activation charge every turn (785 of them
+    at exactly 2,120 tokens), which returned the same six memories all day.
+
+    The rule now lives in `helpers/recall_query.py` so `_55` and this file cannot drift apart —
+    they carried byte-identical copies of the old function, which is how drift starts.
+
+    Falls back to the previous behaviour if the helper is unavailable: a missing helper must not
+    cost recall entirely, and the old behaviour is bad rather than dangerous.
+    """
+    max_chars = None
+    if isinstance(config, dict):
+        max_chars = (config.get("recall_query") or {}).get("max_chars")
+    try:
+        if recall_query is None:
+            raise ImportError("recall_query helper not on sys.path")
+        return recall_query.build_query(
+            agent, loop_data, max_chars or recall_query.DEFAULT_MAX_CHARS
+        )
+    except Exception as e:
+        print(f"[MEM-ENHANCE] recall_query helper unavailable ({type(e).__name__}) — "
+              "falling back to the raw user message", flush=True)
+        if hasattr(loop_data, "user_message") and loop_data.user_message:
+            try:
+                if hasattr(loop_data.user_message, "output_text"):
+                    return loop_data.user_message.output_text()
+                return str(loop_data.user_message)
+            except Exception:
+                pass
+        return ""
 
 
 # ── Role Domain Check ────────────────────────────────────────────────────────

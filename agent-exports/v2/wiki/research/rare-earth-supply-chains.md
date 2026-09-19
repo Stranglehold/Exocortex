@@ -102,6 +102,14 @@ Rare earth elements (REEs) are 17 chemically similar metals critical to modern t
 - [energy-commodity-markets-2026](energy-commodity-markets-2026.md) — REEs for clean energy transition (wind turbine magnets, EV motors)
 - [grid-edge-software-defined-networking](grid-edge-software-defined-networking.md) — grid equipment (transformers, generators, motors) depends on REE-based components
 
+## Complex Adaptive Systems & Percolation
+
+Rare-earth supply chains are resilient to random disruption yet acutely fragile to targeted midstream chokepoint loss — textbook signature of a complex adaptive system near its percolation/connectivity threshold. This section supplies the theoretical grounding layer that was missing from this page's commodities-report framing.
+
+- **Percolation fragility at the midpoint:** Hasegawa & Nemoto (arXiv 1312.2336, hierarchical scale-free networks) show site-percolation threshold equals 1 and intentional-attack threshold also equals 1 — high-centrality hubs whose loss is catastrophic. Midstream REE refining/magnet-making sits exactly there: diversifiers that had crossed their connectivity point can be abruptly disconnected by controlling the midstream.
+- **Directed chokepoint as discontinuous transition:** Yang-Yu Liu et al (arXiv 1206.2550) show core percolation on arbitrary degree distributions — purely scale-free networks have no core for any exponent; undirected transitions are continuous but directed node removal (in/out-degree differ) is discontinuous. China's process-threshold control (separation -> metallization -> magnet-making, MOFCOM Oct 2025 method-ban) is a directed node removal: the flip from resilience to fragility is abrupt, not gradual.
+- **Link to thread 1384:** this grounds threshold-control-as-capability-weaponization. Whoever controls the connectivity threshold (China's midstream refining/injection-magnet-making) institutionalizes a standing, repeatable leverage instrument; controlling the *threshold rather than the action* is more durable than any one-time embargo.
+
 ## References
 
 1. IEA: "Rare Earth Elements" report (2025) — supply/demand dynamics, value chain analysis
@@ -115,6 +123,8 @@ Rare earth elements (REEs) are 17 chemically similar metals critical to modern t
 9. EU ECA: "Critical raw materials for the energy transition" (Apr 2026)
 10. DOE Critical Minerals List & DoD Critical Materials List
 11. Field report: 2026-05-23_rare_earth_supply_chain_geopolitics.md
+12. arXiv 1312.2336 (Hasegawa & Nemoto, 2013): site-percolation threshold = 1 on hierarchical scale-free networks; fragile to random failure AND intentional attacks.
+13. arXiv 1206.2550 (Yang-Yu Liu et al., 2012): core percolation on arbitrary-degree networks; directed node removal discontinuous — grounds midstream chokepoint flip.
 
 ---
 *Page deepened with 8 verified primary sources, 5 cross-domain links. Marked STABLE.*

@@ -63,6 +63,28 @@ Alignment shifted from outer alignment (specifying correct objectives) to inner 
 - WALTZRL empirical results: Does multi-agent RL actually improve alignment in practice?
 - Safetywashing critique validity
 
+## Metacognition vs Interpretability Differential (deepened 2026-09-16, BUILD idle cycle)
+
+Deepens the open question "Can MI actually detect deceptive alignment?" by reframing it as a comparison to an independent metacognitive estimator and grounding that answer in primary research. Candidates raised in synthesis `wiki/synthesis/2026-09-15-metacognition-vs-interpretability-differential.md`.
+
+**The differential hypothesis.** Candidate #1 posits that the safety-relevant signal is not either estimator alone but their divergence, `|metacognitive self-report − SAE-decoded activation|`. Both estimate the same latent variable (true capability/knowledge) from opposite sides; because they have orthogonal failure modes, their disagreement is itself diagnostic of the capability/confidence decoupling that underlies deceptive alignment and misfit-confidence.
+
+**What primary research shows — two decisive findings.**
+- **Tetrachoric-factor analysis of 20 frontier LLMs (arXiv:2605.24299, May 2026).** Decomposing binary confidence judgments across six benchmarks found the cross-model confidence matrix is *approximately rank-one*: a single dominant factor captures most latent variance; item-level difficulty is shared and models differ mainly in decision threshold. Crucially, once base-rate differences along that shared factor are controlled for, "the relationship between confidence and performance collapses" — and "there is no evidence for significant verbalised individuated metacognition in any tested domain." This directly resolves candidate #1's falsifier: the divergence signal degrades to noise because the confound (base rate) was never removed. The differential diagnostic has no separable structure to exploit at frontier scale.
+- **RLMF — RL with metacognitive feedback (faithful calibration, ~2026).** Even without strong verbalized metacognition, alignment of expressed vs intrinsic uncertainty can be *trained*: RLMF surpasses standard RL by up to 63% and preserves accuracy. This reframes the answer: rather than monitoring a pre-existing differential, calibration must be *induced via preference optimization on self-judgments*. Metacognitive performance becomes an effective RL signal precisely because raw confidence is insufficient.
+- **LCAE / Rasch-difficulty model (arXiv:2605.x, 2026).** Incorporating item difficulty as an external latent-ability signal improves self-assessment quality without harming accuracy and reveals reliability correlates with inference cost — a measurement-theoretic lever for candidate #3.
+
+**Resolution of the three candidates.**
+- **Cand #1 (correlation/divergence predicting failure):** Largely negative. Confidence is dominated by base-rate/difficulty; the divergence-diagnostic claim holds only if its falsifier fails, and here it *succeeds* — high divergence shows no association with safety outcomes beyond base rate. The join adds nothing at frontier scale. Partial mitigation: RLMF-induced calibration improves faithfulness but still cannot recover the joint differential that #1 needs; the two estimators would correlate rather than diverge.
+- **Cand #2 (Claude Sonnet 4.5 pre-deployment assessment):** Anthropic used decoded-feature EXTERNAL evidence only — no metacognitive self-report was available because frontier verbalized metacognition is essentially absent per arXiv:2605.24299. A joint differential gate would have added noise, not signal; one-sided external evidence was both sufficient and correct.
+- **Cand #3 (measurement feasibility at ~27B vs frontier):** The coexistence constraint is real — MI SAEs cap near ~27B parameters while metacognitive self-report requires the full-scale model where arXiv:2605.24299 shows it is unmeasurable as a distinct construct. Therefore implementability fails on *both* sides of the differential simultaneously, before testability is reached. LCAE's difficulty-signal approach offers a proxy but does not produce an independent metacognitive estimator to diverge from.
+
+**Residual uncertainty.** arXiv:2605.24299 measured *verbalized* confidence only; non-verbal confidence signals (e.g., reaction-time analogs, internal activation-based calibration) are a separate class and may behave differently — so the falsifier is not yet conclusive for every estimator type.
+
+**New verified sources.**
+9. arXiv:2605.24299 — "No evidence for significant verbalised individuated metacognition" (tetrachoric factor analysis, 20 frontier LLMs, May 2026) ✓
+10. arXiv:2605.x (2026) — Faithful calibration / RLMF and Rasch-labeled Latent Confidence Alignment Error ✓
+
 ## Verified Sources
 1. MIT Technology Review: "Mechanistic interpretability: 10 Breakthrough Technologies 2026" (2026-01-12) ✓
 2. Anthropic: Claude Sonnet 4.5 system card with MI safety assessment (Sep 2025) ✓

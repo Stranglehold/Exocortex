@@ -183,6 +183,67 @@ def analyse(text: str) -> dict:
                first_err.lineno if first_err else 0)
 
 
+def _root_object_starts(text: str) -> list[int]:
+    """Offsets of every '{' at depth 0. A0's own scan (helpers/extract_tools._json_root_object_starts)
+    reimplemented here rather than imported: this file must keep working if core moves, and the scan
+    is four lines of state. Quotes are only tracked inside an object, as core does it."""
+    starts, depth, quote, escaped = [], 0, None, False
+    for i, ch in enumerate(text):
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = None
+            continue
+        if depth and ch in ('"', "'", "`"):
+            quote = ch
+        elif ch == "{":
+            if depth == 0:
+                starts.append(i)
+            depth += 1
+        elif ch == "}":
+            depth = max(0, depth - 1)
+    return starts
+
+
+def analyse_embedded(text: str) -> dict | None:
+    """Analyse a JSON root EMBEDDED in prose. Returns analyse()'s verdict plus {"start": offset}.
+
+    WHY THIS EXISTS, measured 2026-09-18 on Jake's "Workspace Scripts" chat.
+
+    Aporia looped: reasoning prose, then a `code_execution_tool` call whose `code` value held a
+    LITERAL NEWLINE — a multi-line shell command written without \\n. Strict parsing names it
+    exactly: `Invalid control character at line 12 column 600`. **That is precisely the class this
+    file repairs**, and the repair was proven to work on both real payloads.
+
+    It never got the chance. `analyse()` parses the WHOLE message, which begins with prose, so
+    json.loads fails at character 1 with "Expecting value", and this extension concluded "not a
+    string error" — **correctly, about the wrong string**. `_05` then found no root (DirtyJson
+    cannot complete a broken object), logged nothing because it returns before it logs, and `_10`
+    wrapped the prose as a response. A repairable call died inside a turn that reported completed.
+
+    So the defect was never the repair logic; it was WHICH STRING the repair logic was pointed at.
+    This routes it at the right one and changes nothing else.
+
+    Returns None unless a root is found AND analysing it yields a repair — a verdict that is not
+    "repaired" is left to the existing branches, which already own the top-level cases.
+    """
+    if not isinstance(text, str):
+        return None
+    stripped = text.strip()
+    for start in _root_object_starts(stripped):
+        if start == 0:
+            continue  # the whole message IS the root; analyse() already had it
+        verdict = analyse(stripped[start:])
+        if verdict["kind"] == "repaired":
+            verdict = dict(verdict)
+            verdict["start"] = start
+            return verdict
+    return None
+
+
 def diagnostic(key: str, line: int, error: str) -> str:
     return (f"Your last reply was not a valid tool call: {error} at line {line}, inside the string value of \"{key}\". "
             f"A JSON string must end with a double quote on the same line and cannot contain raw line breaks. "
@@ -233,6 +294,28 @@ class RepairUnterminatedString(Extension):
                     self.agent.hist_add_warning(diagnostic(verdict["key"], verdict["line"], verdict["error"]))
                 except Exception as e:  # never let the diagnostic break the turn
                     print(f"[STRING-REPAIR] diagnostic not added: {type(e).__name__}: {e}", flush=True)
+            elif kind == "other" and "Expecting value" in (verdict["error"] or ""):
+                # THE WHOLE MESSAGE IS NOT JSON AT ALL — prose wrapping a call. Point the same
+                # repair at the embedded root instead. Guarded on "Expecting value" specifically:
+                # this branch also catches "parses as JSON but carries no tool_name", which parsed
+                # fine and has nothing to repair, and whose nested objects are not roots.
+                emb = analyse_embedded(msg)
+                if emb:
+                    stripped = msg.strip()
+                    spliced = stripped[: emb["start"]] + emb["text"]
+                    _write_msg(data, where, index, spliced)
+                    what = []
+                    if emb["escapes"]:
+                        what.append(f"doubled {emb['escapes']} invalid escape(s)")
+                    if emb["closed_quote"]:
+                        what.append(f"closed the string value of \"{emb['key']}\"")
+                    print(f"[STRING-REPAIR] repaired the EMBEDDED root at offset {emb['start']}: "
+                          f"{'; '.join(what) or 'repaired'} at line {emb['line']} — "
+                          f"{emb['start']} chars of prose kept for _05 to extract", flush=True)
+                else:
+                    print(f"[STRING-REPAIR] not a string error ({verdict['error']} at line {verdict['line']}) "
+                          f"— no repairable embedded root either; passthrough to _05/_10 and the "
+                          f"standard warning", flush=True)
             elif kind == "other" and verdict["error"]:
                 # Kestrel's review (2026-09-15): the passthrough must log, or a quiet log cannot be told from an analyser
                 # that never matched. A log full of these with a different decoder message says the shape has moved.

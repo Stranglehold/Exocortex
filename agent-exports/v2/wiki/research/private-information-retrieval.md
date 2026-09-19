@@ -66,6 +66,7 @@ Core decomposition: k-anonymity hides the record; PIR hides the query.
 8. [[matrix-native-fhe-gl-scheme]] — batched matrix algebra shifts encrypted matching (and thus linear-scan PIR) toward practical.
 9. [[privacy-preserving-federated-learning-critical-infrastructure]] — shared PSI/OT underpinnings for cross-institution private analysis.
 10. [[network-analysis-techniques-osint]] — link-shared entities across graphs while preserving confidentiality, mirroring PIR's access-pattern protection.
+11. [[preserving-entity-resolution-osint]] — the Agent Communication Budget Model (per-query epsilon cost, cumulative ε tracking, budget-exhaustion gate) frames each inter-agent entity-resolution query as a privacy-budget spend; PIR converts that per-query leakage to zero while consuming bandwidth/context budget instead of data-privacy budget, making it the access-primitive for high-value sparse lookups within an agent's context window.
 
 ---
 
@@ -79,5 +80,13 @@ Core decomposition: k-anonymity hides the record; PIR hides the query.
 6. "Low-latency FHE-based single-server PIR with low client overhead", Cybersecurity (Springer), May 2026.
 7. Reference implementation: https://github.com/ahenzinger/simplepir
 8. Hunt — HIBP k-anonymity API (2018); Cloudflare production PIR engineering posts (2023-2024).
+
+## Open Questions / next deepening
+
+Unresolved theoretical frontier — grounded in the shared Exocortex corpus; library search returned only tangential DP epsilon-accounting material (no PIR-specific book coverage), so substantive grounding rests on corpus primary sources with no web fabrication.
+
+- **PIR as an agent-to-KB access primitive (communication cost per query vs. agent context budgets).** The core unresolved trade-off: a computational single-server PIR lookup spends one ciphertext or silent-preprocessing round per query. In corpus terms this is the *Agent Communication Budget Model* (preserving-entity-resolution-osint.md): each inter-agent query spends a privacy budget — per-query epsilon cost, cumulative ε tracking across sequential queries, and a budget-exhaustion gate that blocks queries once ε is depleted. PIR's 'hides the query' guarantee is therefore not free: it converts a data-privacy loss (bounded by FHE/DP/PPRL) into an information-theoretic exchange — per-query cost leaks nothing about the accessed key, but consumes bandwidth and privacy budget proportional to that per-query cost. PIR is the right access-primitive exactly where (a) the analyst's search pattern is itself the sensitive artifact and (b) per-query communication sits well below the agent's context budget — sparse high-sensitivity lookups, not bulk scans.
+- **Query privacy vs. data privacy decomposition in concrete protocols.** The clean k-anonymity-hides-record/PIR-hides-query decomposition (§OSINT) lacks a unified statement across SimplePIR, DoublePIR, YPIR, and FHE-PIR: silent preprocessing (YPIR), matrix-algebra batching (matrix-native-fhe-gl-scheme), and homomorphic predicates (FHE-based PIR) each shift *which* party's privacy is protected and at what cost. Whether one protocol can provably satisfy per-record data privacy AND per-query access privacy with sublinear client cost remains open.
+- **Practical updatable PIR in production / rolling datasets.** Updatable PIR (ACM CCS 2025, simulatable VRFs) closes the freshness gap but refresh costs for live/rolling databases are unb — a PIR-as-access-primitive over a continuously-changing KB is the hardest remaining case.
 
 *Grounded first in the shared Exocopus corpus (private-information-retrieval.md + private-set-intersection-psi.md, created 2026-08-01/12); arXiv MCP unavailable this cycle (timed out), so grounding rests on shared-corpus primary sources with no web fabrication.*

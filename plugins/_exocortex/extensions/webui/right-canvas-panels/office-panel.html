@@ -1,0 +1,30 @@
+<!--
+  OFFICE right-canvas surface — THIN WRAPPER (v1.20 canvas contract).
+  The .right-canvas-surface-panel root must NOT carry x-data or inline content (it collapses to 0x0 and lets content
+  escape). The UI lives in the nested <x-component>; x-data belongs inside it. Mirrors the SYS·MON / EXO·OPS wrappers.
+  The root IS a store-bound shell (Kestrel, 2026-09-15, read from the three core panels, 3 of 3): class, data-surface-id,
+  the :class is-active / is-mounted pair, :aria-hidden, and x-effect where needed are all idiomatic on it; x-data alone
+  is barred. Second way to fail: right-canvas.css sets .right-canvas-surface-panel { opacity: 0 } and restores it only
+  on .is-active, so if the is-active binding is dropped or data-surface-id drifts from the id register-office.js
+  registers ("exo-office"), the pane mounts, lays out, receives data, logs nothing, and is invisible. An empty canvas at
+  deploy: check the surface id against the registered id before anything else.
+  The id is "exo-office", never "office": A0's LEGACY_SURFACE_IDS (webui/js/surfaces.js) maps "office" to the core
+  "desktop" surface, so the first deploy (2026-09-16 00:18) merged this surface into Desktop; fixed within the hour.
+  A structural review confirms the shape and cannot see the namespace (Kestrel): this wrapper matched desktop-panel.html
+  element for element, and matching Desktop is exactly what a surface silently merged INTO Desktop would do. What found
+  the collision was a same-tick read of [activeSurfaceId, className] returning a result that fit no hypothesis either
+  reviewer held. Check the host's name tables before the structure.
+  Deploy to /a0/usr/plugins/_exocortex/extensions/webui/right-canvas-panels/office-panel.html, replacing
+  workshop-panel.html; retire exo-ops-panel.html and register-exo-ops.js with it.
+-->
+<div
+  class="right-canvas-surface-panel"
+  data-surface-id="exo-office"
+  :class="{
+    'is-active': $store.rightCanvas?.isSurfaceVisible('exo-office'),
+    'is-mounted': $store.rightCanvas?.isSurfaceRendered('exo-office')
+  }"
+  :aria-hidden="(!$store.rightCanvas?.isSurfaceVisible('exo-office')).toString()"
+>
+  <x-component path="/plugins/_exocortex/webui/office-content.html"></x-component>
+</div>

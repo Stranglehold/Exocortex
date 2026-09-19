@@ -246,6 +246,25 @@ def _get_phase4_endpoint(agent=None) -> str:
 
     return _PHASE4_LM_ENDPOINT_DEFAULT
 
+# Phase 4 KILL SWITCH. Off on Jake's word, 2026-09-19 01:01:22Z: "yeah, turn phase 4 off."
+#
+# Measured by Fable from LM Studio's own log, 2026-09-18: `_call_phase4_supervisor` is a
+# NON-STREAMING aiohttp POST capped at PHASE4_MAX_TOKENS with a PHASE4_TIMEOUT of 10 s.
+# Ornith answers with ~940 reasoning tokens in ~37 s, so the agent always times out and
+# takes HOLD (`call_error:...`) -- ZERO Phase 4 outcome lines were logged all day -- while
+# the server, being non-streaming, only notices the disconnect once the prediction is
+# finished, and generates the whole answer regardless. That output reaches nobody, and each
+# call is queued ahead of her next turn on the single slot.
+#
+#     96 calls, 20 finished inside 10 s, 143 minutes of slot time producing text nobody
+#     received = 17% of the model's busy time.
+#
+# Set True to restore; nothing else needs changing. Everything Phase 4 touches is reached
+# only through the guarded block (`_should_trigger_phase4`, `_build_phase4_context` and the
+# `_p4_strategy_hashes` state key have no readers outside it, verified 2026-09-19), so the
+# rest of the supervisor is unaffected either way.
+PHASE4_ENABLED = False
+
 PHASE4_MAX_TOKENS = 200
 PHASE4_TEMPERATURE = 0.0
 PHASE4_TIMEOUT = 10.0                  # hard timeout — never block the agent
@@ -602,7 +621,7 @@ class SupervisorLoop(Extension):
             # Fires only when trigger conditions are met and Phases 1-3 have not
             # already escalated to Tier 2+. The LLM advises; the tier system enforces.
             # Never blocks the agent: 10s timeout, any failure returns HOLD.
-            if not injected and _cooldown_ok(state, ANOMALY_PHASE4):
+            if PHASE4_ENABLED and not injected and _cooldown_ok(state, ANOMALY_PHASE4):
                 if _should_trigger_phase4(ctx, state, self.agent):
                     compressed = _build_phase4_context(
                         self.agent, ctx, effective_domain, state

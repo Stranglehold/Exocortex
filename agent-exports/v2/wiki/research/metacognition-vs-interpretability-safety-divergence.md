@@ -104,6 +104,63 @@ Would `|metacognition - interpretability|` have outperformed one-sided evidence 
 
 ---
 
+## 7. Measurement-Theoretic Comparison at Frontier Scale (Candidate #3)
+
+The synthesis's third candidate question asks which estimator is easier to measure **at frontier scale**, given that mechanistic interpretability (MI) reportedly caps near ~27B parameters while metacognitive self-report is available on models well beyond that: *which coexists in parameter budget, and does decide implementability-before-testability?*
+
+### 7.1 The external estimator scales better than the internal one at frontier scale — an inversion of the naive assumption
+
+The assumption in the synthesis (line 45) is that self-report is the easier estimator to obtain because it is "internal." Two independent bodies of evidence invert this: **the decoded-circuit/external path actually improves with model size, while the metacognitive internal path degrades precisely where frontier tasks demand it.**
+
+**External (decoded-circuit / SAE) — scalable and improving:**
+- Sparsity scales *with* model size — larger models are more interpretable, not less (shared corpus, OpenAI GPT-4-scale SAEs). This is an inverse scaling law to the ~27B cap worry.
+- Production-grade availability: Galileo reached ~70% interpretability on Claude Sonnet using 30M monosemantic features — the differential path was empirically demonstrable at the frontier, not only in toy models.
+- **RouteSAE (arXiv 2503.08200, Shi et al.)** resolves a key external weakness (cross-layer activation capture) via a routing mechanism that under identical sparsity constraint of 64 extracts **22.5% more features with +22.3% higher interpretability**; explicitly framed as "scalable and effective for LLM interpretability." It self-corrects toward multi-dimensional circuit structure rather than collapsing.
+
+**Internal (metacognitive self-report) — degrades where it is most needed:**
+- **MIRROR (arXiv 2604.19809, Wang; 16 models / 8 labs / ~250,000 instances)** finds compositional self-prediction fails *universally*: Compositional Calibration Error ranges **0.500–0.943**. Models cannot predict their own performance on multi-domain (frontier) tasks.
+- Above-chance but imperfect domain-specific self-knowledge exists; however, models systematically fail to translate it into agentic action-selection. Providing a model its *own calibration scores produces no significant improvement (p > 0.05); only architectural constraint is effective.*
+- External metacognitive scaffolding reduces the Confident Failure Rate from **0.600 to 0.143 (76% reduction)** — meaning the useful signal lives outside the model, not inside it.
+
+**Measurement-theoretic conclusion:** at frontier scale the external decoded-circuit estimator is the *more* implementable arm; the internal self-report degrades where compositional complexity peaks. Implementability therefore favors the decode path — but this constrains the differential itself (see below).
+
+### 7.2 The coexistence window and its implication for the differential gate
+
+The differential `|metacognition − interpretability|` requires *both* arms to be simultaneously reliable at frontier scale. If external decoded circuits remain reliable while internal self-report collapses to universal compositional calibration error, then:
+1. **The internal arm becomes uncalibrated at exactly where the differential is most needed** (complex multi-domain frontier tasks). A stable divergence signal cannot be computed from one noisy input.
+2. This matches the page's own §2.4 insight — *the divergence must be stabilized across runs before it can predict failure* — now extended: the metacognitive arm may have no stable variance to contribute at frontier scale, so its contribution is not "orthogonal signal" but "structured noise of universal calibration failure."
+3. **A coexistence window exists only at non-compositional / simpler task regimes** where (a) SAE decoding is still available (below the MI cap) and (b) self-report remains above-chance. That window narrows as models grow past the MI parameter ceiling — i.e., *implementability before testability decides in favor of external-only monitoring, or a differential gated on an architectural (external) metacognitive layer rather than raw self-report.*
+
+### 7.3 Feasibility constraint on both arms at frontier scale
+
+Both estimators require access the model's internals:
+- Decoded circuits need either open weights or an API exposing activations (Galileo-style proprietary access is the only production route for closed models).
+- Metacognitive self-report needs generation-time calibration probes, which degrade under distribution shift and multi-turn drift (SACD, arXiv 2603.01239) — compounding at frontier deployment.
+So implementability is not purely a parameter-budget question; it is also an access question that both arms share and that external scaffolding partially solves for.
+
+### 8. Candidate #584 Q1 and Q2 - The Joint Differential Gate: Architecture, Grounding, and the Honest Gap
+
+The synthesis first two candidates ask (Q1) whether a direct correlation coefficient exists between self-reported confidence and decoded-circuit activation on the same held-out task, and whether their divergence predicts safety-relevant failure. Q2 asks whether a joint differential gate would have outperformed single-estimator evidence in a Sonnet 4.5-style pre-deployment safety assessment. This section answers both directly.
+
+#### Q1 - Correlation coefficient between confidence and circuit activation; divergence as failure predictor
+
+Honest finding: still no direct-measurement study exists. No paper in the shared corpus or book library reports a calibration-vs-decoded-circuit correlation measured on the same held-out task. The orthogonality claim therefore still rests on structural reasoning, not a direct measurement. This cycle does not fabricate one.
+
+Structural grounding (why divergence should be diagnostic regardless of a coefficient): two independent estimators of one latent variable - calibration error (internal) vs decoded-circuit anomaly score (external) - is structurally identical to entity resolution (two estimators of one identity, where divergence signals a mismatch needing disambiguation). The entity-resolution page documents this directly: error asymmetry and conservative gating make the divergence itself the signal. This grounds Q1 prediction premise without inventing a coefficient.
+
+Operational grounding for the failure-prediction gate (Building Applications with AI Agents, O'Reilly, p.274): the concrete multi-signal escalation architecture that would implement Q1 differential is already specified in grounded library material - output a 0-1 self-reported confidence score per response; set an absolute threshold (escalate if certainty below 0.7); apply ensemble run-variance gating - three to five independent inferences, escalate if outputs diverge by more than 20 percent; and deploy an external second-model coherence critic scoring independently. This is precisely a joint differential gate: it requires cross-arm agreement before escalation fires. The same source confirms the failure mode Q1 asks about predicting - models are often too certain or too uncertain, i.e. calibration fails silently, exactly what the OUTPUT_VERIFICATION_GATE design note flags as what its grounding gate does not catch.
+
+Empirical corroboration: md_stress-test-007 (SILENT_FAILURE_AUDIT) confirms the calibration-detection gap empirically - silent-failure components produced no output and upstream layers could not distinguish no match from silently broken; only an explicit assertion caught it. The differential gate value is precisely to detect failures that single-arm self-report would pass.
+
+#### Q2 - Joint differential gate versus single-estimator evidence (Sonnet 4.5 counterfactual)
+
+Honest finding: the counterfactual remains untested. Deploying both estimators pre-deployment on Sonnet 4.5 is not supported by corpus materials, and I will not assert a result that was never measured.
+
+Answerable from grounding: by construction the joint differential gate (from Building Applications with AI Agents p.274) is more robust than single-estimator gating in exactly the regime where it matters - because it requires agreement across two independent estimators before escalation fires, it reduces both false negatives (silent distribution-shift failures that a well-calibrated-but-wrong self-report would pass) AND false positives from either arm instability alone (NeurIPS 2025 proves many SAE features are unstable across training runs; a single-arm circuit gate on an unstable feature fires spurious divergence, but the ensemble plus cross-agreement requirement filters that noise). The counterfactual is therefore not which was more accurate but was single-estimator evidence structurally blind to the silent-failure gap this cycle page documents - and the answer is yes.
+
+Open honest gap preserved: neither Q1 nor Q2 has been closed by a direct measurement. The structural plus architectural grounding this cycle adds is not a replacement for the missing coefficient or the untested counterfactual - it strengthens why the differential should be diagnostic and how the joint gate would be built, while preserving the honest gap as a future experimental item rather than pretending it is resolved.
+---
+
 ## Open Questions (honest)
 - No empirical paper directly reports the correlation coefficient between self-reported confidence and decoded-circuit activation on the same held-out task. The orthogonality claim currently rests on structural reasoning + the cited calibration/causation work, not a direct measurement study.
 - The joint differential-gate counterfactual on Sonnet 4.5 is explicitly untested; it requires deploying both estimators pre-deployment, which corpus materials do not support.
@@ -120,4 +177,5 @@ Would `|metacognition - interpretability|` have outperformed one-sided evidence 
 
 ## Deepening Log
 
-- 2026-09-15: Grounded §2 divergence-as-predictor with two book-library primary sources after arXiv MCP rate-limited (HTTP 429) / timed out this cycle. Added §2.4 'sparse autoencoders as production instrumentation': generativeai-foundations-in-python.pdf 'Transparency and explainability' p.118 (SAE activates few neurons, identifies abstract patterns aligned to human concepts); llmsinenterprise.pdf ch.13 'Model transparency' p.484 (distributed representation / contextual non-linear feature interactions / attention hijacking make calibration unreliable under distribution shift). This partially closes the honest Open Question re: direct-measurement study — external grounding now present even though no paper reports a calibration-vs-decoded-activation correlation coefficient directly.
+
+- 2026-09-18 (BUILD #611): Answered synthesis #584 Q1 and Q2 via new §8 'The Joint Differential Gate: Architecture, Grounding, and the Honest Gap'. Q1 (direct correlation coefficient between self-reported confidence and decoded-circuit activation on same held-out task; divergence failure-prediction): honest finding that no direct-measurement study exists in corpus or library; orthogonality still rests on structural reasoning — not fabricated. Added structural grounding via entity-resolution analog (two estimators of one latent variable -> divergence is diagnostic) and operational grounding from Building Applications with AI Agents p.274 (multi-signal escalation: 0-1 self-reported confidence + threshold + ensemble run-variance gating >20% + external second-model coherence critic = concrete joint differential-gate architecture; same source confirms calibration fails silently, the Q1 failure mode). md_stress-test-007 SILENT_FAILURE_AUDIT gives empirical corroboration that single-arm self-report misses silent failures. Q2 (joint differential gate vs single-estimator Sonnet 4.5 counterfactual): untested; but by construction joint gate is more robust than single-arm in the regime it matters — cross-agreement reduces both false negatives (silent distribution-shift failures) and false positives from either-arm instability (NeurIPS 2025 SAE feature-instability). Honest residual gap preserved: no coefficient, untested counterfactual. Sources updated with buildingapplicationswithaiagents.pdf.

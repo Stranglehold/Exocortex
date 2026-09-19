@@ -47,6 +47,18 @@ DEFAULT_CONFIG = {
     "conflict_top_k": 5,
     "enable_purge": False,
     "memory_budget_tokens": 400,   # Hard cap on total recall injection per turn
+    # Retired by default 2026-09-17 — see the note at the top of execute() for why and for the
+    # one behavioural consequence (this extension's `del extras["solutions"]` gates _56's
+    # solutions branch). Explicit default so the off state is declared, not implied by absence.
+    #
+    # !! BEFORE FLIPPING THIS TRUE !! This file's own `_get_query` (below) is UNCHANGED: it still
+    # returns the raw `loop_data.user_message.output_text()`, which on an idle cycle is the 2,120-
+    # token activation charge that overflows nomic-embed-v1.5's 2,048-token ceiling. `_56` was
+    # moved to `helpers/recall_query.build_query`; this was not, because a retired file did not
+    # need the import surface. Re-enabling it therefore restores TWO of the four embeddings per
+    # turn AND reintroduces the truncation. Wire it to the same helper first — the pattern is the
+    # `_HELPERS` sys.path insert plus `import recall_query` at the top of `_56`.
+    "relevance_filter_enabled": False,
 }
 
 # Metadata keys (must match _55_memory_classifier.py)
@@ -62,6 +74,39 @@ class MemoryRelevanceFilter(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
+            # ── RETIRED BY DEFAULT, 2026-09-17, on Jake's word ───────────────────────────────
+            # Measured 2026-09-16, and every part of this extension's work was found to be
+            # either discarded or harmful:
+            #
+            #   * Its filtered `memories` string is OVERWRITTEN by `_56` a moment later —
+            #     `_56` assigns extras["memories"] unconditionally and reads no gate for it.
+            #   * Its two searches cost two of the four embeddings per turn, and on an idle
+            #     cycle both embedded the same 2,120-token activation charge (919 of 2,882
+            #     embedding requests truncated in 42 h, every truncated one a recall query).
+            #   * Its `_update_access` increments access_count and writes lineage on the
+            #     documents IT selected — which `_56` then replaces. So the store has been
+            #     recording accesses for memories that were never shown to the model,
+            #     corrupting the very decay/boost signal `_56` ranks with. `_56` does its own
+            #     `_update_access` on the set actually injected.
+            #
+            # THE DELIBERATE CONSEQUENCE, stated because it is not a free removal: this
+            # extension's `del extras["solutions"]` below GATES `_56`'s solutions branch
+            # (`_56`:134 reads `"solutions" in extras` after this runs, 226 acts on it). With
+            # this gate off, `_56` processes core `_50`'s solutions set through its own
+            # pipeline at sol_cap — a set it has never seen before. That is the intended
+            # change, not a side effect.
+            #
+            # Config, not deletion: set `relevance_filter_enabled: true` in
+            # /a0/usr/memory/classification_config.json to restore, no deploy needed. The file
+            # and its history stay.
+            #
+            # The key is namespaced deliberately. `_load_config()` merges the WHOLE config file
+            # over DEFAULT_CONFIG rather than reading a section, and `_56` reads the same file,
+            # so a bare `enabled` here would be ambiguous between extensions and collide with
+            # the next one that wants the obvious name.
+            if not _load_config().get("relevance_filter_enabled", False):
+                return
+
             extras = loop_data.extras_persistent
             if not extras:
                 return

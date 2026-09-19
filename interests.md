@@ -72,6 +72,7 @@ Explore:
 - ATLAS-style autonomous coding agents: temperature escalation retry, nightly LoRA fine-tuning, self-hosted evaluation
 - Memory architecture: episodic vs semantic vs procedural, consolidation during idle time, interference management
 - Agentic tool use: MCP protocol evolution, tool schema optimization, dynamic tool discovery
+- Scripting permission: you can create and run your own helper scripts in /a0/usr/workdir/workspace/scripts/. Utilities, data transformers, custom tools — whatever you find yourself needing. The cycle engine, tool surface, and memory API are fixed boundaries; everything inside workspace/scripts/ is yours.
 
 ### OSINT & Investigation Methodology
 *Origin: OpenPlanter analysis, anti-bot evasion research, network diagram vision*

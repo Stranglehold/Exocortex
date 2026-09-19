@@ -79,6 +79,16 @@ Building capability and building restraint are the same discipline. The architec
 
 A system that can act but cannot be trusted to act is not a useful system. The prosthetic doesn't replace the limb — it exceeds it. But only if it's properly integrated with the body it serves.
 
+### The Gate-Setter Targeting Dynamic (Adversarial-AI Grounding)
+
+The ethics-of-capability thesis implies an adversarial consequence once capability is governed by a *coarse threshold* rather than per-action gating — the implication structurally closed by threshold-control-as-capability-weaponization: **whoever controls the connectivity threshold at which a capability becomes effective converts that capability into durable leverage, and because coarse gating is more durable, adversaries preferentially target the gate-setter.** This STABLE page previously lacked external adversarial-AI support for that implication. Two book-library sources attach it now:
+
+- **Reconnaissance before attack (Packt, *Adversarial AI Attacks, Mitigations and Defense Strategies*).** Adversaries "effectively map the landscape before setting their plans into motion... they are the digital equivalent of cartographers, charting the terrain before an invasion." A coarse threshold is a single controllable node — exactly the landmark that makes pre-action survey tractable. This grounds why coarse gating provokes second-order targeting (threshold-control-as-capability-weaponization; rare-earth-supply-chains).
+- **Model extraction/inversion as gate-setter probing.** The book's security-design table enumerates model-extraction (T12) and model-inversion (T13) threats defended by differential privacy (AML.M0019/ML.M0002). Extraction queries a deployed capability to reconstruct its boundary — the adversarial analog of probing an S3 authorization gate.
+- **Honest gap:** extraction targets *ML-model boundaries*, not institutional threshold-gatekeepers. The structural analogy holds; direct equivalence does not yet.
+
+**Falsifiability** (threshold-control-as-capability-weaponization): weakened if competitors seek authorization *within* the existing gate instead of challenging who controls it; refuted if isolated one-off embargoes prove as durable as persistent threshold control. Empirical route — a multi-agent comparison of coarse-threshold vs per-action gating with measured attacker targeting of the setter — remains unresolved.
+
 ## Cross-Domain Connections
 
 1. **AI Agent Delegation Security** — governance shapes delegation boundaries and capability scope
@@ -87,6 +97,8 @@ A system that can act but cannot be trusted to act is not a useful system. The p
 4. **Multi-Agent Coordination** — governance for agent-to-agent commerce and interoperability
 5. **Formal Verification AI Systems** — verified safety constraints complement regulatory requirements
 6. **Constitutional AI** — principled constraints as compliance mechanism
+7. **Threshold Control as Capability Weaponization** — the coarse-threshold → gate-setter-targeting implication; adversarial-AI external grounding added here
+8. **Rare Earth Supply Chains** — geopolitical layer: midstream-processing threshold control as durable leverage instrument
 
 ## Status
 

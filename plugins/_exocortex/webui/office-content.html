@@ -1,0 +1,499 @@
+<!--
+  OFFICE — right-canvas surface content (v1.20 canvas contract: x-data lives on this inner div, never on the
+  .right-canvas-surface-panel root). Deployed as /plugins/_exocortex/webui/office-content.html and loaded by the
+  thin wrapper office-panel.html. Replaces both the Workshop ("Office") and EXO·OPS panes (2026-09-14).
+
+  Voice: the watcher's, third person, observational. Her words appear only inside the log's dossiers.
+  Colour: grey is normal; colour appears only where a value has crossed its band or a source could not be read.
+  Motion: only when caused (a row expanding, a control acknowledged). No pulse, no glow loops.
+  Data: /api/plugins/_exocortex/office_feed v2. Every source arrives as {value, at, age_s, state, reason}; a source
+  that is stale or unverified renders as such, with its reason, and is never omitted or shown as its last good value.
+  Theme: every colour comes from the panel kit's --pk-* tokens, which derive from the A0 --color-* tokens the theme
+  picker sets. No palette lives in this file. One optional token, --color-select ("the thing you are on": the
+  breadcrumb, the selected bracket, the open row, the total in a pair), falls back to the accent when a theme does
+  not declare it; deviation stays warn / err.
+  Controls: the engine's STATE is written in words in the footer band (enabled, paused until…, disabled) and never on
+  a button; every button is a VERB (enable, disable, pause, resume) that does exactly what it says. Why (2026-09-15,
+  Kestrel's note): on 2026-09-14 at 00:34 UTC the pane this one replaces showed "disabled" while the engine was
+  enabled and running cycle 579; Jake clicked it to enable and it sent disable, which blinded the watcher for an hour.
+  A control that displays one state and acts on another is worse than one that displays nothing.
+  Grammar (v2, 2026-09-15, the iDroid pass from Jake's seven MGSV screens; study 2026-09-14-office-pane-redesign §7):
+  a small-caps mono breadcrumb (OFFICE › page) with the telemetry corner at its right; the running cycle as the
+  cassette's header band with tick rulers for the caps; bracketed page tabs [ STATUS ] [ LEDGER ] [ LOG ]; thin-rule
+  tables with a lighter band on the open row and a box that is ticked only for a clean close; the "20 / 23 (87%)"
+  completion form; Required / Current columns for the rotation; the footer band of verbs; and the slate REPORT layout
+  for one reading after a cycle closes or the engine changes state, never otherwise. The register is iDroid's; other
+  worlds move on their own themes.
+  Room: theme-room.js (initFw_start) renders the page's room and stamps <html data-exo-room>; under that stamp this
+  pane is one sheet of glass at the theme's panel.instrument floor (else 0.72). Without it the pane paints its own.
+-->
+<div class="office panel-kit" x-data data-office-version="2">
+<style>
+/* The panel kit's token contract, inlined (2026-09-16): webui/panel-kit.css is in the repo and in the preview server, but
+   NOT in the container (measured: absent, and nothing in the live tree links it), so a pane that only wore the class
+   would have had no colours in her UI. Same names, same derivations, same fallbacks as panel-kit.css (M1); if that file
+   is ever deployed and linked, the values agree. */
+.office.panel-kit {
+  --pk-accent: var(--color-accent, #e8a020);
+  --pk-bg:     var(--color-background, #0a0c0a);
+  --pk-panel:  var(--color-panel, #12150f);
+  --pk-text:   var(--color-text, #e8e4d9);
+  --pk-muted:  var(--color-text-muted, #9a968b);
+  --pk-border: var(--color-border, #4a5740);
+  --pk-ok:     var(--color-primary, #6fae4a);
+  --pk-warn:   var(--color-warning-text, #ff9933);
+  --pk-err:    var(--color-error-text, #cc3322);
+  --pk-mono:   var(--font-family-main, "Share Tech Mono", "Courier New", monospace);
+  --pk-accent-dim:   color-mix(in srgb, var(--pk-accent) 55%, transparent);
+  --pk-accent-faint: color-mix(in srgb, var(--pk-accent) 14%, transparent);
+  --pk-hairline:     color-mix(in srgb, var(--pk-accent) 40%, var(--pk-border));
+}
+.office { display:flex; flex-direction:column; width:100%; height:100%; overflow:hidden; position:relative; isolation:isolate;
+  background:var(--pk-bg); color:var(--pk-text); font-size:12px; line-height:1.35;
+  font-variant-numeric: tabular-nums;
+  /* faces: the theme's main face for values and prose, its code face for labels, telemetry and numbers */
+  --of-sans: var(--font-family-main, "Rubik", Arial, sans-serif);
+  --of-mono: var(--font-family-code, "Roboto Mono", monospace);
+  font-family:var(--of-sans);
+  /* select: the thing you are on. theme-store writes any extra colour key as --color-<key>-dark/-light */
+  --pk-select: var(--color-select-dark, var(--color-select, var(--pk-accent)));
+  /* the room (Jake, 2026-09-14, via Opus: "images in the background with opacity, that was fun"): the active theme's
+     own background block, read from its JSON; the data reads over it, never under it */
+  --of-bg-image:none; --of-bg-opacity:0; --of-bg-blur:0px; --of-bg-blend:normal; --of-bg-position:center; --of-bg-size:cover;
+  --of-panel-alpha:1; --of-scan-opacity:0; --of-scan-spacing:2px; --of-vignette-opacity:0; --of-noise-opacity:0; }
+.of-bg { position:absolute; inset:0; z-index:0; pointer-events:none; background-image:var(--of-bg-image);
+  background-position:var(--of-bg-position); background-size:var(--of-bg-size); background-repeat:no-repeat;
+  opacity:var(--of-bg-opacity); filter:blur(var(--of-bg-blur)); mix-blend-mode:var(--of-bg-blend); }
+.of-scan { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:var(--of-scan-opacity);
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,.9) 0, rgba(0,0,0,.9) 1px, transparent 1px, transparent var(--of-scan-spacing)); }
+.of-vig { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:var(--of-vignette-opacity);
+  background:radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,.9) 100%); }
+.of-noise { position:absolute; inset:0; z-index:1; pointer-events:none; opacity:var(--of-noise-opacity);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.6'/></svg>"); }
+.of-crumb, .of-cass, .of-tabs, .of-main, .of-foot { position:relative; z-index:2; }
+/* when the page renders the room itself (theme-room.js stamps data-exo-room on <html>), the pane paints no room of
+   its own: its frame becomes one sheet of glass at the instrument floor and the page's room shows through (2026-09-15) */
+html[data-exo-room] .office { background:color-mix(in srgb, var(--pk-bg) calc(var(--of-panel-alpha) * 100%), transparent); }
+html[data-exo-room] .office .of-bg, html[data-exo-room] .office .of-scan, html[data-exo-room] .office .of-vig, html[data-exo-room] .office .of-noise { display:none; }
+.office * { box-sizing:border-box; }
+.of-lbl { font-family:var(--of-mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--pk-muted); }
+
+/* breadcrumb + telemetry corner (DATABASE › ENCYCLOPEDIA; TIME / GMP / HEROISM) */
+.of-crumb { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 12px 5px; flex-shrink:0;
+  font-family:var(--of-mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; border-bottom:1px solid var(--pk-hairline); }
+.of-crumb .path { color:var(--pk-select); white-space:nowrap; }
+.of-crumb .sep { color:var(--pk-muted); margin:0 6px; }
+.of-tele { display:flex; gap:12px; color:var(--pk-muted); letter-spacing:.1em; font-size:9px; white-space:nowrap; }
+.of-tele b { color:var(--pk-text); font-weight:400; margin-left:4px; }
+
+/* the cassette's header band: the running cycle, with the caps as tick rulers (MAP's NORTH ruler) */
+.of-cass { flex-shrink:0; padding:8px 12px 10px; border-bottom:1px solid var(--pk-hairline);
+  background:color-mix(in srgb, var(--pk-select) 10%, transparent); }
+.of-cass-h { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.of-cass-h .big { font-size:17px; letter-spacing:.04em; }
+.of-cass-h .ctx { font-family:var(--of-mono); font-size:9px; color:var(--pk-muted); letter-spacing:.06em; text-align:right; }
+.of-ruler { display:grid; grid-template-columns:88px 1fr 112px; gap:10px; align-items:end; margin-top:12px; font-family:var(--of-mono); font-size:10px; }
+.of-ruler .lbl { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--pk-muted); padding-bottom:1px; }
+.of-track { position:relative; height:12px; border-bottom:1px solid var(--pk-hairline);
+  background:repeating-linear-gradient(90deg, var(--pk-hairline) 0 1px, transparent 1px 10%) 0 100% / 100% 4px no-repeat; }
+.of-track::before { content:""; position:absolute; left:0; bottom:0; width:1px; height:8px; background:var(--pk-hairline); }
+.of-track .cap { position:absolute; right:0; bottom:0; width:1px; height:8px; background:var(--pk-hairline); }
+.of-track .cap::after { content:attr(data-l); position:absolute; right:0; top:-13px; font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:var(--pk-muted); white-space:nowrap; }
+.of-track .tick { position:absolute; bottom:-1px; width:0; height:0; margin-left:-4px; border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid var(--pk-text); }
+.of-track.dev-crit .tick { border-top-color:var(--pk-err); }
+.of-track.dev-warn .tick { border-top-color:var(--pk-warn); }
+.of-ruler .val { text-align:right; padding-bottom:1px; }
+.of-ruler .val.dev-crit { color:var(--pk-err); } .of-ruler .val.dev-warn { color:var(--pk-warn); }
+.of-next { margin-top:8px; font-family:var(--of-mono); font-size:10px; color:var(--pk-muted); letter-spacing:.04em; }
+.of-next.dev-crit { color:var(--pk-err); } .of-next.dev-warn { color:var(--pk-warn); }
+.of-cass.idle .big { color:var(--pk-muted); }
+
+/* bracketed page tabs (MAP) */
+.of-tabs { display:flex; gap:2px; padding:6px 10px 0; flex-shrink:0; border-bottom:1px solid var(--pk-hairline);
+  font-family:var(--of-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; }
+.of-tab { padding:5px 8px 6px; color:var(--pk-muted); cursor:pointer; user-select:none; border:1px solid transparent; border-bottom:none; margin-bottom:-1px; }
+.of-tab::before { content:"[ "; } .of-tab::after { content:" ]"; }
+.of-tab .n { letter-spacing:0; margin-left:6px; font-size:9px; }
+.of-tab:hover { color:var(--pk-text); }
+.of-tab.cur { color:var(--pk-select); background:color-mix(in srgb, var(--pk-select) 10%, transparent); border-color:var(--pk-hairline); }
+.of-tab.cur .n { color:var(--pk-select); }
+
+/* pages */
+.of-main { flex:1; min-height:0; position:relative; display:flex; }
+.of-body { flex:1; min-height:0; overflow-y:auto; padding:10px 12px 14px; }
+.of-body::-webkit-scrollbar { width:8px; } .of-body::-webkit-scrollbar-thumb { background:var(--pk-border); }
+.of-page { display:none; flex-direction:column; gap:14px; } .of-page.cur { display:flex; }
+.of-sec-t { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-family:var(--of-mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--pk-muted); border-bottom:1px solid var(--pk-hairline); padding-bottom:4px; margin-bottom:2px; }
+.of-sec-t .at { letter-spacing:.04em; text-transform:none; text-align:right; }
+
+/* thin-rule tables (SIDE OP LIST / DATABASE), the lighter band on the open row, the box ticked only for a clean close */
+.of-tbl { width:100%; border-collapse:collapse; font-size:11px; }
+.of-tbl th { font-family:var(--of-mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--pk-muted); font-weight:400; text-align:left; padding:3px 6px 4px; border-bottom:1px solid var(--pk-hairline); }
+.of-tbl th.num, .of-tbl td.num { text-align:right; font-family:var(--of-mono); white-space:nowrap; }
+.of-tbl td { padding:5px 6px; border-bottom:1px solid var(--pk-border); vertical-align:baseline; }
+.of-tbl td.k { font-family:var(--of-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--pk-muted); white-space:nowrap; width:1%; }
+.of-tbl td.v { font-family:var(--of-mono); }
+.of-tbl td.r { font-size:9px; color:var(--pk-muted); }
+.of-tbl td.who { font-family:var(--of-mono); font-size:9px; color:var(--pk-muted); text-align:right; white-space:nowrap; }
+.of-tbl tr.sel > td { background:color-mix(in srgb, var(--pk-select) 10%, transparent); }
+.of-tbl tr.dev-warn > td { color:var(--pk-warn); } .of-tbl tr.dev-warn > td.k { color:inherit; }
+.of-tbl tr.dev-crit > td { color:var(--pk-err); }  .of-tbl tr.dev-crit > td.k { color:inherit; }
+.of-tbl tr.dev-unv  > td { color:var(--pk-muted); border-bottom-style:dashed; }
+.of-tbl tr.row { cursor:pointer; } .of-tbl tr.row:hover > td { background:color-mix(in srgb, var(--pk-select) 5%, transparent); }
+.of-tbl tr.lost > td { color:var(--pk-muted); }
+.of-chk { display:inline-block; width:10px; height:10px; border:1px solid var(--pk-muted); font-size:8px; line-height:8px; text-align:center; vertical-align:-1px; margin-right:7px; color:var(--pk-select); }
+.of-chk.on::before { content:"✓"; }
+.of-tbl tr.dossier > td { padding:4px 10px 10px 30px; font-size:11px; background:color-mix(in srgb, var(--pk-select) 6%, transparent); cursor:default; }
+.of-dossier .her { border-left:2px solid var(--pk-border); padding:4px 8px; color:var(--pk-text); margin-top:6px; white-space:pre-wrap; }
+.of-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.of-chip { border:1px solid var(--pk-border); padding:2px 6px; font-family:var(--of-mono); font-size:9px; color:var(--pk-muted); letter-spacing:.06em; }
+.of-chip b { color:var(--pk-text); font-weight:400; margin-left:4px; }
+.of-comp { font-family:var(--of-mono); font-size:13px; display:flex; justify-content:space-between; align-items:baseline; padding:2px 0 4px; }
+.of-comp b { color:var(--pk-select); font-weight:400; }
+.of-comp .lbl { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--pk-muted); }
+.of-comp.dev-unv { color:var(--pk-muted); }
+.of-seq { display:flex; gap:4px; align-items:center; flex-wrap:wrap; font-family:var(--of-mono); font-size:10px; padding:4px 0 2px; }
+.of-seq .s { padding:2px 6px; border:1px solid var(--pk-border); letter-spacing:.08em; color:var(--pk-muted); }
+.of-seq .s.cur { color:var(--pk-select); border-color:var(--pk-select); }
+.of-seq .s.next { border-style:dashed; color:var(--pk-text); }
+.of-seq .note { color:var(--pk-muted); margin-left:6px; font-size:9px; letter-spacing:.06em; text-transform:uppercase; }
+.of-empty { color:var(--pk-muted); font-size:11px; padding:6px 0; }
+
+/* the footer band of verbs (CASSETTE); the state is a word, the buttons are verbs */
+.of-foot { flex-shrink:0; border-top:1px solid var(--pk-hairline); padding:6px 12px 8px; font-family:var(--of-mono);
+  background:color-mix(in srgb, var(--pk-panel) 60%, transparent); }
+.of-foot-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.of-state { font-size:10px; letter-spacing:.16em; text-transform:uppercase; margin-right:auto; white-space:nowrap; }
+.of-state.dev-warn { color:var(--pk-warn); } .of-state.dev-crit { color:var(--pk-err); }
+.of-state .r { display:block; font-size:9px; letter-spacing:.04em; text-transform:none; color:var(--pk-muted); }
+.of-btn { padding:4px 9px; border:1px solid var(--pk-border); background:transparent; color:var(--pk-text); font-family:inherit; font-size:10px; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; }
+.of-btn:hover { border-color:var(--pk-select); color:var(--pk-select); }
+.of-btn:disabled { opacity:.5; cursor:default; }
+.of-sel, .of-inp { background:color-mix(in srgb, var(--pk-bg) 80%, transparent); border:1px solid var(--pk-border); color:var(--pk-text); font-family:inherit; font-size:10px; padding:4px 6px; }
+.of-ack { font-size:9px; color:var(--pk-muted); min-height:13px; margin-top:4px; letter-spacing:.04em; }
+.of-ack.dev-crit { color:var(--pk-err); }
+
+/* the slate (REPORT / HEROISM): one reading after a close or an engine change; click, or the next reading, clears it */
+.of-slate { position:absolute; inset:0; z-index:5; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; cursor:pointer;
+  background:color-mix(in srgb, var(--pk-bg) 92%, transparent); font-family:var(--of-mono); }
+.of-slate.on { display:flex; }
+.of-slate .title { font-family:var(--of-sans); font-size:20px; letter-spacing:.1em; text-transform:uppercase; padding-bottom:8px; border-bottom:1px solid var(--pk-text); min-width:62%; }
+.of-slate .sub { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--pk-muted); margin-top:9px; }
+.of-slate .sub.dev-crit { color:var(--pk-err); }
+.of-slate .pair { display:flex; gap:30px; margin-top:24px; }
+.of-slate .pair .n { font-size:26px; letter-spacing:.04em; } .of-slate .pair .n b { color:var(--pk-select); font-weight:400; }
+.of-slate .pair .l { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--pk-muted); margin-top:5px; }
+.of-slate .hint { position:absolute; bottom:10px; left:0; right:0; font-size:8px; letter-spacing:.16em; text-transform:uppercase; color:var(--pk-muted); }
+</style>
+
+<div class="of-bg"></div><div class="of-scan"></div><div class="of-vig"></div><div class="of-noise"></div>
+<div class="of-crumb"><span class="path">OFFICE<span class="sep">›</span><span id="of-where">status</span></span><span class="of-tele" id="of-tele"></span></div>
+<div class="of-cass" id="of-cass"><span class="of-lbl">reading the feed…</span></div>
+<div class="of-tabs" id="of-tabs"></div>
+<div class="of-main">
+  <div class="of-body" id="of-body"><div class="of-empty">Reading the feed…</div></div>
+  <div class="of-slate" id="of-slate"></div>
+</div>
+<div class="of-foot" id="of-foot"></div>
+
+<script>
+(function () {
+  const FEED = (window.OFFICE_FEED_URL || '/api/plugins/_exocortex/office_feed');
+  const CTRL = (window.OFFICE_CONTROL_URL || '/api/plugins/_exocortex/idle_control');
+  const POLL_MS = 20000;
+  const PAGES = ['status', 'ledger', 'log'];
+  let openRow = null, timer = null, last = null, seen = null;
+  let page = 'status';
+  try { const p = localStorage.getItem('office.page'); if (PAGES.includes(p)) page = p; } catch (e) {}
+
+  setTimeout(function init() {
+    const root = document.querySelector('.office');
+    if (!root) { setTimeout(init, 50); return; }
+    const $ = id => root.querySelector('#' + id);
+    const body = $('of-body'), cass = $('of-cass'), tabs = $('of-tabs'), foot = $('of-foot'), tele = $('of-tele'), where = $('of-where'), slate = $('of-slate');
+    if (!body || !cass) { setTimeout(init, 50); return; }
+
+    // ── helpers ────────────────────────────────────────────────────────────────────────────────────────────────
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const hm = iso => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); };
+    const hms = iso => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}); };
+    const mins = s => s == null ? '—' : (s < 60 ? `${s} s` : `${Math.floor(s/60)} min`);
+    const env = (data, k) => { const e = data && data[k]; return (e && typeof e === 'object' && 'state' in e) ? e : {value: e, state: e === undefined ? 'unverified' : 'ok', reason: e === undefined ? `${k} absent from the feed` : null, at: data && data.generated_at, age_s: null}; };
+    const devFor = e => e.state === 'unverified' ? 'dev-unv' : e.state === 'stale' ? 'dev-warn' : '';
+    const reason = e => e.state !== 'ok' ? `${esc(e.state)}${e.age_s != null ? ` · ${mins(e.age_s)} old` : ''}${e.reason ? ` · ${esc(e.reason)}` : ''}` : '';
+    const pct = (a, b) => (a != null && b) ? ` (${Math.round(a / b * 100)}%)` : '';
+
+    // ── the cassette band: the running cycle ───────────────────────────────────────────────────────────────────
+    function ruler(label, val, cap, capLabel, dev) {
+      const p = cap ? Math.max(0, Math.min(100, (val / cap) * 100)) : 0;
+      return `<div class="of-ruler"><div class="lbl">${esc(label)}</div>
+        <div class="of-track ${dev}"><span class="cap" data-l="${esc(capLabel)} ${esc(mins(cap))}"></span><span class="tick" style="left:${p}%"></span></div>
+        <div class="val ${dev}">${mins(val)} / ${mins(cap)}</div></div>`;
+    }
+    function zNow(d) {
+      const e = env(d, 'engine'); const v = e.value || {};
+      const at = e.state === 'ok' ? `read ${hms(e.at)}` : reason(e);
+      if (!v.active) { cass.classList.add('idle'); return `<div class="of-cass-h"><span class="big">idle</span><span class="ctx">last cycle ${esc(v.cycle)} ${esc(v.type || '')} · ${at}</span></div>`; }
+      cass.classList.remove('idle');
+      const stallDev = v.heartbeat_age_s >= v.stall_cap_s ? 'dev-crit' : (v.heartbeat_age_s >= v.stall_cap_s - 300 ? 'dev-warn' : '');
+      const hungDev = v.elapsed_s >= v.hung_cap_s ? 'dev-crit' : '';
+      const nextDev = v.next_action ? (/(due \(|past)/.test(v.next_action) ? 'dev-crit' : 'dev-warn') : '';
+      return `<div class="of-cass-h"><span class="big">cycle ${esc(v.cycle)} · ${esc(v.type)}</span>
+          <span class="ctx">${esc(v.context_id || '')} · fired ${hm(v.started_at)}${v.steps_used != null ? ` · steps ${v.steps_used}/${v.budget || '?'}` : (v.budget ? ` · budget ${v.budget}` : '')} · ${at}</span></div>
+        ${ruler('heartbeat age', v.heartbeat_age_s, v.stall_cap_s, 'stall cap', stallDev)}
+        ${ruler('elapsed', v.elapsed_s, v.hung_cap_s, 'hung cap', hungDev)}
+        <div class="of-next ${nextDev}">${v.next_action ? `watcher: ${esc(v.next_action)}` : 'watcher: no action due'}${v.caps_source && v.caps_source !== 'engine_state' ? ` · caps from ${esc(v.caps_source)}` : ''}${v.budget && v.steps_used == null ? ' · steps are counted at close, not live' : ''}</div>`;
+    }
+
+    // ── STATUS page: the sources as a thin-rule table, the rotation as Required / Current ─────────────────────
+    function pStatus(d) {
+      const eng = env(d, 'engine'), mcp = env(d, 'mcp'), mdl = env(d, 'model'), pr = env(d, 'prompt'), ctl = env(d, 'control');
+      const c = ctl.value || {};
+      let engV = 'disabled', engDev = '';
+      if (c.enabled) { if (c.paused_until) { engV = `paused until ${hm(c.paused_until)}`; engDev = 'dev-warn'; } else engV = 'enabled'; }
+      const servers = Array.isArray(mcp.value) ? mcp.value : [];
+      const mem = servers.find(s => /exocortex|memory/i.test(s.name || ''));
+      const up = servers.filter(s => s.connected).length;
+      let mcpV = servers.length ? `${up}/${servers.length} connected${mem && mem.tools != null ? ` · ${mem.tools} tools` : ''}` : '—', mcpDev = '';
+      if (mem && !mem.connected) { mcpV = `memory tool DOWN · ${up}/${servers.length}`; mcpDev = 'dev-crit'; }
+      const loaded = (mdl.value && mdl.value.loaded) || [];
+      const chat = loaded.find(m => !/embed/i.test(m.id || '')) || loaded[0];
+      const mdlV = chat ? `${esc(chat.id)} · ${(chat.ctx/1024|0)}K ctx${loaded.length > 1 ? ` (+${loaded.length-1})` : ''}` : 'not loaded';
+      const prV = pr.value ? `${esc(pr.value.md5_short)} · ${hm(pr.value.mtime)}` : '—';
+      const tr = (k, v, e, dev, extraR) => `<tr class="${dev || devFor(e)}"><td class="k">${esc(k)}</td><td class="v">${v}</td><td class="r">${extraR || reason(e)}</td></tr>`;
+      const rows = [tr('engine', esc(engV), ctl, engDev, c.pause_reason ? esc(c.pause_reason) : reason(ctl)),
+                    tr('memory tool', mcpV, mcp, mcpDev), tr('model', mdlV, mdl), tr('prompt', prV, pr)].join('');
+      const ro = env(d, 'rotation'); const v = ro.value || {}; const seq = v.sequence || [];
+      const slots = seq.map((s, i) => `<span class="s ${i === v.position ? 'cur' : ''} ${i === (v.position + 1) % (seq.length || 1) && seq.length ? 'next' : ''}">${esc(s[0])}</span>`).join('');
+      const req = (k, need, have) => `<tr><td class="k">${esc(k)}</td><td class="num">${need == null ? '—' : esc(need)}</td><td class="num">${have == null ? '—' : esc(have)}</td></tr>`;
+      return `<div class="of-page ${page === 'status' ? 'cur' : ''}" data-page="status">
+        <div><div class="of-sec-t"><span>sources</span><span class="at">${eng.state === 'ok' ? `read ${hms(d.generated_at)}` : ''}</span></div>
+          <table class="of-tbl"><tbody>${rows}</tbody></table></div>
+        <div><div class="of-sec-t"><span>rotation</span><span class="at">${ro.state === 'ok' ? '' : reason(ro)}</span></div>
+          <div class="of-seq">${slots}${v.next ? `<span class="note">next ${esc(v.next)}</span>` : ''}</div>
+          <table class="of-tbl"><thead><tr><th></th><th class="num">required</th><th class="num">current</th></tr></thead><tbody>
+            ${req('maintain, then cooldown', v.maintain_cooldown_threshold, v.consecutive_maintain_count)}
+            ${req('builds before synthesis', v.synthesize_after_builds, v.build_cycle_count)}
+            ${v.explore_time_cap_cycles != null ? req('explore, time cap (cycles)', v.explore_time_cap_cycles, null) : ''}
+          </tbody></table></div>
+      </div>`;
+    }
+
+    // ── LEDGER page: the completion form, then the counts as rows, then what was lost ────────────────────────
+    function pLedger(d) {
+      const e = env(d, 'ledger'); const v = e.value || {}; const sp = v.span || {};
+      const types = v.types ? Object.entries(v.types).map(([k, n]) => `${esc(k[0])}${n}`).join(' ') : '—';
+      const ok = sp.closed_joined_state === 'ok';
+      const comp = ok ? `${sp.closed_joined} / <b>${sp.fired}</b>${pct(sp.closed_joined, sp.fired)}` : `— / ${sp.fired != null ? sp.fired : '—'}`;
+      const lost = sp.lost || [];
+      const tr = (k, val, dtl) => `<tr><td class="k">${esc(k)}</td><td class="v">${val}</td><td class="r">${dtl || ''}</td></tr>`;
+      return `<div class="of-page ${page === 'ledger' ? 'cur' : ''}" data-page="ledger">
+        <div><div class="of-sec-t"><span>last ${v.n || 0} completed</span><span class="at">${v.first ? `${hm(v.first)} → ${hm(v.last)}` : ''}${e.state !== 'ok' ? ` · ${reason(e)}` : ''}</span></div>
+          <div class="of-comp ${ok ? '' : 'dev-unv'}"><span class="lbl">closed / fired</span><span>${comp}</span></div>
+          ${ok ? '' : `<div class="of-empty">${esc(sp.closed_joined_reason || 'join unverified')}</div>`}
+          <table class="of-tbl"><tbody>
+            ${tr('types', types, `maintain empty ${v.maintain_empty ?? '—'}/${v.maintain ?? '—'}`)}
+            ${tr('syntheses', `${v.syntheses_kept ?? '—'}`, `widths ${(v.widths || []).join(', ') || '—'} · gated ${v.syntheses_gated ?? 0}`)}
+            ${tr('candidates', `${v.candidates_written ?? '—'} → ${v.candidates_taken ?? '—'}`, `receipts ${v.receipts ?? '—'}/${v.n ?? '—'}`)}
+          </tbody></table>
+          ${e.state !== 'ok' && e.reason ? `<div class="of-empty">${esc(e.reason)}</div>` : ''}</div>
+        <div><div class="of-sec-t"><span>lost in the span</span><span class="at">${ok ? lost.length : '—'}</span></div>
+          ${lost.length ? `<table class="of-tbl"><tbody>${lost.map(l => `<tr class="lost"><td><span class="of-chk"></span>${esc(l.cycle)} · ${esc(l.outcome)}</td><td class="r">${esc(l.context_id || '')} · ${esc(l.reason || '')}</td><td class="who">${hm(l.at)}</td></tr>`).join('')}</tbody></table>` : `<div class="of-empty">${ok ? 'nothing lost in the span' : 'unknown until the join is verified'}</div>`}</div>
+      </div>`;
+    }
+
+    // ── LOG page: one row per ending, the box ticked only for a clean close, the open row a lighter band ─────
+    function pLog(d) {
+      const en = env(d, 'endings'); const rows = Array.isArray(en.value) ? en.value : [];
+      const closes = Array.isArray(d.entries) ? d.entries : [];
+      const byCtx = {}; closes.forEach(c => { if (c.context_id) byCtx[c.context_id] = c; });
+      const ended = rows.filter(r => r.event === 'ended');
+      let inner;
+      if (!ended.length && !closes.length) inner = `<div class="of-empty">${en.state === 'ok' ? 'no events yet' : 'the endings file could not be read; the close feed is shown when it has rows'}</div>`;
+      else inner = `<table class="of-tbl"><tbody>${ended.map(r => {
+        const lost = r.outcome && r.outcome !== 'completed';
+        const c = byCtx[r.context_id];
+        const key = `${r.context_id || ''}:${r.at || ''}`;
+        const open = openRow === key;
+        const chips = c ? ['pages_deepened','skills_captured','memories_saved','syntheses','steps_used'].filter(k => c[k] != null).map(k => `<span class="of-chip">${esc(k.replace('_', ' '))}<b>${esc(c[k])}</b></span>`).join('') : '';
+        return `<tr class="row ${lost ? 'lost' : ''} ${open ? 'sel' : ''}" data-toggle="${esc(key)}">
+            <td><span class="of-chk ${lost ? '' : 'on'}"></span>${esc(r.cycle)} · ${esc(r.type || '')} · ${lost ? esc(r.outcome) : 'completed'}</td>
+            <td class="num">${mins(r.elapsed_s)}</td><td class="who">watcher · ${hm(r.at)}</td></tr>
+          ${open ? `<tr class="dossier"><td colspan="3"><div class="of-dossier">${r.reason ? `<div>watcher: ${esc(r.reason)}</div>` : ''}${chips ? `<div class="of-chips">${chips}</div>` : ''}${c && c.activity ? `<div class="her">${esc(c.activity)}</div>` : (lost ? '' : '<div class="of-empty">no close row joined to this context id</div>')}</div></td></tr>` : ''}`;
+      }).join('') || '<tr><td colspan="3" class="of-empty">no endings yet</td></tr>'}</tbody></table>`;
+      return `<div class="of-page ${page === 'log' ? 'cur' : ''}" data-page="log">
+        <div><div class="of-sec-t"><span>endings</span><span class="at">${en.state === 'ok' ? `${ended.length} events${en.repaired ? ` · ${en.repaired} repaired` : ''}${en.skipped ? ` · ${en.skipped} skipped` : ''}` : reason(en)}</span></div>${inner}</div>
+      </div>`;
+    }
+
+    // ── the footer band: the state in words, the verbs ─────────────────────────────────────────────────────────
+    function zFoot(d) {
+      const ctl = env(d, 'control'); const c = ctl.value || {};
+      const paused = !!c.paused_until;
+      const state = !c.enabled ? 'engine disabled' : paused ? `engine paused until ${hm(c.paused_until)}` : 'engine enabled';
+      const dev = ctl.state !== 'ok' ? devFor(ctl) : (paused ? 'dev-warn' : '');
+      return `<div class="of-foot-row">
+          <span class="of-state ${dev}">${esc(state)}${c.pause_reason ? `<span class="r">${esc(c.pause_reason)}</span>` : ''}${ctl.state !== 'ok' ? `<span class="r">${reason(ctl)}</span>` : ''}</span>
+          <button class="of-btn" data-act="${c.enabled ? 'disable' : 'enable'}">${c.enabled ? 'disable' : 'enable'}</button>
+          ${c.enabled ? (paused
+            ? `<button class="of-btn" data-act="resume">resume</button>`
+            : `<select class="of-sel" id="of-dur"><option value="1800">30 min</option><option value="3600" selected>1 h</option><option value="7200">2 h</option><option value="14400">4 h</option></select>
+               <input class="of-inp" id="of-why" placeholder="reason (kept in control.json)" size="12">
+               <button class="of-btn" data-act="pause">pause</button>`) : ''}
+          <button class="of-btn" data-act="mcp-settings" title="the reset is a browser action in Settings → MCP servers → Apply">reset mcp…</button>
+        </div>
+        <div class="of-ack" id="of-ack"></div>`;
+    }
+
+    // ── the slate: one reading after a close or an engine change; nothing on the first reading ────────────────
+    function slateFor(d) {
+      const ended = (Array.isArray(env(d, 'endings').value) ? env(d, 'endings').value : []).filter(r => r.event === 'ended');
+      const newest = ended.reduce((a, r) => (!a || String(r.at || '') > String(a.at || '')) ? r : a, null);
+      const key = newest ? `${newest.context_id || ''}:${newest.at || ''}` : null;
+      const c = env(d, 'control').value || {};
+      const eState = !c.enabled ? 'disabled' : c.paused_until ? `paused until ${hm(c.paused_until)}` : 'enabled';
+      const prev = seen; seen = { key, eState };
+      if (!prev) return null;
+      if (key && key !== prev.key && newest) {
+        const sp = (env(d, 'ledger').value || {}).span || {};
+        const lost = newest.outcome && newest.outcome !== 'completed';
+        return { title: `cycle ${esc(newest.cycle)} · ${esc(newest.type || '')}`, sub: `${esc(lost ? newest.outcome : 'completed')} · ${mins(newest.elapsed_s)} · watcher ${hm(newest.at)}${lost && newest.reason ? ` · ${esc(newest.reason)}` : ''}`, subDev: lost ? 'dev-crit' : '',
+                 pair: [[sp.closed_joined_state === 'ok' ? `${sp.closed_joined} / <b>${sp.fired}</b>` : '— / —', 'closed / fired'], [esc(String(d.total_cycles ?? '—')), 'cycles']] };
+      }
+      if (eState !== prev.eState) return { title: `engine ${esc(eState)}`, sub: `read ${hms(d.generated_at)}${c.pause_reason ? ` · ${esc(c.pause_reason)}` : ''}`, subDev: '', pair: [] };
+      return null;
+    }
+    function showSlate(m) {
+      if (!m) { slate.className = 'of-slate'; slate.innerHTML = ''; return; }
+      slate.innerHTML = `<div class="title">${m.title}</div><div class="sub ${m.subDev}">${m.sub}</div>
+        ${m.pair.length ? `<div class="pair">${m.pair.map(([n, l]) => `<div><div class="n">${n}</div><div class="l">${esc(l)}</div></div>`).join('')}</div>` : ''}
+        <div class="hint">click, or the next reading, clears this</div>`;
+      slate.className = 'of-slate on';
+    }
+
+    // ── render ────────────────────────────────────────────────────────────────────────────────────────────────
+    function tabsFor(d) {
+      const n = { status: null, ledger: null, log: null };
+      const ended = (Array.isArray(env(d, 'endings').value) ? env(d, 'endings').value : []).filter(r => r.event === 'ended').length;
+      const sp = (env(d, 'ledger').value || {}).span || {};
+      n.log = ended || null; n.ledger = sp.closed_joined_state === 'ok' ? `${sp.closed_joined}/${sp.fired}` : null;
+      return PAGES.map(p => `<span class="of-tab ${page === p ? 'cur' : ''}" data-tab="${p}">${p}${n[p] != null ? `<span class="n">${esc(n[p])}</span>` : ''}</span>`).join('');
+    }
+    function render(d, quiet) {
+      last = d;
+      tele.innerHTML = `<span>read<b>${hms(d.generated_at)}</b></span><span>feed<b>${d.v ? `v${d.v}` : 'v1'}</b></span><span>cycles<b>${esc(String(d.total_cycles ?? '—'))}</b></span>`;
+      where.textContent = page;
+      cass.innerHTML = zNow(d);
+      tabs.innerHTML = tabsFor(d);
+      body.innerHTML = pStatus(d) + pLedger(d) + pLog(d);
+      foot.innerHTML = zFoot(d);
+      if (!quiet) showSlate(slateFor(d));
+    }
+    function setPage(p) {
+      if (!PAGES.includes(p)) return;
+      page = p; try { localStorage.setItem('office.page', p); } catch (e) {}
+      where.textContent = p;
+      tabs.querySelectorAll('.of-tab').forEach(t => t.classList.toggle('cur', t.getAttribute('data-tab') === p));
+      body.querySelectorAll('.of-page').forEach(el => el.classList.toggle('cur', el.getAttribute('data-page') === p));
+    }
+
+    async function load() {
+      try {
+        const r = await fetch(FEED); if (!r.ok) throw new Error('HTTP ' + r.status);
+        render(await r.json());
+      } catch (err) {
+        cass.innerHTML = `<div class="of-cass-h"><span class="big">feed</span><span class="ctx">unverified</span></div>`;
+        body.innerHTML = `<div class="of-empty">could not read ${esc(FEED)} · ${esc(err)}</div>`;
+      }
+    }
+
+    async function control(action) {
+      const ack = $('of-ack');
+      if (action === 'mcp-settings') { ack.className = 'of-ack'; ack.textContent = 'open Settings → MCP/A2A → External MCP Servers → Open → Apply; the pane cannot do this for you'; try { if (window.openSettings) window.openSettings(); } catch (e) {} return; }
+      const extra = {};
+      if (action === 'pause') { const dur = $('of-dur'), why = $('of-why'); extra.duration_seconds = +(dur && dur.value || 3600); if (why && why.value) extra.reason = why.value; }
+      ack.className = 'of-ack'; ack.textContent = `${action}…`;
+      try {
+        const r = await fetch(CTRL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action, ...extra})});
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        // idle_control answers 200 with success:false when its control-file write failed (Kestrel's 6.2 change):
+        // a claimed pause that is not on disk is the failure this pane exists to show, so it is not an acknowledgement.
+        if (j && j.success === false) throw new Error(j.error || 'the endpoint reported the write failed');
+        const line = `${action}: ${esc(j.status || 'ok')} · ${hms(new Date().toISOString())} · by the panel`;
+        await load();
+        const a2 = $('of-ack'); if (a2) a2.textContent = line;
+      } catch (err) {
+        const a2 = $('of-ack'); if (a2) { a2.className = 'of-ack dev-crit'; a2.textContent = `${action} FAILED · ${esc(err)} · nothing changed`; }
+      }
+    }
+
+    root.addEventListener('click', ev => {
+      if (ev.target.closest('.of-slate')) { showSlate(null); return; }
+      const tb = ev.target.closest('[data-tab]'); if (tb) { setPage(tb.getAttribute('data-tab')); return; }
+      const t = ev.target.closest('[data-toggle]'); if (t) { const k = t.getAttribute('data-toggle'); openRow = openRow === k ? null : k; if (last) render(last, true); return; }
+      const b = ev.target.closest('[data-act]'); if (b) control(b.getAttribute('data-act'));
+    });
+
+    // poll only while shown. Two conditions, both needed (2026-09-15): the IntersectionObserver, like the panes this one
+    // replaces, and the canvas wrapper's is-active class, because an inactive surface keeps its DOM at opacity 0 and an
+    // opacity-0 element still intersects, so the observer alone polled behind every other surface. No wrapper (the
+    // harness previews) counts as shown.
+    const shell = root.closest('.right-canvas-surface-panel');
+    const shown = () => !shell || shell.classList.contains('is-active');
+    let visible = false;
+    function arm() { const want = visible && shown(); if (want && !timer) { load(); timer = setInterval(load, POLL_MS); } else if (!want && timer) { clearInterval(timer); timer = null; } }
+    const obs = new IntersectionObserver(es => { visible = es[0].isIntersecting; arm(); });
+    obs.observe(root);
+    if (shell) new MutationObserver(arm).observe(shell, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('office-open', load);
+    // ── the room: the active theme's background, panel and overlay blocks ────────────────────────────────────────
+    // (theme-room.js, when present, renders the page's room and stamps <html data-exo-room>; the CSS gate above then
+    // hides these layers and the pane keeps only its floor. Without it, this is the pane's own room, as before.)
+    const THEMES = (window.OFFICE_THEMES_URL || '/usr/plugins/_exocortex/webui/themes/');
+    let themeApplied = null;
+    async function applyRoom() {
+      let id = null;
+      try { id = localStorage.getItem('exocortex_theme'); } catch (e) {}
+      if (id === themeApplied) return;
+      themeApplied = id;
+      const st = root.style;
+      const reset = () => { ['--of-bg-image','--of-bg-opacity','--of-bg-blur','--of-bg-blend','--of-bg-position','--of-bg-size','--of-panel-alpha','--of-scan-opacity','--of-scan-spacing','--of-vignette-opacity','--of-noise-opacity'].forEach(k => st.removeProperty(k)); };
+      if (!id || id === 'default') { reset(); return; }
+      try {
+        const t = await (await fetch(THEMES + encodeURIComponent(id) + '.json')).json();
+        reset();
+        const bg = t.background || {}, pn = t.panel || {}, ov = t.overlay || {};
+        if (bg.type === 'image' && bg.src) {
+          // the themes name /themes/assets/<file>, a route A0 no longer serves (2026-09-14: 404 for every theme image);
+          // the files live in the Exocortex repo's themes/assets. Try the theme's own path, then the plugin-served
+          // copy under the themes folder, and paint nothing rather than a broken image if neither answers.
+          const cands = [bg.src, THEMES + 'assets/' + bg.src.split('/').pop()];
+          const pick = await new Promise(res => { let i = 0; const tryNext = () => { if (i >= cands.length) return res(null); const im = new Image(); const u = cands[i++]; im.onload = () => res(u); im.onerror = tryNext; im.src = u; }; tryNext(); });
+          if (pick) st.setProperty('--of-bg-image', `url("${pick}")`); else st.setProperty('--of-bg-image', 'none');
+          st.setProperty('--of-bg-opacity', String(Math.max(0, Math.min(1, +bg.opacity || 0))));
+          st.setProperty('--of-bg-blur', `${+bg.blur || 0}px`);
+          st.setProperty('--of-bg-blend', bg.blend_mode || 'normal');
+          st.setProperty('--of-bg-position', bg.position || 'center');
+          st.setProperty('--of-bg-size', bg.size || 'cover');
+        }
+        // floor: the data reads over the room, never under it (Opus, 2026-09-14); the theme's own panel.instrument when it
+        // declares one (theme-room.js publishes the same value as --panel-instrument), else 0.72 (2026-09-15)
+        const floor = Number.isFinite(+pn.instrument) && typeof pn.instrument !== 'boolean' && pn.instrument !== null ? Math.max(0, Math.min(1, +pn.instrument)) : 0.72;
+        if (pn.opacity != null) st.setProperty('--of-panel-alpha', String(Math.max(floor, Math.min(1, +pn.opacity))));
+        if (ov.scanlines && ov.scanlines.enabled) { st.setProperty('--of-scan-opacity', String(+ov.scanlines.opacity || 0.03)); st.setProperty('--of-scan-spacing', `${+ov.scanlines.spacing || 2}px`); }
+        if (ov.vignette && ov.vignette.enabled) st.setProperty('--of-vignette-opacity', String(+ov.vignette.opacity || 0.3));
+        if (ov.noise && ov.noise.enabled) st.setProperty('--of-noise-opacity', String(+ov.noise.opacity || 0.02));
+      } catch (e) { reset(); }
+    }
+    // theme-store.js writes the theme's colours onto documentElement.style; that write is the change signal
+    new MutationObserver(() => applyRoom()).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('storage', ev => { if (ev.key === 'exocortex_theme') applyRoom(); });
+    applyRoom();
+
+    root.__office = { load, render, applyRoom, setPage, showSlate, get last() { return last; }, get page() { return page; }, get polling() { return !!timer; } };   // for controls and the preview harness
+    load();
+  }, 0);
+})();
+</script>
+</div>

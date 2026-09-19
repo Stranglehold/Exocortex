@@ -37,15 +37,32 @@ first. This must run before _10, and _10 defers on the shared flag.
 Both files import HANDLED_KEY from helpers/prose_leak.py rather than repeating a literal —
 a mismatched string in either half leaves the mechanism inert while looking installed.
 
-WHAT THIS DOES NOT DO
----------------------
-Does NOT extract and execute the recovered call, even though the valid root is right there.
-Opus's call 2026-08-22: v2.9 made the parser strict deliberately, to avoid firing a call
-the model merely DESCRIBED inside an explanation. Nudge-only until there is
-nudge-acceptance data. Revisit after ~100 cycles.
+WHAT THIS NOW DOES (REVISED 2026-09-17, Opus)
+----------------------------------------------
+For UNAMBIGUOUS cases (one call, prose only before it): extracts the valid tool call root,
+rewrites `msg` so `process_tools` sees clean JSON, and lets A0 execute it. The prose
+preamble is stripped. This is the "Capacity, Not Format" pattern: reasoning followed by
+structured output.
 
-Does NOT modify the message. The turn proceeds exactly as it would have; the only change
-is that the model receives an accurate correction and _10 stops reciting the payload.
+For AMBIGUOUS cases (prose after the call, or multiple calls): nudge only, as before.
+
+History: Opus's original call (2026-08-22) was nudge-only for all cases, pending
+nudge-acceptance data. Data now in: Ornith's nudge acceptance rate is near zero over
+cycles 513–640+. Three turns in Jake's "Workspace Scripts" chat (2026-09-17) produced
+valid tool calls that the nudge loop silently discarded, leaving empty responses. The
+`unambiguous` field in `survey_leaked_calls` was designed for exactly this transition.
+
+Does NOT modify the message for ambiguous cases. The nudge is accurate and _10 defers.
+
+ATTENDEDNESS — WHY THERE IS NO GATE (Opus, 2026-09-17)
+------------------------------------------------------
+Extraction runs in both attended and unattended (idle cycle) turns. This looks inconsistent
+with _07 (repair_unterminated_string), which refuses to execute a recovered call when
+unattended. The distinction is deliberate: _07 RECONSTRUCTS a call from a damaged payload
+(guessing the closing structure), where the risk is executing something the model did not
+quite emit. _05 takes a call the model DEFINITELY emitted, verbatim, and strips surrounding
+text. `unambiguous` is the safety gate — one call, prose only before it, whitespace only
+after. Different risks, different gates. (Named by Kestrel, confirmed by Opus.)
 
 Reads:  data["args"] / data["kwargs"] (the `msg` argument)
 Writes: agent data flag HANDLED_KEY; a history warning
@@ -84,25 +101,45 @@ class ProseLeakDetector(Extension):
             except Exception:
                 pass
 
-            msg, _where, _index = pl.read_msg(data)
-            hit = pl.find_leaked_call(msg)
-            if not hit:
+            msg, where, index = pl.read_msg(data)
+
+            survey = pl.survey_leaked_calls(msg)
+            if not survey:
                 return
 
-            self._log(
-                f"valid {hit['tool_name'] or 'tool'} call wrapped in "
-                f"{hit['surrounding']:,} chars of prose — nudging for a clean re-send "
-                f"(root {len(hit['root']):,} chars)"
-            )
+            first = survey["calls"][0]
+            tool_name = first.get("tool_name") or "tool"
+            root = first["root"]
+            surrounding = survey["surrounding"]
 
             # Tell _10 to stand down BEFORE anything that can fail, so a failure in the
-            # warning path cannot leave _10 free to recite the payload.
+            # extraction or warning path cannot leave _10 free to recite the payload.
             self.agent.set_data(pl.HANDLED_KEY, True)
 
-            try:
-                self.agent.hist_add_warning(pl.nudge_text(hit))
-            except Exception as exc:
-                self._log(f"warning injection failed: {type(exc).__name__}: {exc}")
+            if survey["unambiguous"]:
+                # SAFE TO EXTRACT: exactly one call, prose only before it. This is the
+                # "Capacity, Not Format" pattern — reasoning then structured output.
+                # Rewrite msg to just the valid root; process_tools sees clean JSON.
+                self._log(
+                    f"valid {tool_name} call with {surrounding:,} chars of preamble "
+                    f"— extracting (root {len(root):,} chars)"
+                )
+                try:
+                    pl.write_msg(data, where, index, root)
+                except Exception as exc:
+                    self._log(f"extraction write failed: {type(exc).__name__}: {exc}")
+            else:
+                # AMBIGUOUS: prose after the call, or multiple calls. Nudge only.
+                self._log(
+                    f"valid {tool_name} call wrapped in "
+                    f"{surrounding:,} chars of prose — nudging for a clean re-send "
+                    f"(root {len(root):,} chars)"
+                )
+                try:
+                    hit = {"tool_name": tool_name, "surrounding": surrounding}
+                    self.agent.hist_add_warning(pl.nudge_text(hit))
+                except Exception as exc:
+                    self._log(f"warning injection failed: {type(exc).__name__}: {exc}")
 
         except Exception as exc:  # never break the turn
             self._log(f"passthrough after error: {type(exc).__name__}: {exc}")

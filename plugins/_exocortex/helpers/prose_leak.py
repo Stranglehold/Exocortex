@@ -35,11 +35,23 @@ pointed at the wrong fix and re-runs the same emission.
 
 WHAT THIS DOES
 --------------
-Detects the case and nudges specifically: *your tool call was valid, it was preceded by
-prose, re-emit the JSON alone*. Nudge only — NOT extract-and-execute. Opus's call
-(2026-08-22): v2.9 made the parser strict deliberately, to avoid firing a tool call the
-model merely DESCRIBED inside an explanation, and that intent is respected until there is
-nudge-acceptance data to justify changing it.
+Detects the case and acts on it. Two modes, gated on `survey_leaked_calls().unambiguous`:
+
+  * UNAMBIGUOUS (one call, prose only before it): extract the valid root and rewrite `msg`
+    so `process_tools` sees a clean tool call. The prose preamble is stripped.
+
+  * AMBIGUOUS (prose after the call, or multiple calls): nudge specifically — *your tool
+    call was valid, it was preceded by prose, re-emit the JSON alone*. Nudge only.
+
+History: Opus's original call (2026-08-22) was nudge-only for both cases, to respect
+v2.9's intent of not firing a call the model merely DESCRIBED. The `unambiguous` field
+was designed for the transition, gated on nudge-acceptance data. Data collected over
+cycles 513–640+: Ornith's nudge acceptance rate is near zero — the retry produces the
+same prose-wrapped format, and the response content ends up empty. Jake's messages in the
+"Workspace Scripts" chat (2026-09-17) went unanswered because three consecutive turns
+produced valid tool calls that the nudge loop silently discarded. The unambiguous
+extraction is justified: prose-before-only is the "Capacity, Not Format" pattern
+(reasoning then structured output), not a description.
 
 SHARED BY BOTH HALVES ON PURPOSE
 --------------------------------
@@ -87,6 +99,21 @@ def read_msg(data: dict) -> tuple[Any, str, int]:
                 return args[i], "args", i
 
     return None, "", -1
+
+
+def write_msg(data: dict, where: str, index: int, value: str) -> None:
+    """Write back the `msg` argument after extraction or repair.
+
+    Same contract as `_write_msg` in _04 and _10. ONE definition here so _05 can
+    import it rather than duplicating, keeping the shared-key discipline the header
+    of this file describes.
+    """
+    if where == "kwargs":
+        data["kwargs"]["msg"] = value
+    elif where == "args" and index >= 0:
+        args = list(data["args"])
+        args[index] = value
+        data["args"] = tuple(args)
 
 
 def survey_leaked_calls(msg: Any) -> dict | None:
