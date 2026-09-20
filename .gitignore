@@ -52,3 +52,7 @@ scripts/logs/
 
 # Operational snapshots (.bak files, theme archives): not version history and not the archive of retired components (Jake, 2026-09-16)
 backups/
+
+# sync runtime state (Fable, 2026-09-20, Jake's word): rewritten every hourly run, never source
+agent-exports/.sync_state.json
+agent-exports/.sync_deferrals.json
