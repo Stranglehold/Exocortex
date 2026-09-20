@@ -88,6 +88,7 @@ TOOL_SCHEMAS = {
             },
         },
         "defaults": {
+            "runtime": "python",
             "session": 0,
             "reset": False,
         },
@@ -133,6 +134,8 @@ TOOL_SCHEMAS = {
             "memory": "text",
             "data": "text",
             "message": "text",
+            "query": "text",     # Ornith 1.5-35B (measured 2026-09-20, 30 h of chats): memory_save with
+                                 # {"query": ..., "area": ...}, the memory_load shape carried over. Crashed cycles.
         },
     },
     "search_engine": {

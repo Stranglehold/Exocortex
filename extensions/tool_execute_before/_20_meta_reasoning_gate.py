@@ -37,6 +37,7 @@ TOOL_SCHEMAS = {
             },
         },
         "defaults": {
+            "runtime": "python",
             "session": 0,
             "reset": False,
         },
@@ -82,6 +83,12 @@ TOOL_SCHEMAS = {
             "memory": "text",
             "data": "text",
             "message": "text",
+            "query": "text",
+            "value": "text",
+            "note": "text",
+            "input": "text",
+            "info": "text",
+            "entry": "text",
         },
     },
     "search_engine": {
