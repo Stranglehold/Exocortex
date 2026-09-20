@@ -70,7 +70,8 @@ SUBDIRS = ["wiki", "field-reports"]          # workspace subdirs to export
 # v16 is retired (container exited); its historical export tree is left untouched
 # rather than deleted, so its past work stays searchable.
 AGENTS = {"v2": "agent-zero-v2", "v17": "VekV2"}
-MCP_URL = "http://localhost:5055/mcp"
+MCP_URL = "http://127.0.0.1:5055/mcp"  # 127.0.0.1, not localhost (Fable 2026-09-19, Jake's word): localhost resolves to ::1 first on this host,
+#   the server binds IPv4 only, and urllib/httpx wait ~2 s before falling back; measured 2,038 ms vs 15 ms per connection.
 STATE_FILE = os.path.join(EXPORT_ROOT, ".sync_state.json")
 
 # docker cp mangles Unix container paths under Git Bash / MSYS; disable that.
