@@ -19,11 +19,14 @@ TWO DIFFERENT IDENTIFIERS, ON PURPOSE
 -------------------------------------
 `fingerprint()`    = (tool, error_class, normalized message)
                      Identifies "the same FAILURE". Only knowable AFTER execution.
-                     This is what accumulates strikes.
 
 `op_signature()`   = (tool, normalized significant args)
                      Identifies "the same ATTEMPT". Knowable BEFORE execution.
                      This is what the gate can match on to refuse a retry.
+
+`entry_key()`      = (fingerprint, op_signature)
+                     The ledger key, and what accumulates strikes: "this exact call
+                     failed this exact way". Three strikes means one call, three times.
 
 The distinction is forced by the hook contract, verified against A0 v2.9 core
 (`agent.py` ~L1192): `tool_execute_before` receives `tool_args` and `tool_name`;
@@ -31,6 +34,35 @@ The distinction is forced by the hook contract, verified against A0 v2.9 core
 So the gate stashes the op signature on the agent and the recorder reads it back.
 You cannot fingerprint an error before it happens, and you cannot match args after
 the fact — hence two identifiers.
+
+STRIKES ARE PER ATTEMPT (2026-09-23, Opus ruling)
+-------------------------------------------------
+Strikes used to be keyed by the failure alone, and every strike overwrote the entry's
+op_signature, so the block landed on whichever call struck last. Measured: the hung-
+terminal message normalizes the same whatever script is running, so six strikes from
+different calls (cycles 676-732) accumulated on one entry, and strike 6 (a terminal
+command, 2026-09-23 15:44:01Z) moved the block off every short python script and onto
+every short terminal command. "Quarantined after N identical failures" was never a
+claim about identical calls. Keying on (failure, attempt) makes it one: different
+calls accumulate independently, and an entry's op_signature never changes.
+
+SESSION STATE IS NOT EVIDENCE ABOUT THE CALL
+--------------------------------------------
+`terminal_session_hung` is matched on one message, A0's `fw.code.running.md`, which
+`code_execution_tool.handle_running_session` returns at the START of a call when the
+session is still busy with an earlier command. The new call's code never reaches the
+shell. So those strikes describe the session, and resetting the session removes their
+cause: a call that resets session N (`reset: true`, or runtime "reset") deletes every
+`terminal_session_hung` entry for session N, at any strike count. Other classes struck
+code that did run, and a reset does not change what that code does, so they stay.
+
+QUARANTINE-BORN LESSONS CARRY THEIR PROVENANCE
+----------------------------------------------
+A quarantine files an ANTI-PATTERN, and sleep Phase 5 turns it into an AgentEvolver
+experience. The tags `qfp:<entry key>` and `qkey:<invalidation key>` go with it, and
+`lesson_suppressor()` stops serving the lesson once the key rotates or the entry is no
+longer quarantined. Suppress, never delete: the store keeps everything and the tool
+filters on read.
 
 STORE LOCATION
 --------------
@@ -78,6 +110,19 @@ CONFIG_PATH = "/a0/usr/plugins/_exocortex/config/config.json"
 # a mismatched literal in either file would leave quarantine permanently inert
 # with nothing failing loudly enough to notice.
 OP_SIG_KEY = "_op_signature"
+
+# Same contract for the call's terminal session and whether the call resets it. The gate
+# clears both at the start of every call and sets them only after its arguments are
+# normalized, so a call that stops early leaves them empty instead of stale.
+OP_SCOPE_KEY = "_op_scope"
+OP_RESET_KEY = "_op_reset"
+
+# Tools whose calls run inside a numbered terminal session.
+_SESSION_TOOLS = {"code_execution_tool"}
+
+# Classes whose strikes describe the session rather than the call (see the header). A
+# session reset deletes these for that session. Every other class survives a reset.
+_SESSION_STATE_CLASSES = {"terminal_session_hung"}
 
 
 def cfg() -> dict:
@@ -192,6 +237,40 @@ def op_signature(tool: str, args: dict | None) -> str:
     return _h("op", tool or "", "|".join(norm))
 
 
+def entry_key(fp: str, op_sig: str) -> str:
+    """Ledger key: this failure, from this attempt. What strikes accumulate on."""
+    return _h("entry", fp or "", op_sig or "")
+
+
+def op_scope(tool: str, args: dict | None) -> dict | None:
+    """The terminal session a call runs in, read the way A0 reads it; None if it has none.
+
+    Mirrors `code_execution_tool._execute`: `int(self.args.get("session", 0))`. Pass the
+    gate's NORMALIZED args, since A0 only ever sees those.
+    """
+    if tool not in _SESSION_TOOLS:
+        return None
+    try:
+        return {"tool": tool, "session": int((args or {}).get("session", 0))}
+    except (TypeError, ValueError):
+        return None
+
+
+def is_session_reset(tool: str, args: dict | None) -> bool:
+    """True when this call resets its session: the same test A0 applies.
+
+    Mirrors `code_execution_tool._execute`:
+    `bool(self.args.get("reset", False) or runtime_arg == "reset")`, where runtime_arg is
+    lowered and stripped. So the string "false" counts as a reset, because A0 treats it
+    as one.
+    """
+    if tool not in _SESSION_TOOLS:
+        return False
+    a = args or {}
+    runtime = str(a.get("runtime", "") or "").lower().strip()
+    return bool(a.get("reset", False) or runtime == "reset")
+
+
 # ── environment ──────────────────────────────────────────────────────────────
 
 def current_cycle() -> int:
@@ -286,8 +365,13 @@ def check_invalidation(ledger: dict) -> bool:
 # ── the two operations the extensions call ───────────────────────────────────
 
 def record_failure(tool: str, error_class: str, message: str,
-                   op_sig: str, evidence: dict | None = None) -> dict:
-    """Register one failure. Returns {strikes, quarantined, fingerprint, invalidated}."""
+                   op_sig: str, evidence: dict | None = None,
+                   scope: dict | None = None) -> dict:
+    """Register one failure of one attempt.
+
+    Returns {fingerprint, failure, strikes, quarantined, invalidated}. `fingerprint` is the
+    ledger key, the id `release()` takes; `failure` is the failure's own identity.
+    """
     conf = cfg()
     ledger = load_ledger()
     invalidated = check_invalidation(ledger)
@@ -295,17 +379,22 @@ def record_failure(tool: str, error_class: str, message: str,
     _prune(ledger, cycle, conf)
 
     fp = fingerprint(tool, error_class, message)
-    e = ledger["entries"].get(fp)
+    key = entry_key(fp, op_sig)
+    e = ledger["entries"].get(key)
 
     if e is None:
         e = {
             "tool": tool, "error_class": error_class,
+            "failure": fp,
+            # Part of the key, so it is set here once and never overwritten: the block
+            # cannot move to another call.
             "op_signature": op_sig,
+            "scope": scope,
             "strikes": 0, "first_cycle": cycle, "last_cycle": cycle,
             "quarantined": False, "quarantined_at_cycle": None,
             "normalized": normalize_message(message, 200),
         }
-        ledger["entries"][fp] = e
+        ledger["entries"][key] = e
 
     # A strike only counts inside the rolling window. Outside it, this is a fresh
     # occurrence rather than a continuation, and the count restarts at 1.
@@ -317,8 +406,6 @@ def record_failure(tool: str, error_class: str, message: str,
     e["strikes"] = int(e.get("strikes") or 0) + 1
     e["last_cycle"] = cycle
     e["last_seen"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    if op_sig:
-        e["op_signature"] = op_sig
 
     if e["strikes"] >= int(conf["strikes_to_quarantine"]) and not e["quarantined"]:
         e["quarantined"] = True
@@ -332,11 +419,46 @@ def record_failure(tool: str, error_class: str, message: str,
 
     save_ledger(ledger)
     return {
-        "fingerprint": fp,
+        "fingerprint": key,
+        "failure": fp,
         "strikes": e["strikes"],
         "quarantined": bool(e["quarantined"]),
         "invalidated": invalidated,
     }
+
+
+def is_session_state(entry: dict | None) -> bool:
+    """True for an entry that a reset of its session would delete."""
+    e = entry or {}
+    return e.get("error_class") in _SESSION_STATE_CLASSES and isinstance(e.get("scope"), dict)
+
+
+def clear_session(scope: dict | None) -> list:
+    """A call reset this terminal session: delete the strikes that described its state.
+
+    Deletes every `_SESSION_STATE_CLASSES` entry scoped to this session at ANY strike count,
+    so no stale 1-2 strikes carry past the reset. Entries of other classes are kept: their
+    code ran and failed, and a reset does not change that code (Opus ruling, 2026-09-23).
+    A `manual_hold` entry is kept too, as it is on invalidation: an operator's hold is not
+    lifted by something the agent does. Returns the deleted keys.
+    """
+    if not scope:
+        return []
+    ledger = load_ledger()
+    if check_invalidation(ledger):
+        save_ledger(ledger)          # everything not held is already gone
+        return []
+    gone = [
+        k for k, e in ledger["entries"].items()
+        if e.get("scope") == scope
+        and e.get("error_class") in _SESSION_STATE_CLASSES
+        and not e.get("manual_hold")
+    ]
+    for k in gone:
+        ledger["entries"].pop(k, None)
+    if gone:
+        save_ledger(ledger)
+    return gone
 
 
 def find_quarantine(op_sig: str) -> dict | None:
@@ -370,3 +492,70 @@ def quarantined_entries() -> list:
     ledger = load_ledger()
     return [{**e, "fingerprint": fp}
             for fp, e in ledger["entries"].items() if e.get("quarantined")]
+
+
+# ── lessons a quarantine files ───────────────────────────────────────────────
+# Opus ruling, 2026-09-23. A quarantine files an ANTI-PATTERN and sleep Phase 5 turns it
+# into an AgentEvolver experience, which the agentevolver tool serves back to the agent.
+# Before this, nothing retracted it: on 2026-09-23 three of the five 'general' experiences
+# she would be served said code_execution_tool "is quarantined" after that quarantine had
+# been cleared. constraint_provenance cannot reach these (it curates SKILL.md sidecars),
+# so the lesson carries its own provenance and is checked when it is read.
+
+_QUARANTINE_TAGS = ("quarantine", "three-strike")
+
+
+def quarantine_lesson_tags(key: str) -> list:
+    """Provenance tags for a lesson filed from ledger entry `key`, under the current code."""
+    return [f"qfp:{key}", f"qkey:{invalidation_key()}"]
+
+
+def _lesson_fields(tags_or_meta) -> tuple:
+    """(tags, qfp, qkey) from an anti-pattern's tag list or an experience's metadata dict."""
+    if isinstance(tags_or_meta, dict):
+        tags = [str(t) for t in (tags_or_meta.get("tags") or [])]
+        qfp = tags_or_meta.get("quarantine_fingerprint")
+        qkey = tags_or_meta.get("quarantine_invalidation_key")
+    else:
+        tags = [str(t) for t in (tags_or_meta or [])]
+        qfp = qkey = None
+    for t in tags:
+        if t.startswith("qfp:") and not qfp:
+            qfp = t[len("qfp:"):]
+        elif t.startswith("qkey:") and not qkey:
+            qkey = t[len("qkey:"):]
+    return tags, qfp, qkey
+
+
+def lesson_provenance(tags_or_meta) -> tuple:
+    """(qfp, qkey) that a lesson carries; either is None when absent."""
+    _tags, qfp, qkey = _lesson_fields(tags_or_meta)
+    return qfp, qkey
+
+
+def is_quarantine_lesson(tags_or_meta) -> bool:
+    """Filed by a quarantine: carries both the quarantine and three-strike tags."""
+    tags, _qfp, _qkey = _lesson_fields(tags_or_meta)
+    return all(t in tags for t in _QUARANTINE_TAGS)
+
+
+def lesson_suppressor():
+    """A predicate(tags_or_metadata) -> True when a lesson must not be served.
+
+    Only quarantine lessons are ever suppressed; anything else, including an untagged
+    lesson, passes through. A quarantine lesson is suppressed when it has no provenance,
+    when the code that filed it has changed (qkey), or when the ledger no longer holds
+    its entry as quarantined (qfp). Reads the ledger and the key once; writes nothing.
+    """
+    key_now = invalidation_key()
+    live = {k for k, e in load_ledger().get("entries", {}).items() if e.get("quarantined")}
+
+    def suppressed(tags_or_meta) -> bool:
+        if not is_quarantine_lesson(tags_or_meta):
+            return False
+        _tags, qfp, qkey = _lesson_fields(tags_or_meta)
+        if not qfp or not qkey:
+            return True
+        return qkey != key_now or qfp not in live
+
+    return suppressed

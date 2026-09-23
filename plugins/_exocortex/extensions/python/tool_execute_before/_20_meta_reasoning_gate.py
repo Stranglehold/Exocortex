@@ -458,6 +458,10 @@ class MetaReasoningGate(Extension):
                 # A0's exception handler will add this to the retry context.
                 raise ValueError(f"[MetaGate] {msg}")
 
+            # A1: the args are final now. Tell the recorder which terminal session this
+            # call runs in and whether it resets it.
+            self._stash_session(tool_name, tool_args)
+
         except ValueError:
             # Re-raise MetaGate abort signals — do not swallow
             raise
@@ -519,8 +523,14 @@ class MetaReasoningGate(Extension):
 
             op_sig = ff.op_signature(tool_name, tool_args)
             self.agent.set_data(ff.OP_SIG_KEY, op_sig)
+            # Cleared on every call and set only once the args are normalized (see
+            # _stash_session, end of execute), so a call that stops early cannot hand the
+            # recorder a stale session or a stale reset.
+            self.agent.set_data(ff.OP_SCOPE_KEY, None)
+            self.agent.set_data(ff.OP_RESET_KEY, False)
 
             entry = ff.find_quarantine(op_sig)
+            session_state = ff.is_session_state(entry)
         except Exception as e:
             try:
                 print(f"[QUARANTINE] gate skipped — {type(e).__name__}: {str(e)[:100]}",
@@ -534,13 +544,25 @@ class MetaReasoningGate(Extension):
 
         # Outside the try: this raise is the intended control flow and must not be
         # swallowed by the handler above.
+        if session_state:
+            # The strikes describe the session, not this code, which never reached the
+            # shell (see helpers/failure_fingerprint.py). Say what clears it.
+            n = entry["scope"].get("session")
+            how = (
+                f"Terminal session {n} is still busy with an earlier command, so this code "
+                f"has not run. Resetting that session (reset: true, session: {n}) clears "
+                f"this quarantine."
+            )
+        else:
+            how = (
+                f"Retrying it will fail the same way. Do something different: change the "
+                f"approach, the tool, or the target — or move on to another task. "
+                f"Released automatically when the gating code or model profile changes."
+            )
         msg = (
             f"[MetaGate-QUARANTINE] This exact call is quarantined after "
             f"{entry.get('evidence', {}).get('strikes_at_quarantine', entry.get('strikes'))} "
-            f"identical failures ({entry.get('tool')}/{entry.get('error_class')}). "
-            f"Retrying it will fail the same way. Do something different: change the "
-            f"approach, the tool, or the target — or move on to another task. "
-            f"Released automatically when the gating code or model profile changes."
+            f"identical failures ({entry.get('tool')}/{entry.get('error_class')}). {how}"
         )
         try:
             self.agent.context.log.log(type="warning", content=msg)
@@ -548,6 +570,27 @@ class MetaReasoningGate(Extension):
             pass
         print(f"[QUARANTINE] BLOCKED {tool_name} fp={entry.get('fingerprint')}", flush=True)
         raise ValueError(msg)
+
+    def _stash_session(self, tool_name: str, tool_args: dict) -> None:
+        """A1: hand the recorder the call's terminal session and whether it resets it.
+
+        Called only after Phase 4, when the args are the ones A0 will actually read:
+        `{"lang": "reset"}` has become `{"runtime": "reset"}` and a missing session has its
+        default. The recorder uses this to clear session-state strikes when a reset runs.
+        Never raises: the worst case of a failure here is a quarantine that outlives a
+        reset, which is where things stood before this existed.
+        """
+        try:
+            import failure_fingerprint as ff
+
+            self.agent.set_data(ff.OP_SCOPE_KEY, ff.op_scope(tool_name, tool_args))
+            self.agent.set_data(ff.OP_RESET_KEY, ff.is_session_reset(tool_name, tool_args))
+        except Exception as e:
+            try:
+                print(f"[QUARANTINE] session stash skipped — {type(e).__name__}: {str(e)[:100]}",
+                      flush=True)
+            except Exception:
+                pass
 
     def _fix_arg_aliases(self, tool_args: dict, schema: dict):
         """Rename wrong argument names to correct ones."""

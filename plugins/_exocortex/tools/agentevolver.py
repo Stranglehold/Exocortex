@@ -15,11 +15,13 @@ Tools exposed:
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from helpers.tool import Tool, Response
 
 # ── Engine loader ─────────────────────────────────────────────────────────────
 
 _PLUGIN_DIR = Path("/a0/usr/plugins/agentevolver_self_improvement")
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
 _ENGINE = None
 
 
@@ -33,6 +35,30 @@ def _get_engine():
     from self_improvement import SelfImprovementEngine
     _ENGINE = SelfImprovementEngine(_PLUGIN_DIR)
     return _ENGINE
+
+
+def _lesson_suppressor():
+    """Predicate over an experience's metadata: True = do not serve it.
+
+    Quarantine-born lessons stop being served once their quarantine is released or the
+    code that filed them changes (helpers/failure_fingerprint.py, Opus ruling 2026-09-23).
+    Filters what is SERVED and never touches the engine's list: this engine instance is
+    shared with record_experience, which writes the whole list back to disk, so removing
+    entries from it here would delete them. If the helper cannot load, serve everything,
+    as before this existed.
+    """
+    try:
+        if _EXOCORTEX_HELPERS not in sys.path:
+            sys.path.insert(0, _EXOCORTEX_HELPERS)
+        import failure_fingerprint as ff
+        return ff.lesson_suppressor()
+    except Exception:
+        return lambda _metadata: False
+
+
+def _served(engine, suppressed) -> list:
+    """The engine's experiences minus suppressed ones, as a new list."""
+    return [e for e in engine.experiences if not suppressed(getattr(e, "metadata", None) or {})]
 
 
 # ── Tools ─────────────────────────────────────────────────────────────────────
@@ -100,7 +126,12 @@ class SelfImprovementGetExperiences(Tool):
         max_results = int(self.args.get("max_results", 5))
         try:
             engine = _get_engine()
-            experiences = engine.get_relevant_experiences(task_type, max_results)
+            # The engine's own selection (task type, newest first) over every match, then
+            # suppressed lessons dropped, then the limit. Nothing is removed from the engine.
+            suppressed = _lesson_suppressor()
+            everything = engine.get_relevant_experiences(task_type, len(engine.experiences))
+            experiences = [e for e in everything
+                           if not suppressed(getattr(e, "metadata", None) or {})][:max_results]
             if not experiences:
                 return Response(message=f"No experiences found for task_type '{task_type}'", break_loop=False)
             lines = [f"Found {len(experiences)} experience(s) for '{task_type}':"]
@@ -119,7 +150,11 @@ class SelfImprovementGetSuggestions(Tool):
     async def execute(self, **kwargs) -> Response:
         try:
             engine = _get_engine()
-            suggestions = engine.get_improvement_suggestions()
+            # The engine's own method, run over a VIEW holding only the lessons that may be
+            # served. A view, not the engine: its list must not change (see _lesson_suppressor).
+            view = SimpleNamespace(experiences=_served(engine, _lesson_suppressor()),
+                                   tasks=engine.tasks, stats=engine.stats)
+            suggestions = type(engine).get_improvement_suggestions(view)
             if not suggestions:
                 return Response(message="No improvement suggestions yet — need more experience data.", break_loop=False)
             lines = [f"Improvement suggestions ({len(suggestions)}):"]

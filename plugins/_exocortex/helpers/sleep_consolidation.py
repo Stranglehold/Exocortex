@@ -34,6 +34,22 @@ if _EXOCORTEX_PATH not in sys.path:
     sys.path.insert(0, _EXOCORTEX_PATH)
 
 
+def _is_quarantine_lesson(tags) -> bool:
+    """An anti-pattern filed by the A1 quarantine (helpers/failure_fingerprint.py).
+
+    Kept out of dedup and out of Phase 2's "already covered" check (Opus ruling,
+    2026-09-23): a quarantine lesson says "this exact call failed identically three
+    times", a loop lesson says "the agent repeated this tool", and merging them by
+    tool:domain lets one shadow the other. If the helper cannot be imported, nothing
+    counts as a quarantine lesson, which is exactly the behaviour before this existed.
+    """
+    try:
+        import failure_fingerprint as ff
+        return ff.is_quarantine_lesson(tags)
+    except Exception:
+        return False
+
+
 # ── Public API ───────────────────────────────────────────────────────────────
 
 def stage_journal_observations(
@@ -453,6 +469,7 @@ def run_phase1_consolidation(session_id: str = "unknown", agent=None) -> dict:
     anti_patterns = [
         s for s in pm.index["skills"]
         if s.get("type") == "ANTI-PATTERN" and s.get("problem_pattern_hash")
+        and not _is_quarantine_lesson(s.get("tags"))
     ]
 
     groups: Dict[str, List[dict]] = {}
@@ -500,6 +517,7 @@ def run_phase1_consolidation(session_id: str = "unknown", agent=None) -> dict:
         survivors = [
             s for s in pm.index["skills"]
             if s.get("type") == "ANTI-PATTERN"
+            and not _is_quarantine_lesson(s.get("tags"))
         ]
 
         def _ap_sig(entry):
@@ -606,10 +624,14 @@ def run_phase2_consolidation(session_id: str = "unknown") -> dict:
         consecutive = pattern.get("consecutive", 3)
 
         # Check if this tool+domain pair is already in procedural memory
-        existing = pm.search_by_tags(
-            tags=[failing_tool],
-            type_filter="ANTI-PATTERN",
-        )
+        existing = [
+            e for e in pm.search_by_tags(
+                tags=[failing_tool],
+                type_filter="ANTI-PATTERN",
+            )
+            # A quarantine lesson is about one call, not a loop: it does not cover this.
+            if not _is_quarantine_lesson(e.get("tags"))
+        ]
         if existing:
             result["already_covered"] += 1
             continue
@@ -887,18 +909,46 @@ def run_phase5_consolidation(session_id: str = "unknown", phase2_result: Optiona
             pre_check = (pattern.get("pre_action_check") or "").strip()
             lessons = [pre_check] if pre_check else [f"Avoid repeated {tool} calls without state change"]
             consecutive = pattern.get("consecutive", 3)
-            src = ("supervisor Tier-4" if any("loop-recovery" in t for t in pattern.get("tags", []))
-                   else "sleep Phase 2")
+            tags = pattern.get("tags", [])
+
+            if _is_quarantine_lesson(tags):
+                # A quarantine lesson: carry its provenance (qfp/qkey) into the
+                # experience, where the agentevolver tool checks it on read, and describe
+                # it as what it is. It was labelled "supervisor Tier-4" with "consecutive
+                # calls" until 2026-09-23, because create_anti_pattern adds loop-recovery
+                # to every anti-pattern; the strikes were spread over many cycles.
+                try:
+                    import failure_fingerprint as ff
+                    qfp, qkey = ff.lesson_provenance(tags)
+                except Exception:
+                    qfp = qkey = None
+                description = (
+                    f"A call to '{tool}' in domain '{domain}' was quarantined after "
+                    f"{consecutive} identical failures — captured by the A1 quarantine."
+                )
+                actions = [f"called '{tool}' the same way {consecutive} times, failing identically"]
+                metadata = {
+                    "tags": list(tags),
+                    "quarantine_fingerprint": qfp,
+                    "quarantine_invalidation_key": qkey,
+                }
+            else:
+                src = ("supervisor Tier-4" if any("loop-recovery" in t for t in tags)
+                       else "sleep Phase 2")
+                description = (
+                    f"Agent looped on tool '{tool}' in domain '{domain}' "
+                    f"({consecutive} consecutive calls) — captured by {src}."
+                )
+                actions = [f"called '{tool}' {consecutive}+ times without progress"]
+                metadata = None
 
             engine.add_experience(
                 task_type=domain,
-                task_description=(
-                    f"Agent looped on tool '{tool}' in domain '{domain}' "
-                    f"({consecutive} consecutive calls) — captured by {src}."
-                ),
-                actions=[f"called '{tool}' {consecutive}+ times without progress"],
+                task_description=description,
+                actions=actions,
                 outcome="failure",
                 lessons_learned=lessons,
+                metadata=metadata,
             )
             pattern["engine_consumed"] = True
             result["experiences_recorded"] += 1

@@ -54,7 +54,7 @@ DIAGNOSIS_KEY = "_error_diagnosis"     # set by _20_error_comprehension
 
 
 class FailureFingerprint(Extension):
-    """tool_execute_after: accumulate strikes per failure fingerprint."""
+    """tool_execute_after: accumulate strikes per attempt, per failure."""
 
     def _log(self, msg: str) -> None:
         print(f"[QUARANTINE] {msg}", flush=True)
@@ -66,6 +66,21 @@ class FailureFingerprint(Extension):
             conf = ff.cfg()
             if not conf.get("enabled", True):
                 return
+
+            scope = self.agent.get_data(ff.OP_SCOPE_KEY)
+
+            # A session reset ran (this hook only fires for calls that executed, since a
+            # refused call raises before it). Delete the strikes that described the old
+            # session state BEFORE recording anything about this call, whether or not the
+            # call failed: the reset happened either way. Consume the flag so one reset
+            # clears once.
+            if self.agent.get_data(ff.OP_RESET_KEY):
+                self.agent.set_data(ff.OP_RESET_KEY, False)
+                cleared = ff.clear_session(scope)
+                if cleared:
+                    self._log(f"session {scope.get('session')} reset — cleared "
+                              f"{len(cleared)} session-state entr{'y' if len(cleared) == 1 else 'ies'}: "
+                              f"{', '.join(cleared)}")
 
             diag = self.agent.get_data(DIAGNOSIS_KEY)
             if not isinstance(diag, dict) or not diag.get("error_class"):
@@ -82,6 +97,7 @@ class FailureFingerprint(Extension):
                 message=message,
                 op_sig=op_sig,
                 evidence=diag,
+                scope=scope,
             )
 
             if result.get("invalidated"):
@@ -91,16 +107,22 @@ class FailureFingerprint(Extension):
             fp = result["fingerprint"]
 
             if result["quarantined"] and strikes >= int(conf["strikes_to_quarantine"]):
+                session_state = ff.is_session_state({"error_class": error_class, "scope": scope})
+                reset_path = (f"a reset of terminal session {scope.get('session')}, "
+                              if session_state else "")
                 self._log(
                     f"STRIKE {strikes} — QUARANTINED {tool}/{error_class} fp={fp}. "
-                    f"This attempt will be refused until the fingerprint is invalidated "
-                    f"(gating code change, model profile change, or explicit release)."
+                    f"This attempt will be refused until {reset_path}a gating code change, "
+                    f"a model profile change, or an explicit release."
                 )
+                advice = (f"Terminal session {scope.get('session')} is still busy with an "
+                          f"earlier command; resetting it (reset: true) clears this."
+                          if session_state else "Try a different approach.")
                 try:
                     self.agent.context.log.log(
                         type="warning",
                         content=(f"[QUARANTINE] {tool}/{error_class} quarantined after "
-                                 f"{strikes} identical failures. Try a different approach."),
+                                 f"{strikes} identical failures. {advice}"),
                     )
                 except Exception:
                     pass
@@ -135,6 +157,7 @@ class FailureFingerprint(Extension):
         to try.
         """
         try:
+            import failure_fingerprint as ff
             from procedural_memory_api import ProceduralMemory  # type: ignore
 
             domain = "general"
@@ -155,7 +178,10 @@ class FailureFingerprint(Extension):
                 domain=domain,
                 consecutive=strikes,
                 pre_action_check=check,
-                tags=["quarantine", "three-strike", f"fp:{fp}"],
+                # qfp/qkey: the lesson's provenance, so it stops being served once this
+                # quarantine is released or the code that filed it changes (Opus ruling,
+                # 2026-09-23; ff.lesson_suppressor).
+                tags=["quarantine", "three-strike", f"fp:{fp}"] + ff.quarantine_lesson_tags(fp),
             )
             self._log(f"anti-pattern filed for Phase 5 (fp={fp}, domain={domain})")
         except Exception as e:
