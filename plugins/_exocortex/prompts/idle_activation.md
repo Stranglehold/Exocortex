@@ -70,7 +70,8 @@ Your priorities (wiki deepening):
    Add the new page to wiki/index.md under "Research" before beginning.
 3. Deepen the page — GROUND IT IN THE SHARED CORPUS FIRST, before reaching for the web:
    - Call **search_memory** again with the page's title — the shared Exocortex corpus: every agent's wiki pages, specs, prior field reports, saved memories, and your conversations with Jake. Pull what the team already knows about this topic.
-   - Call **search_library** (the exocortex_memory tool) — a 355-book technical reference library (security, ML, systems, networking) — for grounded, citable source material.
+   - Call **search_library** (the exocortex_memory tool) — the technical reference library (security, ML, systems, networking) — for grounded, citable source material.
+   - Whether the library is available is decided only by calling **list_collections** (the exocortex_memory tool) in this cycle and reading its answer. A terminal command, a file path, or a memory or journal line from an earlier cycle is not evidence of its current state.
    - THEN fill the remaining gaps — reach for the SPECIALIST tool that fits the gap, not a generic search:
      - **arxiv** (MCP tool) — when you need research papers: search, download, read. Call the tool; do NOT web_search for arXiv.
      - **context7** (MCP tool) — when the gap is a library/framework/API specific: current syntax, version differences, config options. Prefer it over web_search, which returns stale or blog-grade docs.
@@ -146,7 +147,7 @@ Record the query and results_count for your --activity line (`q="…" n=…`).
 If the exocortex_memory tool is not in your tool list, has no schema shown, or a call returns "Tool exocortex_memory not found": do NOT retry and do not guess other names or argument shapes. Write `q=unavailable n=0` in your --activity line and continue with the next step. The tool being down is a fact to record, not a task to solve; a cycle that spends its turns retrying a dead tool makes no progress and is reaped.
 
 Your task: Research the selected topic autonomously.
-- Pull grounded reference material from **search_library** (exocortex_memory, 355 books) wherever it helps.
+- Pull grounded reference material from **search_library** (exocortex_memory, the technical reference library) wherever it helps.
 - THEN follow threads outward, reaching for the SPECIALIST tool that fits the thread:
   - **arxiv** (MCP tool) — research papers: search, download, read. Call the tool; do NOT web_search for arXiv.
   - **context7** (MCP tool) — library/framework/API specifics: current syntax, versions, config options.

@@ -57,6 +57,10 @@ ENGINE_STATE = os.path.join(OFFICE, "engine_state.json")
 # current system.
 _INVALIDATORS = [
     "/a0/usr/plugins/_exocortex/extensions/python/tool_execute_before/_20_meta_reasoning_gate.py",
+    # This file too (2026-09-23): op_signature() lives here, so a change to how an ATTEMPT is
+    # identified turns every stored signature into a statement in the old scheme. Without this
+    # line, a quarantine recorded under the old scheme would outlive a fix to the scheme itself.
+    "/a0/usr/plugins/_exocortex/helpers/failure_fingerprint.py",
     "/a0/usr/plugins/_model_config/presets.yaml",
 ]
 
@@ -147,19 +151,37 @@ def _normalize_arg(v: str, max_len: int = 120) -> str:
     return _RX_WS.sub(" ", (v or "")).strip().lower()[:max_len]
 
 
+# Arguments whose VALUE is the identity of the call. They are hashed in full instead of being
+# reduced to a length bucket. The bucket is right for a document body, where another argument
+# (the path) names the target; it is wrong when the payload IS the target. For
+# code_execution_tool the script is the whole call. Bucketed, every 121-999-char python script
+# carried one signature, so three hung-terminal failures (cycles 676-711) quarantined every short
+# python call Aporia made from 2026-09-21 to 09-23. That included the journal write that would
+# have corrected a stale belief.
+#
+# Hashed EXACTLY, apart from outer whitespace and line endings. Collapsing inner whitespace or
+# case (what _normalize_arg does) would make a script whose fix IS an indentation or a path's
+# case look identical to the broken one, and block the fix. Under-quarantining is the safe
+# direction (see _normalize_arg).
+_IDENTITY_ARGS = {("code_execution_tool", "code")}
+
+
 def op_signature(tool: str, args: dict | None) -> str:
     """Identity of an ATTEMPT. Pre-execution.
 
     Only the *shape* of the call is used, not full payloads: a 20KB document body
     differs on every call and would make every attempt unique. Long string values
     are reduced to a length bucket so 'write a big file to X' matches itself across
-    cycles while still separating different targets.
+    cycles while still separating different targets. Arguments in _IDENTITY_ARGS are
+    the exception: their content is hashed, so only a truly identical attempt matches.
     """
     norm = []
     for k in sorted((args or {}).keys()):
         v = (args or {})[k]
         if isinstance(v, str):
-            if len(v) > 120:
+            if (tool, k) in _IDENTITY_ARGS:
+                norm.append(f"{k}=<sha:{_h('arg', v.replace(chr(13) + chr(10), chr(10)).strip())}>")
+            elif len(v) > 120:
                 norm.append(f"{k}=<str:{len(v) // 1000}k>")
             else:
                 norm.append(f"{k}={_normalize_arg(v)}")
