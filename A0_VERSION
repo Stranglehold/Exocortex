@@ -20,4 +20,18 @@
 #   audit showing zero LEGACY writes.
 #   Verify with: scripts/verify_plugin_parity.py + scripts/check_core_patch_staleness.py
 #                + scripts/audit_install_writes.sh
-v2.9
+# v2.12 pinned 2026-09-24 — Opus ruling 2 (revised), on Jake's approval of the plugin audit.
+#   A0's boot-layer updater had already moved agent-zero-v2 to v2.12 on 2026-09-19, so the
+#   pin had been refusing the one container we run. The bump rests on:
+#     - layout parity on agent-zero-v2: DIFFERENT 0, the legacy roots empty (/a0/python,
+#       /a0/usr/agents/agent0, /a0/usr/plugins/exocortex);
+#     - ZERO core overwrites left in the pipeline: the 26 layer-1..3 core writes were retired
+#       (archive/a0-core-writes-v29/, all measured absent on v2.12), and the OSS/SWARMFISH
+#       steps that docker cp'd into /a0/tools were taken out. What still touches /a0 outside
+#       /a0/usr is the PTY reaper (intentional, anchor-gated, reversible) and a mkdir of
+#       /a0/work/artifacts (artifact_create's own output dir; overwrites nothing);
+#     - five days of her cycles running on v2.12.
+#   NOT yet met from the v2.9 procedure: a fresh v2.12 container built BY the pipeline. The
+#   first pipeline install on v2.12 (Vek) is that gate. Run verify_plugin_parity.py,
+#   check_core_patch_staleness.py and audit_install_writes.sh there before trusting it.
+v2.12

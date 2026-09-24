@@ -59,3 +59,15 @@ extensions/python/message_loop_prompts_after/_24_skill_surfacer.py
 # carries the .py. Counted here because the repo copy is what a fresh install would deploy.
 # ---------------------------------------------------------------------------------------------
 extensions/python/message_loop_prompts_after/_23_pace_plan_injector.py
+
+# ---------------------------------------------------------------------------------------------
+# SWARMFISH disabled — 2 files, 2026-09-24 (Jake: "Disable it", after the plugin audit).
+# The tools were advertised to Aporia, but their engine (/a0/usr/plugins/swarmfish) was never
+# installed on her container; her one call, on 09-21, failed with "No module named 'swfsrc'". The
+# enabled prompts were removed from the repo and moved off her container
+# (/a0/usr/_legacy_backup/swarmfish-disable-20260924/). Their byte-identical *.md.disabled twins
+# stay in the tree as the record. tools/swarmfish*.py stay: nothing advertises them any more.
+# Re-enabling means installing the engine first (a v2-layout installer) — Jake's call.
+# ---------------------------------------------------------------------------------------------
+prompts/agent.system.tool.swarmfish.md
+prompts/agent.system.tool.swarmfish_panel.md

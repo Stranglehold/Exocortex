@@ -1,7 +1,8 @@
 """Which A0 core files does our install pipeline overwrite with a STALE version?
 
 Mechanical test, run inside the container: for every core .py the installer
-modified, compare our deployed version against the v2.9 stock (from git) and
+modified, compare our deployed version against the stock A0 checked out in /a0
+(git HEAD, whatever the pin is: v2.9 until 2026-09-24, v2.12 since) and
 report any top-level symbol that stock defines and ours DROPS.
 
 A dropped symbol is how the two bricks found today happened:

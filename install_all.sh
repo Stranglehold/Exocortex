@@ -54,11 +54,13 @@ log_skip()    { echo -e "    ~ $1 (not found — skipped)"; }
 # overwrite files A0 has since changed. This gate fails loud on mismatch.
 # Override with --force (e.g. during a deliberate, validated upgrade).
 #
-# 2026-09-24: the 26 core writes of layers 1-3 are retired (see LAYERS). What still
-# touches /a0 outside /a0/usr: the PTY reaper below (intentional, anchor-gated,
-# reversible), the OSS and SWARMFISH installers (docker cp into /a0/tools, A0's own
-# tools dir) and install_artifact_system.sh (mkdir /a0/work/artifacts). The pin
-# stays at v2.9 until those are resolved, and only then moves to v2.12.
+# 2026-09-24: the 26 core writes of layers 1-3 are retired, and so are the OSS and
+# SWARMFISH steps that docker cp'd into /a0/tools (see LAYERS). What still touches /a0
+# outside /a0/usr: the PTY reaper below (intentional, anchor-gated, reversible) and
+# install_artifact_system.sh's mkdir of /a0/work/artifacts (the artifact tool's own
+# output dir; it overwrites nothing). The pin moved to v2.12 the same day; see
+# A0_VERSION for what that rests on, and for the one gate still open (the first
+# pipeline-built v2.12 container).
 preflight_a0_version() {
   local pin_file="$SCRIPT_DIR/A0_VERSION"
   if [ ! -f "$pin_file" ]; then
@@ -171,8 +173,16 @@ LAYERS=(
   "9|AgentEvolver self-improvement plugin|scripts/install_agentevolver.sh"
   "9|Sleep consolidation (Phases 1-4)   |scripts/install_sleep_consolidation.sh"
   "10|Document library (tools + catalog) |scripts/install_library.sh"
-  "11|OSS V2 plugin (Intel tab + tools) |services/oss_plugin/install.sh"
-  "11|SWARMFISH V2 plugin (committee)   |services/swarmfish_plugin/install.sh"
+  # ── TWO STEPS RETIRED 2026-09-24 (Jake: "Disable it"): OSS V2 and SWARMFISH V2 ────────────
+  # Neither engine is installed on agent-zero-v2 (/a0/usr/plugins/oss and /a0/usr/plugins/swarmfish
+  # are absent), and both installers still used the pre-v1.13 layout: they docker cp'd 14 and 6
+  # tool files into /a0/tools, which on v2.12 is A0's OWN tools directory, where they would be
+  # orphans that the next A0 update wipes. SWARMFISH's tool prompts were live anyway, and her one
+  # call (09-21) failed on "No module named 'swfsrc'"; those prompts are now disabled and recorded
+  # in scripts/retired_manifest.txt. The installers stay in services/ untouched; re-adding either
+  # step means rewriting it for the v2 plugin layout first (no writes into /a0/tools). Jake's call.
+  #   "11|OSS V2 plugin (Intel tab + tools) |services/oss_plugin/install.sh"
+  #   "11|SWARMFISH V2 plugin (committee)   |services/swarmfish_plugin/install.sh"
   "12|Idle engine + idle_watch daemon   |scripts/install_idle_engine.sh"
   "12|SearXNG academic-engine config    |services/searxng/install.sh"
   "14|Epistemic integrity layer         |scripts/install_epistemic_integrity.sh"
