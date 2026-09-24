@@ -60,6 +60,14 @@ try:
 except Exception:  # pragma: no cover - helper missing
     recall_query = None  # type: ignore[assignment]
 
+# R3 (memory lifecycle design, Opus 2026-09-23): the recall frame says when a state observation
+# is old, and when a newer observation of a subject a memory mentions exists
+# (helpers/memory_temporal.py). If the helper cannot load, the frame is the save date alone.
+try:
+    import memory_temporal as _mt
+except Exception:  # pragma: no cover - helper missing
+    _mt = None  # type: ignore[assignment]
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 CONFIG_PATH = "/a0/usr/memory/classification_config.json"
@@ -165,6 +173,14 @@ class MemoryEnhancement(Extension):
             if not all_docs:
                 return
 
+            # R3: each keyed subject's current observation, read once for both frames below.
+            observations = {}
+            if _mt is not None:
+                try:
+                    observations = _mt.current_observations(all_docs)
+                except Exception:
+                    observations = {}
+
             # ── Load thresholds ───────────────────────────────────────────
             max_injected = config.get("max_injected_memories", 8)
             sim_threshold = 0.3
@@ -219,7 +235,7 @@ class MemoryEnhancement(Extension):
                 )
 
                 if result:
-                    txt = _with_provenance(result)
+                    txt = _with_provenance(result, observations, config)
                     try:
                         extras["memories"] = self.agent.parse_prompt(
                             "agent.system.memories.md", memories=txt,
@@ -250,7 +266,7 @@ class MemoryEnhancement(Extension):
                     )
 
                     if result:
-                        txt = _with_provenance(result)
+                        txt = _with_provenance(result, observations, config)
                         try:
                             extras["solutions"] = self.agent.parse_prompt(
                                 "agent.system.solutions.md", solutions=txt,
@@ -273,6 +289,20 @@ class MemoryEnhancement(Extension):
                     db._save_db()
                 except Exception:
                     pass
+
+            # ── Recall tag (R4, memory lifecycle design, Opus 2026-09-23) ──
+            # Mark what this monologue recalled, so the writers can refuse to re-save it as new
+            # evidence (helpers/memory_recall_tag.py). Placed before co-retrieval logging: that
+            # call is not individually guarded, and a failure there must not skip the tag.
+            if all_injected_ids:
+                try:
+                    import memory_recall_tag as mrt
+
+                    n = mrt.tag(self.agent, all_injected_ids)
+                    print(f"[MEM-ENHANCE] Recall tag: {len(all_injected_ids)} this pass, "
+                          f"{n} this monologue", flush=True)
+                except Exception as tag_err:
+                    print(f"[MEM-ENHANCE] Recall tag skipped — {type(tag_err).__name__}", flush=True)
 
             # ── Co-retrieval logging ──────────────────────────────────────
             if all_injected_ids:
@@ -626,7 +656,7 @@ def _role_domain_overlaps(
 
 # ── Access Tracking ──────────────────────────────────────────────────────────
 
-def _with_provenance(result):
+def _with_provenance(result, observations=None, config=None, now=None):
     """Prefix each recalled memory with what it is and when it was saved.
 
     WHY, measured 2026-09-19. A memory arrives in the [EXTRAS] block as BARE PROSE — no
@@ -649,7 +679,14 @@ def _with_provenance(result):
     RENDER-TIME ONLY. `page_content` is what was saved and stays what was saved. A prefix that
     reached the store would be re-recalled and re-prefixed next turn, which is the compounding
     shape one layer down.
+
+    R3 (memory lifecycle design, 2026-09-23) adds clauses to the same head, also at render time
+    only (helpers/memory_temporal.py): a state observation past its stale threshold says how
+    old it is, and an unkeyed memory that names a keyed subject says when a newer observation of
+    that subject exists. The save date stays first; a memory with neither clause renders
+    exactly as before.
     """
+    now = now or datetime.now(timezone.utc)
     out = []
     for doc, _score in result:
         text = getattr(doc, "page_content", "") or ""
@@ -657,8 +694,13 @@ def _with_provenance(result):
         stamp = str(meta.get("timestamp") or "")[:10]   # YYYY-MM-DD
         # An undated memory says so. Silently omitting the date would make it read as
         # current, which is the defect; guessing one would be worse.
-        head = ("recalled memory (saved %s):" % stamp) if stamp \
-            else "recalled memory (save date unknown):"
+        clauses = [("saved %s" % stamp) if stamp else "save date unknown"]
+        if _mt is not None:
+            try:
+                clauses += _mt.frame_clauses(doc, observations or {}, now, config)
+            except Exception:
+                pass
+        head = "recalled memory (%s):" % "; ".join(clauses)
         out.append(head + "\n" + text)
     return "\n\n".join(out)
 

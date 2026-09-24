@@ -36,6 +36,17 @@ from helpers.dirty_json import DirtyJson
 from helpers.log import LogItem
 from helpers.defer import DeferredTask, THREAD_BACKGROUND
 
+# R2 (memory lifecycle design, Opus 2026-09-23, A19): who said it is decided by structure, in
+# helpers/memory_source.py, shared with _53 and _55. If that helper cannot load, this file
+# behaves exactly as before (the model's label), which is the design's degradation rule.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in __import__("sys").path:
+    __import__("sys").path.insert(0, _EXOCORTEX_HELPERS)
+try:
+    import memory_source as _ms
+except Exception:  # pragma: no cover - helper missing
+    _ms = None
+
 # ── Metadata keys (must match _55_memory_classifier.py) ─────────────────────
 
 CLS_KEY = "classification"
@@ -166,6 +177,11 @@ class SelectiveMemorizer(Extension):
             stored_count = 0
             skipped_count = 0
 
+            # R2 inputs, read once: the message that started this monologue, and the results
+            # of this exchange's non-memory tool calls (helpers/memory_source.py).
+            user_msg = _ms.user_message_text(loop_data) if _ms else ""
+            tool_texts = _ms.tool_returns(self.agent) if _ms else []
+
             for mem in memories:
                 if isinstance(mem, str):
                     mem = {
@@ -213,6 +229,14 @@ class SelectiveMemorizer(Extension):
                 else:
                     area = Memory.Area.FRAGMENTS.value
 
+                # R2: who said it comes from structure, not from the model's label above (the
+                # model was reading tool results printed as "USER:"). Decided after the area,
+                # because solutions are always agent_inferred.
+                if _ms is not None:
+                    source = _ms.derive_source(self.agent, text, user_msg=user_msg,
+                                               tool_texts=tool_texts, area=area)
+                    validity = _ms.validity_for(source)
+
                 bst_domain = ""
                 try:
                     store = getattr(self.agent, "_bst_store", {})
@@ -224,6 +248,9 @@ class SelectiveMemorizer(Extension):
                 metadata = {
                     "area": area,
                     "signal_type": signal_type,
+                    # R3: when the observation was made. This monologue's end, the latest it
+                    # can have been; the recall frame reads it (helpers/memory_temporal.py).
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
                     CLS_KEY: {
                         "validity": validity,
                         "relevance": "active",
@@ -271,8 +298,16 @@ class SelectiveMemorizer(Extension):
 
         parts = []
         for msg in recent:
-            role = "ASSISTANT" if msg["ai"] else "USER"
             content = msg.get("content", "")
+            # A19 (d): A0 records every tool result as a non-AI message, so "not AI" is not
+            # "the user". Say what the entry is, so the model is not told tool output is the
+            # user speaking.
+            if msg["ai"]:
+                role = "ASSISTANT"
+            elif _ms is not None and _ms.is_tool_entry(content):
+                role = "TOOL"
+            else:
+                role = "USER"
             if isinstance(content, list):
                 content = " ".join(
                     p.get("text", "") if isinstance(p, dict) else str(p)

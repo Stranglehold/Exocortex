@@ -32,6 +32,17 @@ from agent import LoopData
 from helpers.extension import Extension
 from plugins._memory.helpers.memory import Memory
 
+# R2 (memory lifecycle design, Opus 2026-09-23, A19): who said it is decided by structure in
+# helpers/memory_source.py, shared with _52 and _55. If the helper cannot load, this file
+# behaves as before.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in __import__("sys").path:
+    __import__("sys").path.insert(0, _EXOCORTEX_HELPERS)
+try:
+    import memory_source as _ms
+except Exception:  # pragma: no cover - helper missing
+    _ms = None
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 MIN_SENTENCE_WORDS = 5        # Skip fragments shorter than this
@@ -118,7 +129,17 @@ class ConversationalInsightCapture(Extension):
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
         try:
-            user_msg = self._get_recent_user_message()
+            if _ms is not None:
+                # R2 rule 1 (A19): in an idle cycle or a subordinate agent the "user" is the
+                # daemon's activation prompt or a delegating agent, not Jake. These patterns
+                # are tuned to Jake's own speech, so there is nothing here to capture.
+                if _ms.is_restricted(self.agent):
+                    return
+                # A19 (a): the message that started this monologue. The last non-AI history
+                # entry, which this used to read, is often a tool result.
+                user_msg = _ms.user_message_text(loop_data)
+            else:
+                user_msg = self._get_recent_user_message()
             if not user_msg or len(user_msg.strip()) < 20:
                 return
 
@@ -146,14 +167,21 @@ class ConversationalInsightCapture(Extension):
                 if await _is_duplicate(db, text):
                     continue
 
+                # R2: derived like every other writer's; for a sentence taken from the user's
+                # own message in an interactive context this is user_asserted / confirmed.
+                source = (_ms.derive_source(self.agent, text, user_msg=user_msg)
+                          if _ms is not None else "user_asserted")
+                validity = _ms.validity_for(source) if _ms is not None else "confirmed"
                 metadata = {
                     "area": Memory.Area.FRAGMENTS.value,
                     "signal_type": f"conversational_{category}",
+                    # R3: when the statement was captured (helpers/memory_temporal.py).
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
                     CLS_KEY: {
-                        "validity": "confirmed",
+                        "validity": validity,
                         "relevance": "active",
                         "utility": utility,
-                        "source": "user_asserted",
+                        "source": source,
                     },
                     LIN_KEY: {
                         "created_at": datetime.now(timezone.utc).isoformat(),

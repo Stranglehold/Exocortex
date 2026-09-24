@@ -38,6 +38,33 @@ from agent import LoopData
 from helpers.extension import Extension
 from plugins._memory.helpers.memory import Memory
 
+# R2 (memory lifecycle design, Opus 2026-09-23, A19): the source of a memory saved through the
+# memory_save tool is decided by structure in helpers/memory_source.py, shared with _52 and
+# _53. If the helper cannot load, _detect_source keeps its previous rules.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in __import__("sys").path:
+    __import__("sys").path.insert(0, _EXOCORTEX_HELPERS)
+try:
+    import memory_source as _ms
+except Exception:  # pragma: no cover - helper missing
+    _ms = None
+
+# R1 (memory lifecycle design, Opus 2026-09-23, A18): memories that name the same subject key
+# are the same fact; one stands and the rest point to it (helpers/memory_supersede.py). If the
+# helper cannot load, the keyed pass is skipped and this file behaves as before.
+try:
+    import memory_supersede as _msup
+except Exception:  # pragma: no cover - helper missing
+    _msup = None
+
+# R3 (memory lifecycle design, Opus 2026-09-23): a memory this file classifies gets `observed_at`
+# from its own save time, and a keyed memory without a volatility class gets its key's default
+# (helpers/memory_temporal.py). If the helper cannot load, neither is written.
+try:
+    import memory_temporal as _mt
+except Exception:  # pragma: no cover - helper missing
+    _mt = None
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 CONFIG_PATH = "/a0/usr/memory/classification_config.json"
@@ -151,6 +178,8 @@ class MemoryClassifier(Extension):
             # ── Phase 1: Classify untagged memories ──────────────────────
             # Read loop state once; passed to _classify for loop_period tagging
             agent_is_looping = bool(self.agent.get_data("_loop_active"))
+            # R2: this exchange's non-memory tool results, read once (helpers/memory_source.py)
+            tool_texts = _ms.tool_returns(self.agent) if _ms else []
 
             newly_classified = []
             for doc_id, doc in all_docs.items():
@@ -160,11 +189,14 @@ class MemoryClassifier(Extension):
                     continue  # Already classified
 
                 doc.metadata[CLS_KEY] = _classify(
-                    doc, user_msg, config, agent_is_looping
+                    doc, user_msg, config, agent_is_looping,
+                    agent=self.agent, tool_texts=tool_texts,
                 )
                 doc.metadata[LIN_KEY] = _new_lineage(
                     role_id, bst_domain, maint_cycle,
                 )
+                if _mt is not None and not doc.metadata.get("observed_at"):
+                    doc.metadata["observed_at"] = _mt.observed_at_for(doc, datetime.now(timezone.utc))
                 newly_classified.append((doc_id, doc))
 
                 # Staging buffer: record write for potential surgery rollback
@@ -191,8 +223,37 @@ class MemoryClassifier(Extension):
                     _resolve_conflict(all_docs, loser_id, winner_id)
                     conflict_count += 1
 
+            # ── Phase 2b: Keyed supersession (R1, A18) ────────────────────
+            # Found by KEY, not similarity: A13's "list_collections returned 526 books" and an
+            # agent's "the library seems down" share little wording and one subject. Runs over
+            # the whole store every pass, because A13's memories arrive already classified and
+            # never enter Phase 1. Idempotent: a second pass changes nothing.
+            # R3: a keyed memory without a volatility class takes its key's default first, so the
+            # stale frame at recall can read it. Idempotent like the pass below.
+            vol_set = []
+            if _mt is not None:
+                try:
+                    vol_set = _mt.ensure_volatility(all_docs)
+                except Exception as e:
+                    print(f"[MEM-VOLATILITY] skipped — {type(e).__name__}: {e}", flush=True)
+                    vol_set = []
+            if vol_set:
+                print("[MEM-VOLATILITY] set on %d keyed memories" % len(vol_set), flush=True)
+
+            keyed = []
+            if _msup is not None:
+                try:
+                    keyed = _msup.supersede_by_key(all_docs, datetime.now(timezone.utc))
+                except Exception as e:
+                    print(f"[MEM-KEYED] skipped — {type(e).__name__}: {e}", flush=True)
+                    keyed = []
+            if keyed:
+                shown = "; ".join(f"{l}->{w} ({k})" for l, w, k in keyed[:10])
+                more = " (first 10 of %d shown)" % len(keyed) if len(keyed) > 10 else ""
+                print("[MEM-KEYED] superseded %d%s: %s" % (len(keyed), more, shown), flush=True)
+
             # ── Phase 3: Persist changes ─────────────────────────────────
-            if newly_classified:
+            if newly_classified or keyed or vol_set:
                 try:
                     db._save_db()
                 except Exception:
@@ -202,7 +263,9 @@ class MemoryClassifier(Extension):
                     type="info",
                     content=(
                         f"[MEM-CLASS] Classified {len(newly_classified)} memories, "
-                        f"resolved {conflict_count} conflicts"
+                        f"resolved {conflict_count} conflicts, "
+                        f"superseded {len(keyed)} by subject key, "
+                        f"set volatility on {len(vol_set)}"
                     ),
                 )
 
@@ -271,12 +334,12 @@ def _extract_user_message(agent, loop_data) -> str:
 # ── Five-Axis Classification ────────────────────────────────────────────────
 
 def _classify(doc, user_msg: str, config: dict,
-              agent_is_looping: bool = False) -> dict:
+              agent_is_looping: bool = False, agent=None, tool_texts=()) -> dict:
     """Deterministic classification on five axes."""
     text = getattr(doc, "page_content", "")
     area = doc.metadata.get("area", "")
 
-    source = _detect_source(text, area, user_msg)
+    source = _detect_source(text, area, user_msg, agent=agent, tool_texts=tool_texts)
     validity = "confirmed" if source == "user_asserted" else "inferred"
     utility = _detect_utility(text, config)
     relevance = "active"
@@ -303,8 +366,17 @@ def _classify(doc, user_msg: str, config: dict,
     }
 
 
-def _detect_source(text: str, area: str, user_msg: str) -> str:
-    """Detect memory source from area metadata and content overlap."""
+def _detect_source(text: str, area: str, user_msg: str, agent=None, tool_texts=()) -> str:
+    """Detect memory source.
+
+    R2 (A19): with the agent in hand, structure decides, in helpers/memory_source.py. In an
+    idle cycle `user_msg` is the daemon's activation prompt, so the overlap rule below would
+    credit the prompt as the user's word; and a URL is not a tool return. The rules below are
+    kept as the fallback when the helper cannot load.
+    """
+    if _ms is not None and agent is not None:
+        return _ms.derive_source(agent, text, user_msg=user_msg, tool_texts=tool_texts, area=area)
+
     # Solutions are always agent-inferred
     if area == "solutions":
         return "agent_inferred"
@@ -406,8 +478,16 @@ def _new_lineage(role_id: str | None, bst_domain: str = "",
 # ── Conflict Detection ──────────────────────────────────────────────────────
 
 async def _detect_conflicts(db, new_doc, new_doc_id, all_docs, config):
-    """Find contradictions between new memory and existing ones."""
+    """Find contradictions between new memory and existing ones.
+
+    Keyed memories are out of scope here (A18). Their supersession is Phase 2b's, by key, and
+    these text heuristics deprecate whole memories on any matching clause: on 2026-09-23, 6 of
+    the 18 deprecated library memories had been retired by memories that were not about the
+    library at all. So a keyed memory neither retires nor is retired by this path.
+    """
     conflicts = []
+    if (getattr(new_doc, "metadata", None) or {}).get("subject_key"):
+        return conflicts
     top_k = config.get("conflict_top_k", 5)
 
     new_text = getattr(new_doc, "page_content", "")
@@ -454,6 +534,10 @@ async def _detect_conflicts(db, new_doc, new_doc_id, all_docs, config):
         # Skip already deprecated
         sim_cls = sim_doc.metadata.get(CLS_KEY, {})
         if sim_cls.get("validity") == "deprecated":
+            continue
+
+        # Keyed memories are Phase 2b's (A18): never retired by these heuristics.
+        if sim_doc.metadata.get("subject_key"):
             continue
 
         sim_text = getattr(sim_doc, "page_content", "")

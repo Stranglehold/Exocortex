@@ -61,6 +61,26 @@ DEFAULT_CONFIG = {
     "relevance_filter_enabled": False,
 }
 
+def _tag_recalled(agent, filtered) -> None:
+    """R4 (memory lifecycle design, Opus 2026-09-23): mark the ids this filter injects, the same
+    call _92 makes, so the writers can refuse to re-save them. Inert while this file is retired
+    (relevance_filter_enabled false); it rides the same path that would inject if it is flipped.
+    If it is flipped, _92 overwrites this filter's selection (see execute's header), so this
+    over-tags memories the model never saw: a refused re-save of those is a duplicate either way.
+    helpers/memory_recall_tag.py holds the key. Never raises."""
+    try:
+        import sys
+
+        helpers = "/a0/usr/plugins/_exocortex/helpers"
+        if helpers not in sys.path:
+            sys.path.insert(0, helpers)
+        import memory_recall_tag as mrt
+
+        mrt.tag(agent, [(getattr(doc, "metadata", None) or {}).get("id") for doc, _ in filtered])
+    except Exception:
+        pass
+
+
 # Metadata keys (must match _55_memory_classifier.py)
 CLS_KEY = "classification"
 LIN_KEY = "lineage"
@@ -173,6 +193,7 @@ class MemoryRelevanceFilter(Extension):
                             extras["memories"] = f"# Recalled Memories\n\n{txt}"
 
                         _update_access(filtered, all_docs)
+                        _tag_recalled(self.agent, filtered)
                     else:
                         del extras["memories"]
                 except Exception:
@@ -205,6 +226,7 @@ class MemoryRelevanceFilter(Extension):
                             extras["solutions"] = f"# Recalled Solutions\n\n{txt}"
 
                         _update_access(filtered, all_docs)
+                        _tag_recalled(self.agent, filtered)
                     else:
                         del extras["solutions"]
                 except Exception:
