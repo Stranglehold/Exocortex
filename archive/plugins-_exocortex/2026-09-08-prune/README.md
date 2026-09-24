@@ -42,9 +42,11 @@ These are the repo copies at commit ad09846, moved with `git mv`, so `git log --
 ## The container
 
 On Aporia's container (`agent-zero-v2`), each file was renamed in place on its retirement date:
-`<name>.PRUNED-20260908.txt`, and `_23_pace_plan_injector.RETIRED-20260902.txt`. The container also holds the
-pre-prune snapshot `extensions.bak-prune-20260908-214547/`, which is not tracked here. The markers are the record
-of what was switched off and when.
+`<name>.PRUNED-20260908.txt`, and `_23_pace_plan_injector.RETIRED-20260902.txt`. The markers are the record
+of what was switched off and when. The pre-prune snapshot `extensions.bak-prune-20260908-214547/` is not tracked
+here. The container tidy on 2026-09-24 (about 04:14Z) moved it out of the plugin tree to
+`/a0/usr/_legacy_backup/plugin-tidy-20260924/`. The host copy is
+`Kestrel/studies/2026-09-24-audit-backups/plugin-tidy-20260924.tar` (md5 `948ebd95`).
 
 The same mandate on 09-08 also switched off nine A0 core and bundled-plugin injectors. Those are not in this
 archive, because they are A0's files, not ours. They are re-applied after A0 updates by
@@ -77,3 +79,26 @@ call (DEC-051, "Revisit if"). To restore a file:
   09-08.
 - `services/a2a_server/config.py` reads `htn_plan_library.json` from `/a0/python/...`, a path that no longer
   exists, and not from here.
+
+## Provenance (Fable)
+
+*Lines supplied by Fable on 2026-09-24 (team inbox, 11:51Z) and added by Kestrel. Fable does not edit Exocortex
+files on relayed word.*
+
+- **Audit of record:** `Fable/studies/2026-09-19-exocortex-audit-protocol.md`. The 18 retirements are its rows
+  marked retired on 2026-09-08 (the Arm M prune, `Kestrel/studies/2026-09-08-arm-M-prune.md`), and they were
+  confirmed unconsumed on 2026-09-19.
+- **Parity EXTRA:**
+  - 113 by Fable's count on 09-19;
+  - 115 by Kestrel's count before the tidy, the difference being the two SWARMFISH prompts;
+  - 18 after the container tidy at 04:14Z on 09-24. The 18 that remain are the retirement markers, kept
+    deliberately as the record.
+- **"Present nowhere":** 18 retired sources. That became 20 once the two SWARMFISH prompts joined the manifest at
+  `b59b30b`.
+- **Also in Fable's plan for this step:**
+  - The container's dead `extensions.bak-prune-20260908-214547/` tree: **the tidy took it** (see "The container"
+    above).
+  - The 8 orphaned `hb0*` verifiers: **still open.** They were never in the container. They are repo files,
+    `harness/verifiers/hb01_…` to `hb08_…`, alongside stale `__pycache__` under older names, and the container
+    tidy did not touch them. Checked 2026-09-24 between 15:01Z and 15:04Z with a whole-filesystem `find` in `agent-zero-v2`
+    (none found) and a search of the repo (8 found).
