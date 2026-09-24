@@ -23,6 +23,18 @@ Compression rules (applied in order):
 Trigger: output > OUTPUT_TOKEN_THRESHOLD estimated tokens (approx chars/4).
 Below that, the output is small enough that compression isn't worth it.
 
+The one exception to head + tail: A0's "tool not found" response (Opus ruling 5, 2026-09-24).
+When a call names a tool that does not exist, A0's Unknown tool answers "Tool <name> not
+found. Available tools:" followed by the WHOLE tools prompt (~11K tokens on agent-zero-v2).
+Head + tail kept the first and last 30 lines of that list and dropped the middle. In cycle
+#751 the dropped middle held `memory_save`, the tool she needed. She read the kept list,
+concluded memory_save "isn't callable", and, following her no-guessing rule, skipped the
+save. The names ARE the recovery information, so for this one response shape the compressor
+now keeps every tool name, grouped under its section, and drops the descriptions, which are
+already in her system prompt. The shape is recognised from the response text, starting
+"Tool <this call's tool_name> not found" (or "does not exist"). If no names can be
+extracted (A0 changed the prompt format), it falls back to head + tail as before.
+
 Config (from /a0/usr/plugins/_exocortex/config/config.json under "output_compressor"):
   enabled:          bool (default True)
   token_threshold:  int  (default 800)
@@ -109,7 +121,12 @@ class ToolOutputCompressor(Extension):
                 if p
             ]
 
-            compressed = _compress(text, head_lines, tail_lines, extra_patterns)
+            # A "tool not found" response keeps every tool name (ruling 5; see the docstring).
+            names_view = _tool_names_view(text, tool_name) if _is_not_found(text, tool_name) else ""
+            if names_view:
+                compressed = names_view
+            else:
+                compressed = _compress(text, head_lines, tail_lines, extra_patterns)
 
             if compressed == text:
                 return  # Compression produced no change (short output, edge case)
@@ -125,6 +142,7 @@ class ToolOutputCompressor(Extension):
             msg = (
                 f"{LOG_TAG} {tool_name}: {original_tok}→{compressed_tok} "
                 f"est. tokens ({pct}% reduction)"
+                + (" [not-found: every tool name kept]" if names_view else "")
             )
             print(msg, flush=True)
             try:
@@ -140,6 +158,81 @@ class ToolOutputCompressor(Extension):
                 )
             except Exception:
                 pass
+
+
+# ── "Tool not found": keep every tool name (Opus ruling 5) ────────────────────
+# Header shapes in A0 v2.12's tools prompt (prompts/agent.system.mcp_*.md, the tool prompts):
+#   ## <section>                                   a section, e.g. "## available tools"
+#   ### <name>  (optionally "### <name>:")          a local tool
+#   ### MCP server `<server>` (group only; not a tool)
+#   #### MCP tool `<server>.<tool>`                 an MCP tool
+_NF_HEAD   = r"\s*Tool\s+[\"'`]?{name}[\"'`]?\s+(?:not found|does not exist)"
+_SECTION   = re.compile(r"^##\s+(?!#)(.+?)\s*$")
+_MCP_GROUP = re.compile(r"^###\s+MCP server\s+`([^`]+)`")
+_MCP_TOOL  = re.compile(r"^####\s+MCP tool\s+`([^`]+)`")
+_LOCAL     = re.compile(r"^###\s+(?!MCP server\b)([A-Za-z0-9_.:-]+?):?\s*$")
+# A0's own declaration shape (helpers/responses_tools.py TOOL_DECLARATION_PATTERN), used by
+# prompts that list several tools under one "## ..." section, e.g. the _memory plugin's
+# "- `memory_save`: args `text`, ...". Missing this rule lost memory_save on her real prompts.
+_DECLARED  = re.compile(r"^\s*-\s+`([A-Za-z0-9_-]{1,64})`:\s+args?\b", re.IGNORECASE)
+# A prompt titled with a level-1 heading, e.g. "# code_execution_remote tool" (_a0_connector).
+# A0 names such a tool from its first heading's first token; only a lone name (optionally
+# followed by "tool") is accepted here, so a titled section can never read as a tool.
+_TITLE     = re.compile(r"^#\s+([A-Za-z0-9_-]{1,64})(?:\s+tool)?\s*$", re.IGNORECASE)
+
+
+def _is_not_found(text: str, tool_name: str) -> bool:
+    """True when `text` is A0's Unknown-tool answer for THIS call's tool name."""
+    if not tool_name:
+        return False
+    return re.match(_NF_HEAD.format(name=re.escape(tool_name)), text) is not None
+
+
+def _tool_names_view(text: str, tool_name: str) -> str:
+    """The not-found response with every tool name kept and the descriptions dropped.
+
+    Returns "" when no tool name can be found (the prompt format changed), so the caller
+    falls back to head + tail instead of sending an empty list."""
+    groups: list[tuple[str, list[str]]] = []      # (label, names), in the order they appear
+    seen: set[str] = set()
+
+    def current(label: str) -> list[str]:
+        if not groups or groups[-1][0] != label:
+            groups.append((label, []))
+        return groups[-1][1]
+
+    label = "tools"
+    # Stock v2.12's fw.tool_not_found.md joins its first line to the list with a LITERAL "\n"
+    # (backslash + n), so split on that too, or the first section header shares a line.
+    for raw in _ANSI_RE.sub("", text).replace("\\n", "\n").splitlines():
+        line = raw.rstrip()
+        m = _MCP_GROUP.match(line)
+        if m:
+            label = f"MCP server `{m.group(1)}` (a group, not a tool)"
+            continue
+        m = _MCP_TOOL.match(line) or _LOCAL.match(line) or _DECLARED.match(line) or _TITLE.match(line)
+        if m:
+            name = m.group(1)
+        else:
+            s = _SECTION.match(line)
+            if s:
+                label = s.group(1).strip()
+            continue
+        if name and name not in seen:
+            seen.add(name)
+            current(label).append(name)
+
+    if not seen:
+        return ""
+    first = text.lstrip().splitlines()[0]
+    head = re.match(r"(.*?(?:not found|does not exist)\.?)", first)
+    out = [head.group(1) if head else f"Tool {tool_name} not found.",
+           f"Available tools, by exact name ({len(seen)}). Their descriptions are in your "
+           "system prompt. Call one of these names exactly:"]
+    for lbl, names in groups:
+        if names:
+            out.append(f"- {lbl}: " + ", ".join(names))
+    return "\n".join(out)
 
 
 # ── Compression logic ─────────────────────────────────────────────────────────
