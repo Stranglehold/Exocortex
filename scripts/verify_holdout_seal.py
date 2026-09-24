@@ -339,8 +339,13 @@ def check(container: str, hashes: dict) -> list:
 # every row returned four documents. This scans.
 # ---------------------------------------------------------------------------
 
-LANCE_DB = os.environ.get("OPUS_MEMORY_DB",
-                          r"D:\Vibecode\docker-mcp-server\opus-memory-lancedb")
+# LANCE_DB is resolved by _resolve_db() below, the same way as the pattern. It used to be
+# os.environ.get("OPUS_MEMORY_DB", <path>), and the fallback path is the database RETIRED
+# on 2026-09-19 (the live index is the one the launcher sets). A run from a shell without the
+# variable audited a stale table and could report INTACT for it (Kestrel, found 2026-09-24).
+_DB_ENV = "OPUS_MEMORY_DB"
+_RETIRED_DB = r"D:\Vibecode\docker-mcp-server\opus-memory-lancedb"
+_DB_FAULT = []           # populated when the index in force is the retired default
 # ONE SOURCE OF TRUTH WITH THE INDEXER (Kestrel, 2026-09-14).
 #
 # This was a hardcoded `\bHB-\d{2}\b` while the memory server read its pattern from
@@ -421,6 +426,41 @@ if _PATTERN_SOURCE == "NARROW DEFAULT":
         "this run, so INTACT would mean 'found nothing with a pattern that may not match "
         "anything', which is not a seal. Fix the launcher or set the variable."
         % (_HOLDOUT_ENV, _LAUNCHER))
+
+def _resolve_db():
+    """(path, source) of the index the LIVE server serves: 'env' | 'launcher' | 'RETIRED DEFAULT'.
+
+    The same three steps as _resolve_pattern, parsing the same launcher of record with the
+    same two `set` forms, so the index and the pattern can never come from different places.
+    Fable's harness/verify_coverage.py resolves its DB the same way (2026-09-24). The retired
+    default is a FAULT, not a warning: an INTACT computed against a table nobody writes any
+    more describes nothing.
+    """
+    val = os.environ.get(_DB_ENV)
+    if val:
+        return val, "env"
+    pat = re.compile(r'^\s*set\s+(?:"%s=([^"]*)"|%s=(.*?))\s*$' % (_DB_ENV, _DB_ENV), re.I)
+    try:
+        with open(_LAUNCHER, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                s = line.strip()
+                if s.lower().startswith("rem ") or s.startswith("::"):
+                    continue
+                m = pat.match(s)
+                if m:
+                    return (m.group(1) if m.group(1) is not None else m.group(2)).strip(), "launcher"
+    except OSError:
+        pass
+    return _RETIRED_DB, "RETIRED DEFAULT"
+
+
+LANCE_DB, _DB_SOURCE = _resolve_db()
+if _DB_SOURCE == "RETIRED DEFAULT":
+    _DB_FAULT.append(
+        "index UNVERIFIED -- no %s in the environment and no `set` line in %s, so this run "
+        "fell back to %s, the database RETIRED on 2026-09-19. INTACT would describe a stale "
+        "table. Fix the launcher or set the variable." % (_DB_ENV, _LAUNCHER, _RETIRED_DB))
+
 
 # Deliberately WIDER than TASK_ID_RE: used only to discover identifier-SHAPED tokens in
 # the sealed config so they can be tested against the pattern in force. A check that
@@ -537,14 +577,32 @@ def check_index(ids):
     if not ids:
         print("  index             no task ids in the sealed config -- nothing to check")
         return problems
+    # EVERY non-library table, not `chunks` (Fable's proposal, 2026-09-24). Per-agent collections
+    # split the corpus into six tables, and `chunks` stays behind for rollback. A seal that read
+    # `chunks` alone would pass a stale table while the six live ones went unaudited. Anything a
+    # search can reach must be clean, and that includes leftovers and backups (chunks,
+    # chunks_pre_split, ...). Only the book library is out of scope: it never held project text.
     try:
         import lancedb
-        tbl = lancedb.connect(LANCE_DB).open_table("chunks")
-        rows = tbl.search().limit(0).select(["source_path", "content"]).to_arrow().to_pydict()
+        _db = lancedb.connect(LANCE_DB)
+        names = sorted(t for t in _db.table_names() if not t.startswith("library_"))
+        if not names:
+            problems.append("index UNVERIFIED -- %s holds no corpus table" % LANCE_DB)
+            return problems
+        rows = {"source_path": [], "content": []}
+        per_table = {}
+        for _n in names:
+            _d = (_db.open_table(_n).search().limit(0)
+                  .select(["source_path", "content"]).to_arrow().to_pydict())
+            rows["source_path"].extend(_d["source_path"])
+            rows["content"].extend(_d["content"])
+            per_table[_n] = len(_d["source_path"])
     except Exception as e:
         problems.append("index UNVERIFIED -- could not read %s (%s: %s)"
                         % (LANCE_DB, type(e).__name__, e))
         return problems
+    print("  index             tables scanned: %s"
+          % ", ".join("%s=%d" % (k, v) for k, v in per_table.items()))
 
     total = len(rows["source_path"])
     leaks = {}
@@ -716,6 +774,7 @@ def main() -> int:
     print()
     print("Holdout pattern: from %s (sha8 %s) -- compare with the running server's "
           "/version holdout_pattern_sha8" % (_PATTERN_SOURCE, _PATTERN_SHA8))
+    print("Index audited:   %s (from %s)" % (LANCE_DB, _DB_SOURCE))
     print("Index control -- %d DECLARED holdout task id(s) must appear in no indexed "
           "document" % len(ids))
     if _UNDECLARED_IDS:
@@ -734,6 +793,7 @@ def main() -> int:
     problems.extend(_HASH_FAULT)
     problems.extend(_TASK_ID_FAULT)
     problems.extend(_PATTERN_FAULT)
+    problems.extend(_DB_FAULT)
 
     print()
     if problems:
