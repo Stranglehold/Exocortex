@@ -17,7 +17,8 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MOD = os.path.join(HERE, "..", "plugins", "_exocortex", "extensions", "python",
+# _14 was retired by DEC-051 and archived 2026-09-24; this gate now reads the archived copy.
+MOD = os.path.join(HERE, "..", "archive", "plugins-_exocortex", "2026-09-08-prune",
                    "before_main_llm_call", "_14_pace_plan_generator.py")
 
 USER_TEXT = ("Use code_execution_tool to count the files under "

@@ -32,8 +32,11 @@ from datetime import datetime, timezone
 
 from helpers.tool import Tool, Response
 
-# A0 v1.18 extension loader paths.
-EXT_ROOT       = "/a0/usr/agents/agent0/extensions"
+# Extension loader path. Corrected 2026-09-03 (Kestrel): this pointed at the
+# pre-DEC-030 v1.18 profile path /a0/usr/agents/agent0/extensions, which does
+# not exist on v2.9 — so this tool, the one the agent runs to inspect its OWN
+# stack, was reporting on an empty directory. Found by scripts/path_audit.py.
+EXT_ROOT       = "/a0/usr/plugins/_exocortex/extensions"
 CANONICAL_ROOT = f"{EXT_ROOT}/python"   # A0 ONLY loads from here. Direct EXT_ROOT/<hook>/ is orphan.
 
 

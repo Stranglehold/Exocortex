@@ -31,6 +31,9 @@
 # Arm M injection prune — 17 files, 2026-09-08.
 # Snapshot of the pre-prune tree kept in the container at
 # extensions.bak-prune-20260908-214547/ (76 files, not tracked in the repo).
+# ARCHIVED 2026-09-24 (Kestrel, on Jake's word): the repo copies of all 18 below moved to
+# archive/plugins-_exocortex/2026-09-08-prune/ (git mv; md5s in its README). They are now
+# absent from both sides, so the gate reports them as retired_gone (informational). Keep these lines.
 # ---------------------------------------------------------------------------------------------
 extensions/python/before_main_llm_call/_10_session_init.py
 extensions/python/before_main_llm_call/_11_belief_state_tracker.py

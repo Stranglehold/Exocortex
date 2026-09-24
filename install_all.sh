@@ -350,12 +350,15 @@ if [ "$failed" -eq 0 ]; then
   fi
   # Legacy roots are printed with live counts so a regression is visible here, not
   # only in the separate parity gate. Anything non-zero means the strip has come undone.
+  # The whole agent0 profile dir, not just its extensions/ (widened 2026-09-24): A0 searches
+  # usr/agents/<profile>/ BEFORE plugins, for tools and prompts as well as extensions. On agent-zero-v2
+  # it held 23 dead tool stubs and 4 shadowing prompts that the old extensions-only check read as 0.
   legacy_total=0
-  for d in /a0/python /a0/usr/agents/agent0/extensions /a0/usr/plugins/exocortex; do
+  for d in /a0/python /a0/usr/agents/agent0 /a0/usr/plugins/exocortex; do
     n=$(find "$d" -type f 2>/dev/null | wc -l); legacy_total=$((legacy_total + n))
     [ "$n" -gt 0 ] && log_warn "legacy root NOT empty: $d ($n files)"
   done
-  echo "    Legacy roots      -> $legacy_total files (expected 0: /a0/python, profile ext, plugins/exocortex)"
+  echo "    Legacy roots      -> $legacy_total files (expected 0: /a0/python, usr/agents/agent0, plugins/exocortex)"
   echo ""
   echo "  Verify with: scripts/verify_plugin_parity.py  (repo vs container, authoritative)"
   echo ""
