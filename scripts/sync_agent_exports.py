@@ -78,8 +78,8 @@ STATE_FILE = os.path.join(EXPORT_ROOT, ".sync_state.json")
 _ENV = dict(os.environ, MSYS_NO_PATHCONV="1")
 
 
-def _run(args):
-    return subprocess.run(args, capture_output=True, text=True, env=_ENV)
+def _run(args, timeout=None):
+    return subprocess.run(args, capture_output=True, text=True, env=_ENV, timeout=timeout)
 
 
 def container_exists(container):
@@ -362,6 +362,61 @@ def _cycle_closed(container, state):
                       "completed_ts" if fresh else "context_id"))
 
 
+# The daemon's OWN answer to "does this cycle still hold the slot": A0's native is_running for the
+# tracked context, asked through the same plugin endpoint idle_watch uses (`_cycle_running`), with
+# the same token. Run inside the container with A0's interpreter, from /a0, because that is where
+# `create_auth_token` resolves its settings. Read-only: `status` changes nothing.
+_STATUS_PY = (
+    "import json, http.client, sys\n"
+    "sys.path.insert(0, '/a0')\n"
+    "from helpers.settings import create_auth_token\n"
+    "c = http.client.HTTPConnection('localhost', 80, timeout=10)\n"
+    "c.request('POST', '/api/plugins/_exocortex/idle_cycle',\n"
+    "          body=json.dumps({'action': 'status', 'context_id': sys.argv[1]}),\n"
+    "          headers={'X-API-KEY': create_auth_token(), 'Content-Type': 'application/json'})\n"
+    "r = c.getresponse()\n"
+    "print(json.dumps({'http': r.status, 'body': r.read().decode('utf-8', 'replace')}))\n"
+)
+
+
+def _context_running(container, ctx, timeout=120):
+    """-> (running, why). running is True / False / None, and **None is not False**.
+
+    The timeout is generous on purpose: importing A0's `helpers.settings` (for
+    `create_auth_token`, the daemon's own auth path) took 18-29 s inside the container when
+    measured on 2026-09-24, so a 30 s budget timed out on the first live run. The call is made
+    only when a heartbeat is already stale, at most once per container per hourly run.
+
+    False only on A0's own word: the context is not found, or A0 reports running=false. That is
+    the exact criterion idle_watch fires a new cycle on (`_cycle_running`), so trusting it here
+    grants the refresh nothing the daemon would not grant a whole new cycle. Every failure to
+    get that word (no id, docker error, timeout, non-200, unparseable, no `running` field) is
+    None: undetermined, which the caller spends as "defer", never as "idle".
+    """
+    if not ctx:
+        return None, "no tracked context id to ask A0 about"
+    try:
+        r = _run(["docker", "exec", "-w", "/a0", container, "/opt/venv-a0/bin/python3", "-c",
+                  _STATUS_PY, ctx], timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None, "A0 status call timed out after %ds" % timeout
+    if r.returncode != 0:
+        return None, "A0 status call failed: %s" % (r.stderr or "").strip()[-100:]
+    try:
+        out = json.loads((r.stdout or "").strip().splitlines()[-1])
+        if out.get("http") != 200:
+            return None, "A0 status returned HTTP %s" % out.get("http")
+        data = json.loads(out["body"])
+    except Exception as e:
+        return None, "A0 status unreadable (%s)" % type(e).__name__
+    if not data.get("found", False):
+        return False, "A0 has no context %s" % ctx
+    if "running" not in data:
+        return None, "A0 status for %s carries no running flag" % ctx
+    return bool(data["running"]), "A0 is_running=%s, last message %s" % (
+        bool(data["running"]), data.get("last_message", "?"))
+
+
 def engine_busy(container, timeout=15):
     """-> (busy, why). busy is True / False / None, and **None is not False**.
 
@@ -409,8 +464,30 @@ def engine_busy(container, timeout=15):
         # genuinely mid-work. Calling that idle starts a refresh on top of the thing already
         # blocking her. Calling it busy is safe but must never be SILENT, hence the deferral
         # counter: the failure this replaces is a permanent deferral nobody could see.
+        #
+        # STATE 2b (Kestrel, 2026-09-24, Jake's word "go ahead and fix the sync gate"): the flag
+        # and the heartbeat cannot tell dead from blocked, but A0 can. Ask it, the same way the
+        # daemon decides whether the slot is free (`_cycle_running`). What this closes: on
+        # 2026-09-24 cycle 757 fired at 13:09:51Z into a jammed LM Studio, made no tool call (so
+        # the heartbeat never moved) and ended without a response. The engine was paused before
+        # the daemon's next poll could reap its slot, so `cycle_active` stayed true with a frozen
+        # heartbeat. Asked at ~20:30Z, A0 reported the context found and running=false (last
+        # message 13:09:52Z); this gate had deferred 7 runs in a row and would have kept
+        # deferring until the pause ended. Note that
+        # `cycle_completed_ts >= last_cycle_start` does NOT prove a close here: the daemon stamps
+        # the PREVIOUS cycle's close after capturing the new cycle's start time, so on a normal
+        # fire the pair reads that way by a fraction of a second.
+        ctx = d.get("cycle_context_id") or ""
+        alive, awhy = _context_running(container, ctx)
+        if alive is False:
+            return False, ("cycle %s's context %s is not running (%s); its heartbeat is %.0fs "
+                           "stale — a dead cycle holding the slot, not a live one"
+                           % (d.get("cycle_count"), ctx, awhy, age))
+        if alive is True:
+            return True, ("cycle %s's context %s IS running (%s) with a heartbeat %.0fs stale — "
+                          "blocked, not idle" % (d.get("cycle_count"), ctx, awhy, age))
         return None, ("cycle_active=true but heartbeat is %.0fs stale (> %ds) — cannot tell a "
-                      "dead cycle from a blocked one" % (age, HEARTBEAT_STALE_S))
+                      "dead cycle from a blocked one (%s)" % (age, HEARTBEAT_STALE_S, awhy))
     return True, "cycle %s (%s) active, heartbeat %.0fs old" % (
         d.get("cycle_count"), d.get("last_cycle_type"), age)
 
