@@ -75,6 +75,12 @@ def patched_relpaths() -> set:
     patches/webui/messages.js must NOT match A0's webui/js/messages.js."""
     rels = set()
     base = os.path.join(HERE, "patches")
+    if not os.path.isdir(base):
+        # Not an error, and not an empty measurement: the core-overwrite surface was retired
+        # on 2026-09-24 (archive/a0-core-writes-v29/). Say so, so the zero below is explained.
+        print("[check_a0_updates] patches/ absent: core overwrites retired 2026-09-24, "
+              "overlap is empty by design", file=sys.stderr)
+        return rels
     for root, _, files in os.walk(base):
         if "__pycache__" in root:
             continue

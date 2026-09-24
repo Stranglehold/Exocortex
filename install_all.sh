@@ -48,11 +48,17 @@ log_err()     { echo -e "${RED}    ✗ $1${NC}"; }
 log_skip()    { echo -e "    ~ $1 (not found — skipped)"; }
 
 # ── A0 version preflight ────────────────────────────────────────────────────
-# The hardening stack patches A0 core files (patches/), so it is only verified
+# The hardening stack USED TO patch A0 core files (patches/), so it is only verified
 # against the A0 version recorded in ./A0_VERSION. Deploying onto a different
 # A0 can silently revert A0 changes (incl. security fixes) where our patches
 # overwrite files A0 has since changed. This gate fails loud on mismatch.
 # Override with --force (e.g. during a deliberate, validated upgrade).
+#
+# 2026-09-24: the 26 core writes of layers 1-3 are retired (see LAYERS). What still
+# touches /a0 outside /a0/usr: the PTY reaper below (intentional, anchor-gated,
+# reversible), the OSS and SWARMFISH installers (docker cp into /a0/tools, A0's own
+# tools dir) and install_artifact_system.sh (mkdir /a0/work/artifacts). The pin
+# stays at v2.9 until those are resolved, and only then moves to v2.12.
 preflight_a0_version() {
   local pin_file="$SCRIPT_DIR/A0_VERSION"
   if [ ! -f "$pin_file" ]; then
@@ -140,14 +146,24 @@ fi
 # Multiple entries with same LAYER_NUM are sub-steps of that layer.
 
 LAYERS=(
-  "1|Framework message replacements      |fw-replacements/install_fw_replacements.sh"
-  "1|Core file patches (JSON fallback)   |scripts/install_core_patches.sh"
-  "2|Extensions — tool fallback chain   |scripts/install_tool_fallback.sh"
+  # ── SIX STEPS RETIRED 2026-09-24: every write A0 CORE, and none is applied on v2.12 ──
+  # Opus ruling 2 (revised), on Jake's approval of the plugin audit's order. Measured against
+  # agent-zero-v2 (A0 v2.12) and `git show v2.12:<path>`: all 26 core writes these steps made
+  # were ABSENT from her container. Each target was byte-identical to stock v2.12, or did not
+  # exist. She has run v2.12 without any of them since the 09-19 update. Re-running them would
+  # have overwritten stock v2.12 files with versions cut against v1.x/v2.9, and created orphan
+  # core files (one a new /api route).
+  #   1  install_fw_replacements.sh     6 fw.* prompts          -> /a0/prompts
+  #   1  install_core_patches.sh       11 helpers/prompts/api/webui/_memory -> A0 core
+  #   2  install_tool_fallback.sh       1 fw.code.pause_dialog.md -> /a0/prompts (its only live step)
+  #   3  install_prompt_patches.sh      4 agent.system.* prompts  -> /a0/prompts
+  #   3  install_personalities.sh       2 main.role.md/.py        -> /a0/prompts
+  #   3  install_communication_protocol.sh  2 (new file + in-place patch of agent.system.main.md)
+  # Scripts and sources are archived with md5s in archive/a0-core-writes-v29/README.md. If a
+  # v2.12 core fix is ever needed, derive it FRESH against the v2.12 source, with evidence;
+  # do not revive these. Audit: Kestrel/studies/2026-09-24-exocortex-plugin-audit.md.
   "2|Extensions — action boundary gate   |scripts/install_action_boundary.sh"
   "2|Extensions — organization kernel   |scripts/install_org_kernel.sh"
-  "3|Prompt patches                      |prompt-patches/install_prompt_patches.sh"
-  "3|Personality loader                  |scripts/install_personalities.sh"
-  "3|Communication protocol              |scripts/install_communication_protocol.sh"
   "4|Skills                              |install_skills.sh"
   "5|Translation layer (belief state BST)|translation-layer/install_translation_layer.sh"
   "6|A2A compatibility server           |scripts/install_a2a_server.sh"
@@ -191,9 +207,8 @@ LAYERS=(
 )
 
 CHECK_SCRIPTS=(
-  "fw-replacements/check_fw_upstream.sh"
+  # fw-replacements/ and prompt-patches/ checks retired with their layers on 2026-09-24.
   "extensions/check_extensions_upstream.sh"
-  "prompt-patches/check_prompt_patches_upstream.sh"
   "check_skills_upstream.sh"
 )
 

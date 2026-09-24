@@ -272,6 +272,13 @@ for CONTAINER in "${CONTAINERS[@]}"; do
     # staging.jsonl, sleep_reports/ all written the same day). This script is mixed, not
     # retired — do not generalise this removal into retiring the whole installer.
 
+    # ── STRIPPED 2026-09-24: the WORKSHOP and EXO·OPS panels were retired by Fable on 2026-09-16 ──
+    # (the live plugin holds them only as *.bak-fable-retired-20260916-001804). These five
+    # install_file calls copied them back from patches/webui/ into the live plugin: a second
+    # resurrection path, outside the plugin walk and its retirement gate. patches/ is now
+    # archived (archive/a0-core-writes-v29/), so they would only SKIP; stripped so nobody
+    # "fixes" them by repointing at the archive. Audit: Kestrel/studies/2026-09-24-exocortex-plugin-audit.md.
+    if false; then
     # ── Right-canvas tab: surface registrar ──
     install_file \
         "${REPO_DIR}/patches/webui/right_canvas_register_surfaces/register-workshop.js" \
@@ -306,6 +313,7 @@ for CONTAINER in "${CONTAINERS[@]}"; do
         "/a0/usr/plugins/_exocortex/webui/exo-ops-content.html" \
         "exo-ops-content.html" \
         "${CONTAINER}"
+    fi   # end STRIPPED 2026-09-24 (retired panels)
 
     # ── Idle-watch daemon (the supervisord-managed firing engine) ──
     # Repo source of truth: services/idle_watch.py. Deployed to the persistent
