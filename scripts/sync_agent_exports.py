@@ -47,7 +47,10 @@ COST NOTE (historical, before 2026-09-14): reindex() was a FULL rebuild (re-embe
 chunks on the shared 3090), which is why this script used to refresh ONLY when the synced
 content changed. Schedule: hourly (Windows Task Scheduler). Since 2026-09-12 the
 task runs through the hidden launcher (no console window; output appended to
-scripts\\logs\\ExocortexAgentSync.log; exit code passed through, 3 = Docker off):
+scripts\\logs\\ExocortexAgentSync.log; exit code passed through. 3 = nothing done, retry next run;
+4 = the index refreshed but Docker was unreachable, so the containers were NOT synced.
+WITHOUT DOCKER (2026-09-24, Jake's word): a paused or stopped Docker skips only the container
+copy; the refresh still runs, because the commons and the workspaces do not need Docker):
   schtasks /Create /TN "ExocortexAgentSync" /SC HOURLY /MO 6 /TR ^
     "wscript.exe //B //Nologo \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\run_hidden.vbs\" ^
      \"D:\\Vibecode\\Agent-Zero\\Exocortex\\scripts\\logs\\ExocortexAgentSync.log\" ^
@@ -67,6 +70,8 @@ import time
 import sys
 
 from docker_probe import daemon_reachable, EXIT_DEFERRED   # beside this file in scripts/
+
+EXIT_PARTIAL = 4   # the index refreshed, but Docker was unreachable so the containers were not synced
 
 EXPORT_ROOT = r"D:\Vibecode\Agent-Zero\Exocortex\agent-exports"
 CONTAINER_WORKSPACE = "/a0/usr/workdir/workspace"
@@ -437,7 +442,12 @@ def engine_busy(container, timeout=15):
     """
     st = _run(["docker", "inspect", "-f", "{{.State.Running}}", container])
     if st.returncode != 0:
-        return None, "docker inspect failed: %s" % (st.stderr or "").strip()[:80]
+        err = (st.stderr or "").strip()
+        # A container that does not exist has no engine to be mid-cycle. Only that exact answer
+        # ("No such object/container") counts; every other inspect failure stays undetermined.
+        if "no such" in err.lower():
+            return False, "no container named %s: it has no engine to be mid-cycle" % container
+        return None, "docker inspect failed: %s" % err[:80]
     if st.stdout.strip() != "true":
         return False, "container not running — it has no engine to be mid-cycle"
 
@@ -570,14 +580,21 @@ def main():
     # 2026-09-13 (Jake): `docker inspect` fails the same way for "daemon not running" and "no such container",
     # so with Docker Desktop OFF (Jake turns it off to game) every agent read as "not found — skipped", the
     # signature came out unchanged, and the run exited 0 looking clean. Now: say so, touch nothing, exit 3.
-    ok, detail = daemon_reachable()
-    if not ok:
+    #
+    # 2026-09-24 (Jake): "if it doesn't see the docker container it just goes 'okay, I'll just check
+    # on Opus', Kestrel's, and Fable's folders' ... you guys could be running and working even if
+    # Aporia and docker desktop are not." Docker Desktop gets paused for games, and a down daemon used
+    # to end the run right here, so nothing was indexed for as long as Docker stayed off. Now only
+    # the CONTAINER half waits for Docker. The 09-13 lesson still holds: the run SAYS the daemon is
+    # down and exits non-zero (EXIT_PARTIAL, or EXIT_DEFERRED if nothing was done), never clean.
+    docker_ok, detail = daemon_reachable()
+    if not docker_ok:
         print(f"DOCKER DAEMON NOT REACHABLE ({detail})")
-        print("  sync DEFERRED: no files copied, no reindex, state not advanced; the next scheduled run retries.")
-        sys.exit(EXIT_DEFERRED)
+        print("  container sync SKIPPED: no files copied; agent-exports/ keeps its last copy.")
+        print("  the index still refreshes: the commons and the workspaces do not need Docker.")
 
     total = 0
-    for name, container in targets.items():
+    for name, container in (targets.items() if docker_ok else ()):
         if not container_exists(container):
             print(f"  [{name}] container {container} not found (daemon reachable) — skipped")
             continue
@@ -593,6 +610,7 @@ def main():
     changed = sig != prev
 
     wrote_state = True
+    refreshed = False            # a refresh actually STARTED; "state written" does not imply it
     if args.no_reindex:
         print("  --no-reindex: files synced, reindex skipped")
     else:
@@ -601,6 +619,10 @@ def main():
         # an agent's exports to move. The gates are unchanged.
         if args.ignore_idle:
             blocked, bwhy = False, "skipped (--ignore-idle)"
+        elif not docker_ok:
+            # Paused Docker freezes its containers and stopped Docker has none running, so no
+            # agent can be mid-cycle and competing with this refresh for the embedder.
+            blocked, bwhy = False, "skipped: the Docker daemon is down, so no agent can be mid-cycle"
         else:
             blocked, bwhy = any_engine_busy(targets)
         if blocked:
@@ -652,11 +674,14 @@ def main():
             # `reindex_last_result` through index_status; nothing reads it yet.
             if trigger_refresh():
                 clear_deferrals()
+                refreshed = True
             else:
                 wrote_state = False
 
     if not wrote_state:
         print(f"done. {total} files across {len(targets)} agent(s). (state not advanced)")
+        if not docker_ok:
+            sys.exit(EXIT_DEFERRED)          # Docker down AND no refresh: nothing was done
         return
 
     try:
@@ -665,6 +690,12 @@ def main():
         print(f"  (couldn't write state file: {e})")
 
     print(f"done. {total} files across {len(targets)} agent(s).")
+    if not docker_ok:
+        if refreshed:
+            print("  NOTE: the index refreshed, but the containers were NOT synced (Docker unreachable).")
+            sys.exit(EXIT_PARTIAL)
+        print("  NOTE: Docker unreachable and no refresh ran: nothing was done.")
+        sys.exit(EXIT_DEFERRED)
 
 
 if __name__ == "__main__":
