@@ -75,6 +75,48 @@ if [ "$TOTAL" -eq 0 ]; then
   exit 1
 fi
 
+# ── Retirement gate (Opus ruling 1, 2026-09-24) ───────────────────────────────
+# scripts/retired_manifest.txt lists files switched off on purpose. This walk deploys every
+# file in the tree, so a retired source still (or again) in the tree comes back on the next
+# install. On 2026-09-24 eleven of the eighteen retired extensions had no `enabled` check, so
+# they would have come back RUNNING. The manifest alone only DETECTS that afterwards (the
+# parity gate's RESURRECTED); this makes the walk REFUSE it.
+#
+# A refused file is left out, named, and the step exits 3, so install_all.sh reports it
+# instead of succeeding quietly. It is a decision for a human: remove the manifest line
+# (un-retiring, Jake's call, auditable in git) or remove the source (a forgotten artifact).
+#
+# Matched on the manifest's relative path, and for .py also on file name: A0 loads
+# extensions by file name within each hook directory, so a retired file moved into another
+# hook would still run. One awk pass, not a grep per file (process spawns are slow in Git Bash).
+MANIFEST="$SCRIPT_DIR/scripts/retired_manifest.txt"
+refused=0
+if [ -f "$MANIFEST" ]; then
+  GATE="$(printf '%s\n' "$FILES" | awk -v manifest="$MANIFEST" '
+    BEGIN {
+      while ((getline line < manifest) > 0) {
+        sub(/[ \t]+#.*$/, "", line); sub(/^[ \t]+/, "", line); sub(/[ \t\r]+$/, "", line)
+        if (line == "" || substr(line, 1, 1) == "#") continue
+        path[line] = 1
+        if (line ~ /\.py$/) { b = line; sub(/.*\//, "", b); base[b] = 1 }
+      }
+    }
+    NF {
+      rel = $0; b = rel; sub(/.*\//, "", b)
+      if (rel in path)                   { print "REFUSED manifest-path " rel; next }
+      if (rel ~ /\.py$/ && (b in base))  { print "REFUSED manifest-name " rel; next }
+      print "KEEP " rel
+    }')"
+  refused="$(printf '%s\n' "$GATE" | grep -c '^REFUSED ' || true)"
+  if [ "$refused" -gt 0 ]; then
+    printf '%s\n' "$GATE" | grep '^REFUSED ' | sed 's/^/  /'
+  fi
+  FILES="$(printf '%s\n' "$GATE" | sed -n 's/^KEEP //p')"
+  echo "  refused   : $refused (retired, per scripts/retired_manifest.txt)"
+else
+  echo "  WARNING: retired manifest missing ($MANIFEST) — the retirement gate is OFF"
+fi
+
 # ── Pre-create directories ────────────────────────────────────────────────────
 # Host-side `docker cp` does not always create missing parents; the in-container
 # shim does its own mkdir but costs nothing here.
@@ -151,4 +193,11 @@ echo
 echo "  Verify: python scripts/verify_plugin_parity.py $CONTAINER"
 
 [ "$failed" -eq 0 ] || exit 1
+if [ "$refused" -gt 0 ]; then
+  echo
+  echo "  RETIRED FILES REFUSED: $refused (listed above). Everything else deployed."
+  echo "  Each needs a decision: remove its line from scripts/retired_manifest.txt to"
+  echo "  un-retire it (Jake's call), or remove the source file if it is a leftover."
+  exit 3
+fi
 exit 0
