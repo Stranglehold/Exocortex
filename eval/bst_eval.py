@@ -16,7 +16,7 @@ Usage:
     python3 /a0/usr/Exocortex/eval/bst_eval.py
 
     # From Windows host (for Kestrel session testing):
-    BST_PATH="D:/Vibecode/Agent-Zero/Exocortex/extensions/before_main_llm_call/_11_belief_state_tracker.py"
+    BST_PATH="D:/Vibecode/Agent-Zero/Exocortex/archive/legacy-extensions/before_main_llm_call/_11_belief_state_tracker.py"
     C:/Users/Jake/miniconda3/python.exe eval/bst_eval.py
 
     # With custom threshold (fail if accuracy drops below X):
@@ -47,11 +47,12 @@ def _bst_path_default() -> str:
         # Running inside Agent Zero container — profile path (Option 3, highest priority)
         return "/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_11_belief_state_tracker.py"
     else:
-        # Running on Windows host — path relative to this file's parent
+        # Running on Windows host — path relative to this file's parent. The legacy extensions/
+        # tree was archived 2026-09-24 (same bytes, new path); BST is retired (DEC-051).
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.join(
             repo_root,
-            "extensions", "before_main_llm_call", "_11_belief_state_tracker.py"
+            "archive", "legacy-extensions", "before_main_llm_call", "_11_belief_state_tracker.py"
         )
 
 

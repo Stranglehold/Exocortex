@@ -207,8 +207,8 @@ LAYERS=(
 )
 
 CHECK_SCRIPTS=(
-  # fw-replacements/ and prompt-patches/ checks retired with their layers on 2026-09-24.
-  "extensions/check_extensions_upstream.sh"
+  # fw-replacements/ and prompt-patches/ checks retired with their layers on 2026-09-24, and
+  # extensions/check_extensions_upstream.sh with the legacy extensions/ tree (archive/legacy-extensions/).
   "check_skills_upstream.sh"
 )
 

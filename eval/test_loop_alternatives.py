@@ -27,7 +27,10 @@ from pathlib import Path
 SCRIPT_DIR  = Path(__file__).parent
 REPO_ROOT   = SCRIPT_DIR.parent
 
-SUPERVISOR_PATH = REPO_ROOT / "extensions" / "message_loop_end" / "_50_supervisor_loop.py"
+# Same bytes as before, at the path the legacy tree moved to on 2026-09-24. NOTE: this is the legacy
+# copy (last commit 2026-05-30), NOT the supervisor that runs; that one is
+# plugins/_exocortex/extensions/python/message_loop_end/_50_supervisor_loop.py.
+SUPERVISOR_PATH = REPO_ROOT / "archive" / "legacy-extensions" / "message_loop_end" / "_50_supervisor_loop.py"
 SUPERVISOR_CONTAINER = Path("/a0/usr/agents/agent0/extensions/python/message_loop_end/_50_supervisor_loop.py")
 
 # ── Valid tool names (current A0 + Exocortex custom tools) ────────────────────

@@ -52,8 +52,11 @@ SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT   = SCRIPT_DIR.parent
 
 # Active BST extension (profile-path version — DEC-030)
-BST_PATH = REPO_ROOT / "extensions" / "before_main_llm_call" / "_11_belief_state_tracker.py"
-TAX_PATH = REPO_ROOT / "extensions" / "before_main_llm_call" / "slot_taxonomy.json"
+# The legacy extensions/ tree was archived on 2026-09-24; these are the same bytes at their new path.
+# (BST itself was retired by DEC-051. This copy is the legacy tree's, not the one deployed until 09-08,
+# which is at archive/plugins-_exocortex/2026-09-08-prune/.)
+BST_PATH = REPO_ROOT / "archive" / "legacy-extensions" / "before_main_llm_call" / "_11_belief_state_tracker.py"
+TAX_PATH = REPO_ROOT / "archive" / "legacy-extensions" / "before_main_llm_call" / "slot_taxonomy.json"
 
 # Container paths (for reference when running inside container)
 BST_CONTAINER_PATH = Path("/a0/usr/agents/agent0/extensions/python/before_main_llm_call/_11_belief_state_tracker.py")
