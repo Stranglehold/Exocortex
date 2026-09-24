@@ -15,7 +15,7 @@ Run with the memory-server venv python (it has fastmcp for the reindex trigger):
 
 Flags:
   --no-reindex     copy files only; don't trigger a reindex
-  --force-reindex  reindex even if nothing changed since last sync
+  --force-reindex  (default since 2026-09-24: every run refreshes) kept for old habits
   --agent NAME     sync a single agent (v2|v16|v17)
   --ignore-health  refresh even when the embedder probe says it cannot serve
 
@@ -31,9 +31,21 @@ SAFETY (2026-08-19, Tier 1.2):
     deliberately NOT advanced, so the pending content is retried next run instead
     of being marked 'unchanged' and never indexed.
 
-COST NOTE: reindex() is a FULL rebuild (re-embeds ~43k chunks on the shared 3090),
-so this script reindexes ONLY when the synced content actually changed. Schedule it
-at a modest cadence (Windows Task Scheduler), e.g. every 6h. Since 2026-09-12 the
+WHAT A RUN REFRESHES (2026-09-24, Kestrel, Jake's word "widen the hourly refresh to all
+folders"): EVERY run asks the server to refresh, whether or not agent-exports/ changed. The
+refresh is `refresh_now` = `reindex(reuse=True)`: the server re-walks EVERY root it indexes
+(the commons, the Opus, Kestrel and Fable workspaces, the archive), carries each unchanged
+chunk's vector over by its content-addressed id, embeds only new text, and rewrites only the
+tables whose content digest moved. A run where nothing changed anywhere writes no table and
+embeds nothing (measured live 2026-09-24 19:34Z: 34 chunks embedded, exports and archive
+skipped). The old rule refreshed only when agent-exports/ changed, so work written in the
+workspaces was indexed only as a side effect of an agent's activity, and with Aporia paused
+nothing was indexed at all. The two gates below (engine idle, embedder healthy) still apply.
+The export signature is kept to report whether the agents' exports changed.
+
+COST NOTE (historical, before 2026-09-14): reindex() was a FULL rebuild (re-embedding ~43k
+chunks on the shared 3090), which is why this script used to refresh ONLY when the synced
+content changed. Schedule: hourly (Windows Task Scheduler). Since 2026-09-12 the
 task runs through the hidden launcher (no console window; output appended to
 scripts\\logs\\ExocortexAgentSync.log; exit code passed through, 3 = Docker off):
   schtasks /Create /TN "ExocortexAgentSync" /SC HOURLY /MO 6 /TR ^
@@ -583,13 +595,16 @@ def main():
     wrote_state = True
     if args.no_reindex:
         print("  --no-reindex: files synced, reindex skipped")
-    elif changed or args.force_reindex:
+    else:
+        # Every run refreshes (see WHAT A RUN REFRESHES in the docstring): the server decides
+        # what changed across every root it indexes, so a workspace edit no longer waits for
+        # an agent's exports to move. The gates are unchanged.
         if args.ignore_idle:
             blocked, bwhy = False, "skipped (--ignore-idle)"
         else:
             blocked, bwhy = any_engine_busy(targets)
         if blocked:
-            print("  content changed BUT the agent is mid-cycle -> refresh DEFERRED")
+            print("  exports %s; refresh DEFERRED: the agent is mid-cycle" % ("changed" if changed else "unchanged"))
             print("  engine: %s" % bwhy)
             n, since = note_deferral(bwhy)
             rp = refresh_progress()
@@ -608,15 +623,15 @@ def main():
         if ok is None:
             pass
         elif not ok and not args.ignore_health:
-            print(f"  content changed BUT the embedder cannot serve -> refresh DEFERRED")
+            print(f"  exports {'changed' if changed else 'unchanged'}; refresh DEFERRED: the embedder cannot serve")
             print(f"  probe: {why}")
             print("  files are synced and safe; the next run refreshes once it recovers.")
             # Do NOT record the new signature — otherwise the deferred content would
             # look 'unchanged' next run and never get indexed at all.
             wrote_state = False
         else:
-            state = "changed" if changed else "unchanged (forced)"
-            print(f"  content {state} ({why}) -> refreshing")
+            state = "changed" if changed else "unchanged"
+            print(f"  exports {state}; refreshing every indexed root ({why}); the server rewrites only what moved")
             # Guard the OTHER arm of the same failure. The health-probe branch ten lines
             # up already refuses to advance the signature when it defers, for the reason
             # stated there: deferred content that looks 'unchanged' next run is never
@@ -639,8 +654,6 @@ def main():
                 clear_deferrals()
             else:
                 wrote_state = False
-    else:
-        print("  content unchanged since last sync -> reindex skipped (no GPU churn)")
 
     if not wrote_state:
         print(f"done. {total} files across {len(targets)} agent(s). (state not advanced)")
