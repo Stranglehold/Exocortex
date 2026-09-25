@@ -151,8 +151,13 @@ class MemoryEnhancement(Extension):
     """Six-stage memory retrieval: expand -> decay -> boost -> select -> track -> log."""
 
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs) -> Any:
+        # Recall trace: exactly ONE row per call, the early returns included, so a turn on which
+        # A0's own untagged recall stood (the A17 gap) is a counted row, not an inference.
+        turn = getattr(loop_data, "iteration", None)
+        traced = False
         try:
             if self.agent.get_data(Agent.DATA_NAME_SUPERIOR) is not None:
+                _trace(self.agent, [], turn, early="subordinate")
                 return  # subordinate context — skip full memory bootstrap (DEC-028)
             print("[MEM-ENHANCE] execute() called", flush=True)
             if loop_data.extras_persistent is None:
@@ -167,10 +172,12 @@ class MemoryEnhancement(Extension):
 
             db = await Memory.get(self.agent)
             if not db or not db.db:
+                _trace(self.agent, [], turn, early="no_db")
                 return
 
             all_docs = db.db.get_all_docs()
             if not all_docs:
+                _trace(self.agent, [], turn, early="no_docs")
                 return
 
             # R3: each keyed subject's current observation, read once for both frames below.
@@ -212,13 +219,17 @@ class MemoryEnhancement(Extension):
                 self.agent, "_memory_maintenance_counter", 0
             )
 
-            query = _get_query(self.agent, loop_data, config)
+            query, query_source = _get_query_with_source(self.agent, loop_data, config)
             if not query:
                 print("[MEM-ENHANCE] No user message found, skipping", flush=True)
+                _trace(self.agent, [], turn, source=query_source, early="no_query")
                 return
             print(f"[MEM-ENHANCE] User message: {query[:50]!r}", flush=True)
 
             all_injected_ids = []
+            # A pipeline that raises leaves A0's own text in its slot, untagged: the same gap as an
+            # early return, so the trace names it.
+            pipeline_errors = []
 
             # ── Process memories (main + fragments + ontology entities) ───
             try:
@@ -253,6 +264,7 @@ class MemoryEnhancement(Extension):
                     print("[MEM-ENHANCE] Final selection: 0 memories injected", flush=True)
             except Exception as mem_err:
                 print(f"[MEM-ENHANCE] Memories pipeline error: {mem_err}", flush=True)
+                pipeline_errors.append("memories")
 
             # ── Process solutions ─────────────────────────────────────────
             if has_solutions:
@@ -281,7 +293,7 @@ class MemoryEnhancement(Extension):
                     else:
                         del extras["solutions"]
                 except Exception:
-                    pass
+                    pipeline_errors.append("solutions")
 
             # ── Persist access updates ────────────────────────────────────
             if all_injected_ids:
@@ -304,6 +316,13 @@ class MemoryEnhancement(Extension):
                 except Exception as tag_err:
                     print(f"[MEM-ENHANCE] Recall tag skipped — {type(tag_err).__name__}", flush=True)
 
+            # ── Recall trace (2026-09-24) ─────────────────────────────────
+            # Every full run writes its row, `ids: []` included: "the hook ran and recalled
+            # nothing" is a finding too. Before co-retrieval logging, for the tag's reason above.
+            _trace(self.agent, all_injected_ids, turn, source=query_source,
+                   error=pipeline_errors or None)
+            traced = True
+
             # ── Co-retrieval logging ──────────────────────────────────────
             if all_injected_ids:
                 _log_co_retrieval(
@@ -312,6 +331,8 @@ class MemoryEnhancement(Extension):
                 print("[MEM-ENHANCE] Co-retrieval logged", flush=True)
 
         except Exception as e:
+            if not traced:
+                _trace(self.agent, [], turn, early="exception", error=type(e).__name__)
             try:
                 self.agent.context.log.log(
                     type="warning",
@@ -319,6 +340,33 @@ class MemoryEnhancement(Extension):
                 )
             except Exception:
                 pass
+
+
+# ── Recall trace ─────────────────────────────────────────────────────────────
+
+def _trace(agent, ids, turn, source=None, early=None, error=None) -> None:
+    """One row in the persistent recall trace (helpers/memory_recall_tag.trace). Never raises.
+
+    `early` names a return before recall (subordinate / no_db / no_docs / no_query / exception):
+    on such a turn A0's own untagged recall (_50/_91) stands, which is the A17 gap. `error` names
+    the pipelines that raised ("memories", "solutions"), whose slots also keep A0's text.
+
+    !! memory_recall_tag is imported by bare name, so it sits in sys.modules and survives the
+    plugins reload (modules.purge_namespace deletes only `plugins.*`; see recall_query.py's
+    docstring). A deploy that adds trace() goes live at the next CONTAINER RESTART. Until then
+    this prints that the trace is unavailable, and recall itself is unaffected.
+    """
+    try:
+        import memory_recall_tag as mrt
+
+        fn = getattr(mrt, "trace", None)
+        if fn is None:
+            print("[MEM-ENHANCE] Recall trace unavailable — the loaded memory_recall_tag predates "
+                  "trace(); it loads at the next container restart", flush=True)
+            return
+        fn(agent, ids, "_92", turn=turn, source=source, early=early, error=error)
+    except Exception as trace_err:
+        print(f"[MEM-ENHANCE] Recall trace skipped — {type(trace_err).__name__}", flush=True)
 
 
 # ── Full Pipeline ────────────────────────────────────────────────────────────
@@ -612,26 +660,41 @@ def _get_query(agent, loop_data, config=None) -> str:
     Falls back to the previous behaviour if the helper is unavailable: a missing helper must not
     cost recall entirely, and the old behaviour is bad rather than dangerous.
     """
+    return _get_query_with_source(agent, loop_data, config)[0]
+
+
+def _get_query_with_source(agent, loop_data, config=None):
+    """(query, source): `_get_query`'s text, and which rule produced it, for the recall trace.
+
+    source is recall_query's class (recent_work / idle_charge / user_message), or:
+      "unrecorded"   the loaded helper predates build_query_with_source. recall_query is imported
+                     by bare name and survives plugin reloads until a container restart, so this
+                     is the state between a deploy and the restart. The query still comes from
+                     build_query, so it is still bounded; only the label is missing.
+      "fallback_raw" the helper is unavailable; the raw user message, unbounded (as before).
+    """
     max_chars = None
     if isinstance(config, dict):
         max_chars = (config.get("recall_query") or {}).get("max_chars")
     try:
         if recall_query is None:
             raise ImportError("recall_query helper not on sys.path")
-        return recall_query.build_query(
-            agent, loop_data, max_chars or recall_query.DEFAULT_MAX_CHARS
-        )
+        limit = max_chars or recall_query.DEFAULT_MAX_CHARS
+        with_source = getattr(recall_query, "build_query_with_source", None)
+        if with_source is None:
+            return recall_query.build_query(agent, loop_data, limit), "unrecorded"
+        return with_source(agent, loop_data, limit)
     except Exception as e:
         print(f"[MEM-ENHANCE] recall_query helper unavailable ({type(e).__name__}) — "
               "falling back to the raw user message", flush=True)
         if hasattr(loop_data, "user_message") and loop_data.user_message:
             try:
                 if hasattr(loop_data.user_message, "output_text"):
-                    return loop_data.user_message.output_text()
-                return str(loop_data.user_message)
+                    return loop_data.user_message.output_text(), "fallback_raw"
+                return str(loop_data.user_message), "fallback_raw"
             except Exception:
                 pass
-        return ""
+        return "", "fallback_raw"
 
 
 # ── Role Domain Check ────────────────────────────────────────────────────────

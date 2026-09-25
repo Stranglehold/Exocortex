@@ -36,10 +36,72 @@ WHO CALLS tag()
   retired by config.
 - tool_execute_after/_35_recall_tag_memory_load: the ids in the memory_load tool's output.
 
+WHO CALLS trace() (the persistent per-turn ledger, state/recall_trace.jsonl; 2026-09-24)
+------------------------------------------------------------------------------------------
+- _92_memory_enhancement: one row per call, early returns included (the A17 gap as a count).
+- _35_recall_tag_memory_load: one row per memory_load call, `ids: []` included.
+- _55 does NOT: it is retired by config. Re-enabling it without adding a trace() call would put
+  recall into the prompt that the ledger cannot see.
+Read by scripts/recall_trace_report.py, which joins it to cycle_endings.jsonl by context_id.
+!! This module is imported by bare name: an edit is live only after a container restart.
+
 No LLM calls. A set of memory ids on the agent's data; every function degrades to a no-op.
 """
 
+import json
+import os
+import threading
+from datetime import datetime, timezone
+
 RECALLED_KEY = "_recalled_memory_ids"
+
+# ── Recall trace (2026-09-24; build order approved by Jake, refinements by Opus and Fable) ──────
+# tag() (below) feeds the re-save gate for ONE monologue and is never persisted, so a false
+# conclusion could not be traced to the memory that fed it: cycle #731 journaled "search_library
+# down" from a recalled memory with no probe run, and it was found by hand in chat.json. trace()
+# is the persistent ledger an instrument joins to the daemon's cycle_endings.jsonl (by context id)
+# and to her journal. The overridable path exists for tests; production uses the plugin state dir.
+TRACE_PATH = os.environ.get("EXO_RECALL_TRACE_PATH", "/a0/usr/plugins/_exocortex/state/recall_trace.jsonl")
+_TRACE_LOCK = threading.Lock()
+
+
+def trace(agent, ids, via, turn=None, source=None, early=None, error=None) -> bool:
+    """Append one row: the memory ids recalled into THIS turn, by which hook, from which query source.
+
+    PER TURN, not per monologue: a memory recalled on turn 1 and again on turn 7 appears on both
+    rows, so its arrival can be read against the turn a conclusion was written on. `turn` is A0's
+    loop_data.iteration: 0-based, and it restarts with each monologue, so order rows by `at`.
+    An EMPTY `ids` is recorded too: `ids: []` means the hook ran and recalled nothing. `early`
+    names why a hook returned before recalling (subordinate, no_db, no_docs, no_query, exception);
+    on such a turn A0's own untagged recall stands, which is the A17 gap, and a row per such turn
+    makes the gap a number. `error` names what failed on a run that did not return early (e.g. the
+    pipelines that raised). `source` is recall_query's class (recent_work / idle_charge /
+    user_message) or the tool that recalled.
+
+    Never raises: a failed write is printed, so an untraced turn is visible rather than silent.
+    """
+    try:
+        ctx = getattr(getattr(agent, "context", None), "id", None)
+        row = {"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "context_id": ctx, "agent": getattr(agent, "number", None), "turn": turn,
+               "via": via, "source": source,
+               "ids": sorted({str(i) for i in (ids or []) if i})}
+        if early:
+            row["early"] = early
+        if error:
+            row["error"] = error
+        d = os.path.dirname(TRACE_PATH)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        line = json.dumps(row, ensure_ascii=False) + "\n"
+        with _TRACE_LOCK:
+            with open(TRACE_PATH, "a", encoding="utf-8") as fh:
+                fh.write(line)
+        return True
+    except Exception as e:
+        print("[RECALL-TRACE] write failed (%s: %s); this turn is untraced" % (type(e).__name__, e),
+              flush=True)
+        return False
 
 
 def reset(agent) -> bool:

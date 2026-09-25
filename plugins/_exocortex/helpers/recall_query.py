@@ -134,12 +134,20 @@ def _user_message(loop_data) -> str:
         return ""
 
 
-def build_query(agent, loop_data, max_chars: int = DEFAULT_MAX_CHARS) -> str:
-    """The text handed to the embedder for memory recall.
+#: The three sources build_query can draw from, as a recall trace records them.
+SOURCE_RECENT_WORK = "recent_work"    # idle cycle: her last response + history tail
+SOURCE_IDLE_CHARGE = "idle_charge"    # idle cycle with no history: the fixed activation charge
+SOURCE_USER_MESSAGE = "user_message"  # driven turn: the user message is the question
 
-    Idle cycle  -> the recent work, bounded. Falls back to the bounded user message if history is
-                   unavailable, so the truncation fix still applies when the source switch cannot.
-    Driven turn -> the user message, bounded. Source unchanged.
+
+def build_query_with_source(agent, loop_data, max_chars: int = DEFAULT_MAX_CHARS):
+    """(text, source): the recall query and WHICH of the three sources produced it.
+
+    The source is what a recall trace records beside the ids (Opus and Fable, 2026-09-24). The idle
+    charge was the recall query ~1,800 times; a memory recalled on every idle turn may only be close
+    to the charge, not influential, and without the source a trace cannot tell the two apart.
+    build_query below is this function's text, so the recorded source and the query that was
+    actually embedded come from ONE decision and cannot drift apart.
     """
     if max_chars is None or max_chars <= 0:
         max_chars = DEFAULT_MAX_CHARS
@@ -147,7 +155,18 @@ def build_query(agent, loop_data, max_chars: int = DEFAULT_MAX_CHARS) -> str:
     if is_idle_cycle(agent):
         recent = _recent_work(loop_data)
         if recent:
-            return _bound(recent, max_chars)
+            return _bound(recent, max_chars), SOURCE_RECENT_WORK
         # No history to work from — still bound it. Falling through to the unbounded charge is the
         # defect this file exists to remove, so the bound is never skipped.
-    return _bound(_user_message(loop_data), max_chars)
+        return _bound(_user_message(loop_data), max_chars), SOURCE_IDLE_CHARGE
+    return _bound(_user_message(loop_data), max_chars), SOURCE_USER_MESSAGE
+
+
+def build_query(agent, loop_data, max_chars: int = DEFAULT_MAX_CHARS) -> str:
+    """The text handed to the embedder for memory recall.
+
+    Idle cycle  -> the recent work, bounded. Falls back to the bounded user message if history is
+                   unavailable, so the truncation fix still applies when the source switch cannot.
+    Driven turn -> the user message, bounded. Source unchanged.
+    """
+    return build_query_with_source(agent, loop_data, max_chars)[0]

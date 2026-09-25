@@ -16,6 +16,9 @@ as a `key: value` line, then `Content: …`, so each recalled memory's id arrive
 (helpers/memory_recall_tag.py). The tool's own "not found" message carries no id lines, and
 marks nothing.
 
+Every memory_load call also writes one row to the persistent recall trace (2026-09-24), with
+`ids: []` when it found nothing, so a search that came back empty is on the record too.
+
 WHAT IT DOES NOT DO
 -------------------
 - Does not refuse or change anything. It records; the writers refuse.
@@ -48,6 +51,28 @@ def ids_in(text: str) -> list:
     return seen
 
 
+def _trace(agent, ids) -> None:
+    """One recall-trace row per memory_load call, `ids: []` included (memory_recall_tag.trace).
+
+    Never raises. The turn is A0's loop_data.iteration (agent.py sets agent.loop_data per
+    monologue). trace() goes live at the next container restart: memory_recall_tag is imported by
+    bare name and survives the plugins reload, as _92's _trace explains.
+    """
+    try:
+        import memory_recall_tag as mrt
+
+        fn = getattr(mrt, "trace", None)
+        if fn is None:
+            print("[RECALL-TAG] memory_load trace unavailable — the loaded memory_recall_tag "
+                  "predates trace(); it loads at the next container restart", flush=True)
+            return
+        loop_data = getattr(agent, "loop_data", None)
+        fn(agent, ids, "memory_load", turn=getattr(loop_data, "iteration", None),
+           source="tool:memory_load")
+    except Exception as e:
+        print(f"[RECALL-TAG] memory_load trace skipped — {type(e).__name__}", flush=True)
+
+
 class RecallTagMemoryLoad(Extension):
     """tool_execute_after: add memory_load's results to the recalled set."""
 
@@ -56,6 +81,7 @@ class RecallTagMemoryLoad(Extension):
             if kwargs.get("tool_name") != "memory_load":
                 return
             ids = ids_in(getattr(response, "message", "") or "")
+            _trace(self.agent, ids)
             if not ids:
                 return
             import memory_recall_tag as mrt
