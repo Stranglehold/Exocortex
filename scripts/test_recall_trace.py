@@ -638,6 +638,28 @@ batch = [(cdoc("agent_inferred", "A19.5"), 0.9), (cdoc("user_asserted", body="se
 check("frame with the helper ABSENT: byte-identical to HEAD's _with_provenance",
       m92f._with_provenance(batch, {}, {}, now=NOW) == m92h._with_provenance(batch, {}, {}, now=NOW))
 m92f._trust = mt
+# The head's date WORD follows its field (Opus's ruling, 2026-09-25). A0 core consolidation rewrites
+# `timestamp` to the merge time; NbamS6iC4q (a 09-24 memory merged 09-25) is the live shape.
+
+
+def hdoc(observed, ts="2026-09-25T11:14:17-04:00"):
+    meta = {"id": "x", "timestamp": ts, "classification": {"source": "agent_inferred", "validity": "inferred"}}
+    if observed is not None:
+        meta["observed_at"] = observed
+    return types.SimpleNamespace(page_content="merged body", metadata=meta)
+
+
+head = lambda d: m92f._with_provenance([(d, 0.9)], {}, {}, now=NOW).split("\n")[0]
+check("head: a merged memory reads 'observed <observed_at date>', not 'saved <today>'",
+      head(hdoc("2026-09-24T11:47:57.189727+00:00")) == "recalled memory (observed 2026-09-24; source: legacy):",
+      head(hdoc("2026-09-24T11:47:57.189727+00:00")))
+check("head: never 'saved' with an observation date, never 'observed' with a save date",
+      "saved 2026-09-24" not in head(hdoc("2026-09-24T11:47:57+00:00")) and head(hdoc(None)).startswith("recalled memory (saved 2026-09-25"))
+check("head: a malformed observed_at falls back to 'saved <timestamp date>'",
+      head(hdoc("yesterday")) == "recalled memory (saved 2026-09-25; source: legacy):" and head(hdoc("")) == head(hdoc(None)),
+      (head(hdoc("yesterday")), head(hdoc(""))))
+check("head: no date at all still says so", head(hdoc(None, ts="")) == "recalled memory (save date unknown; source: legacy):",
+      head(hdoc(None, ts="")))
 
 m52 = load_module("ext52", os.environ.get("TEST_EXT52") or os.path.join(MONO, "_52_selective_memorizer.py"))
 for label, mod, want in (("new helper", ms_new, ("user_asserted", "confirmed", "A19.4")),
@@ -688,6 +710,52 @@ for label, mod, agent, want in (("new helper, a chat with Jake", ms_new, FakeAge
     check("_53 with the %s: source %s, source_rule %s" % (label, want[0], want[1]),
           len(inserted) == 1 and cl.get("source") == want[0] and cl.get("source_rule") == want[1]
           and (want[1] or "source_rule" not in cl), (inserted, agent.context.logs))
+
+# Structural writers outside A19 stamp their mechanism (Opus's ruling, 2026-09-25: source_rule means
+# "structurally derived by <mechanism>", not "went through derive_source_rule").
+m36 = load_module("ext36", os.environ.get("TEST_EXT36") or os.path.join(PLUGIN, "extensions", "python", "tool_execute_after",
+                                                                          "_36_status_writer.py"))
+txt36, meta36 = m36.build_memory("search_library", "exocortex_memory.list_collections", "up",
+                                 "list_collections returned humble_bundle", datetime(2026, 9, 25, 15, 6, 35, tzinfo=timezone.utc))
+check("_36 status writer stamps source_rule A13 (source external_retrieved)",
+      (meta36["classification"].get("source"), meta36["classification"].get("source_rule")) == ("external_retrieved", "A13"),
+      meta36["classification"])
+check("...so the frame shows its source, not legacy (DGGdspk8st's case)",
+      mt.source_clause(types.SimpleNamespace(metadata=meta36)) == "source: external_retrieved")
+mont = load_module("ont_store", os.environ.get("TEST_ONT") or os.path.join(HELPERS, "ontology", "ontology_store.py"))
+check("ontology DEFAULT_CLASSIFICATION carries source_rule ontology", mont.DEFAULT_CLASSIFICATION.get("source_rule") == "ontology",
+      mont.DEFAULT_CLASSIFICATION)
+ENT = {"entity_type": "tool", "properties": {"name": "search_library"}, "provenance": {"confidence": 0.9}}
+for k in ("python", "python.helpers", "python.helpers.memory"):
+    sys.modules.pop(k, None)
+with contextlib.redirect_stdout(io.StringIO()):
+    severed = asyncio.run(mont.store_entity(FakeAgent(), ENT))
+check("ontology store_entity is SEVERED where python.helpers.memory is absent (as in her container): returns ''",
+      severed == "", severed)
+captured_ent = []
+
+
+class OntDB:
+    async def insert_text(self, text, metadata):
+        captured_ent.append(metadata)
+        return "ent-mem"
+
+
+class OldPathMemory:
+    @staticmethod
+    async def get(agent):
+        return OntDB()
+
+
+_py, _pyh, _pym = types.ModuleType("python"), types.ModuleType("python.helpers"), types.ModuleType("python.helpers.memory")
+_py.__path__, _pyh.__path__, _pym.Memory = [], [], OldPathMemory
+sys.modules.update({"python": _py, "python.helpers": _pyh, "python.helpers.memory": _pym})
+with contextlib.redirect_stdout(io.StringIO()):
+    eid = asyncio.run(mont.store_entity(FakeAgent(), ENT))
+for k in ("python", "python.helpers", "python.helpers.memory"):
+    sys.modules.pop(k, None)
+check("...and where that import resolves, the entity memory it writes carries source_rule ontology",
+      bool(eid) and bool(captured_ent) and captured_ent[0]["classification"].get("source_rule") == "ontology", captured_ent[:1])
 
 # ── H ────────────────────────────────────────────────────────────────────────────────────────────
 print("H. _19 check 1: a save that copies the injected block (head line + body) is the same text")

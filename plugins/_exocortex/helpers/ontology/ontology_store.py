@@ -34,6 +34,8 @@ DEFAULT_CLASSIFICATION = {
     "relevance": "active",
     "utility": "tactical",
     "source": "external_retrieved",
+    # GT-2a derivation marker (Opus's ruling, 2026-09-25): code-determined, so structural.
+    "source_rule": "ontology",
 }
 
 
@@ -154,6 +156,9 @@ async def store_entity(agent, entity: dict, entity_id: str = None) -> str:
             "relevance": "active",
             "utility": "tactical",
             "source": "external_retrieved",
+            # GT-2a derivation marker (Opus's ruling, 2026-09-25): the ontology layer determines
+            # this source in code, so the recall frame shows it rather than "legacy".
+            "source_rule": "ontology",
         },
         # Layer 10 lineage
         "lineage": {

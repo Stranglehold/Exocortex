@@ -801,6 +801,10 @@ def _role_domain_overlaps(
 
 # ── Access Tracking ──────────────────────────────────────────────────────────
 
+# An observed_at the head may show: an ISO date at its start. Anything else falls back to "saved".
+_ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
 def _with_provenance(result, observations=None, config=None, now=None):
     """Prefix each recalled memory with what it is and when it was saved.
 
@@ -842,9 +846,18 @@ def _with_provenance(result, observations=None, config=None, now=None):
         text = getattr(doc, "page_content", "") or ""
         meta = getattr(doc, "metadata", None) or {}
         stamp = str(meta.get("timestamp") or "")[:10]   # YYYY-MM-DD
+        # The date's WORD follows its field (Opus's ruling, 2026-09-25): A0 core consolidation
+        # (_memory/helpers/memory_consolidation._handle_merge) rewrites `timestamp` to the merge
+        # time, so a merged memory read "saved <today>" for older content. R3's observed_at survives
+        # a merge; when present the head says "observed <date>", never "saved" with an
+        # observation date.
+        observed = str(meta.get("observed_at") or "")[:10]
         # An undated memory says so. Silently omitting the date would make it read as
         # current, which is the defect; guessing one would be worse.
-        clauses = [("saved %s" % stamp) if stamp else "save date unknown"]
+        if _ISO_DAY.match(observed):
+            clauses = ["observed %s" % observed]
+        else:
+            clauses = [("saved %s" % stamp) if stamp else "save date unknown"]
         # Graduated trust GT-2a (helpers/memory_trust.py): the source, shown only when a
         # derivation rule produced it, else "legacy". Same head, no second frame.
         if _trust is not None:

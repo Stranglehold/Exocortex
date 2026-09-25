@@ -166,6 +166,11 @@ def build_memory(subject: str, probe: str, status: str, detail: str, now: dateti
             "relevance": "active",
             "utility": "tactical",
             "source": "external_retrieved",
+            # GT-2a derivation marker (Opus's ruling, 2026-09-25): this source is structural, written
+            # by the harness from the probe itself (A13), so the recall frame shows it rather than
+            # "legacy". source_rule means "structurally derived by <mechanism>", not "went through
+            # derive_source_rule".
+            "source_rule": "A13",
             "relational_salience": "task_transient",
         },
         LIN_KEY: {
