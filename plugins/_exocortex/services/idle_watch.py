@@ -7,7 +7,8 @@ Managed by supervisord. Starts on container boot, independent of A0's event loop
 Responsibilities (sole owner of the firing decision):
   - Poll engine_state.json every 60 seconds for last_user_ts
   - When idle threshold exceeded: acquire file lock, run all guards, fire one cycle
-  - Stale cycle detection: clear hung cycles so the next poll can fire
+  - Slot resolution on EVERY poll, ahead of every fire gate: record completions and deaths,
+    reap stalled and hung cycles (_resolve_slot). Reaping is not firing.
 
 What this is NOT responsible for (owned by _70_idle_trigger.py extension):
   - Writing last_user_ts when real users make tool calls
@@ -183,6 +184,20 @@ def _poll_once() -> None:
     except Exception as e:
         print(f"[CACHE-WARM] tick error: {e}", flush=True)
 
+    # REAPING IS NOT FIRING (found 2026-09-16, shipped 2026-09-25). Resolve the tracked cycle
+    # slot BEFORE any fire gate. Every gate below returns early (disabled, paused, the idle
+    # threshold), and the slot machine used to live only behind them, inside
+    # _atomic_check_and_fire. So a dead or stalled cycle stayed invisible for as long as any gate
+    # held. A parallel-worker tool call stamps last_user_ts, the idle gate then shuts for 30 min,
+    # and the death is recorded up to 30 min late. Measured 2026-09-15..25: every late death
+    # (#656, #704, #711, #730, #760) was followed by a fire at idle 1812-1822 s; every quick death
+    # by 3622-6583 s. Resolution records, reaps and frees; it never fires, so running it with
+    # the engine off is safe.
+    try:
+        _resolve_slot_before_gates()
+    except Exception as e:
+        print(f"[IDLE-WATCH] slot resolution error: {e}", flush=True)
+
     if not config.get("enabled", False):
         return
 
@@ -300,6 +315,108 @@ def _clear_cycle_slot(state: dict, outcome: str, reason: str = "") -> None:
     _write_state(state)
 
 
+SLOT_RUNNING, SLOT_GRACE, SLOT_FREE = "running", "grace", "free"
+
+
+def _resolve_slot(state: dict, now: float) -> str:
+    """Resolve the tracked cycle slot and say what holds it: SLOT_RUNNING (a live cycle that is
+    making progress), SLOT_GRACE (fired moments ago and not yet visible as running) or SLOT_FREE.
+    It records completions and deaths and reaps stalled and hung cycles. It NEVER fires. The
+    caller holds the daemon lock.
+
+    The body is the B+C state machine of 2026-07-15, moved here unchanged from
+    _atomic_check_and_fire so the pre-gate pass and the fire path share one implementation:
+
+    OVERLAP IS A PURE FUNCTION OF is_running (B). The daemon defers as long as the tracked
+    context is alive, and fires only once it is genuinely gone. It no longer clears on the
+    cycle_close self-report signal — that was a competing "done" definition that fired while
+    the context was still finishing monologue_end (memory/ontology/sleep), orphaning it
+    (2026-07-15 pile-up). is_running is the single source of truth for "occupied"; the signal
+    is metadata only (cycle-type reset, in the fire path) and cannot gate the slot. Two reapers
+    stop a stuck context from deadlocking the slot: a STALL watchdog (C — no heartbeat progress
+    ⇒ hung generation, reap fast) and a hard wall-clock backstop. History: gating on the
+    signal / a second flag-writer (_70) is exactly what kept breaking; is_running is the one
+    signal both "completed" and "died" agree on for the fire decision."""
+    prev_ctx = state.get("cycle_context_id", "")
+    if state.get("cycle_active") and prev_ctx:
+        age = now - state.get("last_cycle_start", 0)
+        if _cycle_running(prev_ctx):
+            stall = now - max(state.get("cycle_heartbeat", 0), state.get("last_cycle_start", 0))
+            if stall > _CYCLE_STALL_CAP:
+                # (C) Fast watchdog: alive but no tool-call progress for too long — a
+                # hung/degenerate generation (or a stuck await). The cap sits well above
+                # any legit monologue_end, so this never fires on slow-but-progressing work.
+                _msg = (f"stalled {stall/60:.0f}min "
+                        "(no progress — hung generation) — reaping.")
+                print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
+                _reset_cycle(prev_ctx)
+                _clear_cycle_slot(state, "reaped_stalled", _msg)
+                return SLOT_FREE
+            if age > _CYCLE_HUNG_CAP:
+                # Hard backstop: heartbeating but absurdly long-lived.
+                _msg = f"exceeded hard cap >{_CYCLE_HUNG_CAP // 60}min — reaping."
+                print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
+                _reset_cycle(prev_ctx)
+                _clear_cycle_slot(state, "reaped_hung", _msg)
+                return SLOT_FREE
+            return SLOT_RUNNING
+        # Not running → the context is genuinely gone. For the fire decision,
+        # "completed cleanly" and "died" are identical (the slot is free either
+        # way) — the signal/chat are read only to LOG which, never to gate. A
+        # just-fired task can read not-running for a beat before it spins up, so
+        # hold a short grace to avoid clearing our own brand-new cycle.
+        if age < _REAP_GRACE:
+            return SLOT_GRACE
+        sig = _read_cycle_signal()
+        _sr = bool(sig and (float(sig.get("completed_ts", 0) or 0) >= state.get("last_cycle_start", 0)
+                            or sig.get("context_id") == prev_ctx))
+        # One call site, three outcomes — so the outcome is captured here and passed,
+        # rather than inferred inside the slot-clear where the evidence is already gone.
+        if _sr:
+            _out, _msg = "completed", "finished (self-reported) — slot free."
+        elif _cycle_completed(prev_ctx):
+            _out, _msg = "completed", "finished (response written) — slot free."
+        else:
+            _out, _msg = "died", "ended without completing (died / reaped) — slot free."
+        print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
+        _clear_cycle_slot(state, _out, _msg)
+        return SLOT_FREE
+    if prev_ctx:
+        # cycle_active already false but a ctx id lingers. Nothing should clear the
+        # flag out of band now that _70 doesn't, but if a lingering ctx is somehow
+        # still alive, reap it (defense-in-depth — never leave a live zombie), then
+        # normalise the slot.
+        _orphan = _cycle_running(prev_ctx)
+        if _orphan:
+            print(f"[IDLE-WATCH] Orphaned live cycle {prev_ctx} — reaping, not abandoning.", flush=True)
+            _reset_cycle(prev_ctx)
+        _clear_cycle_slot(state, "orphan_reaped" if _orphan else "died",
+                          "orphaned live cycle — reaped" if _orphan
+                          else "lingering context, not running — slot normalised")
+    return SLOT_FREE
+
+
+def _resolve_slot_before_gates() -> None:
+    """_resolve_slot under the daemon lock, ahead of every fire gate (see _poll_once). A held
+    lock means another holder is resolving or firing right now, so this poll's pass is skipped;
+    the next poll runs it."""
+    os.makedirs(_OFFICE_DIR, exist_ok=True)
+    try:
+        lock_fd = open(_LOCK_PATH, "w")
+    except OSError:
+        return
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (IOError, OSError):
+        lock_fd.close()
+        return
+    try:
+        _resolve_slot(_read_state(), time.time())
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
+
+
 def _atomic_check_and_fire(config: dict) -> bool:
     """
     Acquire exclusive file lock, run all guards, fire one cycle if conditions met.
@@ -343,78 +460,19 @@ def _atomic_check_and_fire(config: dict) -> bool:
                 return False
 
         # ── Cycle-slot state machine (B+C redesign, 2026-07-15) ───────────────
-        # OVERLAP IS A PURE FUNCTION OF is_running (B). The daemon defers as long as
-        # the tracked context is alive, and fires only once it is genuinely gone. It
-        # no longer clears on the cycle_close self-report signal — that was a competing
-        # "done" definition that fired while the context was still finishing monologue_end
-        # (memory/ontology/sleep), orphaning it (2026-07-15 pile-up). is_running is the
-        # single source of truth for "occupied"; the signal is metadata only (cycle-type
-        # reset, below) and cannot gate the slot. Two reapers stop a stuck context from
-        # deadlocking the slot: a STALL watchdog (C — no heartbeat progress ⇒ hung
-        # generation, reap fast) and a hard wall-clock backstop. History: gating on the
-        # signal / a second flag-writer (_70) is exactly what kept breaking; is_running
-        # is the one signal both "completed" and "died" agree on for the fire decision.
+        # The machine is _resolve_slot, shared with the pre-gate pass in _poll_once. It runs
+        # again here, under this lock, because the slot can change between the two passes.
+        # A reaped or finished cycle falls through to the gates below and can be replaced in
+        # the same poll, exactly as before.
         prev_ctx = state.get("cycle_context_id", "")
-        if state.get("cycle_active") and prev_ctx:
-            age = now - state.get("last_cycle_start", 0)
-            if _cycle_running(prev_ctx):
-                stall = now - max(state.get("cycle_heartbeat", 0), state.get("last_cycle_start", 0))
-                if stall > _CYCLE_STALL_CAP:
-                    # (C) Fast watchdog: alive but no tool-call progress for too long — a
-                    # hung/degenerate generation (or a stuck await). The cap sits well above
-                    # any legit monologue_end, so this never fires on slow-but-progressing work.
-                    _msg = (f"stalled {stall/60:.0f}min "
-                            "(no progress — hung generation) — reaping.")
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
-                    _reset_cycle(prev_ctx)
-                    _clear_cycle_slot(state, "reaped_stalled", _msg)
-                    # fall through → fire fresh
-                elif age > _CYCLE_HUNG_CAP:
-                    # Hard backstop: heartbeating but absurdly long-lived.
-                    _msg = f"exceeded hard cap >{_CYCLE_HUNG_CAP // 60}min — reaping."
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
-                    _reset_cycle(prev_ctx)
-                    _clear_cycle_slot(state, "reaped_hung", _msg)
-                    # fall through
-                else:
-                    # (B) Running and making progress → NEVER fire over it. This branch is
-                    # the whole overlap guarantee: a live context always holds the slot.
-                    print(f"[IDLE-WATCH] Cycle {prev_ctx} in progress — deferring, no overlap.", flush=True)
-                    return False
-            else:
-                # Not running → the context is genuinely gone. For the fire decision,
-                # "completed cleanly" and "died" are identical (the slot is free either
-                # way) — the signal/chat are read only to LOG which, never to gate. A
-                # just-fired task can read not-running for a beat before it spins up, so
-                # hold a short grace to avoid clearing our own brand-new cycle.
-                if age < _REAP_GRACE:
-                    return False
-                sig = _read_cycle_signal()
-                _sr = bool(sig and (float(sig.get("completed_ts", 0) or 0) >= state.get("last_cycle_start", 0)
-                                    or sig.get("context_id") == prev_ctx))
-                # One call site, three outcomes — so the outcome is captured here and passed,
-                # rather than inferred inside the slot-clear where the evidence is already gone.
-                if _sr:
-                    _out, _msg = "completed", "finished (self-reported) — slot free."
-                elif _cycle_completed(prev_ctx):
-                    _out, _msg = "completed", "finished (response written) — slot free."
-                else:
-                    _out, _msg = "died", "ended without completing (died / reaped) — slot free."
-                print(f"[IDLE-WATCH] Cycle {prev_ctx} {_msg}", flush=True)
-                _clear_cycle_slot(state, _out, _msg)
-                # fall through → fire fresh
-        elif prev_ctx:
-            # cycle_active already false but a ctx id lingers. Nothing should clear the
-            # flag out of band now that _70 doesn't, but if a lingering ctx is somehow
-            # still alive, reap it (defense-in-depth — never leave a live zombie), then
-            # normalise the slot.
-            _orphan = _cycle_running(prev_ctx)
-            if _orphan:
-                print(f"[IDLE-WATCH] Orphaned live cycle {prev_ctx} — reaping, not abandoning.", flush=True)
-                _reset_cycle(prev_ctx)
-            _clear_cycle_slot(state, "orphan_reaped" if _orphan else "died",
-                              "orphaned live cycle — reaped" if _orphan
-                              else "lingering context, not running — slot normalised")
+        slot = _resolve_slot(state, now)
+        if slot == "running":
+            # (B) Running and making progress → NEVER fire over it. This branch is
+            # the whole overlap guarantee: a live context always holds the slot.
+            print(f"[IDLE-WATCH] Cycle {prev_ctx} in progress — deferring, no overlap.", flush=True)
+            return False
+        if slot == "grace":
+            return False
 
         # Guard: blast radius cap
         max_total = config.get("max_total_cycles", MAX_TOTAL_CYCLES)

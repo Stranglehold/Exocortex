@@ -1,4 +1,15 @@
+import re
+
 from helpers.extension import Extension
+
+# MetaGate refusals are policy blocks, not format failures (Opus, 2026-09-25). Since MetaGate
+# raises a RepairableException, its refusals reach this hook through A0's _50, and a JSON-format
+# reminder stapled onto "you sent a tool call without required arguments" misdiagnoses call
+# content as format. That is the same wrong-diagnosis class as the retired truncation text.
+# A0's format_error places the exception line at the top or the bottom depending on the class
+# name, so this matches that LINE ("<Type>: [MetaGate…"), not the start of the message. Indented
+# traceback source lines such as `    raise MetaGateBlockError(f"[MetaGate] {msg}")` do not match.
+_METAGATE_REFUSAL = re.compile(r"^[\w\.]+: \[MetaGate", re.M)
 
 # Keywords that indicate a JSON format/parse failure from DirtyJson or tool extraction
 FORMAT_ERROR_SIGNALS = [
@@ -34,6 +45,10 @@ class StructuredRetry(Extension):
     async def execute(self, **kwargs):
         msg = kwargs.get("msg")
         if not msg or "message" not in msg:
+            return
+
+        # A MetaGate refusal describes itself; see _METAGATE_REFUSAL.
+        if _METAGATE_REFUSAL.search(msg["message"]):
             return
 
         error_text = msg["message"].lower()

@@ -3,6 +3,26 @@ import sys
 from helpers.extension import Extension
 from typing import Any
 
+# A block is REPAIRABLE (Opus, 2026-09-25). A0's _50_handle_repairable_exception hands a
+# RepairableException back to the model as a history warning and marks it handled. A plain
+# ValueError is critical: _error_retry retries it once per monologue and the second one ends the
+# monologue. If A0 ever moves the class, fall back to ValueError, which restores the old behaviour.
+# That is never a silent pass: the except clause below re-raises both types.
+try:
+    from helpers.errors import RepairableException
+except Exception:  # pragma: no cover - core layout changed
+    RepairableException = ValueError  # type: ignore[misc,assignment]
+
+
+class MetaGateBlockError(RepairableException):  # type: ignore[misc,valid-type]
+    """Every MetaGate block raises this (Opus, 2026-09-25, option B).
+
+    It is a RepairableException, so A0's _50 hands it back and the monologue survives. The name
+    ends in "Error" on purpose: A0's errors.format_error lifts the exception line to the TOP only
+    when it matches r"[\\w\\.]+Error:", so the refusal text stays first, as it was for the old
+    ValueError. A plain RepairableException put it after the traceback (verified in her venv).
+    If helpers.errors is missing, this inherits from ValueError, which is the old behaviour."""
+
 # A1 three-strike quarantine — ENFORCER half. The RECORDER is
 # tool_execute_after/_32_failure_fingerprint.py. Both import the same helper so
 # they cannot disagree about what "the same attempt" means; a silent mismatch
@@ -57,8 +77,11 @@ TOOL_SCHEMAS = {
     "code_execution_tool": {
         "required": ["runtime", "code"],
         "conditionally_required": {
-            # code is NOT required when runtime is "output"
-            "code": {"skip_when": {"runtime": ["output"]}},
+            # code is NOT required when runtime is "output" (reads a running session) or
+            # "reset" (A0's no-code reset: code_execution_tool.py runtime == "reset" →
+            # reset_terminal). Blocking "reset" left no way to reset a wedged session
+            # without also running something (Opus, 2026-09-25).
+            "code": {"skip_when": {"runtime": ["output", "reset"]}},
         },
         "arg_aliases": {
             # wrong arg name -> correct arg name
@@ -296,11 +319,8 @@ class MetaReasoningGate(Extension):
                     )
                 except Exception:
                     pass
-                try:
-                    self.agent.hist_add_warning(msg)
-                except Exception:
-                    pass
-                raise ValueError(f"[MetaGate] {msg}")
+                # Repairable, and no hist_add_warning: _50 adds the warning (see the :459 block).
+                raise MetaGateBlockError(f"[MetaGate] {msg}")
 
             # Phase 0.5: text_editor:write content size guard
             # text_editor:write embeds file content inside a JSON string field.
@@ -392,11 +412,9 @@ class MetaReasoningGate(Extension):
                         )
                     except Exception:
                         pass
-                    try:
-                        self.agent.hist_add_warning(msg)
-                    except Exception:
-                        pass
-                    raise ValueError(f"[MetaGate-SIZE] {msg}")
+                    # Repairable, and no hist_add_warning: _50 adds the warning. The
+                    # "[MetaGate-SIZE]" prefix stays: _45_failure_lesson_capture matches on it.
+                    raise MetaGateBlockError(f"[MetaGate-SIZE] {msg}")
 
             if not tool_args:
                 return
@@ -422,20 +440,37 @@ class MetaReasoningGate(Extension):
             missing = self._check_required(tool_args, schema)
 
             if missing:
-                # For code_execution_tool with missing/empty 'code', inject truncation guidance.
-                # The empty-code case is almost always a truncated JSON payload — DirtyJson
-                # parses the cut-off code string as an empty value. The model needs to know to
-                # use append-mode writes rather than retrying the same oversized payload.
+                # For code_execution_tool with missing/empty 'code': name the actual defect
+                # (Opus, 2026-09-25). The text this replaces blamed a truncated JSON payload and
+                # prescribed append-mode writes for EVERY missing code. That is the write-size
+                # lesson retired on 2026-08-22 (a measured 37,422-char call was valid), and #760's
+                # terminal reset received it on 2026-09-25.
                 if tool_name == "code_execution_tool" and "code" in missing:
-                    msg = (
-                        f"Tool 'code_execution_tool' is missing the 'code' argument. "
-                        f"If you were writing a large file, your JSON was truncated — "
-                        f"the code string was too long for a single payload. "
-                        f"FIX: write in sections using Python open() with append mode:\n"
-                        f"  with open(path, 'w') as f: f.write(section1)  # max ~1000 chars\n"
-                        f"  with open(path, 'a') as f: f.write(section2)  # repeat as needed\n"
-                        f"Also ensure you use 'code' (not 'content' or 'script') as the arg name."
-                    )
+                    rt = str(tool_args.get("runtime", "") or "").strip().lower()
+                    reset_v = tool_args.get("reset")
+                    session = tool_args.get("session")
+                    n = session if session not in (None, "") else "<n>"
+                    if reset_v is True or str(reset_v).strip().lower() in ("true", "1", "yes"):
+                        msg = (
+                            f"Tool 'code_execution_tool' was called with reset: true and no 'code' "
+                            f"(defect: reset_without_code). Runtime '{rt or 'unset'}' runs code "
+                            f"after the reset, so it needs 'code'. To reset session {n} without "
+                            f"running anything, call it with runtime: \"reset\" and session: {n}."
+                        )
+                    elif not rt or "runtime" in missing:
+                        msg = (
+                            f"Tool 'code_execution_tool' has no 'runtime' and no 'code' "
+                            f"(defect: missing_code). Set runtime to \"terminal\", \"python\" or "
+                            f"\"nodejs\" and put the command or program in 'code'."
+                        )
+                    else:
+                        msg = (
+                            f"Tool 'code_execution_tool' has no 'code' for runtime '{rt}' "
+                            f"(defect: missing_code). That runtime runs the code you pass, so the "
+                            f"call cannot execute without it: put the command or program in 'code' "
+                            f"and call again. Runtime \"output\" reads a running session and runtime "
+                            f"\"reset\" resets one; neither needs code."
+                        )
                 else:
                     msg = (
                         f"Tool '{tool_name}' is missing required arguments: "
@@ -449,21 +484,24 @@ class MetaReasoningGate(Extension):
                     )
                 except Exception:
                     pass
-                # Inject warning into history so model sees the problem
-                try:
-                    self.agent.hist_add_warning(msg)
-                except Exception:
-                    pass
                 # Raise to abort tool execution — prevents downstream KeyError crashes.
-                # A0's exception handler will add this to the retry context.
-                raise ValueError(f"[MetaGate] {msg}")
+                # MetaGateBlockError, a RepairableException, not ValueError (Opus, 2026-09-25): A0's
+                # _50_handle_repairable_exception adds it to her history as a warning and marks
+                # it handled, so the monologue continues. A ValueError is critical: _error_retry
+                # retries it ONCE per monologue, so the second block ended the monologue.
+                # #760 died that way on 2026-09-25 (7 fatal blocks since 08-28, 4 idle cycles).
+                # No hist_add_warning here: _50 adds the warning, and a second copy would
+                # repeat it in her history.
+                raise MetaGateBlockError(f"[MetaGate] {msg}")
 
             # A1: the args are final now. Tell the recorder which terminal session this
             # call runs in and whether it resets it.
             self._stash_session(tool_name, tool_args)
 
-        except ValueError:
-            # Re-raise MetaGate abort signals — do not swallow
+        except (ValueError, RepairableException):
+            # Re-raise MetaGate abort signals — do not swallow. RepairableException must be
+            # named: it is not a ValueError, and the generic handler below would otherwise
+            # swallow the block and let the tool run without its required args.
             raise
         except Exception as e:
             # Graceful degradation for all other MetaGate errors
@@ -509,7 +547,8 @@ class MetaReasoningGate(Extension):
     def _quarantine_gate(self, tool_name: str, tool_args: dict | None) -> None:
         """A1 enforcer. Stash the op signature, then refuse quarantined attempts.
 
-        Raises ValueError to block, matching this file's existing block mechanism.
+        Raises MetaGateBlockError (a RepairableException) to block, like every other block in this file since
+        2026-09-25: the call is refused, and the monologue survives the refusal.
         Any *internal* failure here is swallowed: a broken quarantine store must
         degrade to "no quarantine", never to "no tool calls". A gate that can wedge
         the agent is worse than the failure loop it exists to stop.
@@ -548,10 +587,13 @@ class MetaReasoningGate(Extension):
             # The strikes describe the session, not this code, which never reached the
             # shell (see helpers/failure_fingerprint.py). Say what clears it.
             n = entry["scope"].get("session")
+            # The reset shape must be the VALID one (Opus, 2026-09-25). "reset: true, session:
+            # {n}" with no code is rejected twice: by this file's required-args check and by
+            # A0 itself (code_execution_tool.py reads args["code"] for every code runtime).
             how = (
                 f"Terminal session {n} is still busy with an earlier command, so this code "
-                f"has not run. Resetting that session (reset: true, session: {n}) clears "
-                f"this quarantine."
+                f"has not run. Resetting that session (runtime: \"reset\", session: {n}) "
+                f"clears this quarantine."
             )
         else:
             how = (
@@ -569,7 +611,9 @@ class MetaReasoningGate(Extension):
         except Exception:
             pass
         print(f"[QUARANTINE] BLOCKED {tool_name} fp={entry.get('fingerprint')}", flush=True)
-        raise ValueError(msg)
+        # Repairable (Opus, 2026-09-25): the tool is still blocked, because the exception
+        # stops it, but the monologue survives so she can do something else.
+        raise MetaGateBlockError(msg)
 
     def _stash_session(self, tool_name: str, tool_args: dict) -> None:
         """A1: hand the recorder the call's terminal session and whether it resets it.
