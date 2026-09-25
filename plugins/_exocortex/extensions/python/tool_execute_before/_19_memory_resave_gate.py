@@ -33,6 +33,11 @@ The injectors mark what they recall (helpers/memory_recall_tag.py). This gate re
 THE CHECKS (A20), in order
 --------------------------
   1. The incoming text, normalized (case, whitespace), equals a recalled memory's text → refuse.
+     The same after removing ONE leading recall head ("recalled memory (saved …):", _92's line
+     above each recalled body), so a copy of the injected block is caught (Fable, 2026-09-25).
+     Shadow, never refusing: a recalled body contained WHOLE in a save it does not equal is logged
+     as would-refuse "containment" (Opus's ruling: containment waits on this measurement).
+Every refusal and every shadow event is a row in state/resave_gate.jsonl (GATE_LOG).
   2. A similarity search for the incoming text, at threshold 0.9 (the threshold _52 already
      applies store-wide), returns a memory that was recalled this monologue → refuse. One
      embedding per memory_save, and the recalled side needs none: the store's own index answers.
@@ -56,8 +61,12 @@ WHAT IT DOES NOT DO
 - No LLM calls. One embedding, through the store's own search.
 """
 
+import json
+import os
 import re
 import sys
+import threading
+from datetime import datetime, timezone
 
 from helpers.extension import Extension
 from helpers.errors import RepairableException
@@ -106,6 +115,59 @@ def normalize(text: str) -> str:
     return _WS.sub(" ", (text or "")).strip().lower()
 
 
+# A recall head as _92's _with_provenance renders it, on its own line above the body:
+# "recalled memory (saved <date>; ...):" or "recalled memory (save date unknown; ...):".
+_RECALL_HEAD = re.compile(r"^\s*recalled memory \((?:saved |save date unknown)[^\n]*\):[ \t]*\r?\n",
+                          re.IGNORECASE)
+
+
+# ── The gate ledger (2026-09-25; Opus's A20 ruling + Fable's shadow check) ──────────────────────
+# One row per refusal (the memory id it matched and the rule), and one per SHADOW event: a recalled
+# body that appears whole inside a save it does not equal. Those saves pass; the row is what the
+# containment decision waits on ("near-zero cost on 20+ productive cycles"), because a refusal log
+# alone can never show them. Printing to stdout was the only record before; docker logs do not
+# survive a container recreate, and this joins to cycle_endings.jsonl by context_id.
+GATE_LOG = os.environ.get("EXO_RESAVE_GATE_LOG", "/a0/usr/plugins/_exocortex/state/resave_gate.jsonl")
+_GATE_LOCK = threading.Lock()
+
+
+def log_gate_event(agent, memory_id, rule, refused, **extra) -> bool:
+    """Append one ledger row. Never raises; a failed write is printed, so a gap is visible."""
+    try:
+        row = {"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "context_id": getattr(getattr(agent, "context", None), "id", None),
+               "agent": getattr(agent, "number", None),
+               "memory_id": str(memory_id), "rule": rule, "refused": bool(refused)}
+        row.update(extra)
+        d = os.path.dirname(GATE_LOG)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        line = json.dumps(row, ensure_ascii=False) + "\n"
+        with _GATE_LOCK:
+            with open(GATE_LOG, "a", encoding="utf-8") as fh:
+                fh.write(line)
+        return True
+    except Exception as e:
+        print("[RESAVE-GATE] ledger write failed (%s: %s); this event is unrecorded" % (type(e).__name__, e),
+              flush=True)
+        return False
+
+
+def strip_recall_head(text: str) -> str:
+    """The text with ONE leading recall head removed when it starts with one; otherwise unchanged.
+
+    Fable, 2026-09-25: check 1 compared a save only with the recalled BODY, so a save that copied
+    the injected block whole (head line + body) was not equal to it and passed, and the head went
+    into the store as content: the 09-08 mechanism. With check 2 off, nothing else caught it.
+    Scope: one leading head. A copy of several blocks, or with the section header above, still
+    passes, as before. Fails open: an error returns the text unchanged.
+    """
+    try:
+        return _RECALL_HEAD.sub("", text or "", count=1)
+    except Exception:
+        return text
+
+
 def _doc_id(doc) -> str:
     return str((getattr(doc, "metadata", None) or {}).get("id") or "")
 
@@ -140,12 +202,32 @@ class MemoryResaveGate(Extension):
         except Exception:
             return                                  # fail open
 
-        # 1. verbatim, after normalization
+        # 1. verbatim, after normalization; and again with one leading recall head removed, so a
+        #    copy of the injected block (head line + body) is the same text (Fable, 2026-09-25)
         mine = normalize(text)
+        mine_body = normalize(strip_recall_head(text))
+        if mine_body == mine:
+            mine_body = ""                           # no head was removed: one comparison is enough
+        contained = []
         for doc in docs.values():
             did = _doc_id(doc)
-            if did in recalled and normalize(getattr(doc, "page_content", "")) == mine:
-                self._refuse(did, doc, "repeats memory %s word for word")
+            if did not in recalled:
+                continue
+            body = normalize(getattr(doc, "page_content", ""))
+            if body == mine:
+                self._refuse(did, doc, "repeats memory %s word for word", "verbatim")
+            if mine_body and body == mine_body:
+                self._refuse(did, doc, "repeats memory %s word for word, recall head included",
+                             "verbatim_with_head")
+            if body and body in mine:
+                contained.append((did, len(body)))
+
+        # Shadow containment (Fable, 2026-09-25): reached only when check 1 refused nothing, so every
+        # body listed here sits inside the save without equalling it. Logged as would-refuse; the
+        # save goes through. No behaviour change; the ledger write never raises.
+        for did, n in contained:
+            log_gate_event(self.agent, did, "containment", False,
+                           chars_incoming=len(mine), chars_recalled=n)
 
         # 2. a near-paraphrase of a recalled memory (off: see SIMILARITY_CHECK)
         if not SIMILARITY_CHECK:
@@ -158,12 +240,15 @@ class MemoryResaveGate(Extension):
             doc = _unpack(item)
             did = _doc_id(doc)
             if did in recalled:
-                self._refuse(did, doc, "is near-identical to memory %%s (similarity >= %.1f)" % SIMILARITY)
+                self._refuse(did, doc, "is near-identical to memory %%s (similarity >= %.1f)" % SIMILARITY,
+                             "similar")
 
-    def _refuse(self, did: str, doc, how: str) -> None:
-        """`how` is a clause with one %s for the memory id, e.g. "repeats memory %s word for word"."""
+    def _refuse(self, did: str, doc, how: str, rule: str = "") -> None:
+        """`how` is a clause with one %s for the memory id, e.g. "repeats memory %s word for word".
+        Every refusal is written to the gate ledger with the id it matched (Opus, 2026-09-25)."""
         when = str((getattr(doc, "metadata", None) or {}).get("timestamp") or "")
         what = how % did
+        log_gate_event(self.agent, did, rule or "unnamed", True)
         print("[RESAVE-GATE] refused memory_save: it %s, recalled this turn (%s)" % (what, when), flush=True)
         raise RepairableException(
             "memory_save refused: this text %s%s, and that memory was recalled into this turn. "

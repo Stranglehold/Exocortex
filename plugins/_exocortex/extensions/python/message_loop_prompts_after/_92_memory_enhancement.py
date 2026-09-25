@@ -30,6 +30,7 @@ Writes:
   - /a0/usr/memory/co_retrieval_log.json
 """
 
+import inspect
 import json
 import math
 import os
@@ -240,6 +241,9 @@ class MemoryEnhancement(Extension):
             pipeline_errors = []
             # Candidates the trust verdict withheld this turn (helpers/memory_trust.py), for the trace.
             dropped_ids = []
+            # Injected ids whose head showed "source: legacy" (GT-2a), for the trace: Fable, 09-25,
+            # so "nothing withheld" and "nothing labelled" never read as one zero.
+            legacy_ids = []
 
             # ── Process memories (main + fragments + ontology entities) ───
             try:
@@ -269,6 +273,7 @@ class MemoryEnhancement(Extension):
 
                     ids = _update_access(result, all_docs)
                     all_injected_ids.extend(ids)
+                    legacy_ids.extend(_legacy_ids(result))
                     print(f"[MEM-ENHANCE] Final selection: {len(ids)} memories injected", flush=True)
                 else:
                     extras.pop("memories", None)
@@ -302,6 +307,7 @@ class MemoryEnhancement(Extension):
 
                         ids = _update_access(result, all_docs)
                         all_injected_ids.extend(ids)
+                        legacy_ids.extend(_legacy_ids(result))
                     else:
                         del extras["solutions"]
                 except Exception:
@@ -331,8 +337,10 @@ class MemoryEnhancement(Extension):
             # ── Recall trace (2026-09-24) ─────────────────────────────────
             # Every full run writes its row, `ids: []` included: "the hook ran and recalled
             # nothing" is a finding too. Before co-retrieval logging, for the tag's reason above.
+            # `legacy` only when the helper rendered source clauses; without it there was no label.
             _trace(self.agent, all_injected_ids, turn, source=query_source,
-                   error=pipeline_errors or None, dropped=dropped_ids)
+                   error=pipeline_errors or None, dropped=dropped_ids,
+                   legacy=legacy_ids if _trust is not None else None)
             traced = True
 
             # ── Co-retrieval logging ──────────────────────────────────────
@@ -356,16 +364,20 @@ class MemoryEnhancement(Extension):
 
 # ── Recall trace ─────────────────────────────────────────────────────────────
 
-def _trace(agent, ids, turn, source=None, early=None, error=None, dropped=None) -> None:
+def _trace(agent, ids, turn, source=None, early=None, error=None, dropped=None,
+           legacy=None) -> None:
     """One row in the persistent recall trace (helpers/memory_recall_tag.trace). Never raises.
 
     `early` names a return before recall (subordinate / no_db / no_docs / no_query / exception):
     on such a turn A0's own untagged recall (_50/_91) stands, which is the A17 gap. `error` names
     the pipelines that raised ("memories", "solutions"), whose slots also keep A0's text.
-    `dropped` lists the candidates the trust verdict withheld (graduated trust, Phase 1). A cached
-    memory_recall_tag from before Phase 1 has no `dropped` parameter; the row is then written
-    without it rather than lost. trace() itself never raises, so a TypeError here can only be that
-    signature.
+    `dropped` lists the candidates the trust verdict withheld, and `legacy` the injected ids whose
+    head showed "source: legacy" (graduated trust, Phase 1).
+
+    The optional fields are passed only if the LOADED trace() accepts them (_accepts). A cached
+    memory_recall_tag from an earlier deploy (2a: neither field; Phase 1: `dropped` only) then
+    writes the row without them rather than losing it. A single retry on TypeError covered one
+    field; it would lose the row on the second.
 
     !! memory_recall_tag is imported by bare name, so it sits in sys.modules and survives the
     plugins reload (modules.purge_namespace deletes only `plugins.*`; see recall_query.py's
@@ -381,15 +393,41 @@ def _trace(agent, ids, turn, source=None, early=None, error=None, dropped=None) 
                   "trace(); it loads at the next container restart", flush=True)
             return
         kwargs = {"turn": turn, "source": source, "early": early, "error": error}
-        if dropped is not None:
-            kwargs["dropped"] = dropped
-        try:
-            fn(agent, ids, "_92", **kwargs)
-        except TypeError:
-            kwargs.pop("dropped", None)
-            fn(agent, ids, "_92", **kwargs)
+        for name, value in (("dropped", dropped), ("legacy", legacy)):
+            if value is not None and _accepts(fn, name):
+                kwargs[name] = value
+        fn(agent, ids, "_92", **kwargs)
     except Exception as trace_err:
         print(f"[MEM-ENHANCE] Recall trace skipped — {type(trace_err).__name__}", flush=True)
+
+
+def _accepts(fn, name) -> bool:
+    """Whether `fn` takes keyword `name` (or **kwargs). Unreadable signature: assume it does."""
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return True
+    return name in params or any(p.kind == p.VAR_KEYWORD for p in params.values())
+
+
+def _legacy_ids(result) -> list:
+    """Ids of the injected memories whose head showed "source: legacy" (GT-2a), the same
+    source_clause that _with_provenance rendered. Empty when the helper is not loaded."""
+    out = []
+    if _trust is None:
+        return out
+    legacy = "source: " + getattr(_trust, "LEGACY_SOURCE", "legacy")
+    for doc, _score in result:
+        meta = getattr(doc, "metadata", None)
+        did = meta.get("id") if isinstance(meta, dict) else None
+        if not did:
+            continue
+        try:
+            if _trust.source_clause(doc) == legacy:
+                out.append(did)
+        except Exception:
+            pass
+    return out
 
 
 # ── Full Pipeline ────────────────────────────────────────────────────────────

@@ -126,7 +126,7 @@ def install_a0_stubs():
             "helpers.history": hist, "plugins._memory.helpers.memory": mem}
     # _52's imports (settings, errors, dirty_json, log, defer): names only; its utility-model path
     # is never driven here, only the module-level _structural_source.
-    for sub, attrs in (("settings", {}), ("errors", {}), ("dirty_json", {"DirtyJson": type("DirtyJson", (), {})}),
+    for sub, attrs in (("settings", {}), ("errors", {"RepairableException": type("RepairableException", (Exception,), {})}), ("dirty_json", {"DirtyJson": type("DirtyJson", (), {})}),
                        ("log", {"LogItem": type("LogItem", (), {})}),
                        ("defer", {"DeferredTask": type("DeferredTask", (), {}), "THREAD_BACKGROUND": "bg"})):
         sm = types.ModuleType("helpers." + sub)
@@ -288,6 +288,15 @@ IDS = {"area != 'solutions'": ["m1", "m2"], "area == 'solutions'": ["s1"]}
 
 
 DROP = {}   # area -> ids the fake pipeline reports as trust-withheld
+MARKED = set()   # ids the fake pipeline returns WITH the derivation marker (GT-2a); the rest are legacy
+
+
+def fdoc(i):
+    """A recalled memory as the real pipeline returns it: a doc with metadata, not a bare id."""
+    cls = {"validity": "inferred", "source": "agent_inferred"}
+    if i in MARKED:
+        cls["source_rule"] = "A19.5"
+    return types.SimpleNamespace(page_content="text " + i, metadata={"id": i, "classification": cls})
 
 
 async def fake_pipeline(db, all_docs, query, bst, roles, thr, cap, area, *rest, dropped=None):
@@ -297,7 +306,7 @@ async def fake_pipeline(db, all_docs, query, bst, roles, thr, cap, area, *rest, 
     mode = PIPE_MODE.get(area, "hit")
     if mode == "raise":
         raise RuntimeError("pipeline boom")
-    return [] if mode == "empty" else [(area, 0.9)]
+    return [] if mode == "empty" else [(fdoc(i), 0.9) for i in IDS[area]]
 
 
 def boom(*a, **k):
@@ -310,7 +319,7 @@ def patch(mod):
     mod._get_bst_domain = lambda agent: None
     mod._run_pipeline = fake_pipeline
     mod._with_provenance = lambda result, obs, cfg: "TXT"
-    mod._update_access = lambda result, all_docs: list(IDS[result[0][0]])
+    mod._update_access = lambda result, all_docs: [d.metadata["id"] for d, _ in result]
     mod._log_co_retrieval = lambda *a, **k: None
     mod._mt = None
 
@@ -492,6 +501,23 @@ new, _ = run92(m92, FakeAgent(cid="ctxPE"), ld())
 one("full _92 row with nothing withheld carries dropped []", new, dropped=[])
 new, _ = run92(m92, FakeAgent(superior=object()), ld())
 check("an early row carries no dropped key", bool(new) and "dropped" not in new[0], new)
+mrt.trace(FakeAgent(cid="ctxP"), ["a"], "_92", legacy=["q", "p", "q", ""])
+check("trace: legacy ids sorted, unique, blanks dropped", rows()[-1].get("legacy") == ["p", "q"], rows()[-1])
+mrt.trace(FakeAgent(cid="ctxP"), ["a"], "_92")
+check("trace: legacy=None -> no key", "legacy" not in rows()[-1], rows()[-1])
+MARKED.add("m2")
+new, _ = run92(m92, FakeAgent(cid="ctxPL"), ld(extras_persistent={"solutions": "A0 text"}))
+MARKED.clear()
+one("full _92 row lists the injected ids labelled legacy (m2 carries the marker, m1 and s1 do not)",
+    new, ids=["m1", "m2", "s1"], legacy=["m1", "s1"])
+m92._trust = None
+new, _ = run92(m92, FakeAgent(cid="ctxPN"), ld())
+m92._trust = mt
+check("without the trust helper: no legacy key (no label was rendered), dropped still []",
+      bool(new) and "legacy" not in new[0] and new[0].get("dropped") == [], new)
+check("_accepts: a named keyword yes, an absent one no",
+      m92._accepts(lambda a, dropped=None: 0, "dropped") and not m92._accepts(lambda a, dropped=None: 0, "legacy"))
+check("_accepts: **kwargs takes anything", m92._accepts(lambda a, **kw: 0, "legacy"))
 # The helper deployed NOW (2a, 504375e) has trace() without `dropped`: between this deploy and the
 # restart, the new _92 must still write the row (retry without the field), not lose the turn.
 DEPLOYED_2A = ("504375e", "305b874afbdcdd8519c1dc740a7a958a")
@@ -510,6 +536,28 @@ DROP.clear()
 sys.modules["memory_recall_tag"] = saved_mrt
 one("against the deployed 2a helper: the row is still written, without the field", new, ids=["m1", "m2"], context_id="ctx2A")
 check("...and not marked as skipped", "Recall trace skipped" not in out2a, out2a[-300:])
+check("...with neither dropped nor legacy (the 2a trace() takes neither)",
+      bool(new) and "dropped" not in new[0] and "legacy" not in new[0], new)
+# The helper deployed at 03:26Z (Phase 1, e958b6d) takes `dropped` but not `legacy`: between the next
+# deploy and its restart the row must keep `dropped` and simply lack `legacy`. A single TypeError
+# retry (the Phase 1 _92) would have lost this row; the signature check keeps it.
+blob = subprocess.run(["git", "-C", REPO, "show", "e958b6d:plugins/_exocortex/helpers/memory_recall_tag.py"],
+                      capture_output=True, check=True).stdout
+pp1 = os.path.join(OLD, "memory_recall_tag_p1.py")
+with open(pp1, "wb") as fh:
+    fh.write(blob)
+check("the Phase 1 helper the test loads is the deployed one (md5 d280317c)", md5(pp1)[:8] == "d280317c", md5(pp1))
+saved_mrt = sys.modules.get("memory_recall_tag")
+mrtp1 = sys.modules["memory_recall_tag"] = load_module("memory_recall_tag", pp1)
+check("...its trace() takes dropped and not legacy",
+      "dropped" in mrtp1.trace.__code__.co_varnames and "legacy" not in mrtp1.trace.__code__.co_varnames)
+DROP["area != 'solutions'"] = ["r1"]
+new, outp1 = run92(m92, FakeAgent(cid="ctxP1"), ld())
+DROP.clear()
+sys.modules["memory_recall_tag"] = saved_mrt
+one("against the Phase 1 helper: the row keeps dropped", new, ids=["m1", "m2"], dropped=["r1"], context_id="ctxP1")
+check("...and lacks legacy, without being skipped",
+      bool(new) and "legacy" not in new[0] and "Recall trace skipped" not in outp1, (new, outp1[-200:]))
 
 # ── G ────────────────────────────────────────────────────────────────────────────────────────────
 print("G. GT-2a: the derivation marker, and the source the frame shows")
@@ -641,6 +689,93 @@ for label, mod, agent, want in (("new helper, a chat with Jake", ms_new, FakeAge
           len(inserted) == 1 and cl.get("source") == want[0] and cl.get("source_rule") == want[1]
           and (want[1] or "source_rule" not in cl), (inserted, agent.context.logs))
 
+# ── H ────────────────────────────────────────────────────────────────────────────────────────────
+print("H. _19 check 1: a save that copies the injected block (head line + body) is the same text")
+E19 = os.environ.get("TEST_EXT19") or os.path.join(PLUGIN, "extensions", "python", "tool_execute_before",
+                                                    "_19_memory_resave_gate.py")
+GATE = os.path.join(TMP, "resave_gate.jsonl")
+os.environ["EXO_RESAVE_GATE_LOG"] = GATE   # read when _19 is imported
+m19 = load_module("ext19", E19)
+BODY = "The library answered the probe at 02:00Z and search_library returned 5 results."
+BODY2 = "Cycle 740 closed the MAINTAIN pass with two promotions and no deprecations."
+HEAD = ("recalled memory (saved 2026-09-20; source: legacy; mentions search_library; a newer observation "
+        "exists: up (probe ok), observed 2 hours ago):")
+check("strip: one head line removed, parens inside the head included", m19.strip_recall_head(HEAD + "\n" + BODY) == BODY)
+check("strip: the undated head form too",
+      m19.strip_recall_head("recalled memory (save date unknown; source: legacy):\n" + BODY) == BODY)
+check("strip: text without a head is unchanged", m19.strip_recall_head(BODY) == BODY)
+check("strip: a look-alike that is not the head is unchanged",
+      m19.strip_recall_head("recalled memory (my notes):\n" + BODY) == "recalled memory (my notes):\n" + BODY)
+check("strip: only ONE head is removed", m19.strip_recall_head(HEAD + "\n" + HEAD + "\n" + BODY) == HEAD + "\n" + BODY)
+
+
+def run19(text, recalled_ids=("m1",)):
+    a = FakeAgent(cid="ctx19")
+    mrt.tag(a, list(recalled_ids))
+    store = {"m1": types.SimpleNamespace(page_content=BODY, metadata={"id": "m1", "timestamp": "2026-09-20T10:00:00-04:00"}),
+             "m2": types.SimpleNamespace(page_content=BODY2, metadata={"id": "m2", "timestamp": "2026-09-21T10:00:00-04:00"})}
+    Memory.result = types.SimpleNamespace(db=types.SimpleNamespace(get_all_docs=lambda: store))
+    with contextlib.redirect_stdout(io.StringIO()):
+        try:
+            asyncio.run(m19.MemoryResaveGate(agent=a).execute(tool_name="memory_save", tool_args={"text": text}))
+            return None
+        except Exception as e:
+            return e
+
+
+e = run19(BODY)
+check("body copied alone: refused word for word (unchanged behaviour)",
+      type(e).__name__ == "RepairableException" and "word for word" in str(e) and "recall head" not in str(e), e)
+e = run19(HEAD + "\n" + BODY)
+check("head line + body copied: refused, recall head included (the 09-08 mechanism, closed)",
+      type(e).__name__ == "RepairableException" and "recall head included" in str(e), e)
+check("head line + NEW text: saved", run19(HEAD + "\nSomething new happened today that is not in the store.") is None)
+check("look-alike line + body: saved (not our head; scope as designed)", run19("recalled memory (my notes):\n" + BODY) is None)
+check("head line + body of a memory NOT recalled this monologue: saved (only recalled memories count)",
+      run19(HEAD + "\n" + BODY, recalled_ids=()) is None)
+
+
+def gate_rows():
+    if not os.path.exists(GATE):
+        return []
+    with open(GATE, encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+check("the gate ledger writes where the test says (the env var is read at import)", m19.GATE_LOG == GATE, m19.GATE_LOG)
+g0 = len(gate_rows())
+run19(BODY)
+g = gate_rows()[g0:]
+check("ledger: a verbatim refusal is one row with the id it matched",
+      len(g) == 1 and (g[0]["memory_id"], g[0]["rule"], g[0]["refused"], g[0]["context_id"]) == ("m1", "verbatim", True, "ctx19"), g)
+g0 = len(gate_rows())
+run19(HEAD + "\n" + BODY)
+g = gate_rows()[g0:]
+check("ledger: a head+body refusal says so", len(g) == 1 and (g[0]["rule"], g[0]["refused"]) == ("verbatim_with_head", True), g)
+g0 = len(gate_rows())
+tail_text = HEAD + "\n" + BODY + "\nAnd since then the index was rebuilt."
+res = run19(tail_text)
+g = gate_rows()[g0:]
+check("shadow: a save CONTAINING a recalled body goes through", res is None, res)
+check("shadow: ...and is logged would-refuse containment, with both lengths",
+      len(g) == 1 and (g[0]["memory_id"], g[0]["rule"], g[0]["refused"]) == ("m1", "containment", False)
+      and g[0]["chars_recalled"] == len(m19.normalize(BODY)) and g[0]["chars_incoming"] == len(m19.normalize(tail_text)), g)
+g0 = len(gate_rows())
+res = run19(HEAD + "\n" + BODY + "\n\n" + HEAD + "\n" + BODY2, recalled_ids=("m1", "m2"))
+g = gate_rows()[g0:]
+check("shadow: a multi-block copy passes and logs one row per contained body (the case the strip leaves)",
+      res is None and sorted(r["memory_id"] for r in g) == ["m1", "m2"] and all(r["rule"] == "containment" for r in g), (res, g))
+g0 = len(gate_rows())
+run19(HEAD + "\nSomething new happened today that is not in the store.")
+run19(HEAD + "\n" + BODY + " plus more", recalled_ids=())
+check("ledger: nothing is written for a clean save, or for a body that was not recalled", len(gate_rows()) == g0,
+      gate_rows()[g0:])
+saved_gate = m19.GATE_LOG
+m19.GATE_LOG = TMP            # a directory: the write fails
+res = run19(tail_text)
+m19.GATE_LOG = saved_gate
+check("ledger write failure: the save still goes through (fails open)", res is None, res)
+
 # ── R ────────────────────────────────────────────────────────────────────────────────────────────
 print("R. recall_trace_report on fixtures")
 rep_mod = load_module("recall_trace_report", REPORT)
@@ -668,8 +803,8 @@ trace_rows = [
     T("2026-09-25T01:03:00Z", "A", ["m1"], turn=2),
     T("2026-09-25T01:04:00Z", "A", ["m9"], via="memory_load", source="tool:memory_load", turn=2),
     T("2026-09-25T01:05:00Z", "A", [], agent=1, source=None, early="subordinate"),
-    T("2026-09-25T02:01:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", dropped=["x9", "x8"]),
-    T("2026-09-25T02:02:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", turn=1, dropped=[]),
+    T("2026-09-25T02:01:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", dropped=["x9", "x8"], legacy=["m1", "m7"]),
+    T("2026-09-25T02:02:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", turn=1, dropped=[], legacy=[]),
     T("2026-09-25T02:03:00Z", "B", [], source="idle_charge", turn=2, early="no_query"),
     T("2026-09-25T02:30:00Z", "C", ["m5"], source="user_message"),
     T("2026-09-25T01:30:00Z", "A", ["m4"]),    # after A's ending, and no later one: unjoined
@@ -692,6 +827,16 @@ journal = [
 ]
 pt, pe = wj("trace.jsonl", trace_rows), wj("endings.jsonl", endings)
 pj = wj("journal.jsonl", journal, extra_lines=['{"type": "cycle_close", "broken'])
+gate_fx = [
+    {"at": "2026-09-25T01:04:30Z", "context_id": "A", "agent": 0, "memory_id": "m1", "rule": "verbatim", "refused": True},
+    {"at": "2026-09-25T02:05:00Z", "context_id": "B", "agent": 0, "memory_id": "m1", "rule": "containment",
+     "refused": False, "chars_incoming": 300, "chars_recalled": 80},
+    {"at": "2026-09-25T02:06:00Z", "context_id": "B", "agent": 0, "memory_id": "m7", "rule": "containment",
+     "refused": False, "chars_incoming": 300, "chars_recalled": 60},
+    {"at": "2026-09-25T02:31:00Z", "context_id": "C", "agent": 0, "memory_id": "m5", "rule": "verbatim_with_head",
+     "refused": True},
+]
+pg = wj("gate.jsonl", gate_fx)
 tr = rep_mod.load(pt)[0]
 en = rep_mod.load(pe)[0]
 jo, rep_j, skip_j, _ = rep_mod.load(pj)
@@ -728,6 +873,21 @@ check("withheld: 2 full rows carry the field ([] counts as carrying it); 5 preda
       (cov["full_92_with_dropped_field"], cov["full_92_without_dropped_field"]))
 check("withheld: cycle B shows 2 (2 distinct); cycle A shows 0",
       (B.get("dropped"), B.get("dropped_distinct"), A.get("dropped")) == (2, 2, 0), (B, A))
+check("labelled legacy: 2 of the 6 injected ids on the 2 rows carrying the field",
+      (cov["legacy_total"], cov["injected_on_legacy_rows"], cov["full_92_with_legacy_field"]) == (2, 6, 2),
+      (cov["legacy_total"], cov["injected_on_legacy_rows"], cov["full_92_with_legacy_field"]))
+check("labelled legacy per cycle: B 2 over 2 rows; A has no row carrying it (shown as n/a, not 0)",
+      (B.get("legacy"), B.get("legacy_rows"), A.get("legacy_rows")) == (2, 2, 0), (B, A))
+# The save gate's ledger, attributed like trace rows (Opus's A20 amendment + Fable's shadow check).
+rep_g = rep_mod.build_report(tr, en, jo, gate_rows=rep_mod.load(pg)[0])
+cg = {c["context_id"]: c["gate"] for c in rep_g["cycles"]}
+check("gate totals: refused by rule, would-refuse counted apart",
+      rep_g["gate"] == {"state": "ok", "refused": {"verbatim": 1, "verbatim_with_head": 1}, "would_refuse": 2}, rep_g["gate"])
+check("gate per cycle: A refused 1 verbatim; B would-refuse 2 (containment), refused none",
+      cg.get("A") == {"refused": {"verbatim": 1}, "would_refuse": 0} and cg.get("B") == {"refused": {}, "would_refuse": 2}, cg)
+check("gate not given -> 'not read'; given but empty -> 'no events in the window'",
+      rep["gate"]["state"] == "not read" and rep_mod.build_report(tr, en, jo, gate_rows=[])["gate"]["state"] == "no events in the window",
+      (rep["gate"], rep_mod.build_report(tr, en, jo, gate_rows=[])["gate"]))
 
 
 def cli(*args):
@@ -739,6 +899,11 @@ def cli(*args):
 code, out, err = cli("--trace", pt, "--endings", pe, "--journal", pj)
 check("CLI: exit 0 on the fixtures", code == 0, (code, (out + err)[-300:]))
 check("CLI: prints the NO-TOOL flag and the A17 line", "NO-TOOL" in out and "A17" in out, out[:400])
+check("CLI without --gate: the save-gate line says 'not read'", "save gate (_19)    not read" in out, out[-900:])
+code_g, out_g, err_g = cli("--trace", pt, "--endings", pe, "--journal", pj, "--gate", pg)
+check("CLI with --gate: refused and would-refuse printed side by side",
+      code_g == 0 and "would-refuse (containment) 2" in out_g and "save gate: refused {}  would-refuse (containment) 2" in out_g,
+      (code_g, out_g[-900:]))
 code, out, err = cli("--trace", pt, "--endings", pe, "--journal", pj, "--json")
 try:
     ok = len(json.loads(out)["cycles"]) == 2

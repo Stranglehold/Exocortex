@@ -74,7 +74,11 @@ PATHS = {
     "trace": "/a0/usr/plugins/_exocortex/state/recall_trace.jsonl",
     "endings": "/a0/usr/workdir/workspace/office/cycle_endings.jsonl",
     "journal": "/a0/usr/workdir/workspace/self-improvement/journal.jsonl",
+    # optional: _19's gate ledger (refusals + shadow containment). Written only on events, so a
+    # missing file means "nothing refused or shadow-logged yet", not an error.
+    "gate": "/a0/usr/plugins/_exocortex/state/resave_gate.jsonl",
 }
+REQUIRED = ("trace", "endings", "journal")
 EXIT_OK, EXIT_ERROR, EXIT_UNVERIFIED = 0, 1, 3
 
 
@@ -160,7 +164,13 @@ def is_full_92(r):
     return r.get("via") == "_92" and not r.get("early")
 
 
-def cycle_summary(ending, rows, closes_by_ctx):
+def gate_counts(gate_rows):
+    """{"refused": {rule: n}, "would_refuse": n} for a set of gate-ledger rows."""
+    refused = Counter(r.get("rule") for r in gate_rows if r.get("refused"))
+    return {"refused": dict(refused), "would_refuse": sum(1 for r in gate_rows if not r.get("refused"))}
+
+
+def cycle_summary(ending, rows, closes_by_ctx, gate_rows=()):
     full = [r for r in rows if is_full_92(r)]
     constant = None
     if len(full) >= 2:
@@ -181,6 +191,9 @@ def cycle_summary(ending, rows, closes_by_ctx):
         "errors": sum(1 for r in rows if r.get("error")),
         "dropped": sum(len(r.get("dropped") or []) for r in rows),
         "dropped_distinct": len({i for r in rows for i in r.get("dropped") or []}),
+        "legacy": sum(len(r.get("legacy") or []) for r in rows),
+        "legacy_rows": sum(1 for r in rows if "legacy" in r),
+        "gate": gate_counts(gate_rows),
         "closed": close is not None,
         "activity": (close or {}).get("activity"),
     }
@@ -200,10 +213,13 @@ def memory_table(trace_rows, top):
     return out
 
 
-def build_report(trace_rows, endings, journal_rows, since=None, until=None, top=15):
+def build_report(trace_rows, endings, journal_rows, since=None, until=None, top=15, gate_rows=None):
     trace_rows = [r for r in trace_rows if in_window(r, since, until)]
     ended = [(t, e) for (t, e) in ended_cycles(endings) if in_window(e, since, until)]
     by_cycle, unjoined = attribute(trace_rows, ended)
+    # _19's gate ledger, attributed exactly like trace rows. None = not read; [] = no events.
+    gate_in = [r for r in (gate_rows or []) if in_window(r, since, until)]
+    gate_by_cycle, _gate_unjoined = attribute(gate_in, ended)
     closes_by_ctx = journal_by_context(journal_rows)
     ats = sorted(filter(None, (cw.parse_ts(r.get("at")) for r in trace_rows)))
     return {
@@ -223,9 +239,17 @@ def build_report(trace_rows, endings, journal_rows, since=None, until=None, top=
             "full_92_without_dropped_field": sum(1 for r in trace_rows if is_full_92(r) and "dropped" not in r),
             "dropped_total": sum(len(r.get("dropped") or []) for r in trace_rows),
             "dropped_distinct": len({i for r in trace_rows for i in r.get("dropped") or []}),
+            # GT-2a beside it (Fable, 2026-09-25): injected ids whose head showed "source: legacy".
+            # Rows without the key predate the field (or ran without the trust helper): apart, not 0.
+            "full_92_with_legacy_field": sum(1 for r in trace_rows if is_full_92(r) and "legacy" in r),
+            "legacy_total": sum(len(r.get("legacy") or []) for r in trace_rows),
+            "injected_on_legacy_rows": sum(len(r.get("ids") or []) for r in trace_rows if "legacy" in r),
         },
+        "gate": {"state": ("not read" if gate_rows is None else ("ok" if gate_in else "no events in the window")),
+                 **gate_counts(gate_in)},
         "journal_join": "ok" if closes_by_ctx else "unverified: no cycle_close row carries a context_id",
-        "cycles": [cycle_summary(e, by_cycle.get(i, []), closes_by_ctx) for i, (t, e) in enumerate(ended)],
+        "cycles": [cycle_summary(e, by_cycle.get(i, []), closes_by_ctx, gate_by_cycle.get(i, []))
+                   for i, (t, e) in enumerate(ended)],
         "memories": memory_table(trace_rows, top),
         "unjoined": {"rows": len(unjoined),
                      "by_context": dict(Counter(r.get("context_id") for r in unjoined))},
@@ -264,14 +288,26 @@ def print_report(rep, files):
     print("  trust-withheld     %d ids (%d distinct) on %d full rows carrying the field; %d full rows predate it"
           % (c["dropped_total"], c["dropped_distinct"], c["full_92_with_dropped_field"],
              c["full_92_without_dropped_field"]))
+    print("  labelled legacy    %d of %d injected ids, on the %d full rows carrying the field"
+          % (c["legacy_total"], c["injected_on_legacy_rows"], c["full_92_with_legacy_field"]))
+    g = rep["gate"]
+    print("  save gate (_19)    %s: refused %s, would-refuse (containment) %d"
+          % (g["state"], g["refused"] or "{}", g["would_refuse"]))
     print("\nCYCLES (%d ended in the window; journal join: %s)" % (len(rep["cycles"]), rep["journal_join"]))
     for s in rep["cycles"]:
         print("  #%s %s ctx=%s %s %s elapsed=%ss hb_age=%ss%s"
               % (s["cycle"], s["ended_at"], s["context_id"], s["type"], s["outcome"],
                  s["elapsed_s"], s["heartbeat_age_s"], "  NO-TOOL" if s["no_tool"] else ""))
-        print("      rows=%d full_92=%d early=%s memory_load=%d distinct_ids=%d errors=%d withheld=%d (%d distinct) sources=%s"
+        print("      rows=%d full_92=%d early=%s memory_load=%d distinct_ids=%d errors=%d sources=%s"
               % (s["rows"], s["full_92"], s["early"] or "{}", s["memory_load"], s["distinct_ids"],
-                 s["errors"], s["dropped"], s["dropped_distinct"], s["sources"] or "{}"))
+                 s["errors"], s["sources"] or "{}"))
+        print("      withheld=%d (%d distinct)  labelled legacy=%s"
+              % (s["dropped"], s["dropped_distinct"],
+                 ("%d" % s["legacy"]) if s["legacy_rows"] else "n/a (no row carries the field)"))
+        g = s["gate"]
+        if g["refused"] or g["would_refuse"]:
+            print("      save gate: refused %s  would-refuse (containment) %d"
+                  % (g["refused"] or "{}", g["would_refuse"]))
         if s["constant_ids"] is not None:
             print("      on every full _92 turn: %s" % (s["constant_ids"] or "none"))
         print("      journal: %s" % (clip(s["activity"], 160) if s["closed"] else "no close row with this context_id"))
@@ -294,6 +330,7 @@ def main(argv=None):
     ap.add_argument("--trace")
     ap.add_argument("--endings")
     ap.add_argument("--journal")
+    ap.add_argument("--gate", help="optional: _19's gate ledger (resave_gate.jsonl)")
     ap.add_argument("--since", help="ISO time; rows at or after it")
     ap.add_argument("--until", help="ISO time; rows before it")
     ap.add_argument("--top", type=int, default=15)
@@ -318,14 +355,14 @@ def main(argv=None):
                 return EXIT_ERROR
             paths[name] = dest if st == "ok" else None
     else:
-        missing = [n for n in PATHS if not getattr(a, n)]
+        missing = [n for n in REQUIRED if not getattr(a, n)]
         if missing:
             print("ERROR: give --container, or all of --trace --endings --journal (missing: %s)"
                   % ", ".join(missing), file=sys.stderr)
             return EXIT_ERROR
         for name in PATHS:
             paths[name] = getattr(a, name)
-            files[name] = paths[name]
+            files[name] = paths[name] or "(not given)"
 
     loaded = {}
     for name in PATHS:
@@ -339,7 +376,9 @@ def main(argv=None):
               % files["trace"])
         return EXIT_UNVERIFIED
 
-    rep = build_report(loaded["trace"], loaded["endings"], loaded["journal"], since, until, a.top)
+    gate_rows = loaded["gate"] if paths.get("gate") else ([] if a.container else None)
+    rep = build_report(loaded["trace"], loaded["endings"], loaded["journal"], since, until, a.top,
+                       gate_rows=gate_rows)
     if a.json:
         rep["files"] = files
         print(json.dumps(rep, indent=2, ensure_ascii=False))
