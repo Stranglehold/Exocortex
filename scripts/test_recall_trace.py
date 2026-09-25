@@ -15,6 +15,16 @@
      write no row, raise nothing, and print that the trace is unavailable.
   M  _35: memory_load with ids -> one row and the tag; with none -> one row, no tag; another
      tool -> no row.
+  P  graduated trust, Phase 1 (helpers/memory_trust.py): the verdict and its reasons; _92's REAL
+     _filter_and_decay withholds exactly `validity == deprecated`, identically with the helper and
+     with it absent (the inline fallback), and hands the withheld ids over; trace's `dropped` has
+     three states (absent / [] / ids); the full row carries it and early rows do not; against the
+     memory_recall_tag deployed NOW (2a, trace() without `dropped`) the row is still written.
+  G  GT-2a, the derivation marker: derive_source identical to the deployed version on a 72-case
+     matrix that reaches every A19 rule; the source clause (marked -> stored value, unmarked ->
+     `legacy`, never the stored user_asserted); the frame head, and byte-identity with HEAD's
+     _with_provenance when the helper is absent; the three writers (_52, _53 driven end to end,
+     _55) store source_rule with the new helper and save without it against the deployed one.
   R  scripts/recall_trace_report.py on fixtures: attribution by context_id and time, NO-TOOL,
      constant ids, early counts, CHARGE-ONLY, unjoined rows, the journal join, a broken journal
      line reported, clipping at whitespace only, --since; and the CLI: a missing trace exits 3
@@ -38,7 +48,7 @@ import types
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 PLUGIN = os.path.join(REPO, "plugins", "_exocortex")
-HELPERS = os.path.join(PLUGIN, "helpers")
+HELPERS = os.environ.get("TEST_HELPERS") or os.path.join(PLUGIN, "helpers")   # a mutant helpers DIR for mutation checks
 # The env overrides exist for mutation checks (point one at a deliberately broken copy and the
 # matching check must fail); a normal run uses the repo files.
 EXT92 = os.environ.get("TEST_EXT92") or os.path.join(PLUGIN, "extensions", "python", "message_loop_prompts_after", "_92_memory_enhancement.py")
@@ -104,6 +114,9 @@ def install_a0_stubs():
 
     class Memory:
         result = None
+        Area = types.SimpleNamespace(MAIN=types.SimpleNamespace(value="main"),
+                                     FRAGMENTS=types.SimpleNamespace(value="fragments"),
+                                     SOLUTIONS=types.SimpleNamespace(value="solutions"))
 
         @staticmethod
         async def get(agent):
@@ -111,6 +124,16 @@ def install_a0_stubs():
     mem.Memory = Memory
     mods = {"agent": agent_mod, "helpers": helpers_pkg, "helpers.extension": ext,
             "helpers.history": hist, "plugins._memory.helpers.memory": mem}
+    # _52's imports (settings, errors, dirty_json, log, defer): names only; its utility-model path
+    # is never driven here, only the module-level _structural_source.
+    for sub, attrs in (("settings", {}), ("errors", {}), ("dirty_json", {"DirtyJson": type("DirtyJson", (), {})}),
+                       ("log", {"LogItem": type("LogItem", (), {})}),
+                       ("defer", {"DeferredTask": type("DeferredTask", (), {}), "THREAD_BACKGROUND": "bg"})):
+        sm = types.ModuleType("helpers." + sub)
+        for k, v in attrs.items():
+            setattr(sm, k, v)
+        setattr(helpers_pkg, sub, sm)
+        mods["helpers." + sub] = sm
     for name in ("plugins", "plugins._memory", "plugins._memory.helpers"):
         p = types.ModuleType(name)
         p.__path__ = []
@@ -123,7 +146,8 @@ class FakeContext:
     def __init__(self, cid, idle):
         self.id = cid
         self.data = {"idle_cycle": {"n": 1}} if idle else {}
-        self.log = types.SimpleNamespace(log=lambda **kw: None)
+        self.logs = []   # extensions that swallow their errors log them here; tests print them
+        self.log = types.SimpleNamespace(log=lambda **kw: self.logs.append(kw))
 
     def get_data(self, k):
         return self.data.get(k)
@@ -263,8 +287,13 @@ captured, PIPE_MODE = [], {}
 IDS = {"area != 'solutions'": ["m1", "m2"], "area == 'solutions'": ["s1"]}
 
 
-async def fake_pipeline(db, all_docs, query, bst, roles, thr, cap, area, *rest):
+DROP = {}   # area -> ids the fake pipeline reports as trust-withheld
+
+
+async def fake_pipeline(db, all_docs, query, bst, roles, thr, cap, area, *rest, dropped=None):
     captured.append((query, area))
+    if dropped is not None:
+        dropped.extend(DROP.get(area, []))
     mode = PIPE_MODE.get(area, "hit")
     if mode == "raise":
         raise RuntimeError("pipeline boom")
@@ -409,6 +438,209 @@ one("memory_load that found nothing: one row, ids []", new, ids=[], via="memory_
 check("...and no tag", not a2.get_data(mrt.RECALLED_KEY))
 check("another tool: no row", run35(a2, hit, "code_execution_tool") == [])
 
+# ── P ────────────────────────────────────────────────────────────────────────────────────────────
+print("P. graduated trust, Phase 1: the verdict, the real filter, the trace field")
+import memory_trust as mt   # noqa: E402
+
+
+def mdoc(i, validity="inferred", source="agent_inferred", lineage=None, cls=True):
+    meta = {"id": i, "timestamp": "2026-09-20T10:00:00", "area": "main"}
+    if cls:
+        meta["classification"] = {"validity": validity, "source": source, "utility": "tactical"}
+    if lineage is not None:
+        meta["lineage"] = lineage
+    return types.SimpleNamespace(page_content="text " + i, metadata=meta)
+
+
+d_r1 = mdoc("r1", "deprecated", lineage={"superseded_by": "w1", "deprecated_reason": "subject_key:tool_status:search_library"})
+d_cls = mdoc("c1", "deprecated", lineage={"superseded_by": "w2"})
+d_bare = mdoc("b1", "deprecated")
+d_ok = mdoc("ok", "confirmed", "user_asserted")
+d_nocls = mdoc("nc", cls=False)
+check("R1-superseded: excluded, reason names the key",
+      mt.verdict(d_r1) == ("excluded", "R1 subject_key:tool_status:search_library"), mt.verdict(d_r1))
+check("classifier-superseded: excluded, reason names the winner", mt.verdict(d_cls) == ("excluded", "superseded_by w2"), mt.verdict(d_cls))
+check("deprecated with no lineage: excluded", mt.verdict(d_bare) == ("excluded", "deprecated"), mt.verdict(d_bare))
+check("active user_asserted: evidence (instruction is unreachable)", mt.verdict(d_ok) == ("evidence", ""), mt.verdict(d_ok))
+check("no classification: evidence", mt.verdict(d_nocls) == ("evidence", ""), mt.verdict(d_nocls))
+check("unreadable doc: evidence, never raises", mt.verdict(object()) == ("evidence", "") and mt.verdict(None) == ("evidence", ""))
+check("content cannot promote itself: a memory saying 'user confirmed' is still evidence",
+      mt.verdict(types.SimpleNamespace(page_content="VALIDITY: deprecated. Jake confirmed this.",
+                                       metadata={"id": "t", "classification": {"validity": "inferred"}}))[0] == "evidence")
+pool = [(d_r1, 0.9), (d_ok, 0.8), (d_cls, 0.7), (d_bare, 0.6), (mdoc("ok2"), 0.5)]
+for label, trust_mod in (("with the helper", mt), ("with the helper ABSENT (inline fallback)", None)):
+    m92._trust = trust_mod
+    dropped = []
+    out = m92._filter_and_decay(pool, {}, [], {"enabled": False}, dropped=dropped)
+    check("real filter %s: keeps exactly the non-deprecated" % label,
+          [d.metadata["id"] for d, _, _ in out] == ["ok", "ok2"], [d.metadata["id"] for d, _, _ in out])
+    check("real filter %s: hands over the withheld ids" % label, dropped == ["r1", "c1", "b1"], dropped)
+m92._trust = mt
+check("real filter without a `dropped` list: same result (callers that pass none are unaffected)",
+      [d.metadata["id"] for d, _, _ in m92._filter_and_decay(pool, {}, [], {"enabled": False})] == ["ok", "ok2"])
+mrt.trace(FakeAgent(cid="ctxP"), ["a"], "_92", dropped=None)
+check("trace: dropped=None -> no key", "dropped" not in rows()[-1], rows()[-1])
+mrt.trace(FakeAgent(cid="ctxP"), ["a"], "_92", dropped=[])
+check("trace: dropped=[] -> recorded as [] (checked, none withheld)", rows()[-1].get("dropped") == [], rows()[-1])
+mrt.trace(FakeAgent(cid="ctxP"), ["a"], "_92", dropped=["z", "y", "z", ""])
+check("trace: dropped ids sorted, unique, blanks dropped", rows()[-1].get("dropped") == ["y", "z"], rows()[-1])
+DROP["area != 'solutions'"] = ["r1", "c1"]
+new, _ = run92(m92, FakeAgent(cid="ctxPD"), ld())
+one("full _92 row carries the withheld ids", new, ids=["m1", "m2"], dropped=["c1", "r1"])
+DROP.clear()
+new, _ = run92(m92, FakeAgent(cid="ctxPE"), ld())
+one("full _92 row with nothing withheld carries dropped []", new, dropped=[])
+new, _ = run92(m92, FakeAgent(superior=object()), ld())
+check("an early row carries no dropped key", bool(new) and "dropped" not in new[0], new)
+# The helper deployed NOW (2a, 504375e) has trace() without `dropped`: between this deploy and the
+# restart, the new _92 must still write the row (retry without the field), not lose the turn.
+DEPLOYED_2A = ("504375e", "305b874afbdcdd8519c1dc740a7a958a")
+blob = subprocess.run(["git", "-C", REPO, "show", "%s:plugins/_exocortex/helpers/memory_recall_tag.py" % DEPLOYED_2A[0]],
+                      capture_output=True, check=True).stdout
+p2a = os.path.join(OLD, "memory_recall_tag_2a.py")
+with open(p2a, "wb") as fh:
+    fh.write(blob)
+check("the 2a helper the test loads is the deployed one (md5 %s)" % DEPLOYED_2A[1][:8], md5(p2a) == DEPLOYED_2A[1], md5(p2a))
+saved_mrt = sys.modules.get("memory_recall_tag")
+mrt2a = sys.modules["memory_recall_tag"] = load_module("memory_recall_tag", p2a)
+check("...and its trace() really lacks `dropped`", "dropped" not in mrt2a.trace.__code__.co_varnames)
+DROP["area != 'solutions'"] = ["r1"]
+new, out2a = run92(m92, FakeAgent(cid="ctx2A"), ld())
+DROP.clear()
+sys.modules["memory_recall_tag"] = saved_mrt
+one("against the deployed 2a helper: the row is still written, without the field", new, ids=["m1", "m2"], context_id="ctx2A")
+check("...and not marked as skipped", "Recall trace skipped" not in out2a, out2a[-300:])
+
+# ── G ────────────────────────────────────────────────────────────────────────────────────────────
+print("G. GT-2a: the derivation marker, and the source the frame shows")
+import collections                  # noqa: E402
+from datetime import datetime, timezone   # noqa: E402
+import memory_source as ms_new      # noqa: E402  the working-tree helper
+MONO = os.path.join(PLUGIN, "extensions", "python", "monologue_end")
+# What agent-zero-v2 runs now, byte-identical to HEAD 504375e (docker exec md5sum, 2026-09-25).
+DEPLOYED_G = {"memory_source.py": ("helpers/memory_source.py", "73c6c896"),
+              "_92_head.py": ("extensions/python/message_loop_prompts_after/_92_memory_enhancement.py", None)}
+for name, (rel, want) in DEPLOYED_G.items():
+    blob = subprocess.run(["git", "-C", REPO, "show", "504375e:plugins/_exocortex/" + rel], capture_output=True, check=True).stdout
+    with open(os.path.join(OLD, name), "wb") as fh:
+        fh.write(blob)
+    if want:
+        check("deployed %s is what the test loads (md5 %s)" % (name, want), md5(os.path.join(OLD, name))[:8] == want,
+              md5(os.path.join(OLD, name)))
+ms_old = load_module("memory_source_deployed", os.path.join(OLD, "memory_source.py"))
+check("the deployed memory_source really lacks derive_source_rule", not hasattr(ms_old, "derive_source_rule"))
+
+UM = "I prefer small reviewable changes for every deploy we do"
+TOOL = "search_library returned results for the library query alpha beta gamma"
+agents = {"interactive": FakeAgent(), "idle": FakeAgent(idle=True), "subordinate": FakeAgent(superior=object())}
+texts = {"from_user": UM, "own_words": "The deploy pipeline needs a restart after helper edits", "from_tool": TOOL}
+tools = {"none": (), "tool": (TOOL + " delta epsilon",)}
+mismatch, rules_seen, n_combo = [], collections.Counter(), 0
+for an, ag in agents.items():
+    for tn, tx in texts.items():
+        for kn, tt in tools.items():
+            for ar in ("main", "solutions"):
+                for msg in (UM, ""):
+                    n_combo += 1
+                    old = ms_old.derive_source(ag, tx, user_msg=msg, tool_texts=tt, area=ar)
+                    new = ms_new.derive_source(ag, tx, user_msg=msg, tool_texts=tt, area=ar)
+                    src, rule = ms_new.derive_source_rule(ag, tx, user_msg=msg, tool_texts=tt, area=ar)
+                    rules_seen[rule] += 1
+                    if not (old == new == src):
+                        mismatch.append((an, tn, kn, ar, bool(msg), old, new, src))
+check("derive_source: identical to the deployed version on all %d combinations" % n_combo, not mismatch, mismatch[:3])
+check("the matrix reaches every A19 rule (%s)" % dict(sorted(rules_seen.items())),
+      set(rules_seen) == {"A19.1", "A19.2", "A19.3", "A19.4", "A19.5"}, rules_seen)
+check("rule ids: user words in a chat = A19.4; in an idle cycle = A19.1 (gate withheld user_asserted)",
+      ms_new.derive_source_rule(agents["interactive"], UM, user_msg=UM) == ("user_asserted", "A19.4")
+      and ms_new.derive_source_rule(agents["idle"], UM, user_msg=UM) == ("agent_inferred", "A19.1"))
+
+
+def cdoc(src, rule=None, validity="inferred", body="body text"):
+    cls = {"source": src, "validity": validity}
+    if rule:
+        cls["source_rule"] = rule
+    return types.SimpleNamespace(page_content=body, metadata={"id": "x", "timestamp": "2026-09-20T10:00:00-04:00",
+                                                              "classification": cls})
+
+
+check("marked source is shown", mt.source_clause(cdoc("agent_inferred", "A19.5")) == "source: agent_inferred")
+check("UNMARKED user_asserted renders legacy, never its stored value (all 209 today)",
+      mt.source_clause(cdoc("user_asserted")) == "source: legacy")
+check("unmarked external_retrieved (the 7 post-R2 saves) renders legacy", mt.source_clause(cdoc("external_retrieved")) == "source: legacy")
+check("no classification renders legacy", mt.source_clause(types.SimpleNamespace(metadata={})) == "source: legacy")
+check("render_trust: evidence with the source clause", mt.render_trust(cdoc("user_asserted", "A19.4")) == ("evidence", ["source: user_asserted"]))
+check("render_trust: excluded gets no clauses (never rendered)",
+      mt.render_trust(cdoc("agent_inferred", "A19.5", validity="deprecated")) == ("excluded", []))
+NOW = datetime(2026, 9, 25, tzinfo=timezone.utc)
+m92f = load_module("ext92_frame", EXT92)   # unpatched: E and O replaced _with_provenance with a stub
+m92f._mt = None
+m92f._trust = mt
+t1 = m92f._with_provenance([(cdoc("agent_inferred", "A19.5"), 0.9)], {}, {}, now=NOW)
+check("frame: the source joins the existing head, after the date",
+      t1.split("\n")[0] == "recalled memory (saved 2026-09-20; source: agent_inferred):", t1.split("\n")[0])
+check("frame: the passage body is unchanged, below the head", t1.split("\n", 1)[1] == "body text", t1)
+t2 = m92f._with_provenance([(cdoc("user_asserted"), 0.9)], {}, {}, now=NOW).split("\n")[0]
+check("frame: an unmarked user_asserted shows legacy and not the word user_asserted",
+      t2 == "recalled memory (saved 2026-09-20; source: legacy):" and "user_asserted" not in t2, t2)
+m92f._trust = None
+m92h = load_module("ext92_head", os.path.join(OLD, "_92_head.py"))
+m92h._mt = None
+batch = [(cdoc("agent_inferred", "A19.5"), 0.9), (cdoc("user_asserted", body="second"), 0.5)]
+check("frame with the helper ABSENT: byte-identical to HEAD's _with_provenance",
+      m92f._with_provenance(batch, {}, {}, now=NOW) == m92h._with_provenance(batch, {}, {}, now=NOW))
+m92f._trust = mt
+
+m52 = load_module("ext52", os.environ.get("TEST_EXT52") or os.path.join(MONO, "_52_selective_memorizer.py"))
+for label, mod, want in (("new helper", ms_new, ("user_asserted", "confirmed", "A19.4")),
+                         ("DEPLOYED helper (no marker function)", ms_old, ("user_asserted", "confirmed", None))):
+    m52._ms = mod
+    try:   # in production _52's outer try would swallow an error here and LOSE the save
+        got = m52._structural_source(FakeAgent(), UM, UM, (), "main")
+    except Exception as e:
+        got = "raised %s: %s" % (type(e).__name__, e)
+    check("_52 with the %s: %s" % (label, want), got == want, got)
+m52._ms = None
+check("_52 with no helper: None (the model's label stands, as before)", m52._structural_source(FakeAgent(), UM, UM, (), "main") is None)
+
+m55 = load_module("ext55", os.path.join(MONO, "_55_memory_classifier.py"))
+for label, mod, rule in (("new helper", ms_new, "A19.4"), ("DEPLOYED helper", ms_old, None)):
+    m55._ms = mod
+    cl = m55._classify(types.SimpleNamespace(page_content=UM, metadata={"area": "main"}), UM, m55.DEFAULT_CONFIG,
+                       agent=FakeAgent(), tool_texts=())
+    check("_55 with the %s: source user_asserted, source_rule %s" % (label, rule),
+          cl.get("source") == "user_asserted" and cl.get("source_rule") == rule and (rule or "source_rule" not in cl), cl)
+
+m53 = load_module("ext53", os.path.join(MONO, "_53_insight_capture.py"))
+inserted = []
+
+
+class InsertDB:
+    async def insert_text(self, text, metadata):
+        inserted.append((text, metadata))
+        return "new-id"
+
+
+async def never_dup(db, text):
+    return False
+
+
+m53._is_duplicate = never_dup
+for label, mod, agent, want in (("new helper, a chat with Jake", ms_new, FakeAgent(), ("user_asserted", "A19.4")),
+                                ("DEPLOYED helper", ms_old, FakeAgent(), ("user_asserted", None)),
+                                ("new helper, an idle cycle", ms_new, FakeAgent(idle=True), None)):
+    m53._ms = mod
+    inserted.clear()
+    Memory.result = InsertDB()
+    asyncio.run(m53.ConversationalInsightCapture(agent=agent).execute(loop_data=LoopData(user_message=Msg(UM + "."))))
+    if want is None:
+        check("_53 with the %s: nothing captured (rule 1)" % label, inserted == [], inserted)
+        continue
+    cl = inserted[0][1]["classification"] if inserted else {}
+    check("_53 with the %s: source %s, source_rule %s" % (label, want[0], want[1]),
+          len(inserted) == 1 and cl.get("source") == want[0] and cl.get("source_rule") == want[1]
+          and (want[1] or "source_rule" not in cl), (inserted, agent.context.logs))
+
 # ── R ────────────────────────────────────────────────────────────────────────────────────────────
 print("R. recall_trace_report on fixtures")
 rep_mod = load_module("recall_trace_report", REPORT)
@@ -436,8 +668,8 @@ trace_rows = [
     T("2026-09-25T01:03:00Z", "A", ["m1"], turn=2),
     T("2026-09-25T01:04:00Z", "A", ["m9"], via="memory_load", source="tool:memory_load", turn=2),
     T("2026-09-25T01:05:00Z", "A", [], agent=1, source=None, early="subordinate"),
-    T("2026-09-25T02:01:00Z", "B", ["m1", "m2", "m7"], source="idle_charge"),
-    T("2026-09-25T02:02:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", turn=1),
+    T("2026-09-25T02:01:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", dropped=["x9", "x8"]),
+    T("2026-09-25T02:02:00Z", "B", ["m1", "m2", "m7"], source="idle_charge", turn=1, dropped=[]),
     T("2026-09-25T02:03:00Z", "B", [], source="idle_charge", turn=2, early="no_query"),
     T("2026-09-25T02:30:00Z", "C", ["m5"], source="user_message"),
     T("2026-09-25T01:30:00Z", "A", ["m4"]),    # after A's ending, and no later one: unjoined
@@ -488,6 +720,14 @@ check("clip cuts at whitespace, never inside a token (no '=21')",
       c.startswith("MAINTAIN: pruned stale entries and verified ...(+") and "=21" not in c, c)
 rep2 = rep_mod.build_report(tr, en, jo, since=rep_mod.cw.parse_ts("2026-09-25T01:50:00Z"))
 check("--since keeps only cycle B", [x["context_id"] for x in rep2["cycles"]] == ["B"], [x["context_id"] for x in rep2["cycles"]])
+# Graduated trust: the withheld counts, with pre-Phase-1 rows kept apart rather than read as 0.
+check("withheld: 2 ids from the one row that lists them",
+      (cov["dropped_total"], cov["dropped_distinct"]) == (2, 2), (cov["dropped_total"], cov["dropped_distinct"]))
+check("withheld: 2 full rows carry the field ([] counts as carrying it); 5 predate it",
+      (cov["full_92_with_dropped_field"], cov["full_92_without_dropped_field"]) == (2, 5),
+      (cov["full_92_with_dropped_field"], cov["full_92_without_dropped_field"]))
+check("withheld: cycle B shows 2 (2 distinct); cycle A shows 0",
+      (B.get("dropped"), B.get("dropped_distinct"), A.get("dropped")) == (2, 2, 0), (B, A))
 
 
 def cli(*args):

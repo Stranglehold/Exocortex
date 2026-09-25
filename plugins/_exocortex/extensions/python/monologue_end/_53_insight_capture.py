@@ -169,8 +169,16 @@ class ConversationalInsightCapture(Extension):
 
                 # R2: derived like every other writer's; for a sentence taken from the user's
                 # own message in an interactive context this is user_asserted / confirmed.
-                source = (_ms.derive_source(self.agent, text, user_msg=user_msg)
-                          if _ms is not None else "user_asserted")
+                # GT-2a (2026-09-25): the derivation marker, when the loaded helper provides it.
+                # The helper-missing fallback below is the old hardcoded label, so it carries no
+                # marker, and the recall frame renders it as legacy.
+                source_rule = None
+                _derive = getattr(_ms, "derive_source_rule", None) if _ms is not None else None
+                if _derive is not None:
+                    source, source_rule = _derive(self.agent, text, user_msg=user_msg)
+                else:
+                    source = (_ms.derive_source(self.agent, text, user_msg=user_msg)
+                              if _ms is not None else "user_asserted")
                 validity = _ms.validity_for(source) if _ms is not None else "confirmed"
                 metadata = {
                     "area": Memory.Area.FRAGMENTS.value,
@@ -182,6 +190,7 @@ class ConversationalInsightCapture(Extension):
                         "relevance": "active",
                         "utility": utility,
                         "source": source,
+                        **({"source_rule": source_rule} if source_rule else {}),
                     },
                     LIN_KEY: {
                         "created_at": datetime.now(timezone.utc).isoformat(),

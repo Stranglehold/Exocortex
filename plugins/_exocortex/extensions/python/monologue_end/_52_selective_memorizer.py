@@ -47,6 +47,26 @@ try:
 except Exception:  # pragma: no cover - helper missing
     _ms = None
 
+
+def _structural_source(agent, text, user_msg, tool_texts, area):
+    """(source, validity, source_rule) decided by structure (R2, A19), or None when the helper is
+    missing, in which case the caller keeps the model's label as before.
+
+    GT-2a (2026-09-25): source_rule is the derivation marker, stored as classification.source_rule;
+    the recall frame shows a stored source only when it is present. A cached memory_source without
+    derive_source_rule (the state until a container restart) gives source_rule None: the memory is
+    saved without the marker, and the save never fails over it.
+    """
+    if _ms is None:
+        return None
+    _derive = getattr(_ms, "derive_source_rule", None)
+    if _derive is not None:
+        source, rule = _derive(agent, text, user_msg=user_msg, tool_texts=tool_texts, area=area)
+    else:
+        source = _ms.derive_source(agent, text, user_msg=user_msg, tool_texts=tool_texts, area=area)
+        rule = None
+    return source, _ms.validity_for(source), rule
+
 # ── Metadata keys (must match _55_memory_classifier.py) ─────────────────────
 
 CLS_KEY = "classification"
@@ -232,10 +252,10 @@ class SelectiveMemorizer(Extension):
                 # R2: who said it comes from structure, not from the model's label above (the
                 # model was reading tool results printed as "USER:"). Decided after the area,
                 # because solutions are always agent_inferred.
-                if _ms is not None:
-                    source = _ms.derive_source(self.agent, text, user_msg=user_msg,
-                                               tool_texts=tool_texts, area=area)
-                    validity = _ms.validity_for(source)
+                source_rule = None
+                derived = _structural_source(self.agent, text, user_msg, tool_texts, area)
+                if derived is not None:
+                    source, validity, source_rule = derived
 
                 bst_domain = ""
                 try:
@@ -256,6 +276,7 @@ class SelectiveMemorizer(Extension):
                         "relevance": "active",
                         "utility": utility,
                         "source": source,
+                        **({"source_rule": source_rule} if source_rule else {}),
                     },
                     LIN_KEY: {
                         "created_at": datetime.now(timezone.utc).isoformat(),

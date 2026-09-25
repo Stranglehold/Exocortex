@@ -37,6 +37,9 @@ WHAT IT REPORTS
             the cycle. Also: rows, full _92 turns, early rows, memory_load calls, distinct ids, the
             ids present on EVERY full _92 turn (constant recall), and whether a journal close
             carries the context_id, with its activity line.
+  withheld  (graduated trust, Phase 1) the candidates the trust verdict withheld, from each full
+            _92 row's `dropped` list. Rows written before Phase 1 lack the field and are counted
+            apart, never read as "none withheld".
   memories  the most-recalled ids with the query-source split. An id recalled only under
             idle_charge may be near the fixed activation charge rather than relevant to the work
             (Opus and Fable, 2026-09-24); those are marked CHARGE-ONLY.
@@ -176,6 +179,8 @@ def cycle_summary(ending, rows, closes_by_ctx):
         "constant_ids": constant,
         "sources": dict(Counter(r.get("source") for r in full)),
         "errors": sum(1 for r in rows if r.get("error")),
+        "dropped": sum(len(r.get("dropped") or []) for r in rows),
+        "dropped_distinct": len({i for r in rows for i in r.get("dropped") or []}),
         "closed": close is not None,
         "activity": (close or {}).get("activity"),
     }
@@ -212,6 +217,12 @@ def build_report(trace_rows, endings, journal_rows, since=None, until=None, top=
             "full_92_by_source": dict(Counter(r.get("source") for r in trace_rows if is_full_92(r))),
             "early_by_reason": dict(Counter(r["early"] for r in trace_rows if r.get("early"))),
             "errors": dict(Counter(json.dumps(r["error"]) for r in trace_rows if r.get("error"))),
+            # Graduated trust, Phase 1: every full _92 row carries `dropped` ([] = checked, none
+            # withheld). Full rows WITHOUT the key predate Phase 1 and are counted apart, never as 0.
+            "full_92_with_dropped_field": sum(1 for r in trace_rows if is_full_92(r) and "dropped" in r),
+            "full_92_without_dropped_field": sum(1 for r in trace_rows if is_full_92(r) and "dropped" not in r),
+            "dropped_total": sum(len(r.get("dropped") or []) for r in trace_rows),
+            "dropped_distinct": len({i for r in trace_rows for i in r.get("dropped") or []}),
         },
         "journal_join": "ok" if closes_by_ctx else "unverified: no cycle_close row carries a context_id",
         "cycles": [cycle_summary(e, by_cycle.get(i, []), closes_by_ctx) for i, (t, e) in enumerate(ended)],
@@ -250,14 +261,17 @@ def print_report(rep, files):
     print("  early returns      %s   <- A17: _92 did not recall; A0's own recall, if any, stood untagged"
           % (c["early_by_reason"] or "none"))
     print("  errors             %s" % (c["errors"] or "none"))
+    print("  trust-withheld     %d ids (%d distinct) on %d full rows carrying the field; %d full rows predate it"
+          % (c["dropped_total"], c["dropped_distinct"], c["full_92_with_dropped_field"],
+             c["full_92_without_dropped_field"]))
     print("\nCYCLES (%d ended in the window; journal join: %s)" % (len(rep["cycles"]), rep["journal_join"]))
     for s in rep["cycles"]:
         print("  #%s %s ctx=%s %s %s elapsed=%ss hb_age=%ss%s"
               % (s["cycle"], s["ended_at"], s["context_id"], s["type"], s["outcome"],
                  s["elapsed_s"], s["heartbeat_age_s"], "  NO-TOOL" if s["no_tool"] else ""))
-        print("      rows=%d full_92=%d early=%s memory_load=%d distinct_ids=%d errors=%d sources=%s"
+        print("      rows=%d full_92=%d early=%s memory_load=%d distinct_ids=%d errors=%d withheld=%d (%d distinct) sources=%s"
               % (s["rows"], s["full_92"], s["early"] or "{}", s["memory_load"], s["distinct_ids"],
-                 s["errors"], s["sources"] or "{}"))
+                 s["errors"], s["dropped"], s["dropped_distinct"], s["sources"] or "{}"))
         if s["constant_ids"] is not None:
             print("      on every full _92 turn: %s" % (s["constant_ids"] or "none"))
         print("      journal: %s" % (clip(s["activity"], 160) if s["closed"] else "no close row with this context_id"))

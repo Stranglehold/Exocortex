@@ -65,7 +65,7 @@ TRACE_PATH = os.environ.get("EXO_RECALL_TRACE_PATH", "/a0/usr/plugins/_exocortex
 _TRACE_LOCK = threading.Lock()
 
 
-def trace(agent, ids, via, turn=None, source=None, early=None, error=None) -> bool:
+def trace(agent, ids, via, turn=None, source=None, early=None, error=None, dropped=None) -> bool:
     """Append one row: the memory ids recalled into THIS turn, by which hook, from which query source.
 
     PER TURN, not per monologue: a memory recalled on turn 1 and again on turn 7 appears on both
@@ -76,7 +76,10 @@ def trace(agent, ids, via, turn=None, source=None, early=None, error=None) -> bo
     on such a turn A0's own untagged recall stands, which is the A17 gap, and a row per such turn
     makes the gap a number. `error` names what failed on a run that did not return early (e.g. the
     pipelines that raised). `source` is recall_query's class (recent_work / idle_charge /
-    user_message) or the tool that recalled.
+    user_message) or the tool that recalled. `dropped` (graduated trust, Phase 1) lists candidates
+    the trust verdict withheld (helpers/memory_trust.py). _92 passes it on EVERY full run, so
+    `dropped: []` means "checked, none withheld", while a row without the key is an early return,
+    a memory_load row, or a row written before Phase 1.
 
     Never raises: a failed write is printed, so an untraced turn is visible rather than silent.
     """
@@ -90,6 +93,8 @@ def trace(agent, ids, via, turn=None, source=None, early=None, error=None) -> bo
             row["early"] = early
         if error:
             row["error"] = error
+        if dropped is not None:
+            row["dropped"] = sorted({str(i) for i in dropped if i})
         d = os.path.dirname(TRACE_PATH)
         if d:
             os.makedirs(d, exist_ok=True)

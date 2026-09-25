@@ -45,9 +45,16 @@ evidence: a memory_load result is recall (R4 marks it), a memory_save result is 
 fact she really did fetch from outside through code loses the label, not the fact: the safe
 direction.
 
+THE DERIVATION MARKER (graduated trust GT-2a, 2026-09-25)
+--------------------------------------------------------
+derive_source_rule() also returns which rule decided ("A19.1" … "A19.5"), and the three writers
+store it as `classification.source_rule` on NEW saves. The recall frame (helpers/memory_trust.py)
+shows a stored source only when the marker is present; without it the source renders as
+`legacy`, because a label that no derivation rule produced is the model's claim, not provenance.
+
 WHAT THIS DOES NOT DO
 ---------------------
-- Does not relabel existing memories. Forward-only (R2).
+- Does not relabel existing memories, and does not backfill the marker. Forward-only (R2).
 - Does not decide what gets saved.
 - No LLM calls. Dict and set operations over the agent's history.
 """
@@ -203,15 +210,29 @@ def from_tool(memory_text: str, tool_text: str) -> bool:
     return shared >= 3 and shared / len(mem) >= 0.6
 
 
-def derive_source(agent, text: str, *, user_msg: str = "", tool_texts=(), area: str = "") -> str:
-    """A19's rules 1-5, in order. Deterministic."""
+def derive_source_rule(agent, text: str, *, user_msg: str = "", tool_texts=(), area: str = ""):
+    """(source, rule): A19's rules 1-5 in order, and the identifier of the rule that decided.
+
+    The rule is the DERIVATION MARKER (graduated trust GT-2a, Opus 2026-09-25): writers store it as
+    `classification.source_rule`, and the recall frame shows a stored source only when the marker
+    is present. Before this, nothing distinguished a source R2 derived from one the model labelled.
+    "A19.1" is recorded when the text overlaps the user message but the context is an idle cycle
+    or a subordinate, so the gate withheld user_asserted. The source is exactly derive_source's.
+    """
     if area == "solutions":
-        return "agent_inferred"
+        return "agent_inferred", "A19.2"
     if any(from_tool(text, t) for t in (tool_texts or ())):
-        return "external_retrieved"
+        return "external_retrieved", "A19.3"
     if user_msg and not is_restricted(agent) and overlaps(text, user_msg):
-        return "user_asserted"
-    return "agent_inferred"
+        return "user_asserted", "A19.4"
+    if user_msg and overlaps(text, user_msg):
+        return "agent_inferred", "A19.1"
+    return "agent_inferred", "A19.5"
+
+
+def derive_source(agent, text: str, *, user_msg: str = "", tool_texts=(), area: str = "") -> str:
+    """A19's rules 1-5, in order. Deterministic. (The source half of derive_source_rule.)"""
+    return derive_source_rule(agent, text, user_msg=user_msg, tool_texts=tool_texts, area=area)[0]
 
 
 def validity_for(source: str) -> str:

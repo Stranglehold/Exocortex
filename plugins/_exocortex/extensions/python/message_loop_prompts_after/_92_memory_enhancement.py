@@ -68,6 +68,14 @@ try:
 except Exception:  # pragma: no cover - helper missing
     _mt = None  # type: ignore[assignment]
 
+# Graduated trust, Phase 1 (Opus's note + Kestrel's review, 2026-09-25): whether a recalled memory
+# may be presented is decided in helpers/memory_trust.py. If it cannot load, the filter falls back
+# to the rule it always applied inline (`validity == "deprecated"`), so recall is unchanged.
+try:
+    import memory_trust as _trust
+except Exception:  # pragma: no cover - helper missing
+    _trust = None  # type: ignore[assignment]
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 CONFIG_PATH = "/a0/usr/memory/classification_config.json"
@@ -230,6 +238,8 @@ class MemoryEnhancement(Extension):
             # A pipeline that raises leaves A0's own text in its slot, untagged: the same gap as an
             # early return, so the trace names it.
             pipeline_errors = []
+            # Candidates the trust verdict withheld this turn (helpers/memory_trust.py), for the trace.
+            dropped_ids = []
 
             # ── Process memories (main + fragments + ontology entities) ───
             try:
@@ -243,6 +253,7 @@ class MemoryEnhancement(Extension):
                     # bucket. 'solutions' keeps its own targeted path below.
                     "area != 'solutions'",
                     qe_config, decay_config, related_config,
+                    dropped=dropped_ids,
                 )
 
                 if result:
@@ -275,6 +286,7 @@ class MemoryEnhancement(Extension):
                         sim_threshold, sol_cap,
                         "area == 'solutions'",
                         qe_config, decay_config, related_config,
+                        dropped=dropped_ids,
                     )
 
                     if result:
@@ -320,7 +332,7 @@ class MemoryEnhancement(Extension):
             # Every full run writes its row, `ids: []` included: "the hook ran and recalled
             # nothing" is a finding too. Before co-retrieval logging, for the tag's reason above.
             _trace(self.agent, all_injected_ids, turn, source=query_source,
-                   error=pipeline_errors or None)
+                   error=pipeline_errors or None, dropped=dropped_ids)
             traced = True
 
             # ── Co-retrieval logging ──────────────────────────────────────
@@ -344,12 +356,16 @@ class MemoryEnhancement(Extension):
 
 # ── Recall trace ─────────────────────────────────────────────────────────────
 
-def _trace(agent, ids, turn, source=None, early=None, error=None) -> None:
+def _trace(agent, ids, turn, source=None, early=None, error=None, dropped=None) -> None:
     """One row in the persistent recall trace (helpers/memory_recall_tag.trace). Never raises.
 
     `early` names a return before recall (subordinate / no_db / no_docs / no_query / exception):
     on such a turn A0's own untagged recall (_50/_91) stands, which is the A17 gap. `error` names
     the pipelines that raised ("memories", "solutions"), whose slots also keep A0's text.
+    `dropped` lists the candidates the trust verdict withheld (graduated trust, Phase 1). A cached
+    memory_recall_tag from before Phase 1 has no `dropped` parameter; the row is then written
+    without it rather than lost. trace() itself never raises, so a TypeError here can only be that
+    signature.
 
     !! memory_recall_tag is imported by bare name, so it sits in sys.modules and survives the
     plugins reload (modules.purge_namespace deletes only `plugins.*`; see recall_query.py's
@@ -364,7 +380,14 @@ def _trace(agent, ids, turn, source=None, early=None, error=None) -> None:
             print("[MEM-ENHANCE] Recall trace unavailable — the loaded memory_recall_tag predates "
                   "trace(); it loads at the next container restart", flush=True)
             return
-        fn(agent, ids, "_92", turn=turn, source=source, early=early, error=error)
+        kwargs = {"turn": turn, "source": source, "early": early, "error": error}
+        if dropped is not None:
+            kwargs["dropped"] = dropped
+        try:
+            fn(agent, ids, "_92", **kwargs)
+        except TypeError:
+            kwargs.pop("dropped", None)
+            fn(agent, ids, "_92", **kwargs)
     except Exception as trace_err:
         print(f"[MEM-ENHANCE] Recall trace skipped — {type(trace_err).__name__}", flush=True)
 
@@ -375,10 +398,12 @@ async def _run_pipeline(
     db, all_docs, query, bst_domain, role_domains,
     sim_threshold, max_injected, area_filter,
     qe_config, decay_config, related_config,
+    dropped=None,
 ) -> list[tuple]:
     """Run the 4-stage scoring pipeline: expand -> decay -> boost -> select.
 
-    Returns [(doc, final_score)] for injection.
+    Returns [(doc, final_score)] for injection. `dropped`, when given, receives the ids of the
+    candidates the trust verdict withheld (stage 2), for the recall trace.
     """
     # Stage 1: Query Expansion
     merged = await _query_expansion_search(
@@ -390,7 +415,7 @@ async def _run_pipeline(
 
     # Stage 2: Filter + Temporal Decay
     scored = _filter_and_decay(
-        merged, all_docs, role_domains, decay_config,
+        merged, all_docs, role_domains, decay_config, dropped=dropped,
     )
     print(f"[MEM-ENHANCE] After decay: {len(scored)} candidates", flush=True)
     if not scored:
@@ -481,15 +506,30 @@ def extract_keywords(text: str, max_keywords: int = 12) -> str:
 
 # ── Stage 2: Filter + Temporal Decay ─────────────────────────────────────────
 
+def _is_excluded(doc, cls) -> bool:
+    """The trust verdict (helpers/memory_trust.excluded). When the helper is not loaded, the
+    rule this filter applied inline before 2026-09-25, so recall never depends on the helper.
+    (It is a bare-name import: absent when this file loaded means None until this file reloads,
+    and once loaded, edits to it are live only after a container restart.)"""
+    if _trust is not None:
+        try:
+            return bool(_trust.excluded(doc))
+        except Exception:
+            pass
+    return cls.get("validity") == "deprecated"
+
+
 def _filter_and_decay(
     merged_pool: list[tuple],
     all_docs: dict,
     role_domains: list,
     decay_config: dict,
+    dropped=None,
 ) -> list[tuple]:
     """Apply validity/role filters and temporal decay scoring.
 
-    Returns [(doc, blended_score, utility_rank)] sorted descending.
+    Returns [(doc, blended_score, utility_rank)] sorted descending. `dropped`, when given,
+    receives the id of each candidate the trust verdict withholds.
     """
     decay_enabled = decay_config.get("enabled", True)
     decay_weight = decay_config.get("decay_weight", 0.15)
@@ -499,8 +539,12 @@ def _filter_and_decay(
         cls = doc.metadata.get(CLS_KEY, {})
         lin = doc.metadata.get(LIN_KEY, {})
 
-        # Validity filter: exclude deprecated
-        if cls.get("validity") == "deprecated":
+        # Trust verdict: exclude what may not be presented (helpers/memory_trust.py). The same
+        # rule this filter always applied inline, `validity == "deprecated"`, now decided in one
+        # place; runs BEFORE top-k, so a withheld memory's slot goes to the next candidate.
+        if _is_excluded(doc, cls):
+            if dropped is not None and doc.metadata.get("id"):
+                dropped.append(doc.metadata["id"])
             continue
 
         # Role-relevance filter
@@ -748,6 +792,11 @@ def _with_provenance(result, observations=None, config=None, now=None):
     old it is, and an unkeyed memory that names a keyed subject says when a newer observation of
     that subject exists. The save date stays first; a memory with neither clause renders
     exactly as before.
+
+    Graduated trust (Phase 1, 2026-09-25) adds one clause after the date, from
+    helpers/memory_trust.render_trust: "source: <stored value>" when the memory carries the
+    derivation marker (classification.source_rule), else "source: legacy" (GT-2a). If the helper
+    cannot load, the head is exactly as before.
     """
     now = now or datetime.now(timezone.utc)
     out = []
@@ -758,6 +807,13 @@ def _with_provenance(result, observations=None, config=None, now=None):
         # An undated memory says so. Silently omitting the date would make it read as
         # current, which is the defect; guessing one would be worse.
         clauses = [("saved %s" % stamp) if stamp else "save date unknown"]
+        # Graduated trust GT-2a (helpers/memory_trust.py): the source, shown only when a
+        # derivation rule produced it, else "legacy". Same head, no second frame.
+        if _trust is not None:
+            try:
+                clauses += _trust.render_trust(doc)[1]
+            except Exception:
+                pass
         if _mt is not None:
             try:
                 clauses += _mt.frame_clauses(doc, observations or {}, now, config)

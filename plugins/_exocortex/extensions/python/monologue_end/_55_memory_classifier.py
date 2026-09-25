@@ -339,7 +339,7 @@ def _classify(doc, user_msg: str, config: dict,
     text = getattr(doc, "page_content", "")
     area = doc.metadata.get("area", "")
 
-    source = _detect_source(text, area, user_msg, agent=agent, tool_texts=tool_texts)
+    source, source_rule = _detect_source_rule(text, area, user_msg, agent=agent, tool_texts=tool_texts)
     validity = "confirmed" if source == "user_asserted" else "inferred"
     utility = _detect_utility(text, config)
     relevance = "active"
@@ -362,8 +362,22 @@ def _classify(doc, user_msg: str, config: dict,
         "relevance": relevance,
         "utility": utility,
         "source": source,
+        **({"source_rule": source_rule} if source_rule else {}),
         "relational_salience": relational_salience,
     }
+
+
+def _detect_source_rule(text: str, area: str, user_msg: str, agent=None, tool_texts=()):
+    """(source, rule). GT-2a (2026-09-25): the rule is the derivation marker, stored as
+    classification.source_rule; the recall frame shows a source only when it is present. None
+    when the source did not come from derive_source_rule: the fallback heuristics in
+    _detect_source, or a cached memory_source from before the marker (until a container restart).
+    """
+    if _ms is not None and agent is not None:
+        _derive = getattr(_ms, "derive_source_rule", None)
+        if _derive is not None:
+            return _derive(agent, text, user_msg=user_msg, tool_texts=tool_texts, area=area)
+    return _detect_source(text, area, user_msg, agent=agent, tool_texts=tool_texts), None
 
 
 def _detect_source(text: str, area: str, user_msg: str, agent=None, tool_texts=()) -> str:
