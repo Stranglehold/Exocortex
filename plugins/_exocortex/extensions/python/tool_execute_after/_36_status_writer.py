@@ -49,6 +49,17 @@ from datetime import datetime, timedelta, timezone
 from helpers.extension import Extension
 from plugins._memory.helpers.memory import Memory
 
+# Tier 1 provenance (Opus, 2026-09-04 and 2026-09-27): which chat and which models wrote each
+# memory, recorded in a sidecar the agent never reads (helpers/memory_provenance.py). If the
+# helper cannot load, nothing is stamped and this file behaves as before.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in __import__("sys").path:
+    __import__("sys").path.insert(0, _EXOCORTEX_HELPERS)
+try:
+    import memory_provenance as _mp
+except Exception:  # pragma: no cover - helper missing
+    _mp = None
+
 CONFIG_PATH = "/a0/usr/plugins/_exocortex/config/config.json"   # section "status_writer"
 CLS_KEY = "classification"
 LIN_KEY = "lineage"
@@ -217,7 +228,9 @@ class StatusWriter(Extension):
                 self._log("%s %s already observed within the debounce window — skipped" % (key, status))
                 return
             text, metadata = build_memory(subject, probe, status, detail, now)
-            await db.insert_text(text, metadata)
+            mem_id = await db.insert_text(text, metadata)
+            if _mp is not None:
+                _mp.stamp_exact(mem_id, self.agent, "status_writer", "deterministic")
             self._log("%s = %s (%s)" % (key, status, detail[:80]))
         except Exception as e:
             try:

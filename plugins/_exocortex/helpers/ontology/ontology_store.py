@@ -21,6 +21,17 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+# Tier 1 provenance (Opus, 2026-09-04 and 2026-09-27): which chat and which models wrote each
+# memory, recorded in a sidecar the agent never reads (helpers/memory_provenance.py). If the
+# helper cannot load, nothing is stamped and this file behaves as before.
+_EXOCORTEX_HELPERS = "/a0/usr/plugins/_exocortex/helpers"
+if _EXOCORTEX_HELPERS not in __import__("sys").path:
+    __import__("sys").path.insert(0, _EXOCORTEX_HELPERS)
+try:
+    import memory_provenance as _mp
+except Exception:  # pragma: no cover - helper missing
+    _mp = None
+
 ONTOLOGY_DIR = "/a0/usr/ontology"
 RELATIONSHIPS_FILE = os.path.join(ONTOLOGY_DIR, "relationships.jsonl")
 CONFIG_PATH = os.path.join(ONTOLOGY_DIR, "ontology_config.json")
@@ -186,6 +197,8 @@ async def store_entity(agent, entity: dict, entity_id: str = None) -> str:
     try:
         db = await Memory.get(agent)
         mem_id = await db.insert_text(summary, metadata)
+        if _mp is not None:
+            _mp.stamp_exact(mem_id, agent, "ontology_store", "deterministic")
         print(f"[ONT-STORE] Stored entity {entity_id} ({entity_type}: {name}) as memory {mem_id}", flush=True)
         return entity_id
     except Exception as e:

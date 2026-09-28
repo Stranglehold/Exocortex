@@ -47,6 +47,14 @@ try:
 except Exception:  # pragma: no cover - helper missing
     _ms = None
 
+# Tier 1 provenance (Opus, 2026-09-04 and 2026-09-27): which chat and which models wrote each
+# memory, recorded in a sidecar the agent never reads (helpers/memory_provenance.py). If the
+# helper cannot load, nothing is stamped and this file behaves as before.
+try:
+    import memory_provenance as _mp
+except Exception:  # pragma: no cover - helper missing
+    _mp = None
+
 
 def _structural_source(agent, text, user_msg, tool_texts, area):
     """(source, validity, source_rule) decided by structure (R2, A19), or None when the helper is
@@ -291,7 +299,9 @@ class SelectiveMemorizer(Extension):
                     },
                 }
 
-                await db.insert_text(text=text, metadata=metadata)
+                mem_id = await db.insert_text(text=text, metadata=metadata)
+                if _mp is not None:
+                    _mp.stamp_exact(mem_id, self.agent, "selective_memorizer", "utility")
                 stored_count += 1
 
             summary = f"Selective memorizer: {stored_count} memories stored"

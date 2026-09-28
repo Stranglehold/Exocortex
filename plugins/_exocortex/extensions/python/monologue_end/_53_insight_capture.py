@@ -43,6 +43,14 @@ try:
 except Exception:  # pragma: no cover - helper missing
     _ms = None
 
+# Tier 1 provenance (Opus, 2026-09-04 and 2026-09-27): which chat and which models wrote each
+# memory, recorded in a sidecar the agent never reads (helpers/memory_provenance.py). If the
+# helper cannot load, nothing is stamped and this file behaves as before.
+try:
+    import memory_provenance as _mp
+except Exception:  # pragma: no cover - helper missing
+    _mp = None
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 MIN_SENTENCE_WORDS = 5        # Skip fragments shorter than this
@@ -205,7 +213,9 @@ class ConversationalInsightCapture(Extension):
                     },
                 }
 
-                await db.insert_text(text=text, metadata=metadata)
+                mem_id = await db.insert_text(text=text, metadata=metadata)
+                if _mp is not None:
+                    _mp.stamp_exact(mem_id, self.agent, "insight_capture", "deterministic")
                 stored += 1
 
             if stored > 0:

@@ -65,6 +65,14 @@ try:
 except Exception:  # pragma: no cover - helper missing
     _mt = None
 
+# Tier 1 provenance (Opus, 2026-09-04 and 2026-09-27): which chat and which models wrote each
+# memory, recorded in a sidecar the agent never reads (helpers/memory_provenance.py). If the
+# helper cannot load, nothing is stamped and this file behaves as before.
+try:
+    import memory_provenance as _mp
+except Exception:  # pragma: no cover - helper missing
+    _mp = None
+
 # ── Configuration ────────────────────────────────────────────────────────────
 
 CONFIG_PATH = "/a0/usr/memory/classification_config.json"
@@ -212,6 +220,30 @@ class MemoryClassifier(Extension):
                     self.agent.set_data("_memory_staging_buffer", staging)
                 except Exception:
                     pass
+
+            # ── Tier 1 provenance: stamp what this monologue first saw ────────
+            # A0's memorizers, consolidation and memory_save write without our stamp; the ledger
+            # names the chat that wrote each one (helpers/memory_provenance.py). A memory already
+            # in the sidecar (memory_save's exact stamp) is skipped there, never stamped twice.
+            if _mp is not None and newly_classified:
+                try:
+                    _pcfg = _mp.cfg()
+                    if _pcfg.get("enabled", True):
+                        _entries = _mp.read_ledger()
+                        _cur = _mp.current(self.agent)
+                        _window = int(_pcfg.get("window_s", _mp.DEFAULT_WINDOW_S))
+                        _tiers = {}
+                        for doc_id, doc in newly_classified:
+                            _a = _mp.stamp_unowned(doc_id, doc.metadata, _entries, _cur, _window)
+                            if _a:
+                                _tiers[_a] = _tiers.get(_a, 0) + 1
+                        if _tiers:
+                            print("[MEM-PROV] stamped %d first seen: %s" % (
+                                sum(_tiers.values()),
+                                ", ".join("%s=%d" % kv for kv in sorted(_tiers.items()))), flush=True)
+                except Exception as e:
+                    print(f"[MEM-PROV] first-seen stamping skipped — {type(e).__name__}: {str(e)[:80]}",
+                          flush=True)
 
             # ── Phase 2: Conflict resolution ─────────────────────────────
             conflict_count = 0
