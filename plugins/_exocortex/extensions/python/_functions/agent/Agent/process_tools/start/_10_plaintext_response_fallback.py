@@ -125,6 +125,33 @@ def _is_unrecoverable_call(stripped: str) -> bool:
 _MAX_WRAP_CHARS = 200_000
 
 
+# ATTENDED + MID-TASK (Opus's v3, 2026-09-28; Opus/design-notes/empty-content-retry.md).
+# In an attended turn this file wraps any non-tool message as `response`, which ends the turn. That is
+# right for an answer, and wrong for an agent that stumbled mid-task. On 2026-09-28 it ended both turns of
+# chat UAF8M7i2 while she was verifying a letter. So, ONCE per monologue, when this monologue has
+# executed a tool, return without wrapping and let core's misformat nudge (which does not name
+# `response`) ask for the call. A second stumble in the same monologue wraps as before.
+_MIDTASK_KEY = "_10_midtask_vetoed"
+
+
+def _is_working_mode(agent) -> bool:
+    """True if a tool result is in the current history topic.
+
+    A user message starts a new topic (agent.hist_add_user_message calls history.new_topic()), so the
+    current topic IS this monologue. Tool results are stored as {"tool_name", "tool_result"}
+    (agent.hist_add_tool_result). Structural and read-only. Anything unreadable reads as False, which
+    keeps today's behaviour (wrap).
+    """
+    try:
+        for m in agent.history.current.messages:
+            c = getattr(m, "content", None)
+            if not getattr(m, "ai", True) and isinstance(c, dict) and "tool_result" in c:
+                return True
+    except Exception:
+        return False
+    return False
+
+
 class PlaintextResponseFallback(Extension):
     """Rewrite bare prose into an explicit `response` tool call."""
 
@@ -151,6 +178,24 @@ class PlaintextResponseFallback(Extension):
             # safety are different categories (Opus, 2026-09-11).
             self._log(f"attendedness parent-walk fault: {fault}")
         return (observation in att.VETOES), observation
+
+    def _midtask_veto(self, nchars: int) -> bool:
+        """Attended, mid-task, first stumble this monologue: do not end the turn. The flag lives in
+        loop_data.params_persistent, which is new at every monologue start (agent.py:398). Fails OPEN
+        to today's wrap."""
+        try:
+            pp = self.agent.loop_data.params_persistent
+            if pp.get(_MIDTASK_KEY) or not _is_working_mode(self.agent):
+                return False
+            pp[_MIDTASK_KEY] = True
+            self._log(
+                f"attended turn, mid-task (a tool ran this monologue) — NOT wrapping {nchars} chars "
+                "once; leaving for the misformat nudge"
+            )
+            return True
+        except Exception as exc:
+            self._log(f"mid-task veto check failed ({type(exc).__name__}) — wrapping as before")
+            return False
 
     def _bump_nudges(self) -> int:
         try:
@@ -254,6 +299,8 @@ class PlaintextResponseFallback(Extension):
                     f"unattended turn ({why}) — nudge bound {NUDGE_BOUND} exhausted after "
                     f"{n} refusals; wrapping to end the turn"
                 )
+            elif self._midtask_veto(len(stripped)):
+                return
 
             wrapped = json.dumps(
                 {"tool_name": "response", "tool_args": {"text": stripped}},
