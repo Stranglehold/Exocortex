@@ -321,6 +321,38 @@ def _temporal_decay_score(metadata: dict) -> float:
 
 # ── Filter and Rank ──────────────────────────────────────────────────────────
 
+# ── Recall withhold (Jake, 2026-09-27; Opus's option a) ──────────────────────
+# Memories that automatic recall must not deliver. They stay in her store, untouched, and memory_load
+# (her own search) still returns them. The list is config/recall_withhold.json, re-read when its mtime
+# changes, so it can be edited, disabled or emptied without a deploy. The same reader is in
+# _55_memory_relevance_filter and _92_memory_enhancement: both write the recalled-memory extras, and
+# either may be the one that stands in a turn. Why: recall delivered these in 10 of 10 MAINTAIN cycles
+# and re-seeded an injection belief (Kestrel/studies/2026-09-27-recall-reseeds-injection-frame.md).
+_WITHHOLD_PATH = "/a0/usr/plugins/_exocortex/config/recall_withhold.json"
+_WITHHOLD = {"mtime": None, "ids": frozenset()}
+
+
+def _withheld_ids() -> frozenset:
+    """Ids automatic recall must not deliver. Empty when the file is absent or disabled. An unreadable
+    file keeps the last good list and says so. Never raises."""
+    try:
+        mtime = os.path.getmtime(_WITHHOLD_PATH)
+    except Exception:
+        _WITHHOLD.update(mtime=None, ids=frozenset())
+        return _WITHHOLD["ids"]
+    if mtime != _WITHHOLD["mtime"]:
+        try:
+            with open(_WITHHOLD_PATH, encoding="utf-8") as fh:
+                data = json.load(fh) or {}
+            ids = data.get("ids") or []
+            _WITHHOLD.update(mtime=mtime, ids=frozenset(str(i) for i in ids if i)
+                             if data.get("enabled", True) else frozenset())
+        except Exception as e:
+            print(f"[RECALL-WITHHOLD] {_WITHHOLD_PATH} unreadable ({type(e).__name__}); "
+                  f"keeping {len(_WITHHOLD['ids'])} ids", flush=True)
+    return _WITHHOLD["ids"]
+
+
 def _filter_and_rank(
     search_results,
     all_docs: dict,
@@ -340,6 +372,10 @@ def _filter_and_rank(
 
         # ── Validity filter: exclude deprecated and loop_period memories ──
         if cls.get("validity") in ("deprecated", "loop_period"):
+            continue
+
+        # ── Recall withhold: kept in the store, never recalled ──────────
+        if doc_id and doc_id in _withheld_ids():
             continue
 
         # ── Role-relevance filter ────────────────────────────────────
