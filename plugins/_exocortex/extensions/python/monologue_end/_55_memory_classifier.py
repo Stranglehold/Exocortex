@@ -148,6 +148,53 @@ _RE_CORRECTION = re.compile(
 )
 
 
+def _provenance_pass(agent, all_docs: dict, newly_classified: list) -> dict:
+    """Tier 1 provenance for memories nobody stamped at write time (helpers/memory_provenance.py).
+
+    Two kinds, both recorded in the sidecar and never in the memory:
+    - the memories this monologue newly classified (A0's memorizers and memory_save's fallback);
+    - A0 consolidation REWRITES. They carry an older memory's classification, so they are never
+      "newly classified", but their text and timestamp are new. So: any memory not yet in the
+      sidecar whose timestamp is at or after the ledger's first event.
+    Returns {attribution: count}. Never raises.
+    """
+    tiers = {}
+    try:
+        pcfg = _mp.cfg()
+        if not pcfg.get("enabled", True):
+            return tiers
+        entries = _mp.read_ledger()
+        stamped = _mp.stamped_ids()
+        since = min((e["_t"] for e in entries), default=None)
+        fresh = {doc_id for doc_id, _ in newly_classified}
+        todo = [(doc_id, doc) for doc_id, doc in newly_classified if doc_id not in stamped]
+        if since is not None:
+            for doc_id, doc in all_docs.items():
+                if doc_id in fresh or doc_id in stamped:
+                    continue
+                t = _mp.doc_time(getattr(doc, "metadata", None) or {})
+                if t is not None and t >= since:
+                    todo.append((doc_id, doc))
+        if not todo:
+            return tiers
+        cur = _mp.current(agent)
+        window = int(pcfg.get("window_s", _mp.DEFAULT_WINDOW_S))
+        for doc_id, doc in todo:
+            meta = getattr(doc, "metadata", None) or {}
+            fields = _mp.attribute(meta, entries, cur, window)
+            if doc_id not in fresh and meta.get("consolidation_action"):
+                fields["created_by"] = "consolidation"
+            if _mp.record(doc_id, fields):
+                tiers[fields["attribution"]] = tiers.get(fields["attribution"], 0) + 1
+        if tiers:
+            print("[MEM-PROV] stamped %d unowned (%d rewrites): %s" % (
+                sum(tiers.values()), sum(1 for d, _ in todo if d not in fresh),
+                ", ".join("%s=%d" % kv for kv in sorted(tiers.items()))), flush=True)
+    except Exception as e:
+        print(f"[MEM-PROV] provenance pass skipped — {type(e).__name__}: {str(e)[:80]}", flush=True)
+    return tiers
+
+
 class MemoryClassifier(Extension):
     """Classifies memories on four axes with deterministic conflict resolution."""
 
@@ -225,25 +272,8 @@ class MemoryClassifier(Extension):
             # A0's memorizers, consolidation and memory_save write without our stamp; the ledger
             # names the chat that wrote each one (helpers/memory_provenance.py). A memory already
             # in the sidecar (memory_save's exact stamp) is skipped there, never stamped twice.
-            if _mp is not None and newly_classified:
-                try:
-                    _pcfg = _mp.cfg()
-                    if _pcfg.get("enabled", True):
-                        _entries = _mp.read_ledger()
-                        _cur = _mp.current(self.agent)
-                        _window = int(_pcfg.get("window_s", _mp.DEFAULT_WINDOW_S))
-                        _tiers = {}
-                        for doc_id, doc in newly_classified:
-                            _a = _mp.stamp_unowned(doc_id, doc.metadata, _entries, _cur, _window)
-                            if _a:
-                                _tiers[_a] = _tiers.get(_a, 0) + 1
-                        if _tiers:
-                            print("[MEM-PROV] stamped %d first seen: %s" % (
-                                sum(_tiers.values()),
-                                ", ".join("%s=%d" % kv for kv in sorted(_tiers.items()))), flush=True)
-                except Exception as e:
-                    print(f"[MEM-PROV] first-seen stamping skipped — {type(e).__name__}: {str(e)[:80]}",
-                          flush=True)
+            if _mp is not None:
+                _provenance_pass(self.agent, all_docs, newly_classified)
 
             # ── Phase 2: Conflict resolution ─────────────────────────────
             conflict_count = 0
